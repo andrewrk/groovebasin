@@ -8,6 +8,7 @@ int main(int argc, char *argv[])
     app.setApplicationName("PartyBeat Player");
 
     Player * player = new Player();
+    player->play(argv[1]);
 
     return app.exec();
 }

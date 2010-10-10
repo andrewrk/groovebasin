@@ -92,3 +92,10 @@ void Player::metaStateChanged(Phonon::State newState, Phonon::State oldState)
         metaInformationResolver->setCurrentSource(sources.at(index));
     }
 }
+
+void Player::play(QString path)
+{
+    sources.append(Phonon::MediaSource(path));
+    mediaObject->enqueue(sources.at(0));
+    mediaObject->play();
+}

@@ -14,3 +14,7 @@
  * smarter shuffling
  
  * track who did everything 
+
+Installation on Ubuntu:
+    sudo aptitude install \
+        phonon-backend-gstreamer

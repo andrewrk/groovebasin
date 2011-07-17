@@ -1,20 +1,35 @@
+Server TODO:
+ * act as web socket proxy
+ * serve static HTML page, css, javascript
+ * serve downloadable songs 
+ * accept uploaded songs and add them to library
+ * library management
+   - ability to add a song to the library
+   - duplicate detection and elimination
+     > if a song is byte for byte the same (check md5's) then ignore the
+       new song
+     > use heuristics to guess if songs are probably the same (using tags). if
+       we are reasonably confident that the songs are the same, delete the one
+       with the lower quality.
+     > if we're not confident enough, there will be an
+       api that lists possible duplicates and actions to resolve them.
+   - when a song is added to the library, automatically replaygain scan it
+     and the album from whence it came. Do this for update as well.
+   - ability to add song to library by URL
+ * plugin API
+   - plugin to submit songs to last.fm
+   - plugin to import songs to library from youtube URL
+
+Client Requirements:
  * interface instant
- * replay gain
- * multiple people pressing buttons simultaneously
- * upload multiple things
+ * support multiple people pressing buttons simultaneously
+ * ability to upload multiple things
  * file folder inbox to import stuff
- * heuristics to determine when duplicate songs are in the library
-
- * one-way synchronizing between partybeats
- * the color thing
+ * drag a file to the web page to upload and queue
+ * playlist colors:
+   - already played songs are a color
+   - queued random songs are one color
+   - manually queued songs are another color
  * searching should work like not stupid
- * last.fm account for the partybeat
  * download button in the playlist
- * open to the world with a simple password
- * smarter shuffling
- 
- * track who did everything 
 
-Installation on Ubuntu:
-    sudo aptitude install \
-        phonon-backend-gstreamer

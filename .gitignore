@@ -1,2 +1,3 @@
 partybeat2.pro.user
 build/
+*.pyc

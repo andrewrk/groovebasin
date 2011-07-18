@@ -4,12 +4,12 @@ function print(line) {
 }
 
 $(document).ready(function() {
-    var socket = new WebSocket("ws://192.168.1.100:6601/");
+    var socket = new WebSocket("ws://localhost:6601/");
     socket.onopen = function() {
         print("socket onopen");
     };
     socket.onmessage = function(msg){
-        print("got msg: " + msg);
+        print("got msg: " + msg.data);
     };
     socket.onclose = function() {
         print("socket onclose");
@@ -17,4 +17,10 @@ $(document).ready(function() {
     socket.onerror = function(error) {
         print("socket onerror: " + error);
     };
+
+    $("#send").click(function() {
+        var line = $("#line").val();
+        $("#line").val('');
+        socket.send(line);
+    });
 });

@@ -1,0 +1,10 @@
+Groove Basin
+
+Music server based on mpd, html5, javascript, and websockets
+
+Run it on a server connected to your main speakers.
+
+People who come over to your home can connect and freely upload, download,
+and play music.
+
+Inspired by https://github.com/royvandewater/partybeat/

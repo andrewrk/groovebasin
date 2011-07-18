@@ -106,6 +106,21 @@ Sec-WebSocket-Protocol: proxy\r\n\
 
                 protocol_state = DATA
 
+                # make a connection to mpd
+                mpd_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                mpd_client.connect((conf.mpd_host, conf.mpd_port))
+                def run_mpd_listen():
+                    while True:
+                        data = mpd_client.recv(128)
+                        if not data:
+                            break
+                        client.send('\x00' + data + '\xff')
+                    mpd_client.close()
+
+                mpd_listener = threading.Thread(target=run_mpd_listen, name='ws_%s_%i_mpd_listen' % address)
+                mpd_listener.daemon = True
+                mpd_listener.start()
+
             elif protocol_state == DATA:
                 oldlen = len(data)
                 data += client.recv(128)
@@ -118,14 +133,20 @@ Sec-WebSocket-Protocol: proxy\r\n\
                 msgs = data.split('\xff')
                 data = msgs.pop()
 
+                close_conn = False
                 for msg in msgs:
+                    if len(msg) == 0:
+                        close_conn = True
+                        break
                     if msg[0] == '\x00':
                         validated.append(msg[1:])
+                if close_conn:
+                    break
 
                 for v in validated:
-                    print(v)
-                    client.send('\x00' + v.upper() + '\xff')
+                    mpd_client.send(v + '\r\n')
         client.close()
+        mpd_client.close()
 
     while True:
         client, address = sock.accept()

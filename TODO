@@ -1,5 +1,4 @@
 Server TODO:
- * act as web socket proxy
  * serve downloadable songs 
  * accept uploaded songs and add them to library
  * library management

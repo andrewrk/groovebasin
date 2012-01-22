@@ -11,9 +11,11 @@ config =
     port: 6600
 
 client = null
+onMpdData = null
 connectMpdClient = ->
   client = net.connect config.mpd.port, config.mpd.host, ->
     console.log 'client connected'
+    client.on 'data', onMpdData if onMpdData?
   client.on 'end', ->
     console.log 'client disconnected, reconnecting'
     connectMpdClient()
@@ -33,7 +35,8 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
     client.write data
-  client.on 'data', (data) ->
-    console.log "[out] " + data.toString()
+
+  onMpdData = (data) ->
     socket.emit 'FromMpd', data.toString()
 
+  client.on 'data', onMpdData

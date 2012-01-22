@@ -5,12 +5,20 @@
 {{#if artists}}
   <ul>
     {{#artists}}
-      <li class="expand">{{name}}</li>
-        {{#albums}}
-          {{#songs}}
-            {{track}}. {{title}}
-          {{/songs}}
-        {{/albums}}
+      <li class="expand"><a href="#" class="artist">{{name}}</a>
+        <ul>
+          {{#hash albums}}
+            <li class="expand"><a href="#" class="album">{{key}}</a>
+              <ul>
+                {{#each val}}
+                  <li>
+                    <a href="#" class="track" data-file="{{file}}">{{Track}}. {{Title}}</a>
+                  </li>
+                {{/each}}
+              </ul>
+            </li>
+          {{/hash}}
+        </ul>
       </li>
     {{/artists}}
   </ul>

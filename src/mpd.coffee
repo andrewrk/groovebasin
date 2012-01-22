@@ -48,30 +48,59 @@ class Mpd
   onError: (msg) ->
     alert "error: " + msg
 
-  onMessage: (msg) ->
-    $("#text").val(msg)
+  onListArtistMsg = (msg) ->
+    # remove the 'Artist: ' text from every line and convert to array
+    list = (line.substring(8) for line in msg.split('\n'))
+    list.sort titleSort
+    list
 
-    cmd = @expectStack.pop()
-    callbacks = @callbacks[cmd]
+  onFindArtistMsg = (msg) ->
+    # build list of tracks from msg
+    tracks = {}
+    current_file = null
+    for line in msg.split("\n")
+      [key, value] = line.split(": ")
+      if key == 'file'
+        current_file = value
+        tracks[current_file] = {}
+      tracks[current_file][key] = value
+
+    # generate list of albums
+    albums = {}
+    for file, track of tracks
+      album_name = track.Album ? "Unknown Album"
+      albums[album_name] ||= []
+      albums[album_name].push track
+
+    albums
+
+  onSendCommandMsg = (msg) -> msg
+
+  doNothing = ->
+
+  onMessage: (msg) ->
+    [cmd, handler] = @expectStack.pop()
+    cb handler(msg) for cb in @callbacks[cmd]
     @callbacks[cmd] = []
-    switch cmd
-      when 'list artist'
-        # remove the 'Artist: ' text from every line and convert to array
-        list = (line.substring(8) for line in msg.split('\n'))
-        list.sort titleSort
-        cb list for cb in callbacks
-      else
-        alert "unhandled command: " + cmd
 
   send: (msg) ->
     @socket.emit 'ToMpd', msg + "\n"
 
-  pushSend: (command, callback) ->
+  pushSend: (command, handler, callback) ->
     @callbacks[command] ||= []
     @callbacks[command].push callback
     if $.inArray(command, @expectStack) == -1
-      @expectStack.push command
+      @expectStack.push [command, handler]
       @send command
 
   getArtistList: (callback) ->
-    @pushSend 'list artist', callback
+    @pushSend 'list artist', onListArtistMsg, callback
+
+  getAlbumsForArtist: (artist_name, callback) ->
+    @pushSend "find artist \"#{artist_name}\"", onFindArtistMsg, callback
+
+  sendCommand: (cmd, callback) ->
+    @pushSend cmd, onSendCommandMsg, callback
+
+  queueTrack: (file) ->
+    @pushSend "add \"#{file}\"", doNothing, doNothing

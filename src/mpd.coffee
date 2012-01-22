@@ -113,5 +113,14 @@ class Mpd
   queueTrack: (file) ->
     @pushSend "add \"#{file}\"", doNothing, doNothing
 
+  play: ->
+    @pushSend "play", doNothing, doNothing
+
+  pause: ->
+    @pushSend "pause", doNothing, doNothing
+
+  playId: (track_id) ->
+    @pushSend "playid #{track_id}", doNothing, doNothing
+
   getPlaylist: (callback) ->
     @pushSend "playlist", formatPlaylistMsg, callback

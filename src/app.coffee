@@ -8,10 +8,12 @@ Handlebars.registerHelper 'hash', (context, options) ->
   ret
 
 render = ->
-  $("#nowplaying").html Handlebars.templates.playback(context)
-  $("#queue").html Handlebars.templates.playlist(context)
-
+  $nowplaying = $("#nowplaying")
   $library = $("#library")
+  $queue = $("#queue")
+
+  $nowplaying.html Handlebars.templates.playback(context)
+  $queue.html Handlebars.templates.playlist(context)
   $library.html Handlebars.templates.library(context)
 
   $library.find('a.artist').click (event) ->
@@ -26,6 +28,18 @@ render = ->
     mpd.queueTrack file
     return false
 
+  $nowplaying.find('.pause a').click (event) ->
+    mpd.pause()
+    return false
+
+  $nowplaying.find('.play a').click (event) ->
+    mpd.play()
+    return false
+
+  $queue.find('a.track').click (event) ->
+    track_id = $(event.target).data('id')
+    mpd.playId track_id
+    return false
 
 $(document).ready ->
   render()

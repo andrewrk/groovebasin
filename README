@@ -13,6 +13,8 @@
         socket.io
         node-static
         coffee-script
+        handlebars
+        uglify-js
     mpd
 
 == Installation ==

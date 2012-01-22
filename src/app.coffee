@@ -1,2 +1,2 @@
 $(document).ready ->
-  $("#nowplaying").html Mustache.render($("#view-nowplaying").html(), {})
+  $("#nowplaying").html Handlebars.templates.library({})

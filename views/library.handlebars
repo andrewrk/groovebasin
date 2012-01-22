@@ -1,0 +1,20 @@
+<input type="text" id="filter">
+<select id="organize">
+  <option selected="selected">Artist / Album / Song</option>
+</select>
+{{#if artists}}
+  <ul>
+    {{#artists}}
+      <li class="expand">{{name}}</li>
+        {{#albums}}
+          {{#songs}}
+            {{track}}. {{title}}
+          {{/songs}}
+        {{/albums}}
+      </li>
+    {{/artists}}
+  </ul>
+{{else}}
+  Empty library
+{{/if}}
+

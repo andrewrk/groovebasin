@@ -1,1 +1,2 @@
-window.foo = "blah"
+$(document).ready ->
+  $("#nowplaying").html Mustache.render($("#view-nowplaying").html(), {})

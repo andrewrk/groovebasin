@@ -4,7 +4,27 @@
   <title>Music</title>
   <script type="text/javascript" src="vendor/jquery-1.6.2.min.js"></script>
   <script type="text/javascript" src="vendor/socket.io/socket.io.min.js"></script>
+  <script type="text/javascript" src="vendor/mustache.js"></script>
+  <script type="text/javascript" src="app.js"></script>
+  <script id="view-nowplaying" type="text/template">
+    <ul class="playback-btns">
+      <li class="skip-prev"></li>
+      <li class="stop"></li>
+      <li class="pause"></li>
+      <li class="skip-next"></li>
+    </ul>
+    <ul class="song-btns">
+      <li class="ban">Ban From Random</li>
+      <li class="download">Download</li>
+    </ul>
+    <h1>{{title}} - {{artist}} - {{album}}</h1>
+    <p>slider bar thing</p>
+    <span class="time passed"></span>
+    <span class="time left"></span>
+  </script>
 </head>
 <body>
+  <div id="nowplaying">
+  </div>
 </body>
 </html>

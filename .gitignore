@@ -1,4 +1,1 @@
-partybeat2.pro.user
-build/
-*.pyc
-mpc/conf.py
+public/app.js

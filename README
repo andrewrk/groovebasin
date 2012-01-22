@@ -15,7 +15,22 @@
         coffee-script
     mpd
 
-== To run the server ==
+== Installation ==
 
-    coffee server.coffee
+    1. Install and configure mpd
+
+        (TODO write docs for this)
+
+    2. Compile and install:
+
+        $ make
+        $ sudo make install (TODO)
+
+    3. (TODO) You can now run `groovebasind` to start the server.
+
+== Developing ==
+
+    Compile upon save:
+
+        $ coffee -w -j public/app.js -c src/
 

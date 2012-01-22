@@ -1,0 +1,14 @@
+<div>
+  <a href="#">Clear</a>
+  <a href="#">Save</a>
+  <input type="text" id="pl-filter" placeholder="filter">
+  <a href="#">Random Mix</a>
+  <a href="#">Repopulate</a>
+</div>
+<ul>
+  {{#playlist}}
+    <li>
+      {{track}}. {{file}}
+    </li>
+  {{/playlist}}
+</ul>

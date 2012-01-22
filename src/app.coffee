@@ -9,6 +9,7 @@ Handlebars.registerHelper 'hash', (context, options) ->
 
 render = ->
   $("#nowplaying").html Handlebars.templates.playback(context)
+  $("#queue").html Handlebars.templates.playlist(context)
 
   $library = $("#library")
   $library.html Handlebars.templates.library(context)
@@ -37,6 +38,11 @@ $(document).ready ->
       context.artists.push obj
       context.artist_table[artist] = obj
     render()
+
+    mpd.getPlaylist (playlist) ->
+      context.playlist = playlist
+      render()
+
 
   $("#line").keydown (event) ->
     if event.keyCode == 13

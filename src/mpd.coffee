@@ -78,6 +78,14 @@ class Mpd
 
   doNothing = ->
 
+  formatPlaylistMsg = (msg) ->
+    results = []
+    for line in msg.split("\n")
+      if $.trim(line)
+        [track, file] = line.split(":file: ")
+        results.push {track: track, file: file}
+    return results
+
   onMessage: (msg) ->
     [cmd, handler] = @expectStack.pop()
     cb handler(msg) for cb in @callbacks[cmd]
@@ -104,3 +112,6 @@ class Mpd
 
   queueTrack: (file) ->
     @pushSend "add \"#{file}\"", doNothing, doNothing
+
+  getPlaylist: (callback) ->
+    @pushSend "playlist", formatPlaylistMsg, callback

@@ -1,10 +1,21 @@
-Groove Basin
+== Groove Basin ==
 
-Music server based on mpd, html5, javascript, and websockets
+    Music player for your home.
 
-Run it on a server connected to your main speakers.
+    Run it on a server connected to your main speakers. People who come over to
+    your home can connect and freely upload, download, and play music.
 
-People who come over to your home can connect and freely upload, download,
-and play music.
+    Inspired by https://github.com/royvandewater/partybeat/
 
-Inspired by https://github.com/royvandewater/partybeat/
+== Dependencies ==
+
+    node.js
+        socket.io
+        node-static
+        coffee-script
+    mpd
+
+== To run the server ==
+
+    coffee server.coffee
+

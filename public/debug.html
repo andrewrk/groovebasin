@@ -1,6 +1,13 @@
+<!doctype html>
+<html>
+<head>
+  <title>Debug</title>
+  <script type="text/javascript" src="vendor/jquery-1.6.2.min.js"></script>
+  <script type="text/javascript" src="vendor/socket.io/socket.io.min.js"></script>
+  <script type="text/javascript">
 function print(line) {
     var txt = $("#out");
-    txt.val(txt.val() + line + "\n");
+    txt.val(line);
 }
 
 WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf";
@@ -18,3 +25,10 @@ $(document).ready(function() {
         }
     });
 });
+  </script>
+</head>
+<body>
+<textarea rows="20" cols="40" id="out"></textarea>
+<input type="text" id="line" value="" />
+</body>
+</html>

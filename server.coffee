@@ -4,6 +4,7 @@ socketio = require 'socket.io'
 static = require 'node-static'
 
 config =
+  log_level: 3
   http:
     port: 7777
   mpd:
@@ -31,6 +32,7 @@ app = http.createServer((request, response) ->
 ).listen(config.http.port)
 
 io = socketio.listen(app)
+io.set 'log level', config.log_level
 io.sockets.on 'connection', (socket) ->
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data

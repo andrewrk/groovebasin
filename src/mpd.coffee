@@ -4,6 +4,26 @@ class Mpd
   MPD_SENTINEL = /OK\n$/
   MPD_ACK = /^ACK \[\d+@\d+\].*\n$/
 
+  startsWith = (string, str) -> string.substring(0, str.length) == str
+  stripPrefixes = ['the ', 'a ', 'an ']
+  sortableTitle = (title) ->
+    t = title.toLowerCase()
+    for prefix in stripPrefixes
+      if startsWith(t, prefix)
+        t = t.substring(prefix.length)
+        break
+    t
+
+  titleSort = (a,b) ->
+    _a = sortableTitle(a)
+    _b = sortableTitle(b)
+    if _a < _b
+      -1
+    else if _a > _b
+      1
+    else
+      0
+
   constructor: ->
     @socket = io.connect "http://localhost"
     @buffer = ""
@@ -37,7 +57,9 @@ class Mpd
     switch cmd
       when 'list artist'
         # remove the 'Artist: ' text from every line and convert to array
-        cb (line.substring(8) for line in msg.split('\n')) for cb in callbacks
+        list = (line.substring(8) for line in msg.split('\n'))
+        list.sort titleSort
+        cb list for cb in callbacks
       else
         alert "unhandled command: " + cmd
 

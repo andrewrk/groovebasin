@@ -13,7 +13,7 @@ endif
 build: $(appjs)
 
 $(appjs): $(views) $(src)
-	coffee -p -j -c src/ $(coffee_min) >$(appjs)
+	cat src/*.coffee | coffee -ps $(coffee_min) >$(appjs)
 	handlebars $(views) $(handlebars_min) -k if >>$(appjs)
 
 clean:

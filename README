@@ -26,13 +26,13 @@
     2. Compile and install:
 
         $ make
-        $ sudo make install (TODO)
+        (TODO) $ sudo make install
 
-    3. (TODO) You can now run `groovebasind` to start the server.
+    3. You can now run `groovebasind` to start the server.
 
 == Developing ==
 
-    Compile upon save:
+    Auto-comile with DEBUG on:
 
-        $ coffee -w -j public/app.js -c src/
+        $ watch -n0.5 make -e DEBUG=true
 

@@ -1,11 +1,5 @@
 context = {}
-mpd = new Mpd()
-
-Handlebars.registerHelper 'hash', (context, options) ->
-  ret = ""
-  for k,v of context
-    ret += options.fn $.extend({key: k, val: v}, options.fn(context))
-  ret
+mpd = null
 
 render = ->
   $nowplaying = $("#nowplaying")
@@ -42,6 +36,14 @@ render = ->
     return false
 
 $(document).ready ->
+  mpd = new Mpd()
+
+  Handlebars.registerHelper 'hash', (context, options) ->
+    ret = ""
+    for k,v of context
+      ret += options.fn $.extend({key: k, val: v}, options.fn(context))
+    ret
+
   render()
 
   mpd.getArtistList (artist_names) ->

@@ -16,12 +16,7 @@
             coffee-script
             handlebars
             uglify-js
-    mpd (http://www.musicpd.org/)
-        * Note: recommended to compile from source to get the latest good stuff,
-          for example replay gain support. However due to a bug
-          (http://www.musicpd.org/mantis/view.php?id=3423) the latest commit
-          that compiles is 3a9697adf268d780500cc53432efa4f164. This is the 
-          version of mpd that groovebasin is currently developing with.
+    mpd, superjoe30's fork: https://github.com/superjoe30/mpd
 
 == Installation ==
 

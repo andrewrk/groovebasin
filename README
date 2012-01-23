@@ -9,24 +9,22 @@
 
 == Dependencies ==
 
-    node.js
-        socket.io
-        node-static
-        coffee-script
-        handlebars
-        uglify-js
-    mpd
+    node.js (http://nodejs.org/)
+        Install these packages globally with npm (http://npmjs.org/):
+            socket.io
+            node-static
+            coffee-script
+            handlebars
+            uglify-js
+    mpd (http://www.musicpd.org/)
 
 == Installation ==
 
     1. Install and configure mpd
 
-        (TODO write docs for this)
-
     2. Compile and install:
 
         $ make
-        (TODO) $ sudo make install
 
     3. You can now run `groovebasind` to start the server.
 

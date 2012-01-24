@@ -38,6 +38,8 @@ render = ->
 $(document).ready ->
   mpd = new Mpd()
 
+  mpd.onError (msg) -> alert msg
+
   Handlebars.registerHelper 'hash', (context, options) ->
     ret = ""
     for k,v of context

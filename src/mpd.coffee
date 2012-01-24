@@ -39,15 +39,40 @@ class Mpd
       if MPD_INIT.test @buffer
         @buffer = ""
       else if MPD_ACK.test @buffer
-        @onError @buffer
+        @raiseEvent 'onError', @buffer
         @buffer = ""
       else if MPD_SENTINEL.test @buffer
-        @onMessage @buffer.substring(0, @buffer.length-3)
+        @handleMessage @buffer.substring(0, @buffer.length-3)
         @buffer = ""
-  
-  onError: (msg) ->
-    alert "error: " + msg
 
+    @createEventHandlers()
+
+  createEventHandlers: ->
+    registrarNames = [
+      'onError',
+    ]
+    @nameToHandlers = {}
+    createEventRegistrar = (name) =>
+      handlers = []
+      registrar = (handler) -> handlers.push handler
+      registrar._name = name
+      @nameToHandlers[name] = handlers
+      this[name] = registrar
+    createEventRegistrar(name) for name in registrarNames
+
+  raiseEvent: (eventName, args...) ->
+    # create copy so handlers can remove themselves
+    handlersList = $.extend [], @nameToHandlers[eventName]
+    handler(args...) for handler in handlersList
+
+  removeHandler: (registrar, handler) ->
+    handlers = @nameToHandlers[registrar._name]
+    for h, i in handlers
+      if h is handler
+        handlers.splice i, 1
+        return
+    throw "IllegalArgument"
+  
   onListArtistMsg = (msg) ->
     # remove the 'Artist: ' text from every line and convert to array
     list = (line.substring(8) for line in msg.split('\n'))
@@ -86,7 +111,7 @@ class Mpd
         results.push {track: track, file: file}
     return results
 
-  onMessage: (msg) ->
+  handleMessage: (msg) ->
     [cmd, handler] = @expectStack.pop()
     cb handler(msg) for cb in @callbacks[cmd]
     @callbacks[cmd] = []
@@ -124,3 +149,4 @@ class Mpd
 
   getPlaylist: (callback) ->
     @pushSend "playlist", formatPlaylistMsg, callback
+

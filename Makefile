@@ -14,7 +14,7 @@ build: $(appjs)
 
 $(appjs): $(views) $(src)
 	cat $(src) | coffee -ps $(coffee_min) >$(appjs)
-	handlebars $(views) $(handlebars_min) -k if >>$(appjs)
+	handlebars $(views) $(handlebars_min) -k if -k each -k hash >>$(appjs)
 
 clean:
 	rm -f $(appjs)

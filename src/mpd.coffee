@@ -1,3 +1,32 @@
+# library structure: {
+#   artist_list: [sorted list of {artist structure}],
+#   artist_table: {"artist name" => {artist structure}}
+#   album_list: [sorted list of {album structure}],
+#   album_table: {"artist_name-album_name" => {album structure}}
+#   track_table: {"track file" => {track structure}}
+# }
+# album structure:  {
+#   name: "Album Name",
+#   tracks: {"track file" => {track structure}},
+# }
+# artist structure: {
+#   name: "Artist Name",
+#   albums: {"album key" => {album structure}},
+# }
+# track structure: {
+#   name: "Track Name",
+#   track: 9,
+#   artist: {artist structure},
+#   album: {album structure},
+#   file: "Obtuse/Cloudy Sky/06. Temple of Trance.mp3",
+#   time: 263, # length in seconds
+# }
+# playlist structure: [sorted list of {playlist item structure}]
+# playlist item structure: {
+#   id: 7, # playlist song id
+#   track: {track structure},
+# }
+
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 class Mpd
   ######################### private #####################
@@ -5,6 +34,9 @@ class Mpd
   MPD_INIT = /^OK MPD .+\n$/
   MPD_SENTINEL = /OK\n$/
   MPD_ACK = /^ACK \[\d+@\d+\].*\n$/
+
+  DEFAULT_ARTIST = "[Unknown Artist]"
+  DEFAULT_ALBUM = "[Unknown Album]"
 
   startsWith = (string, str) -> string.substring(0, str.length) == str
   stripPrefixes = ['the ', 'a ', 'an ']
@@ -16,7 +48,7 @@ class Mpd
         break
     t
 
-  titleSort = (a,b) ->
+  titleCompare = (a,b) ->
     _a = sortableTitle(a)
     _b = sortableTitle(b)
     if _a < _b
@@ -24,11 +56,52 @@ class Mpd
     else if _a > _b
       1
     else
-      0
+      # At this point we compare the original strings. Our cache update code
+      # depends on this behavior.
+      if a < b
+        -1
+      else if a > b
+        1
+      else
+        0
 
-  createEventHandlers: ->
+  bSearch = (list, obj, accessor, compare) ->
+    # binary search list
+    needle = accessor(obj)
+    high = list.length - 1
+    low = 0
+    while low <= high
+      mid = Math.floor((low + high) / 2)
+      elem = accessor(list[mid])
+      cmp = compare(elem, needle)
+      if cmp > 0
+        high = mid - 1
+      else if cmp < 0
+        low = mid + 1
+      else
+        return [true, mid]
+
+    return [false, low]
+
+  bSearchDelete = (list, obj, accessor, compare) ->
+    [found, pos] = bSearch list, obj, accessor, compare
+    if not found
+      throw "obj not found"
+    list.splice pos, 1
+
+  bSearchInsert = (list, obj, accessor, compare) ->
+    [found, pos] = bSearch list, obj, accessor, compare
+    if found
+      throw "obj already exists"
+    list.splice pos, 0, obj
+
+  doNothing = ->
+
+  createEventHandlers: =>
     registrarNames = [
-      'onError',
+      'onError'
+      'onLibraryUpdate'
+      'onPlaylistUpdate'
     ]
     @nameToHandlers = {}
     createEventRegistrar = (name) =>
@@ -39,63 +112,44 @@ class Mpd
       this[name] = registrar
     createEventRegistrar(name) for name in registrarNames
 
-  raiseEvent: (eventName, args...) ->
+  raiseEvent: (eventName, args...) =>
     # create copy so handlers can remove themselves
     handlersList = $.extend [], @nameToHandlers[eventName]
     handler(args...) for handler in handlersList
 
-  onListArtistMsg = (msg) ->
-    # remove the 'Artist: ' text from every line and convert to array
-    list = (line.substring(8) for line in msg.split('\n'))
-    list.sort titleSort
-    list
+  handleMessage: (msg) =>
+    @msgHandlerQueue.shift()(msg)
 
-  onFindArtistMsg = (msg) ->
-    # build list of tracks from msg
-    tracks = {}
-    current_file = null
-    for line in msg.split("\n")
-      [key, value] = line.split(": ")
-      if key == 'file'
-        current_file = value
-        tracks[current_file] = {}
-      tracks[current_file][key] = value
-
-    # generate list of albums
-    albums = {}
-    for file, track of tracks
-      album_name = track.Album ? "Unknown Album"
-      albums[album_name] ||= []
-      albums[album_name].push track
-
-    albums
-
-  onSendCommandMsg = (msg) -> msg
-
-  doNothing = ->
-
-  formatPlaylistMsg = (msg) ->
-    results = []
-    for line in msg.split("\n")
-      if $.trim(line)
-        [track, file] = line.split(":file: ")
-        results.push {track: track, file: file}
-    return results
-
-  pushSend: (command, handler, callback) ->
-    @callbacks[command] ||= []
-    @callbacks[command].push callback
-    if $.inArray(command, @expectStack) == -1
-      @expectStack.push [command, handler]
-      @send command
-  
-  handleMessage: (msg) ->
-    [cmd, handler] = @expectStack.pop()
-    cb handler(msg) for cb in @callbacks[cmd]
-    @callbacks[cmd] = []
-
-  send: (msg) ->
+  send: (msg) =>
     @socket.emit 'ToMpd', msg + "\n"
+
+  getOrCreate: (key, table, list, initObjFunc) =>
+    result = table[key]
+    if not result?
+      result = initObjFunc()
+      # insert into table
+      table[key] = result
+      # insert into sorted list
+      bSearchInsert list, result, ((obj) -> obj.name), titleCompare
+    return result
+
+  getOrCreateArtist: (artist_name) =>
+    @getOrCreate(artist_name, @library.artist_table, @library.artist_list, -> {name: artist_name})
+
+  getOrCreateAlbum: (album_name) =>
+    @getOrCreate(album_name, @library.album_table, @library.album_list, -> {name: album_name})
+
+  getOrCreateTrack: (file) =>
+    @library.track_table[file] = @library.track_table[file] ? {file: file}
+
+  deleteTrack: (track) =>
+    delete @library.track_table[track.file]
+
+    # remove albums rendered empty from the missing tracks
+    album = track.album
+    if album.tracks? and Object.keys(album.tracks).length == 0
+      delete @library.album_table[album_key]
+      bSearchDelete @library.album_list, album, ((album) -> album.name), titleCompare
 
   ######################### public #####################
   
@@ -103,10 +157,7 @@ class Mpd
     @socket = io.connect "http://localhost"
     @buffer = ""
 
-    # queue of callbacks to call when we get data from mpd, indexed by command
-    @callbacks = {}
-    # what kind of response to expect back
-    @expectStack = []
+    @msgHandlerQueue = []
 
     @socket.on 'FromMpd', (data) =>
       @buffer += data
@@ -122,34 +173,144 @@ class Mpd
 
     @createEventHandlers()
 
-  removeListener: (registrar, handler) ->
+    # cache of library data from mpd. See comment at top of this file
+    @library =
+      artist_list: []
+      artist_table: {}
+      album_list: []
+      album_table: {}
+      track_table: {}
+    # cache of playlist data from mpd.
+    @playlist = []
+
+  removeListener: (registrar, handler) =>
     handlers = @nameToHandlers[registrar._name]
     for h, i in handlers
       if h is handler
         handlers.splice i, 1
         return
 
-  getArtistList: (callback) ->
-    @pushSend 'list artist', onListArtistMsg, callback
+  sendCommand: (command, callback) =>
+    @msgHandlerQueue.push callback
+    @send command
 
-  getAlbumsForArtist: (artist_name, callback) ->
-    @pushSend "find artist \"#{artist_name}\"", onFindArtistMsg, callback
+  sendCommands: (command_list, callback) =>
+    @msgHandlerQueue.push callback
+    @send "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end"
 
-  sendCommand: (cmd, callback) ->
-    @pushSend cmd, onSendCommandMsg, callback
+  updateArtistList: =>
+    @sendCommand 'list artist', (msg) =>
+      # remove the 'Artist: ' text from every line and convert to array
+      newNames = (line.substring(8) for line in msg.split('\n'))
+      newNames.sort titleCompare
 
-  queueTrack: (file) ->
-    @pushSend "add \"#{file}\"", doNothing, doNothing
+      # merge with cache
+      artistList = @library.artist_list
+      artistTable = @library.artist_table
+      for newName, i in newNames
+        artistEntry = artistList[i]
+        oldName = artistEntry?.name
+        cmp = titleCompare(oldName, newName) if oldName?
+        if i >= artistList.length or cmp > 0 # old > new
+          # there's a new artist name. insert it.
+          newArtist = {name: newName}
+          artistList.splice(i, 0, newArtist)
+          artistTable[newName] = newArtist
+        else if cmp < 0 # old < new
+          # an old artist name no longer exists. remove it.
+          # find all the tracks that belong to this artist and remove them
+          track_table = @library.track_table
+          for album_key, album of artistEntry.albums
+            for track_file of album
+              @deleteTrack track_table[track_file]
 
-  play: ->
-    @pushSend "play", doNothing, doNothing
+          # remove from artist list and table
+          artistList.splice(i, 1)
+          delete artistTable[oldName]
+          i -= 1
 
-  pause: ->
-    @pushSend "pause", doNothing, doNothing
+      # delete any remnant old list items
+      for oldName in artistList[newNames.length..]
+        delete artistTable[oldName]
+      artistList[newNames.length..] = []
 
-  playId: (track_id) ->
-    @pushSend "playid #{track_id}", doNothing, doNothing
+      # notify listeners
+      @raiseEvent 'onLibraryUpdate'
 
-  getPlaylist: (callback) ->
-    @pushSend "playlist", formatPlaylistMsg, callback
+  addTracksToLibrary: (msg) =>
+    # build list of tracks from msg
+    mpd_tracks = {}
+    current_file = null
+    for line in msg.split("\n")
+      [key, value] = line.split(": ")
+      if key == 'file'
+        current_file = value
+        mpd_tracks[current_file] = {}
+      mpd_tracks[current_file][key] = value
+
+    # convert to our track format and add to cache
+    track_table = @library.track_table
+    for file, mpd_track of mpd_tracks
+      track = track_table[file] ||= {}
+      $.extend track,
+        name: mpd_track.Title
+        track: mpd_track.Track
+        file: file
+        time: mpd_track.Time
+        artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
+        album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
+
+      album_tracks = track.album.tracks ||= {}
+      album_tracks[file] = track
+
+      artist_albums = track.artist.albums ||= {}
+      artist_albums[track.album.name] = track.album
+
+    # notify listeners
+    @raiseEvent 'onLibraryUpdate'
+
+  updateArtistInfo: (artist_name) =>
+    @sendCommand "find artist \"#{artist_name}\"", @addTracksToLibrary
+
+  updatePlaylist: =>
+    @sendCommand "playlist", (msg) =>
+      @playlist.length = 0
+      missing_tracks = []
+      for line in msg.split("\n")
+        if $.trim(line)
+          [songid, file] = line.split(":file: ")
+          if not @library.track_table[file]?
+            missing_tracks.push file
+          @playlist.push
+            id: songid
+            track: @getOrCreateTrack(file)
+
+      # notify listeners
+      @raiseEvent 'onPlaylistUpdate'
+
+      # ask for any missing track details
+      commands = ("find file \"#{file}\"" for file in missing_tracks)
+      @sendCommands commands, (msg) =>
+        @addTracksToLibrary msg
+        @raiseEvent 'onPlaylistUpdate'
+
+
+
+  queueTrack: (track) =>
+    @sendCommand "add \"#{track.file}\"", doNothing, doNothing
+
+  play: =>
+    @sendCommand "play", doNothing, doNothing
+
+  pause: =>
+    @sendCommand "pause", doNothing, doNothing
+
+  next: =>
+    @sendCommand "next", doNothing, doNothing
+
+  prev: =>
+    @sendCommand "previous", doNothing, doNothing
+
+  playId: (track_id) =>
+    @sendCommand "playid #{track_id}", doNothing, doNothing
 

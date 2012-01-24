@@ -10,13 +10,13 @@
       <li class="expand"><a href="#" class="artist">{{name}}</a>
         <ul>
           {{#hash albums}}
-            <li class="expand"><a href="#" class="album">{{key}}</a>
+            <li class="expand"><a href="#" class="album">{{name}}</a>
               <ul>
-                {{#each val}}
+                {{#hash tracks}}
                   <li>
-                    <a href="#" class="track" data-file="{{file}}">{{Track}}. {{Title}}</a>
+                  <a href="#" class="track" data-file="{{file}}">{{#if track}}{{track}}. {{/if}}{{name}}</a>
                   </li>
-                {{/each}}
+                {{/hash}}
               </ul>
             </li>
           {{/hash}}

@@ -1,20 +1,23 @@
 context = {}
 mpd = null
 
-render = ->
-  $nowplaying = $("#nowplaying")
-  $library = $("#library")
+renderPlaylist = ->
+  window.__debug__context = context
   $queue = $("#queue")
-
-  $nowplaying.html Handlebars.templates.playback(context)
   $queue.html Handlebars.templates.playlist(context)
+
+  $queue.find('a.track').click (event) ->
+    track_id = $(event.target).data('id')
+    mpd.playId track_id
+    return false
+
+renderLibrary = ->
+  $library = $("#library")
   $library.html Handlebars.templates.library(context)
 
   $library.find('a.artist').click (event) ->
     artist_name = $(event.target).text()
-    mpd.getAlbumsForArtist artist_name, (albums) ->
-      context.artist_table[artist_name].albums = albums
-      render()
+    mpd.updateArtistInfo(artist_name)
     return false
 
   $library.find('a.track').click (event) ->
@@ -22,45 +25,44 @@ render = ->
     mpd.queueTrack file
     return false
 
+renderNowPlaying = ->
+  $nowplaying = $("#nowplaying")
+  $nowplaying.html Handlebars.templates.playback(context)
+
   $nowplaying.find('.pause a').click (event) ->
     mpd.pause()
     return false
 
-  $nowplaying.find('.play a').click (event) ->
-    mpd.play()
+  $nowplaying.find('.skip-prev a').click (event) ->
+    mpd.prev()
     return false
 
-  $queue.find('a.track').click (event) ->
-    track_id = $(event.target).data('id')
-    mpd.playId track_id
+  $nowplaying.find('.skip-next a').click (event) ->
+    mpd.next()
     return false
+
+render = ->
+  renderPlaylist()
+  renderLibrary()
+  renderNowPlaying()
 
 $(document).ready ->
-  mpd = new Mpd()
-
-  mpd.onError (msg) -> alert msg
-
   Handlebars.registerHelper 'hash', (context, options) ->
     ret = ""
     for k,v of context
-      ret += options.fn $.extend({key: k, val: v}, options.fn(context))
+      ret += options.fn(v)
     ret
 
+  mpd = new Mpd()
+  mpd.onError (msg) -> alert msg
+  mpd.onLibraryUpdate renderLibrary
+  mpd.onPlaylistUpdate renderPlaylist
+  context.artists = mpd.library.artist_list
+  context.playlist = mpd.playlist
+  mpd.updateArtistList()
+  mpd.updatePlaylist()
+
   render()
-
-  mpd.getArtistList (artist_names) ->
-    context.artists = []
-    context.artist_table = {}
-    for artist in artist_names
-      obj = {name: artist}
-      context.artists.push obj
-      context.artist_table[artist] = obj
-    render()
-
-    mpd.getPlaylist (playlist) ->
-      context.playlist = playlist
-      render()
-
 
   $("#line").keydown (event) ->
     if event.keyCode == 13

@@ -17,6 +17,28 @@ Server TODO:
  * plugin API
    - plugin to submit songs to last.fm
    - plugin to import songs to library from youtube URL
+ * dynamic playlist mode
+   - togglable
+     > ON:
+       ~ songs older than 10 songs ago are auto-removed from playlist
+       ~ if the playlist is less than 20 songs long, a new random song is added
+       ~ good shuffle heuristics:
+         # recently played songs have less probability of being randomly chosen
+         # songs that get skipped more often have less probability of being
+           randomly chosen.
+       ~ there are 4 sections to the dynamic playlist
+         # history of 10 songs
+         # the currently playing song
+         # the "manually" queued songs that will play next
+         # the auto-shuffle queued list of 10 songs that will play after the 
+           manual section is done. at any time you can move one of these songs
+           to the manual section.
+     > OFF:
+       ~ playlist is only changed manually.
+
+
+		       Music Player Daemon (MPD)
+			http://www.musicpd.org
 
 Client Requirements:
  * interface instant

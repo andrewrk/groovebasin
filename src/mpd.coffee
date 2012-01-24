@@ -1,5 +1,7 @@
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 class Mpd
+  ######################### private #####################
+  
   MPD_INIT = /^OK MPD .+\n$/
   MPD_SENTINEL = /OK\n$/
   MPD_ACK = /^ACK \[\d+@\d+\].*\n$/
@@ -24,29 +26,6 @@ class Mpd
     else
       0
 
-  constructor: ->
-    @socket = io.connect "http://localhost"
-    @buffer = ""
-
-    # queue of callbacks to call when we get data from mpd, indexed by command
-    @callbacks = {}
-    # what kind of response to expect back
-    @expectStack = []
-
-    @socket.on 'FromMpd', (data) =>
-      @buffer += data
-
-      if MPD_INIT.test @buffer
-        @buffer = ""
-      else if MPD_ACK.test @buffer
-        @raiseEvent 'onError', @buffer
-        @buffer = ""
-      else if MPD_SENTINEL.test @buffer
-        @handleMessage @buffer.substring(0, @buffer.length-3)
-        @buffer = ""
-
-    @createEventHandlers()
-
   createEventHandlers: ->
     registrarNames = [
       'onError',
@@ -65,14 +44,6 @@ class Mpd
     handlersList = $.extend [], @nameToHandlers[eventName]
     handler(args...) for handler in handlersList
 
-  removeHandler: (registrar, handler) ->
-    handlers = @nameToHandlers[registrar._name]
-    for h, i in handlers
-      if h is handler
-        handlers.splice i, 1
-        return
-    throw "IllegalArgument"
-  
   onListArtistMsg = (msg) ->
     # remove the 'Artist: ' text from every line and convert to array
     list = (line.substring(8) for line in msg.split('\n'))
@@ -111,6 +82,13 @@ class Mpd
         results.push {track: track, file: file}
     return results
 
+  pushSend: (command, handler, callback) ->
+    @callbacks[command] ||= []
+    @callbacks[command].push callback
+    if $.inArray(command, @expectStack) == -1
+      @expectStack.push [command, handler]
+      @send command
+  
   handleMessage: (msg) ->
     [cmd, handler] = @expectStack.pop()
     cb handler(msg) for cb in @callbacks[cmd]
@@ -119,12 +97,37 @@ class Mpd
   send: (msg) ->
     @socket.emit 'ToMpd', msg + "\n"
 
-  pushSend: (command, handler, callback) ->
-    @callbacks[command] ||= []
-    @callbacks[command].push callback
-    if $.inArray(command, @expectStack) == -1
-      @expectStack.push [command, handler]
-      @send command
+  ######################### public #####################
+  
+  constructor: ->
+    @socket = io.connect "http://localhost"
+    @buffer = ""
+
+    # queue of callbacks to call when we get data from mpd, indexed by command
+    @callbacks = {}
+    # what kind of response to expect back
+    @expectStack = []
+
+    @socket.on 'FromMpd', (data) =>
+      @buffer += data
+
+      if MPD_INIT.test @buffer
+        @buffer = ""
+      else if MPD_ACK.test @buffer
+        @raiseEvent 'onError', @buffer
+        @buffer = ""
+      else if MPD_SENTINEL.test @buffer
+        @handleMessage @buffer.substring(0, @buffer.length-3)
+        @buffer = ""
+
+    @createEventHandlers()
+
+  removeListener: (registrar, handler) ->
+    handlers = @nameToHandlers[registrar._name]
+    for h, i in handlers
+      if h is handler
+        handlers.splice i, 1
+        return
 
   getArtistList: (callback) ->
     @pushSend 'list artist', onListArtistMsg, callback

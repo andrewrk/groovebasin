@@ -33,21 +33,16 @@ console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
-  client = null
-  connectClient = ->
-    client = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
-      console.log 'client connected'
-    client.on 'data', (data) ->
-      socket.emit 'FromMpd', data.toString()
-    client.on 'end', ->
-      console.log 'client disconnected, reconnecting'
-      connectClient()
-  connectClient()
+  mpd = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
+    console.log 'mpd connected'
+  mpd.on 'data', (data) ->
+    socket.emit 'FromMpd', data.toString()
+  mpd.on 'end', ->
+    console.log 'mpd disconnected'
+    socket.emit 'disconnect'
 
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
-    client.write data
+    mpd.write data
 
-  socket.on 'disconnect', ->
-    client.removeAllListeners 'end'
-    client.end()
+  socket.on 'disconnect', -> mpd.end()

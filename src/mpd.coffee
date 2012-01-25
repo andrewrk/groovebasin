@@ -30,10 +30,6 @@
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 class Mpd
   ######################### private #####################
-  
-  MPD_INIT = /^OK MPD .+\n$/
-  MPD_SENTINEL = /OK\n$/
-  MPD_ACK = /^ACK \[\d+@\d+\].*\n$/
 
   DEFAULT_ARTIST = "[Unknown Artist]"
   DEFAULT_ALBUM = "[Unknown Album]"
@@ -155,27 +151,56 @@ class Mpd
       delete @library.album_table[album_key]
       bSearchDelete @library.album_list, album, ((album) -> album.name), titleCompare
 
+  handleIdleResults: (msg) =>
+    (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
+
   ######################### public #####################
   
+  MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
   constructor: ->
     @socket = io.connect()
     @buffer = ""
-
     @msgHandlerQueue = []
+
+    # whether we've sent the idle command to mpd
+    @idling = false
+
+    @socket.on 'disconnect', =>
+      console.log "disconnected from Mpd"
 
     @socket.on 'FromMpd', (data) =>
       @buffer += data
+      
+      loop
+        m = @buffer.match(MPD_SENTINEL)
+        return if not m?
 
-      if MPD_INIT.test @buffer
-        @buffer = ""
-      else if MPD_ACK.test @buffer
-        @raiseEvent 'onError', @buffer
-        @buffer = ""
-      else if MPD_SENTINEL.test @buffer
-        @handleMessage @buffer.substring(0, @buffer.length-3)
-        @buffer = ""
+        msg = @buffer.substring(0, m.index)
+        [line, code, str] = m
+        if code == "ACK"
+          @raiseEvent 'onError', str
+        else if line.indexOf("OK MPD") == 0
+          # new connection, ignore
+        else
+          @handleMessage msg
+        @buffer = @buffer.substring(msg.length+line.length+1)
 
     @createEventHandlers()
+    
+    # maps mpd subsystems to our function to call which will update ourself
+    @updateFuncs =
+      database: noop # the song database has been modified after update.
+      update: @updateArtistList # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
+      stored_playlist: noop # a stored playlist has been modified, renamed, created or deleted
+      playlist: @updatePlaylist # the current playlist has been modified
+      player: noop # the player has been started, stopped or seeked
+      mixer: noop # the volume has been changed
+      output: noop # an audio output has been enabled or disabled
+      options: noop # options like repeat, random, crossfade, replay gain
+      sticker: noop # the sticker database has been modified.
+      subscription: noop # a client has subscribed or unsubscribed to a channel
+      message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
+
 
     # cache of library data from mpd. See comment at top of this file
     @library =
@@ -187,6 +212,7 @@ class Mpd
     # cache of playlist data from mpd.
     @playlist = []
 
+
   removeListener: (registrar, handler) =>
     handlers = @nameToHandlers[registrar._name]
     for h, i in handlers
@@ -194,9 +220,21 @@ class Mpd
         handlers.splice i, 1
         return
 
+  rawSendCmd: (cmd, cb=noop) =>
+    @msgHandlerQueue.push cb
+    @send cmd
+
+  handleIdleResultsLoop: (msg) =>
+    @handleIdleResults(msg)
+    # if we have nothing else to do, idle.
+    if @msgHandlerQueue.length == 0
+      @rawSendCmd "idle", @handleIdleResultsLoop
+
   sendCommand: (command, callback=noop) =>
-    @msgHandlerQueue.push callback
-    @send command
+    @send("noidle") if @idling
+    @rawSendCmd command, callback
+    @rawSendCmd "idle", @handleIdleResultsLoop
+    @idling = true # we're always idling after the first command.
 
   sendCommands: (command_list, callback=noop) =>
     return if command_list.length == 0
@@ -304,7 +342,7 @@ class Mpd
 
 
   queueFile: (file) =>
-    @sendCommand "add \"#{escape(file)}\"", @updatePlaylist
+    @sendCommand "add \"#{escape(file)}\""
 
   play: => @sendCommand "play"
   pause: => @sendCommand "pause"

@@ -1,0 +1,25 @@
+{
+    "name": "groovebasin",
+    "description": "Multiplayer media player for your home or office",
+    "author": "Andrew Kelley",
+    "version": "0.0.1",
+    "licenses": [{
+        "type": "MIT",
+        "url": "https://raw.github.com/superjoe30/groovebasin/master/LICENSE"
+    }],
+    "engines": {
+        "node": ">=0.6.8"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/superjoe30/groovebasin.git"
+    },
+    "dependencies": {
+        "socket.io": ">=0.8.7",
+        "node-static": ">=0.5.9",
+        "nconf": ">=0.5.1",
+        "coffee-script": ">=1.2.0",
+        "uglify-js": ">=1.2.5",
+        "handlebars": ">=1.0.4beta"
+    }
+}

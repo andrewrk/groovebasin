@@ -4,28 +4,38 @@ http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
 static = require 'node-static'
+nconf = require 'nconf'
 
-config =
-  log_level: 3
-  http:
-    port: 7777
-  mpd:
-    host: 'localhost'
-    port: 6600
+nconf
+  .argv()
+  .env()
+# these files in the wrong order because of
+# https://github.com/flatiron/nconf/issues/28
+  .file({file: "/etc/groovebasinrc"})
+  .file({file: "#{process.env.HOME}/.groovebasinrc"})
+  .defaults
+    log_level: 3
+    http:
+      port: 80
+    mpd:
+      host: 'localhost'
+      port: 6600
+      conf: "/etc/mpd.conf"
 
 fileServer = new (static.Server) './public'
 app = http.createServer((request, response) ->
   request.addListener 'end', ->
     fileServer.serve request, response
 
-).listen(config.http.port)
+).listen(nconf.get('http:port'))
+console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 
 io = socketio.listen(app)
-io.set 'log level', config.log_level
+io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
   client = null
   connectClient = ->
-    client = net.connect config.mpd.port, config.mpd.host, ->
+    client = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
       console.log 'client connected'
     client.on 'data', (data) ->
       socket.emit 'FromMpd', data.toString()

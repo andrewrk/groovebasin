@@ -22,7 +22,7 @@ renderLibrary = ->
 
   $library.find('a.track').click (event) ->
     file = $(event.target).data('file')
-    mpd.queueTrack file
+    mpd.queueFile file
     return false
 
 renderNowPlaying = ->

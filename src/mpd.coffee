@@ -154,7 +154,7 @@ class Mpd
   ######################### public #####################
   
   constructor: ->
-    @socket = io.connect "http://localhost"
+    @socket = io.connect()
     @buffer = ""
 
     @msgHandlerQueue = []
@@ -299,8 +299,8 @@ class Mpd
 
 
 
-  queueTrack: (track) =>
-    @sendCommand "add \"#{track.file}\"", doNothing, doNothing
+  queueFile: (file) =>
+    @sendCommand "add \"#{file}\"", doNothing, doNothing
 
   play: =>
     @sendCommand "play", doNothing, doNothing

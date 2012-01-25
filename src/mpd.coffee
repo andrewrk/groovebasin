@@ -195,6 +195,7 @@ class Mpd
     @send command
 
   sendCommands: (command_list, callback) =>
+    return if command_list.length == 0
     @msgHandlerQueue.push callback
     @send "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end"
 
@@ -237,7 +238,7 @@ class Mpd
       # notify listeners
       @raiseEvent 'onLibraryUpdate'
 
-  addTracksToLibrary: (msg) =>
+  addTracksToLibrary: (msg, mpdTracksHandler=->) =>
     # build list of tracks from msg
     mpd_tracks = {}
     current_file = null
@@ -266,6 +267,9 @@ class Mpd
       artist_albums = track.artist.albums ||= {}
       artist_albums[track.album.name] = track.album
 
+    # call the passed in function which might want to do extra things with mpd_tracks
+    mpdTracksHandler mpd_tracks
+
     # notify listeners
     @raiseEvent 'onLibraryUpdate'
 
@@ -273,26 +277,25 @@ class Mpd
     @sendCommand "find artist \"#{artist_name}\"", @addTracksToLibrary
 
   updatePlaylist: =>
-    @sendCommand "playlist", (msg) =>
-      @playlist.length = 0
-      missing_tracks = []
-      for line in msg.split("\n")
-        if $.trim(line)
-          [songid, file] = line.split(":file: ")
+    @sendCommand "playlistinfo", (msg) =>
+      @addTracksToLibrary msg, (mpd_tracks) =>
+        @playlist.length = 0
+        missing_tracks = []
+        for file, mpd_track of mpd_tracks
           if not @library.track_table[file]?
             missing_tracks.push file
           @playlist.push
-            id: songid
+            id: mpd_track.Id
             track: @getOrCreateTrack(file)
 
-      # notify listeners
-      @raiseEvent 'onPlaylistUpdate'
-
-      # ask for any missing track details
-      commands = ("find file \"#{file}\"" for file in missing_tracks)
-      @sendCommands commands, (msg) =>
-        @addTracksToLibrary msg
+        # notify listeners
         @raiseEvent 'onPlaylistUpdate'
+
+        # ask for any missing track details
+        commands = ("find file \"#{file}\"" for file in missing_tracks)
+        @sendCommands commands, (msg) =>
+          @addTracksToLibrary msg
+          @raiseEvent 'onPlaylistUpdate'
 
 
 

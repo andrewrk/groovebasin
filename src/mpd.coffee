@@ -97,6 +97,10 @@ class Mpd
 
   doNothing = ->
 
+  escape = (str) ->
+    # replace all " with \"
+    str.replace /"/g, '\\"'
+
   createEventHandlers: =>
     registrarNames = [
       'onError'
@@ -274,7 +278,7 @@ class Mpd
     @raiseEvent 'onLibraryUpdate'
 
   updateArtistInfo: (artist_name) =>
-    @sendCommand "find artist \"#{artist_name}\"", @addTracksToLibrary
+    @sendCommand "find artist \"#{escape(artist_name)}\"", @addTracksToLibrary
 
   updatePlaylist: =>
     @sendCommand "playlistinfo", (msg) =>
@@ -292,7 +296,7 @@ class Mpd
         @raiseEvent 'onPlaylistUpdate'
 
         # ask for any missing track details
-        commands = ("find file \"#{file}\"" for file in missing_tracks)
+        commands = ("find file \"#{escape(file)}\"" for file in missing_tracks)
         @sendCommands commands, (msg) =>
           @addTracksToLibrary msg
           @raiseEvent 'onPlaylistUpdate'
@@ -300,7 +304,7 @@ class Mpd
 
 
   queueFile: (file) =>
-    @sendCommand "add \"#{file}\"", doNothing, doNothing
+    @sendCommand "add \"#{escape(file)}\"", doNothing, doNothing
 
   play: =>
     @sendCommand "play", doNothing, doNothing

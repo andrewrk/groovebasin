@@ -95,11 +95,11 @@ class Mpd
       throw "obj already exists"
     list.splice pos, 0, obj
 
-  doNothing = ->
+  noop = ->
 
   escape = (str) ->
     # replace all " with \"
-    str.replace /"/g, '\\"'
+    str.toString().replace /"/g, '\\"'
 
   createEventHandlers: =>
     registrarNames = [
@@ -194,11 +194,11 @@ class Mpd
         handlers.splice i, 1
         return
 
-  sendCommand: (command, callback) =>
+  sendCommand: (command, callback=noop) =>
     @msgHandlerQueue.push callback
     @send command
 
-  sendCommands: (command_list, callback) =>
+  sendCommands: (command_list, callback=noop) =>
     return if command_list.length == 0
     @msgHandlerQueue.push callback
     @send "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end"
@@ -242,7 +242,7 @@ class Mpd
       # notify listeners
       @raiseEvent 'onLibraryUpdate'
 
-  addTracksToLibrary: (msg, mpdTracksHandler=->) =>
+  addTracksToLibrary: (msg, mpdTracksHandler=noop) =>
     # build list of tracks from msg
     mpd_tracks = {}
     current_file = null
@@ -304,20 +304,13 @@ class Mpd
 
 
   queueFile: (file) =>
-    @sendCommand "add \"#{escape(file)}\"", doNothing, doNothing
+    @sendCommand "add \"#{escape(file)}\""
 
-  play: =>
-    @sendCommand "play", doNothing, doNothing
-
-  pause: =>
-    @sendCommand "pause", doNothing, doNothing
-
-  next: =>
-    @sendCommand "next", doNothing, doNothing
-
-  prev: =>
-    @sendCommand "previous", doNothing, doNothing
+  play: => @sendCommand "play"
+  pause: => @sendCommand "pause"
+  next: => @sendCommand "next"
+  prev: => @sendCommand "previous"
 
   playId: (track_id) =>
-    @sendCommand "playid #{track_id}", doNothing, doNothing
+    @sendCommand "playid #{escape(track_id)}"
 

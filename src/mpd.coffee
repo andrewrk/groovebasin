@@ -414,6 +414,7 @@ class Mpd
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""
 
+  stop: => @sendCommand "stop"
   play: => @sendCommand "pause 0"
   pause: => @sendCommand "pause 1"
   next: => @sendCommand "next"

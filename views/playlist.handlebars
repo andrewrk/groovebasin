@@ -8,9 +8,8 @@
 <ul>
   {{#playlist}}
     <li>
-    <a href="#" class="track" data-id="{{id}}">{{#if track.name}}{{#if track.track}}{{track.track}}.
-      {{/if}}{{track.name}} - {{track.artist.name}} -
-      {{track.album.name}}{{else}}{{track.file}}{{/if}}</a>
+    <a href="#" class="track" data-id="{{id}}">{{#if track.track}}{{track.track}}.
+      {{/if}}{{track.name}} - {{track.artist.name}} - {{track.album.name}}</a>
     </li>
   {{/playlist}}
 </ul>

@@ -1,8 +1,10 @@
-context = {}
+context =
+  playing: -> this.status?.state == 'play'
+
 mpd = null
 
 renderPlaylist = ->
-  window.__debug__context = context
+  window._debug_context = context
   $queue = $("#queue")
   $queue.html Handlebars.templates.playlist(context)
 
@@ -33,6 +35,14 @@ renderNowPlaying = ->
     mpd.pause()
     return false
 
+  $nowplaying.find('.stop a').click (event) ->
+    mpd.stop()
+    return false
+
+  $nowplaying.find('.play a').click (event) ->
+    mpd.play()
+    return false
+
   $nowplaying.find('.skip-prev a').click (event) ->
     mpd.prev()
     return false
@@ -57,8 +67,10 @@ $(document).ready ->
   mpd.onError (msg) -> alert msg
   mpd.onLibraryUpdate renderLibrary
   mpd.onPlaylistUpdate renderPlaylist
+  mpd.onStatusUpdate renderNowPlaying
   context.artists = mpd.library.artist_list
-  context.playlist = mpd.playlist
+  context.playlist = mpd.playlist.item_list
+  context.status = mpd.status
   mpd.updateArtistList()
   mpd.updatePlaylist()
 

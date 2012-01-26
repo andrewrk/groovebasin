@@ -5,12 +5,15 @@
   <li class="stop">
     <a href="#">stop</a>
   </li>
-  <li class="pause">
-    <a href="#">pause</a>
-  </li>
-  <li class="play">
-    <a href="#">play</a>
-  </li>
+  {{#if playing}}
+    <li class="pause">
+      <a href="#">pause</a>
+    </li>
+  {{else}}
+    <li class="play">
+      <a href="#">play</a>
+    </li>
+  {{/if}}
   <li class="skip-next">
     <a href="#">&gt;</a>
   </li>
@@ -19,7 +22,7 @@
   <li class="ban">Ban From Random</li>
   <li class="download">Download</li>
 </ul>
-<h1>{{title}} - {{artist}} - {{album}}</h1>
+<h1>{{status.current_item.track.name}} - {{status.current_item.track.artist.name}} - {{status.current_item.track.album.name}}</h1>
 <p>slider bar thing</p>
 <span class="time passed"></span>
 <span class="time left"></span>

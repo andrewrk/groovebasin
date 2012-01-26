@@ -21,10 +21,24 @@
 #   file: "Obtuse/Cloudy Sky/06. Temple of Trance.mp3",
 #   time: 263, # length in seconds
 # }
-# playlist structure: [sorted list of {playlist item structure}]
+# playlist structure: {
+#   item_list: [sorted list of {playlist item structure}],
+#   item_table: {song id => {playlist item structure}}
+# }
 # playlist item structure: {
 #   id: 7, # playlist song id
 #   track: {track structure},
+# }
+# status structure: {
+#   volume: 100, # int 0-100
+#   repeat: true, # whether we're in repeat mode. see also `single`
+#   random: false, # random mode makes the next song random within the playlist
+#   single: true, # true -> repeat the current song, false -> repeat the playlist
+#   consume: true, # true -> remove tracks from playlist after done playing
+#   state: "play", # or "stop" or "pause"
+#   time: 234, # length of song in seconds
+#   elapsed: 100.230, # position in current song in seconds
+#   bitrate: 192, # number of kbps
 # }
 
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
@@ -97,11 +111,15 @@ class Mpd
     # replace all " with \"
     str.toString().replace /"/g, '\\"'
 
+  clearArray = (arr) -> arr.length = 0
+  clearObject = (obj) -> delete obj[prop] for own prop of obj
+
   createEventHandlers: =>
     registrarNames = [
       'onError'
       'onLibraryUpdate'
       'onPlaylistUpdate'
+      'onStatusUpdate'
     ]
     @nameToHandlers = {}
     createEventRegistrar = (name) =>
@@ -140,7 +158,7 @@ class Mpd
     @getOrCreate(album_name, @library.album_table, @library.album_list, -> {name: album_name})
 
   getOrCreateTrack: (file) =>
-    @library.track_table[file] = @library.track_table[file] ? {file: file}
+    @library.track_table[file] ||= {file: file}
 
   deleteTrack: (track) =>
     delete @library.track_table[track.file]
@@ -189,14 +207,14 @@ class Mpd
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
-      database: noop # the song database has been modified after update.
-      update: @updateArtistList # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
+      database: @updateArtistList # the song database has been modified after update.
+      update: noop # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
       stored_playlist: noop # a stored playlist has been modified, renamed, created or deleted
       playlist: @updatePlaylist # the current playlist has been modified
-      player: noop # the player has been started, stopped or seeked
-      mixer: noop # the volume has been changed
+      player: @updateStatus # the player has been started, stopped or seeked
+      mixer: @updateStatus # the volume has been changed
       output: noop # an audio output has been enabled or disabled
-      options: noop # options like repeat, random, crossfade, replay gain
+      options: @updateStatus # options like repeat, random, crossfade, replay gain
       sticker: noop # the sticker database has been modified.
       subscription: noop # a client has subscribed or unsubscribed to a channel
       message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
@@ -210,8 +228,10 @@ class Mpd
       album_table: {}
       track_table: {}
     # cache of playlist data from mpd.
-    @playlist = []
-
+    @playlist =
+      item_list: []
+      item_table: {}
+    @status = {}
 
   removeListener: (registrar, handler) =>
     handlers = @nameToHandlers[registrar._name]
@@ -238,8 +258,7 @@ class Mpd
 
   sendCommands: (command_list, callback=noop) =>
     return if command_list.length == 0
-    @msgHandlerQueue.push callback
-    @send "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end"
+    @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   updateArtistList: =>
     @sendCommand 'list artist', (msg) =>
@@ -294,12 +313,11 @@ class Mpd
     # convert to our track format and add to cache
     track_table = @library.track_table
     for file, mpd_track of mpd_tracks
-      track = track_table[file] ||= {}
+      track = @getOrCreateTrack(file)
       $.extend track,
         name: mpd_track.Title
         track: mpd_track.Track
-        file: file
-        time: mpd_track.Time
+        time: parseInt(mpd_track.Time)
         artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
         album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
 
@@ -318,34 +336,86 @@ class Mpd
   updateArtistInfo: (artist_name) =>
     @sendCommand "find artist \"#{escape(artist_name)}\"", @addTracksToLibrary
 
-  updatePlaylist: =>
+  updatePlaylist: (callback=noop) =>
     @sendCommand "playlistinfo", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
-        @playlist.length = 0
-        missing_tracks = []
+        clearArray @playlist.item_list
+        clearObject @playlist.item_table
         for file, mpd_track of mpd_tracks
-          if not @library.track_table[file]?
-            missing_tracks.push file
-          @playlist.push
-            id: mpd_track.Id
-            track: @getOrCreateTrack(file)
+          id = parseInt(mpd_track.Id)
+          obj =
+            id: parseInt(id)
+            track: @library.track_table[file]
+            pos: @playlist.item_list.length
+          @playlist.item_list.push obj
+          @playlist.item_table[id] = obj
 
-        # notify listeners
-        @raiseEvent 'onPlaylistUpdate'
+        # make sure current track data is correct
+        if @status.current_item?
+          @status.current_item = @playlist.item_table[@status.current_item.id]
 
-        # ask for any missing track details
-        commands = ("find file \"#{escape(file)}\"" for file in missing_tracks)
-        @sendCommands commands, (msg) =>
-          @addTracksToLibrary msg
+        if @status.current_item?
+          # looks good, notify listeners
           @raiseEvent 'onPlaylistUpdate'
+          callback()
+        else
+          # we need a status update before raising a playlist update event
+          @updateStatus =>
+            callback()
+            @raiseEvent 'onPlaylistUpdate'
 
+  updateStatus: (callback=noop) =>
+    handleCurrentItem = (id, pos, file) =>
 
+    @sendCommands ["stats", "replay_gain_status", "status"], (msg) =>
+      # no dict comprehensions :(
+      # https://github.com/jashkenas/coffee-script/issues/77
+      o = {}
+      for [key, val] in (line.split(": ") for line in msg.split("\n"))
+        o[key] = val
+      $.extend @status,
+        volume: parseInt(o.volume)
+        repeat: parseInt(o.repeat) != 0
+        random: parseInt(o.random) != 0
+        single: parseInt(o.single) != 0
+        consume: parseInt(o.consume) != 0
+        state: o.state
+        time: parseInt(o.time.split(":")[1])
+        elapsed: parseFloat(o.elapsed)
+        bitrate: parseInt(o.bitrate)
+
+      # temporarily set current item to null until we figure it out in the currentsong command
+      @status.current_item = null
+
+    @sendCommand "currentsong", (msg) =>
+      @addTracksToLibrary msg, (mpd_tracks) =>
+        # there's only one but we'll loop anyway since it's an object
+        for file, mpd_track of mpd_tracks
+          id = parseInt(mpd_track.Id)
+          pos = parseInt(mpd_track.Pos)
+
+          @status.current_item = @playlist.item_table[id]
+
+          if @status.current_item? and @status.current_item.pos == pos
+            @status.current_item.track = @library.track_table[file]
+            # looks good, notify listeners
+            @raiseEvent 'onStatusUpdate'
+            callback()
+          else
+            # missing or inconsistent playlist data, need to get playlist update
+            @status.current_item =
+              id: id
+              pos: pos
+              track: @library.track_table[file]
+            @updatePlaylist =>
+              callback()
+              @raiseEvent 'onStatusUpdate'
 
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""
 
-  play: => @sendCommand "play"
-  pause: => @sendCommand "pause"
+  play: => @sendCommand "pause 0"
+  pause: => @sendCommand "pause 1"
   next: => @sendCommand "next"
   prev: => @sendCommand "previous"
 

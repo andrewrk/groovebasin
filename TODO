@@ -1,3 +1,7 @@
+* handle albums better
+  - when two different artists have samely titled album
+  - albums with various artists
+
 Server TODO:
  * serve downloadable songs 
  * accept uploaded songs and add them to library
@@ -36,13 +40,7 @@ Server TODO:
      > OFF:
        ~ playlist is only changed manually.
 
-
-		       Music Player Daemon (MPD)
-			http://www.musicpd.org
-
 Client Requirements:
- * interface instant
- * support multiple people pressing buttons simultaneously
  * ability to upload multiple things
  * file folder inbox to import stuff
  * drag a file to the web page to upload and queue

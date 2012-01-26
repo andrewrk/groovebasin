@@ -301,6 +301,10 @@ class Mpd
       @raiseEvent 'onLibraryUpdate'
 
   addTracksToLibrary: (msg, mpdTracksHandler=noop) =>
+    if msg == ""
+      mpdTracksHandler []
+      return
+
     # build list of tracks from msg
     mpd_tracks = {}
     current_file = null

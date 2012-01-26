@@ -231,7 +231,8 @@ class Mpd
     @playlist =
       item_list: []
       item_table: {}
-    @status = {}
+    @status =
+      current_item: null
 
   removeListener: (registrar, handler) =>
     handlers = @nameToHandlers[registrar._name]
@@ -380,9 +381,13 @@ class Mpd
         single: parseInt(o.single) != 0
         consume: parseInt(o.consume) != 0
         state: o.state
-        time: parseInt(o.time.split(":")[1])
-        elapsed: parseFloat(o.elapsed)
-        bitrate: parseInt(o.bitrate)
+        time: null
+        elapsed: null
+        bitrate: null
+      
+      @status.time = parseInt(o.time.split(":")[1]) if o.time?
+      @status.elapsed = parseFloat(o.elapsed) if o.elapsed?
+      @status.bitrate = parseInt(o.bitrate) if o.bitrate?
 
       # temporarily set current item to null until we figure it out in the currentsong command
       @status.current_item = null
@@ -415,7 +420,7 @@ class Mpd
     @sendCommand "add \"#{escape(file)}\""
 
   stop: => @sendCommand "stop"
-  play: => @sendCommand "pause 0"
+  play: => @sendCommand "play"
   pause: => @sendCommand "pause 1"
   next: => @sendCommand "next"
   prev: => @sendCommand "previous"

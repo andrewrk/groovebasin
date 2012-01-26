@@ -12,8 +12,13 @@ renderLibrary = ->
   $("#library").html Handlebars.templates.library(context)
 
 renderNowPlaying = ->
-  track = context.status.current_item.track
-  document.title = "#{track.name} - #{track.artist.name} - #{track.album.name} - #{base_title}"
+  # set window title
+  track = context.status.current_item?.track
+  if track?
+    document.title = "#{track.name} - #{track.artist.name} - #{track.album.name} - #{base_title}"
+  else
+    document.title = base_title
+
   $("#nowplaying").html Handlebars.templates.playback(context)
 
 render = ->

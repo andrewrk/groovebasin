@@ -21,11 +21,16 @@
 
             $ sudo npm install -g uglify-js handlebars coffee-script
 
-    mpd (musicpd.org) - Compile from source; we depend on some new stuff.
+    mpd (musicpd.org)
+        Compile from source; we depend on some new stuff.
+
+    sass (sass-lang.com)
+        On Ubuntu, be sure to install with the ruby gem, not with apt-get.
+        And then make sure the `sass` executable is in your PATH.
 
 == Installation ==
 
-    1. Install and configure mpd
+    1. Install and configure mpd, make sure it works.
 
     2. Compile:
 

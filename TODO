@@ -1,3 +1,5 @@
+* seeker bar
+* display track time
 * handle albums better
   - when two different artists have samely titled album
   - albums with various artists
@@ -50,4 +52,5 @@ Client Requirements:
    - manually queued songs are another color
  * searching should work like not stupid
  * download button in the playlist
+ * ability to ban from random
 

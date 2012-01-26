@@ -2,6 +2,7 @@ context =
   playing: -> this.status?.state == 'play'
 
 mpd = null
+base_title = document.title
 
 renderPlaylist = ->
   window._debug_context = context
@@ -28,6 +29,9 @@ renderLibrary = ->
     return false
 
 renderNowPlaying = ->
+  track = context.status.current_item.track
+  document.title = "#{track.name} - #{track.artist.name} - #{track.album.name} - #{base_title}"
+
   $nowplaying = $("#nowplaying")
   $nowplaying.html Handlebars.templates.playback(context)
 

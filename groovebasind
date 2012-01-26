@@ -5,6 +5,7 @@ net = require 'net'
 socketio = require 'socket.io'
 static = require 'node-static'
 nconf = require 'nconf'
+child_process = require 'child_process'
 
 nconf
   .argv()
@@ -22,23 +23,47 @@ nconf
       port: 6600
       conf: "/etc/mpd.conf"
 
+# static server
 fileServer = new (static.Server) './public'
 app = http.createServer((request, response) ->
   request.addListener 'end', ->
     fileServer.serve request, response
-
 ).listen(nconf.get('http:port'))
 console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
+
+# check for mpd
+connect_mpd = (connected_callback=->) ->
+  # have to pass in the 'connection' event handler.
+  # once we call connect(), it's too late to attach a handler for 'connection'.
+  mpd_socket = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
+    console.log 'mpd connected'
+    connected_callback()
+  mpd_socket.on 'end', -> console.log 'mpd disconnected'
+  mpd_socket
+test_mpd = ->
+  console.log "Checking for mpd daemon"
+  mpd = connect_mpd ->
+    console.log "Found mpd daemon. Closing test socket."
+    mpd.end()
+  mpd.on 'error', ->
+    console.log "No mpd daemon found. Attempting to start one."
+    child_process.exec "mpd", (error, stdout, stdin) ->
+      if error?
+        console.log "ERROR: failed to start mpd daemon"
+        console.log stdout
+        console.log stdin
+        return
+      console.log "It seems the mpd daemon was started successfully. Retrying."
+      test_mpd()
+test_mpd()
 
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
-  mpd = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
-    console.log 'mpd connected'
+  mpd = connect_mpd()
   mpd.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd.on 'end', ->
-    console.log 'mpd disconnected'
     socket.emit 'disconnect'
 
   socket.on 'ToMpd', (data) ->

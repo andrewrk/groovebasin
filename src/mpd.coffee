@@ -310,11 +310,11 @@ class Mpd
       return
 
     # build list of tracks from msg
-    mpd_tracks = {}
-    current_track = {}
+    mpd_tracks = []
+    current_track = null
     flush_current_track = ->
-      return if current_track.Id == undefined
-      mpd_tracks[current_track.Id] = current_track
+      if current_track != null
+        mpd_tracks.push(current_track)
       current_track = {}
     for line in msg.split("\n")
       [key, value] = line.split(": ")
@@ -325,7 +325,7 @@ class Mpd
 
     # convert to our track format and add to cache
     track_table = @library.track_table
-    for id, mpd_track of mpd_tracks
+    for mpd_track in mpd_tracks
       track = @getOrCreateTrack(mpd_track.file)
       $.extend track,
         name: mpd_track.Title
@@ -354,10 +354,10 @@ class Mpd
       @addTracksToLibrary msg, (mpd_tracks) =>
         clearArray @playlist.item_list
         clearObject @playlist.item_table
-        for _, mpd_track of mpd_tracks
+        for mpd_track in mpd_tracks
           id = parseInt(mpd_track.Id)
           obj =
-            id: parseInt(id)
+            id: id
             track: @library.track_table[mpd_track.file]
             pos: @playlist.item_list.length
           @playlist.item_list.push obj
@@ -411,8 +411,8 @@ class Mpd
           @raiseEvent 'onStatusUpdate'
           return
 
-        # there's only one but we'll loop anyway since it's an object
-        for _, mpd_track of mpd_tracks
+        # there's either 0 or 1
+        for mpd_track in mpd_tracks
           id = parseInt(mpd_track.Id)
           pos = parseInt(mpd_track.Pos)
 

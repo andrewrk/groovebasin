@@ -62,9 +62,10 @@ setUpUi = ->
     'ui-icon-stop': -> mpd.stop()
   $nowplaying = $("#nowplaying")
   for span, action of actions
-    $nowplaying.on 'click', "span.#{span}", (event) ->
-      action()
-      return false
+    do (span, action) ->
+      $nowplaying.on 'click', "span.#{span}", (event) ->
+        action()
+        return false
 
   # debug text box
   $("#line").keydown (event) ->

@@ -6,66 +6,79 @@ base_title = document.title
 
 renderPlaylist = ->
   window._debug_context = context
-  $queue = $("#queue")
-  $queue.html Handlebars.templates.playlist(context)
-
-  $queue.find('a.track').click (event) ->
-    track_id = $(event.target).data('id')
-    mpd.playId track_id
-    return false
+  $("#queue").html Handlebars.templates.playlist(context)
 
 renderLibrary = ->
-  $library = $("#library")
-  $library.html Handlebars.templates.library(context)
-
-  $library.find('a.artist').click (event) ->
-    artist_name = $(event.target).text()
-    mpd.updateArtistInfo(artist_name)
-    return false
-
-  $library.find('a.track').click (event) ->
-    file = $(event.target).data('file')
-    mpd.queueFile file
-    return false
+  $("#library").html Handlebars.templates.library(context)
 
 renderNowPlaying = ->
   track = context.status.current_item.track
   document.title = "#{track.name} - #{track.artist.name} - #{track.album.name} - #{base_title}"
-
-  $nowplaying = $("#nowplaying")
-  $nowplaying.html Handlebars.templates.playback(context)
-
-  $nowplaying.find('.pause a').click (event) ->
-    mpd.pause()
-    return false
-
-  $nowplaying.find('.stop a').click (event) ->
-    mpd.stop()
-    return false
-
-  $nowplaying.find('.play a').click (event) ->
-    mpd.play()
-    return false
-
-  $nowplaying.find('.skip-prev a').click (event) ->
-    mpd.prev()
-    return false
-
-  $nowplaying.find('.skip-next a').click (event) ->
-    mpd.next()
-    return false
+  $("#nowplaying").html Handlebars.templates.playback(context)
 
 render = ->
   renderPlaylist()
   renderLibrary()
   renderNowPlaying()
 
-$(document).ready ->
+attachEventHandlers = ->
+  $("#queue").on 'click', 'a.track', (event) ->
+    track_id = $(event.target).data('id')
+    mpd.playId track_id
+    return false
+
+  $library = $("#library")
+  $library.on 'click', 'a.artist', (event) ->
+    artist_name = $(event.target).text()
+    mpd.updateArtistInfo(artist_name)
+    return false
+
+  $library.on 'click', 'a.track', (event) ->
+    file = $(event.target).data('file')
+    mpd.queueFile file
+    return false
+
+  $nowplaying = $("#nowplaying")
+  $nowplaying.on 'click', '.pause a', (event) ->
+    mpd.pause()
+    return false
+
+  $nowplaying.on 'click', '.stop a', (event) ->
+    mpd.stop()
+    return false
+
+  $nowplaying.on 'click', '.play a', (event) ->
+    mpd.play()
+    return false
+
+  $nowplaying.on 'click', '.skip-prev a', (event) ->
+    mpd.prev()
+    return false
+
+  $nowplaying.on 'click', '.skip-next a', (event) ->
+    mpd.next()
+    return false
+
+
+  # debug text box
+  $("#line").keydown (event) ->
+    if event.keyCode == 13
+      line = $("#line").val()
+      $("#line").val('')
+      mpd.sendCommand line, (msg) ->
+        $("#text").val(msg)
+
+
+initHandlebars = ->
   Handlebars.registerHelper 'hash', (context, options) ->
     ret = ""
     for k,v of context
       ret += options.fn(v)
     ret
+
+$(document).ready ->
+  attachEventHandlers()
+  initHandlebars()
 
   mpd = new Mpd()
   mpd.onError (msg) -> alert msg
@@ -79,12 +92,4 @@ $(document).ready ->
   mpd.updatePlaylist()
 
   render()
-
-  $("#line").keydown (event) ->
-    if event.keyCode == 13
-      line = $("#line").val()
-      $("#line").val('')
-      mpd.sendCommand line, (msg) ->
-        $("#text").val(msg)
-
 

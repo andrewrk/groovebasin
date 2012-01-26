@@ -370,8 +370,6 @@ class Mpd
             @raiseEvent 'onPlaylistUpdate'
 
   updateStatus: (callback=noop) =>
-    handleCurrentItem = (id, pos, file) =>
-
     @sendCommands ["stats", "replay_gain_status", "status"], (msg) =>
       # no dict comprehensions :(
       # https://github.com/jashkenas/coffee-script/issues/77
@@ -398,6 +396,13 @@ class Mpd
 
     @sendCommand "currentsong", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
+        if mpd_tracks.length == 0
+          # no current song
+          @status.current_item = null
+          callback()
+          @raiseEvent 'onStatusUpdate'
+          return
+
         # there's only one but we'll loop anyway since it's an object
         for file, mpd_track of mpd_tracks
           id = parseInt(mpd_track.Id)

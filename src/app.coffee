@@ -5,7 +5,6 @@ mpd = null
 base_title = document.title
 
 renderPlaylist = ->
-  window._debug_context = context
   $("#queue").html Handlebars.templates.playlist(context)
 
 renderLibrary = ->
@@ -100,3 +99,5 @@ $(document).ready ->
 
   render()
 
+
+window._debug_context = context

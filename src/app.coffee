@@ -85,8 +85,8 @@ setUpUi = ->
     min: 0
     max: 1
   # move the slider along the path
-  schedule 200, ->
-    if context.status?.time? and track_start_date? and context.status.current_item?
+  schedule 100, ->
+    if context.status?.time? and track_start_date? and context.status.current_item? and context.status.state == "play"
       diff_sec = (new Date() - track_start_date) / 1000
       $("#track-slider").slider("option", "value", diff_sec / context.status.time)
 

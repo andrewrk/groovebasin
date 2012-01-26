@@ -136,9 +136,11 @@ class Mpd
     handler(args...) for handler in handlersList
 
   handleMessage: (msg) =>
-    @msgHandlerQueue.shift()(msg)
+    @debugMsgConsole?.log "get-: #{@msgHandlerQueue[0].debug_id}: " + JSON.stringify(msg)
+    @msgHandlerQueue.shift().cb(msg)
 
   send: (msg) =>
+    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1].debug_id}: " + JSON.stringify(msg)
     @socket.emit 'ToMpd', msg + "\n"
 
   getOrCreate: (key, table, list, initObjFunc) =>
@@ -179,12 +181,12 @@ class Mpd
     @socket = io.connect()
     @buffer = ""
     @msgHandlerQueue = []
+    # assign to console to enable message passing debugging
+    @debugMsgConsole = null #console
+    @msgCounter = 0
 
     # whether we've sent the idle command to mpd
     @idling = false
-
-    @socket.on 'disconnect', =>
-      console.log "disconnected from Mpd"
 
     @socket.on 'FromMpd', (data) =>
       @buffer += data
@@ -242,7 +244,9 @@ class Mpd
         return
 
   rawSendCmd: (cmd, cb=noop) =>
-    @msgHandlerQueue.push cb
+    @msgHandlerQueue.push
+      debug_id: @msgCounter++
+      cb: cb
     @send cmd
 
   handleIdleResultsLoop: (msg) =>

@@ -15,18 +15,30 @@ renderNowPlaying = ->
   # set window title
   track = context.status.current_item?.track
   if track?
-    document.title = "#{track.name} - #{track.artist.name} - #{track.album.name} - #{base_title}"
+    track_display = "#{track.name} - #{track.artist.name} - #{track.album.name}"
+    document.title = "#{track_display} - #{base_title}"
   else
+    track_display = ""
     document.title = base_title
 
-  $("#nowplaying").html Handlebars.templates.playback(context)
+  # set song title
+  $("#track-display").html(track_display)
+
+  if context.status.state?
+    # set correct pause/play icon
+    toggle_icon =
+      play: ['ui-icon-play', 'ui-icon-pause']
+      stop: ['ui-icon-pause', 'ui-icon-play']
+    toggle_icon.pause = toggle_icon.stop
+    [old_class, new_class] = toggle_icon[context.status.state]
+    $("#nowplaying .toggle").removeClass(old_class).addClass(new_class)
 
 render = ->
   renderPlaylist()
   renderLibrary()
   renderNowPlaying()
 
-attachEventHandlers = ->
+setUpUi = ->
   $("#queue").on 'click', 'a.track', (event) ->
     track_id = $(event.target).data('id')
     mpd.playId track_id
@@ -43,27 +55,17 @@ attachEventHandlers = ->
     mpd.queueFile file
     return false
 
+  actions =
+    'ui-icon-pause': -> mpd.pause()
+    'ui-icon-play': -> mpd.play()
+    'ui-icon-seek-prev': -> mpd.prev()
+    'ui-icon-seek-next': -> mpd.next()
+    'ui-icon-stop': -> mpd.stop()
   $nowplaying = $("#nowplaying")
-  $nowplaying.on 'click', '.pause a', (event) ->
-    mpd.pause()
-    return false
-
-  $nowplaying.on 'click', '.stop a', (event) ->
-    mpd.stop()
-    return false
-
-  $nowplaying.on 'click', '.play a', (event) ->
-    mpd.play()
-    return false
-
-  $nowplaying.on 'click', '.skip-prev a', (event) ->
-    mpd.prev()
-    return false
-
-  $nowplaying.on 'click', '.skip-next a', (event) ->
-    mpd.next()
-    return false
-
+  for span, action of actions
+    $nowplaying.on 'click', "span.#{span}", (event) ->
+      action()
+      return false
 
   # debug text box
   $("#line").keydown (event) ->
@@ -82,7 +84,7 @@ initHandlebars = ->
     ret
 
 $(document).ready ->
-  attachEventHandlers()
+  setUpUi()
   initHandlebars()
 
   mpd = new Mpd()

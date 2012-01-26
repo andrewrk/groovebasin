@@ -24,5 +24,5 @@ $(appcss): $(scss)
 	sass --no-cache --scss $(sass_min) $(scss) $(appcss)
 
 clean:
-	rm -f $(appjs)
+	rm -f $(appjs) $(appcss)
 

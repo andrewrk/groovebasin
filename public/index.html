@@ -3,14 +3,38 @@
 <head>
   <title>Groove Basin</title>
   <script type="text/javascript" src="vendor/jquery-1.7.1.min.js"></script>
+  <script type="text/javascript" src="vendor/jquery-ui-1.8.17.custom.min.js"></script>
   <script type="text/javascript" src="vendor/socket.io/socket.io.min.js"></script>
   <script type="text/javascript" src="vendor/handlebars.runtime.js"></script>
   <script type="text/javascript" src="app.js"></script>
   <link rel="stylesheet" type="text/css" href="vendor/reset.min.css">
   <link rel="stylesheet" type="text/css" href="app.css">
+  <link rel="stylesheet" type="text/css" href="vendor/css/dot-luv/jquery-ui-1.8.17.custom.css">
 </head>
 <body>
   <div id="nowplaying">
+    <ul class="playback-btns ui-widget ui-helper-clearfix">
+      <li class="ui-state-default ui-corner-all">
+        <span class="ui-icon ui-icon-seek-prev prev"></span>
+      </li>
+      <li class="ui-state-default ui-corner-all">
+        <span class="ui-icon ui-icon-stop stop"></span>
+      </li>
+      <li class="ui-state-default ui-corner-all">
+        <span class="ui-icon ui-icon-pause toggle"></span>
+      </li>
+      <li class="ui-state-default ui-corner-all">
+        <span class="ui-icon ui-icon-seek-next next"></span>
+      </li>
+    </ul>
+    <ul class="song-btns">
+      <li class="ban">Ban From Random</li>
+      <li class="download">Download</li>
+    </ul>
+    <h1 id="track-display"></h1>
+    <div id="track-slider"></div>
+    <span class="time passed"></span>
+    <span class="time left"></span>
   </div>
   <div id="library">
   </div>

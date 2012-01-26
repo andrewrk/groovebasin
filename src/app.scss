@@ -1,7 +1,30 @@
 h1 {
-    font-weight: bold;
+  font-weight: bold;
 }
 
-li {
+#nowplaying {
+  height: 200px;
+
+  .playback-btns li {
+    cursor: pointer;
+    float: left;
+    list-style: none outside none;
+    margin: 2px;
+    padding: 4px;
+  }
+}
+
+#library {
+  width: 500px;
+  overflow-y: auto;
+  float: left;
+
+  li {
     margin-left: 20px;
+  }
+}
+
+#queue {
+  width: 500px;
+  float: left;
 }

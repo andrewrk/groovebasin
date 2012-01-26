@@ -307,18 +307,22 @@ class Mpd
 
     # build list of tracks from msg
     mpd_tracks = {}
-    current_file = null
+    current_track = {}
+    flush_current_track = ->
+      return if current_track.Id == undefined
+      mpd_tracks[current_track.Id] = current_track
+      current_track = {}
     for line in msg.split("\n")
       [key, value] = line.split(": ")
       if key == 'file'
-        current_file = value
-        mpd_tracks[current_file] = {}
-      mpd_tracks[current_file][key] = value
+        flush_current_track()
+      current_track[key] = value
+    flush_current_track()
 
     # convert to our track format and add to cache
     track_table = @library.track_table
-    for file, mpd_track of mpd_tracks
-      track = @getOrCreateTrack(file)
+    for id, mpd_track of mpd_tracks
+      track = @getOrCreateTrack(mpd_track.file)
       $.extend track,
         name: mpd_track.Title
         track: mpd_track.Track
@@ -327,7 +331,7 @@ class Mpd
         album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
 
       album_tracks = track.album.tracks ||= {}
-      album_tracks[file] = track
+      album_tracks[mpd_track.file] = track
 
       artist_albums = track.artist.albums ||= {}
       artist_albums[track.album.name] = track.album
@@ -346,11 +350,11 @@ class Mpd
       @addTracksToLibrary msg, (mpd_tracks) =>
         clearArray @playlist.item_list
         clearObject @playlist.item_table
-        for file, mpd_track of mpd_tracks
+        for _, mpd_track of mpd_tracks
           id = parseInt(mpd_track.Id)
           obj =
             id: parseInt(id)
-            track: @library.track_table[file]
+            track: @library.track_table[mpd_track.file]
             pos: @playlist.item_list.length
           @playlist.item_list.push obj
           @playlist.item_table[id] = obj
@@ -404,14 +408,14 @@ class Mpd
           return
 
         # there's only one but we'll loop anyway since it's an object
-        for file, mpd_track of mpd_tracks
+        for _, mpd_track of mpd_tracks
           id = parseInt(mpd_track.Id)
           pos = parseInt(mpd_track.Pos)
 
           @status.current_item = @playlist.item_table[id]
 
           if @status.current_item? and @status.current_item.pos == pos
-            @status.current_item.track = @library.track_table[file]
+            @status.current_item.track = @library.track_table[mpd_track.file]
             # looks good, notify listeners
             @raiseEvent 'onStatusUpdate'
             callback()
@@ -420,7 +424,7 @@ class Mpd
             @status.current_item =
               id: id
               pos: pos
-              track: @library.track_table[file]
+              track: @library.track_table[mpd_track.file]
             @updatePlaylist =>
               callback()
               @raiseEvent 'onStatusUpdate'

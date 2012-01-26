@@ -1,5 +1,7 @@
 * seeker bar
 * display track time
+* same track multiple times in playlist doesn't show up
+* sometimes updatePlaylist and updateStatus get into a loop calling each other
 * handle albums better
   - when two different artists have samely titled album
   - albums with various artists

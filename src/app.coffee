@@ -1,8 +1,17 @@
+# convenience
+schedule = (delay, func) -> window.setInterval(func, delay)
+
 context =
   playing: -> this.status?.state == 'play'
+  track_start_date: ->
+    elapsed = this.status?.elapsed
+    if not elapsed?
+      return null
+    new Date((new Date()) - elapsed * 1000)
 
 mpd = null
 base_title = document.title
+track_start_date = null
 
 renderPlaylist = ->
   $("#queue").html Handlebars.templates.playlist(context)
@@ -31,6 +40,10 @@ renderNowPlaying = ->
     toggle_icon.pause = toggle_icon.stop
     [old_class, new_class] = toggle_icon[context.status.state]
     $("#nowplaying .toggle").removeClass(old_class).addClass(new_class)
+
+  if context.status.time? and context.status.elapsed?
+    track_start_date = context.track_start_date()
+    $("#track-slider").slider("option", "value", context.status.elapsed / context.status.time)
 
 render = ->
   renderPlaylist()
@@ -66,6 +79,16 @@ setUpUi = ->
       $nowplaying.on 'click', "span.#{span}", (event) ->
         action()
         return false
+
+  $("#track-slider").slider
+    step: 0.0001
+    min: 0
+    max: 1
+  # move the slider along the path
+  schedule 200, ->
+    if context.status?.time? and track_start_date? and context.status.current_item?
+      diff_sec = (new Date() - track_start_date) / 1000
+      $("#track-slider").slider("option", "value", diff_sec / context.status.time)
 
   # debug text box
   $("#line").keydown (event) ->

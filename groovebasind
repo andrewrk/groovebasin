@@ -45,6 +45,6 @@ io.sockets.on 'connection', (socket) ->
 
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
-    mpd.write data
+    try mpd.write data
 
   socket.on 'disconnect', -> mpd.end()

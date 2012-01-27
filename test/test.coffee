@@ -60,9 +60,10 @@ lets_test = (name) ->
 
   results.push cur_test
 
-  mpd = new Mpd()
+  mpd.removeEventListeners 'onError'
   mpdEvent 0, 'onError', (msg) ->
     fail "MPD error: #{msg}"
+
 
 eq = (a, b) ->
   fail "#{a} != #{b}:\n\n#{printStackTrace().join("\n")}" if a != b
@@ -100,14 +101,19 @@ tests = [
       mpd.updateStatus()
     mpd.updateStatus()
   ->
-    lets_test "get artist list and detailed info"
+    lets_test "get artist list"
     mpdEvent 1, 'onLibraryUpdate', ->
       ok mpd.library.artist_list.length > 1
       mpd.removeEventListeners 'onLibraryUpdate'
  
       rand_index = Math.floor(Math.random()*mpd.library.artist_list.length)
       random_artist = mpd.library.artist_list[rand_index]
+      eq mpd.library.artist_table[random_artist.name], random_artist
+
+      lets_test "get songs from artist '#{random_artist.name}'"
+      album_tracks = []
       mpdEvent 1, 'onLibraryUpdate', ->
+        mpd.removeEventListeners 'onLibraryUpdate'
         ok mpd.library.artist_list.length > 1
         for album_name, album of random_artist.albums
           eq album_name, album.name
@@ -116,14 +122,47 @@ tests = [
             ok track.name?
             eq track.artist, random_artist
             eq track.album, album
+
+            # save for next test
+            album_tracks.push track
+
+        lets_test "clear playlist 1"
+        tracks_to_add = album_tracks[0..2]
+        mpdEvent 1, 'onPlaylistUpdate', ->
+          mpd.removeEventListeners 'onPlaylistUpdate'
+          eq mpd.playlist.item_list.length, 0
+
+          lets_test "add tracks such as '#{tracks_to_add[0].name}' to playlist"
+          count = 0
+          mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
+            mpd.removeEventListeners 'onPlaylistUpdate'
+            count += 1
+            eq mpd.playlist.item_list.length, count
+
+            lets_test "clear playlist 2"
+            mpdEvent 1, 'onPlaylistUpdate', ->
+              mpd.removeEventListeners 'onPlaylistUpdate'
+              eq mpd.playlist.item_list.length, 0
+            mpd.clear()
+          mpd.queueFile track.file for track in tracks_to_add
+        mpd.clear()
       mpd.updateArtistInfo random_artist.name
  
     mpd.updateArtistList()
   ->
     lets_test "get current track"
     mpdEvent 1, 'onStatusUpdate', ->
+      mpd.removeEventListeners 'onStatusUpdate'
       ok mpd.status.state is "play" or mpd.status.state is "stop" or mpd.status.state is "pause"
+
     mpd.updateStatus()
+  ->
+    lets_test "playback buttons"
+    # stop playback, so we know where we're at
+    mpdEvent 1, 'onStatusUpdate', ->
+      mpd.removeEventListeners 'onStatusUpdate'
+      eq mpd.status.state, "stop"
+    mpd.stop()
 ]
 
 runTest = (test, args...) ->
@@ -140,6 +179,7 @@ runTest = (test, args...) ->
 
 runTests = ->
   for test in tests
+    mpd = new Mpd()
     runTest(test)
 
 $(document).ready ->

@@ -465,8 +465,11 @@ class Mpd
 
   playId: (track_id) =>
     @sendCommand "playid #{escape(track_id)}"
+  removeId: (track_id) =>
+    @sendCommand "deleteid #{escape(track_id)}"
 
   close: => @send "close" # bypass message queue
 
   # in seconds
   seek: (pos) => @sendCommand "seekcur #{Math.round(parseFloat(pos))}"
+

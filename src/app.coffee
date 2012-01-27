@@ -79,6 +79,10 @@ setUpUi = ->
     track_id = $(event.target).data('id')
     mpd.playId track_id
     return false
+  $queue.on 'click', 'a.remove', (event) ->
+    track_id = $(event.target).data('id')
+    mpd.removeId track_id
+    return false
   $queue.on 'click', 'a.clear', ->
     mpd.clear()
     return false

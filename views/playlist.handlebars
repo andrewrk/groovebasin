@@ -5,11 +5,29 @@
   <a href="#">Random Mix</a>
   <a href="#" class="repopulate">Repopulate</a>
 </div>
-<ul>
-  {{#playlist}}
-    <li>
-    <a href="#" class="track" data-id="{{id}}">{{#if track.track}}{{track.track}}.
-      {{/if}}{{track.name}} - {{track.artist.name}} - {{track.album.name}}</a>
-    </li>
-  {{/playlist}}
-</ul>
+{{#if playlist}}
+  <table>
+    <tr>
+      <th>Track</th>
+      <th>Title</th>
+      <th>Artist</th>
+      <th>Album</th>
+      <th>Length</th>
+      <th>Actions</th>
+    </tr>
+    {{#playlist}}
+      <tr>
+        <td>{{track.track}}</td>
+        <td>
+          <a href="#" class="track" data-id="{{id}}">{{track.name}}</a>
+        </td>
+        <td>{{track.artist.name}}</td>
+        <td>{{track.album.name}}</td>
+        <td>{{track.time}}</td>
+        <td>
+          <a href="#" class="remove" data-id="{{id}}">Remove</a>
+        </td>
+      </tr>
+    {{/playlist}}
+  </table>
+{{/if}}

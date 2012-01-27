@@ -1,4 +1,3 @@
-* use album artist over artist when we have it
 * same track multiple times in playlist doesn't show up
 * sometimes updatePlaylist and updateStatus get into a loop calling each other
 * handle albums better

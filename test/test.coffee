@@ -111,6 +111,13 @@ tests = [
       mpd.updateStatus()
     mpd.updateStatus()
   ->
+    lets_test "clear playlist 1"
+    mpdEvent 1, 'onPlaylistUpdate', ->
+      mpd.removeEventListeners 'onPlaylistUpdate'
+      mpdEvent 1, 'onPlaylistUpdate', ->
+        eq mpd.playlist.item_list.length, 0
+      mpd.clear()
+  ->
     lets_test "get artist list"
     mpdEvent 1, 'onLibraryUpdate', ->
       ok mpd.library.artist_list.length > 1
@@ -136,7 +143,7 @@ tests = [
             # save for next test
             album_tracks.push track
 
-        lets_test "clear playlist 1"
+        lets_test "clear playlist 2"
         tracks_to_add = album_tracks[0..2]
         mpdEvent 1, 'onPlaylistUpdate', ->
           mpd.removeEventListeners 'onPlaylistUpdate'
@@ -193,7 +200,15 @@ tests = [
       ok mpd.status.elapsed >= mpd.status.time / 2
     mpd.seek mpd.status.time / 2
   ->
-    lets_test "clear playlist 2"
+    lets_test "remove item from playlist"
+    mpdEvent 1, 'onPlaylistUpdate', ->
+      mpd.removeEventListeners 'onPlaylistUpdate'
+      old_len = mpd.playlist.item_list.length
+      mpdEvent 1, 'onPlaylistUpdate', ->
+        ok mpd.playlist.item_list.length, old_len - 1
+      mpd.removeId mpd.playlist.item_list[0].id
+  ->
+    lets_test "clear playlist 3"
     mpdEvent 1, 'onPlaylistUpdate', ->
       eq mpd.playlist.item_list.length, 0
 

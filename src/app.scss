@@ -12,6 +12,10 @@ h1 {
     margin: 2px;
     padding: 4px;
   }
+
+  .left {
+    float: right;
+  }
 }
 
 #library {
@@ -25,10 +29,10 @@ h1 {
 }
 
 #queue {
-  width: 500px;
+  width: 600px;
   float: left;
-}
 
-#nowplaying .left {
-  float: right;
+  tr:nth-child(2n+1) {
+    background-color: #DCE0E5;
+  }
 }

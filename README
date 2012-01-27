@@ -47,3 +47,4 @@
 
         $ watch -n0.5 make -e DEBUG=true
 
+    To run the test suite, navigate to /test.html

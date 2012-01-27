@@ -175,36 +175,29 @@ tests = [
           mpd.queueFile tracks_to_add[count].file
         mpd.clear()
       mpd.updateArtistInfo random_artist.name
- 
-    mpd.updateArtistList()
   ->
     lets_test "pausing a track"
-    count = 0
-    mpdEvent 3, 'onStatusUpdate', ->
-      mpd.updateStatus()
-      return if count++ < 3
-      mpd.removeEventListeners 'onStatusUpdate'
+    mpdEvent 1, 'onStatusUpdate', ->
       eq mpd.status.state, "pause"
 
     mpd.pause()
   ->
     lets_test "unpausing a track"
-    count = 0
-    mpdEvent 3, 'onStatusUpdate', ->
-      mpd.updateStatus()
-      return if count++ < 3
-      mpd.removeEventListeners 'onStatusUpdate'
+    mpdEvent 1, 'onStatusUpdate', ->
       eq mpd.status.state, "play"
 
     mpd.play()
   ->
     lets_test "clear playlist 2"
-    count = 0
     mpdEvent 1, 'onPlaylistUpdate', ->
-      mpd.removeEventListeners 'onPlaylistUpdate'
       eq mpd.playlist.item_list.length, 0
 
     mpd.clear()
+  ->
+    lets_test "get random song"
+    mpdEvent 1, 'onLibraryUpdate', ->
+      mpdEvent 1, 'getRandomTrack', (track) ->
+        ok track.file?
 ]
 
 runTest = (test, args...) ->

@@ -56,7 +56,14 @@ setUpUi = ->
     track_id = $(event.target).data('id')
     mpd.playId track_id
     return false
-  $queue.on 'click', 'a.clear', -> mpd.clear()
+  $queue.on 'click', 'a.clear', ->
+    mpd.clear()
+    return false
+  $queue.on 'click', 'a.repopulate', ->
+    mpd.getRandomTrack (track) ->
+      console.log track.file
+      mpd.queueFile track.file
+    return false
 
   $library = $("#library")
   $library.on 'click', 'a.artist', (event) ->
@@ -120,8 +127,6 @@ $(document).ready ->
   context.artists = mpd.library.artist_list
   context.playlist = mpd.playlist.item_list
   context.status = mpd.status
-  mpd.updateArtistList()
-  mpd.updatePlaylist()
 
   render()
 

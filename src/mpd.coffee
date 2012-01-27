@@ -204,6 +204,10 @@ class Mpd
         else
           @handleMessage msg
         @buffer = @buffer.substring(msg.length+line.length+1)
+    @socket.on 'connect', =>
+      @updateArtistList()
+      @updateStatus()
+      @updatePlaylist()
 
     @createEventHandlers()
     
@@ -350,8 +354,10 @@ class Mpd
     # notify listeners
     @raiseEvent 'onLibraryUpdate'
 
-  updateArtistInfo: (artist_name) =>
-    @sendCommand "find artist \"#{escape(artist_name)}\"", @addTracksToLibrary
+  updateArtistInfo: (artist_name, cb=noop) =>
+    @sendCommand "find artist \"#{escape(artist_name)}\"", (msg) =>
+      @addTracksToLibrary msg
+      cb()
 
   updatePlaylist: (callback=noop) =>
     @sendCommand "playlistinfo", (msg) =>
@@ -451,3 +457,17 @@ class Mpd
     @sendCommand "playid #{escape(track_id)}"
 
   close: => @send "close"
+
+  getRandomTrack: (cb) =>
+    random_artist = @library.artist_list[Math.floor(Math.random() * @library.artist_list.length)]
+    f = =>
+      tracks = []
+      for _, album of random_artist.albums
+        for _, track of album.tracks
+          tracks.push track
+      cb tracks[Math.floor(Math.random() * tracks.length)]
+    if random_artist.albums?
+      f()
+    else
+      @updateArtistInfo random_artist.name, f
+    

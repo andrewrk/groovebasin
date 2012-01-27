@@ -117,6 +117,17 @@ class Mpd
   clearArray = (arr) -> arr.length = 0
   clearObject = (obj) -> delete obj[prop] for own prop of obj
 
+  pickNRandomProps = (obj, n) ->
+    results = []
+    count = 0
+    for prop of obj
+      count += 1
+      for i in [0...n]
+        if Math.random() < 1 / count
+          results[i] = prop
+    return results
+
+
   createEventHandlers: =>
     registrarNames = [
       'onError'
@@ -285,6 +296,7 @@ class Mpd
       @updatePlaylist()
 
     @createEventHandlers()
+    @haveFileListCache = false
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
@@ -463,18 +475,23 @@ class Mpd
               callback()
               @raiseEvent 'onStatusUpdate'
 
-  getRandomTrack: (cb) =>
-    random_artist = @library.artist_list[Math.floor(Math.random() * @library.artist_list.length)]
+  queueRandomTracks: (n) =>
     f = =>
-      tracks = []
-      for _, album of random_artist.albums
-        for _, track of album.tracks
-          tracks.push track if track.file?
-      cb tracks[Math.floor(Math.random() * tracks.length)]
-    if random_artist.albums?
+      @sendCommands ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
+    if @haveFileListCache
       f()
     else
-      @updateArtistInfo random_artist.name, f
+      @updateFileList f
+
+  updateFileList: (cb) =>
+    @haveFileListCache = true
+    @sendCommand "listall", (msg) =>
+      for line in msg.split("\n")
+        [key, val] = line.split(": ")
+        if key == "file"
+          @getOrCreateTrack val
+      cb()
+      @raiseEvent 'onLibraryUpdate'
 
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""

@@ -89,14 +89,12 @@ setUpUi = ->
     mpd.clear()
     return false
   $queue.on 'click', 'a.randommix', ->
-    mpd.getRandomTrack (track) ->
-      mpd.queueFile track.file
+    mpd.queueRandomTracks 1
     return false
 
   $queue.on 'click', 'a.repopulate', ->
-    for i in [0...20]
-      mpd.getRandomTrack (track) ->
-        mpd.queueFile track.file
+    mpd.clear()
+    mpd.queueRandomTracks 20
     return false
 
   $library = $("#library")

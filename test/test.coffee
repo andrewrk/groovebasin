@@ -1,7 +1,9 @@
+wait = (delay, func) -> setTimeout func, delay
 mpd = null
 
 results = []
 cur_test = null
+test_index = 0
 
 render = ->
   pass_count = 0
@@ -47,7 +49,7 @@ lets_test = (name) ->
     threads: {}
     running: ->
       sum = 0
-      sum += Math.abs(count) for _, count of this.threads
+      sum += count for _, count of this.threads
       sum > 0
     status: ->
       if this.success
@@ -89,6 +91,12 @@ tests = [
       ok /^playlist:/m.test(msg)
       ok /^repeat:/m.test(msg)
       ok /^random:/m.test(msg)
+  ->
+    lets_test "calling updateArtistInfo for nonexistent artist"
+    mpdEvent 0, 'onLibraryUpdate', ->
+      fail "unwarranted library update"
+    mpd.updateArtistInfo "this artist does not exist!! aoeuaoeuaoeu"
+    eq mpd.library.artist_list.length, 0
   ->
     lets_test "remove event listeners"
     count = 0
@@ -137,10 +145,10 @@ tests = [
           mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
             count += 1
             eq mpd.playlist.item_list.length, count
-            eq track.name, mpd.playlist.item_list[count-1].track.name
-            eq track.file, mpd.playlist.item_list[count-1].track.file
-            eq track.time, mpd.playlist.item_list[count-1].track.time
-            eq track.artist, mpd.playlist.item_list[count-1].track.artist
+            eq tracks_to_add[count-1].name, mpd.playlist.item_list[count-1].track.name
+            eq tracks_to_add[count-1].file, mpd.playlist.item_list[count-1].track.file
+            eq tracks_to_add[count-1].time, mpd.playlist.item_list[count-1].track.time
+            eq tracks_to_add[count-1].artist, mpd.playlist.item_list[count-1].track.artist
 
             if count < tracks_to_add.length
               mpd.queueFile tracks_to_add[count].file
@@ -148,30 +156,25 @@ tests = [
             
             mpd.removeEventListeners 'onPlaylistUpdate'
 
-            lets_test "clear playlist 2"
-            mpdEvent 1, 'onPlaylistUpdate', ->
-              mpd.removeEventListeners 'onPlaylistUpdate'
-              eq mpd.playlist.item_list.length, 0
-            mpd.clear()
+
+            lets_test "playing a track"
+            id_to_play = mpd.playlist.item_list[mpd.playlist.item_list.length-1].id
+            count = 0
+            mpdEvent 3, 'onStatusUpdate', ->
+              # call updateStatus again to flush the event queue
+              mpd.updateStatus()
+              return if count++ < 3
+              mpd.removeEventListeners 'onStatusUpdate'
+
+              eq mpd.status.state, "play"
+              eq mpd.status.current_item.id, id_to_play
+
+            mpd.playId id_to_play
           mpd.queueFile tracks_to_add[count].file
         mpd.clear()
       mpd.updateArtistInfo random_artist.name
  
     mpd.updateArtistList()
-  ->
-    lets_test "get current track"
-    mpdEvent 1, 'onStatusUpdate', ->
-      mpd.removeEventListeners 'onStatusUpdate'
-      ok mpd.status.state is "play" or mpd.status.state is "stop" or mpd.status.state is "pause"
-
-    mpd.updateStatus()
-  ->
-    lets_test "playback buttons"
-    # stop playback, so we know where we're at
-    mpdEvent 1, 'onStatusUpdate', ->
-      mpd.removeEventListeners 'onStatusUpdate'
-      eq mpd.status.state, "stop"
-    mpd.stop()
 ]
 
 runTest = (test, args...) ->
@@ -184,12 +187,13 @@ runTest = (test, args...) ->
   if not cur_test.running()
     # test is over
     mpd.close()
+    runNextTest()
   render()
 
-runTests = ->
-  for test in tests
+runNextTest = ->
+  if test_index < tests.length
     mpd = new Mpd()
-    runTest(test)
+    runTest(tests[test_index++])
 
 $(document).ready ->
   Handlebars.registerHelper 'hash', (context, options) ->
@@ -198,4 +202,4 @@ $(document).ready ->
       ret += options.fn(v)
     ret
 
-  runTests()
+  runNextTest()

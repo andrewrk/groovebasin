@@ -12,6 +12,7 @@ context =
 mpd = null
 base_title = document.title
 track_start_date = null
+userIsSeeking = false
 
 renderPlaylist = ->
   $("#queue").html Handlebars.templates.playlist(context)
@@ -90,12 +91,20 @@ setUpUi = ->
         action()
         return false
 
+  seekTrack = (event, ui) ->
+    return if not event.originalEvent?
+    mpd.seek ui.value * context.status.time
   $("#track-slider").slider
     step: 0.0001
     min: 0
     max: 1
+    change: seekTrack
+    start: (event, ui) -> userIsSeeking = true
+    stop: (event, ui) -> userIsSeeking = false
+
   # move the slider along the path
   schedule 100, ->
+    return if userIsSeeking
     if context.status?.time? and track_start_date? and context.status.current_item? and context.status.state == "play"
       diff_sec = (new Date() - track_start_date) / 1000
       $("#track-slider").slider("option", "value", diff_sec / context.status.time)

@@ -443,6 +443,19 @@ class Mpd
               callback()
               @raiseEvent 'onStatusUpdate'
 
+  getRandomTrack: (cb) =>
+    random_artist = @library.artist_list[Math.floor(Math.random() * @library.artist_list.length)]
+    f = =>
+      tracks = []
+      for _, album of random_artist.albums
+        for _, track of album.tracks
+          tracks.push track
+      cb tracks[Math.floor(Math.random() * tracks.length)]
+    if random_artist.albums?
+      f()
+    else
+      @updateArtistInfo random_artist.name, f
+
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""
   clear: => @sendCommand "clear"
@@ -456,17 +469,7 @@ class Mpd
   playId: (track_id) =>
     @sendCommand "playid #{escape(track_id)}"
 
-  close: => @send "close"
+  close: => @send "close" # bypass message queue
 
-  getRandomTrack: (cb) =>
-    random_artist = @library.artist_list[Math.floor(Math.random() * @library.artist_list.length)]
-    f = =>
-      tracks = []
-      for _, album of random_artist.albums
-        for _, track of album.tracks
-          tracks.push track
-      cb tracks[Math.floor(Math.random() * tracks.length)]
-    if random_artist.albums?
-      f()
-    else
-      @updateArtistInfo random_artist.name, f
+  # in seconds
+  seek: (pos) => @sendCommand "seekcur #{Math.round(parseFloat(pos))}"

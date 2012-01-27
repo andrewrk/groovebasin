@@ -188,6 +188,11 @@ tests = [
 
     mpd.play()
   ->
+    lets_test "seeking current track"
+    mpdEvent 1, 'onStatusUpdate', ->
+      ok mpd.status.elapsed >= mpd.status.time / 2
+    mpd.seek mpd.status.time / 2
+  ->
     lets_test "clear playlist 2"
     mpdEvent 1, 'onPlaylistUpdate', ->
       eq mpd.playlist.item_list.length, 0

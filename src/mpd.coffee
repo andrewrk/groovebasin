@@ -236,6 +236,10 @@ class Mpd
     @status =
       current_item: null
 
+  removeEventListeners: (event_name) =>
+    handlers = @nameToHandlers[event_name]
+    handlers.length = 0
+    
   removeListener: (registrar, handler) =>
     handlers = @nameToHandlers[registrar._name]
     for h, i in handlers
@@ -446,5 +450,4 @@ class Mpd
   playId: (track_id) =>
     @sendCommand "playid #{escape(track_id)}"
 
-  close: =>
-    @socket.emit "disconnect"
+  close: => @send "close"

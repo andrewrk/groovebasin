@@ -107,7 +107,10 @@ setUpUi = ->
     return if userIsSeeking
     if context.status?.time? and track_start_date? and context.status.current_item? and context.status.state == "play"
       diff_sec = (new Date() - track_start_date) / 1000
+      $("#track-slider").show()
       $("#track-slider").slider("option", "value", diff_sec / context.status.time)
+    else
+      $("#track-slider").hide()
 
   # debug text box
   $("#line").keydown (event) ->

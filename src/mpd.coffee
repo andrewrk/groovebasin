@@ -178,7 +178,7 @@ class Mpd
   
   MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
   constructor: ->
-    @socket = io.connect()
+    @socket = io.connect(undefined, {'force new connection': true})
     @buffer = ""
     @msgHandlerQueue = []
     # assign to console to enable message passing debugging

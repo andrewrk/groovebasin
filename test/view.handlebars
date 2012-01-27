@@ -1,4 +1,4 @@
-<p> {{pass}} passed, {{fail}} failed.  </p>
+<p> {{pass}} passed, {{fail}} failed, {{running}} still running.  </p>
 <table border="1">
   <tr>
     <th>Status</th>
@@ -7,7 +7,7 @@
   </tr>
   {{#hash results}}
     <tr>
-      <td class="{{#if success}}pass{{else}}fail{{/if}}">
+      <td class="{{status}}">
       </td>
       <td>
         {{name}}

@@ -140,7 +140,7 @@ class Mpd
     @msgHandlerQueue.shift().cb(msg)
 
   send: (msg) =>
-    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1].debug_id}: " + JSON.stringify(msg)
+    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
     @socket.emit 'ToMpd', msg + "\n"
 
   getOrCreate: (key, table, list, initObjFunc) =>
@@ -435,6 +435,7 @@ class Mpd
 
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""
+  clear: => @sendCommand "clear"
 
   stop: => @sendCommand "stop"
   play: => @sendCommand "play"

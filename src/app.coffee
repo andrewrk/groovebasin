@@ -51,10 +51,12 @@ render = ->
   renderNowPlaying()
 
 setUpUi = ->
-  $("#queue").on 'click', 'a.track', (event) ->
+  $queue = $("#queue")
+  $queue.on 'click', 'a.track', (event) ->
     track_id = $(event.target).data('id')
     mpd.playId track_id
     return false
+  $queue.on 'click', 'a.clear', -> mpd.clear()
 
   $library = $("#library")
   $library.on 'click', 'a.artist', (event) ->

@@ -143,44 +143,38 @@ tests = [
             # save for next test
             album_tracks.push track
 
-        lets_test "clear playlist 2"
         tracks_to_add = album_tracks[0..2]
-        mpdEvent 1, 'onPlaylistUpdate', ->
+        lets_test "add tracks such as '#{tracks_to_add[0].name}' to playlist"
+        count = 0
+        mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
+          count += 1
+          eq mpd.playlist.item_list.length, count
+          eq tracks_to_add[count-1].name, mpd.playlist.item_list[count-1].track.name
+          eq tracks_to_add[count-1].file, mpd.playlist.item_list[count-1].track.file
+          eq tracks_to_add[count-1].time, mpd.playlist.item_list[count-1].track.time
+          eq tracks_to_add[count-1].artist, mpd.playlist.item_list[count-1].track.artist
+
+          if count < tracks_to_add.length
+            mpd.queueFile tracks_to_add[count].file
+            return
+          
           mpd.removeEventListeners 'onPlaylistUpdate'
-          eq mpd.playlist.item_list.length, 0
 
-          lets_test "add tracks such as '#{tracks_to_add[0].name}' to playlist"
+
+          lets_test "playing a track"
+          id_to_play = mpd.playlist.item_list[mpd.playlist.item_list.length-1].id
           count = 0
-          mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
-            count += 1
-            eq mpd.playlist.item_list.length, count
-            eq tracks_to_add[count-1].name, mpd.playlist.item_list[count-1].track.name
-            eq tracks_to_add[count-1].file, mpd.playlist.item_list[count-1].track.file
-            eq tracks_to_add[count-1].time, mpd.playlist.item_list[count-1].track.time
-            eq tracks_to_add[count-1].artist, mpd.playlist.item_list[count-1].track.artist
+          mpdEvent 3, 'onStatusUpdate', ->
+            # call updateStatus again to flush the event queue
+            mpd.updateStatus()
+            return if count++ < 3
+            mpd.removeEventListeners 'onStatusUpdate'
 
-            if count < tracks_to_add.length
-              mpd.queueFile tracks_to_add[count].file
-              return
-            
-            mpd.removeEventListeners 'onPlaylistUpdate'
+            eq mpd.status.state, "play"
+            eq mpd.status.current_item.id, id_to_play
 
-
-            lets_test "playing a track"
-            id_to_play = mpd.playlist.item_list[mpd.playlist.item_list.length-1].id
-            count = 0
-            mpdEvent 3, 'onStatusUpdate', ->
-              # call updateStatus again to flush the event queue
-              mpd.updateStatus()
-              return if count++ < 3
-              mpd.removeEventListeners 'onStatusUpdate'
-
-              eq mpd.status.state, "play"
-              eq mpd.status.current_item.id, id_to_play
-
-            mpd.playId id_to_play
-          mpd.queueFile tracks_to_add[count].file
-        mpd.clear()
+          mpd.playId id_to_play
+        mpd.queueFile tracks_to_add[count].file
       mpd.updateArtistInfo random_artist.name
   ->
     lets_test "pausing a track"
@@ -197,22 +191,29 @@ tests = [
   ->
     lets_test "seeking current track"
     mpdEvent 1, 'onStatusUpdate', ->
-      ok mpd.status.elapsed >= mpd.status.time / 2
-    mpd.seek mpd.status.time / 2
+      mpd.removeEventListeners 'onStatusUpdate'
+      ok mpd.status.state, 'play'
+      mpdEvent 1, 'onStatusUpdate', ->
+        ok mpd.status.elapsed >= mpd.status.time / 2
+      mpd.seek mpd.status.time / 2
   ->
     lets_test "remove item from playlist"
     mpdEvent 1, 'onPlaylistUpdate', ->
       mpd.removeEventListeners 'onPlaylistUpdate'
       old_len = mpd.playlist.item_list.length
+      ok old_len > 0
       mpdEvent 1, 'onPlaylistUpdate', ->
-        ok mpd.playlist.item_list.length, old_len - 1
+        eq mpd.playlist.item_list.length, old_len - 1
       mpd.removeId mpd.playlist.item_list[0].id
   ->
     lets_test "clear playlist 3"
     mpdEvent 1, 'onPlaylistUpdate', ->
-      eq mpd.playlist.item_list.length, 0
+      mpd.removeEventListeners 'onPlaylistUpdate'
 
-    mpd.clear()
+      mpdEvent 1, 'onPlaylistUpdate', ->
+        eq mpd.playlist.item_list.length, 0
+
+      mpd.clear()
   ->
     lets_test "get random song"
     mpdEvent 1, 'onLibraryUpdate', ->
@@ -241,8 +242,10 @@ runTest = (test, args...) ->
 
 runNextTest = ->
   if test_index < tests.length
-    mpd = new Mpd()
-    runTest(tests[test_index++])
+    test_to_run = tests[test_index++]
+    wait 100, ->
+      mpd = new Mpd()
+      runTest(test_to_run)
 
 $(document).ready ->
   Handlebars.registerHelper 'hash', (context, options) ->

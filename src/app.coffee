@@ -3,15 +3,9 @@ schedule = (delay, func) -> window.setInterval(func, delay)
 
 context =
   playing: -> this.status?.state == 'play'
-  track_start_date: ->
-    elapsed = this.status?.elapsed
-    if not elapsed?
-      return null
-    new Date((new Date()) - elapsed * 1000)
 
 mpd = null
 base_title = document.title
-track_start_date = null
 userIsSeeking = false
 
 renderPlaylist = ->
@@ -19,6 +13,14 @@ renderPlaylist = ->
 
 renderLibrary = ->
   $("#library").html Handlebars.templates.library(context)
+
+updateSliderPos = ->
+  return if userIsSeeking
+  if context.status?.time? and context.status.track_start_date? and context.status.current_item? and context.status.state == "play"
+    diff_sec = (new Date() - context.status.track_start_date) / 1000
+    $("#track-slider").slider("option", "value", diff_sec / context.status.time)
+    $("#nowplaying .elapsed").html formatTime(diff_sec)
+    $("#nowplaying .left").html formatTime(context.status.time)
 
 renderNowPlaying = ->
   # set window title
@@ -48,9 +50,7 @@ renderNowPlaying = ->
     else
       $("#track-slider").show()
 
-  if context.status.time? and context.status.elapsed?
-    track_start_date = context.track_start_date()
-    $("#track-slider").slider("option", "value", context.status.elapsed / context.status.time)
+  updateSliderPos()
 
 render = ->
   renderPlaylist()
@@ -73,6 +73,7 @@ formatTime = (seconds) ->
   out = "#{hrs}:#{out}" if hrs
   out
 
+
 setUpUi = ->
   $queue = $("#queue")
   $queue.on 'click', 'a.track', (event) ->
@@ -80,14 +81,19 @@ setUpUi = ->
     mpd.playId track_id
     return false
   $queue.on 'click', 'a.remove', (event) ->
-    track_id = $(event.target).data('id')
+    $target = $(event.target)
+    track_id = $target.data('id')
     mpd.removeId track_id
     return false
   $queue.on 'click', 'a.clear', ->
     mpd.clear()
     return false
+  $queue.on 'click', 'a.randommix', ->
+    mpd.getRandomTrack (track) ->
+      mpd.queueFile track.file
+    return false
+
   $queue.on 'click', 'a.repopulate', ->
-    mpd.clear()
     for i in [0...20]
       mpd.getRandomTrack (track) ->
         mpd.queueFile track.file
@@ -119,9 +125,7 @@ setUpUi = ->
 
   seekTrack = (event, ui) ->
     return if not event.originalEvent?
-    context.status.elapsed = ui.value * context.status.time
-    track_start_date = context.track_start_date()
-    mpd.seek context.status.elapsed
+    mpd.seek ui.value * context.status.time
   $("#track-slider").slider
     step: 0.0001
     min: 0
@@ -133,13 +137,7 @@ setUpUi = ->
     stop: (event, ui) -> userIsSeeking = false
 
   # move the slider along the path
-  schedule 100, ->
-    return if userIsSeeking
-    if context.status?.time? and track_start_date? and context.status.current_item? and context.status.state == "play"
-      diff_sec = (new Date() - track_start_date) / 1000
-      $("#track-slider").slider("option", "value", diff_sec / context.status.time)
-      $("#nowplaying .elapsed").html formatTime(diff_sec)
-      $("#nowplaying .left").html formatTime(context.status.time)
+  schedule 100, updateSliderPos
 
   # debug text box
   $("#line").keydown (event) ->

@@ -37,7 +37,7 @@
 #   consume: true, # true -> remove tracks from playlist after done playing
 #   state: "play", # or "stop" or "pause"
 #   time: 234, # length of song in seconds
-#   elapsed: 100.230, # position in current song in seconds
+#   track_start_date: new Date(), # absolute datetime of now - position of current time
 #   bitrate: 192, # number of kbps
 # }
 
@@ -47,6 +47,9 @@ class Mpd
 
   DEFAULT_ARTIST = "[Unknown Artist]"
   DEFAULT_ALBUM = "[Unknown Album]"
+
+  elapsedToDate = (elapsed) ->
+    new Date((new Date()) - elapsed * 1000)
 
   startsWith = (string, str) -> string.substring(0, str.length) == str
   stripPrefixes = ['the ', 'a ', 'an ']
@@ -174,6 +177,78 @@ class Mpd
   handleIdleResults: (msg) =>
     (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
 
+  clearPlaylist: =>
+    clearArray @playlist.item_list
+    clearObject @playlist.item_table
+
+  anticipatePlayId: (track_id) =>
+    item = @playlist.item_table[track_id]
+    @status.current_item = item
+    @status.state = "play"
+    @status.time = item.track.time
+    @status.track_start_date = new Date()
+    @raiseEvent 'onStatusUpdate'
+
+  anticipateSkip: (direction) =>
+    next_item = @playlist.item_list[@status.current_item.pos + direction]
+    if next_item?
+      @anticipatePlayId next_item.id
+
+  addTracksToLibrary: (msg, mpdTracksHandler=noop) =>
+    if msg == ""
+      mpdTracksHandler []
+      return
+
+    # build list of tracks from msg
+    mpd_tracks = []
+    current_track = null
+    flush_current_track = ->
+      if current_track != null
+        mpd_tracks.push(current_track)
+      current_track = {}
+    for line in msg.split("\n")
+      [key, value] = line.split(": ")
+      if key == 'file'
+        flush_current_track()
+      current_track[key] = value
+    flush_current_track()
+
+    # convert to our track format and add to cache
+    track_table = @library.track_table
+    for mpd_track in mpd_tracks
+      track = @getOrCreateTrack(mpd_track.file)
+      $.extend track,
+        name: mpd_track.Title
+        track: mpd_track.Track
+        time: parseInt(mpd_track.Time)
+        artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
+        album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
+
+      album_tracks = track.album.tracks ||= {}
+      album_tracks[mpd_track.file] = track
+
+      artist_albums = track.artist.albums ||= {}
+      artist_albums[track.album.name] = track.album
+
+    # call the passed in function which might want to do extra things with mpd_tracks
+    mpdTracksHandler mpd_tracks
+
+    # notify listeners
+    @raiseEvent 'onLibraryUpdate'
+
+  rawSendCmd: (cmd, cb=noop) =>
+    @msgHandlerQueue.push
+      debug_id: @msgCounter++
+      cb: cb
+    @send cmd
+
+  handleIdleResultsLoop: (msg) =>
+    @handleIdleResults(msg)
+    # if we have nothing else to do, idle.
+    if @msgHandlerQueue.length == 0
+      @rawSendCmd "idle", @handleIdleResultsLoop
+
+
   ######################### public #####################
   
   MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
@@ -251,18 +326,6 @@ class Mpd
         handlers.splice i, 1
         return
 
-  rawSendCmd: (cmd, cb=noop) =>
-    @msgHandlerQueue.push
-      debug_id: @msgCounter++
-      cb: cb
-    @send cmd
-
-  handleIdleResultsLoop: (msg) =>
-    @handleIdleResults(msg)
-    # if we have nothing else to do, idle.
-    if @msgHandlerQueue.length == 0
-      @rawSendCmd "idle", @handleIdleResultsLoop
-
   sendCommand: (command, callback=noop) =>
     @send("noidle") if @idling
     @rawSendCmd command, callback
@@ -312,48 +375,6 @@ class Mpd
       # notify listeners
       @raiseEvent 'onLibraryUpdate'
 
-  addTracksToLibrary: (msg, mpdTracksHandler=noop) =>
-    if msg == ""
-      mpdTracksHandler []
-      return
-
-    # build list of tracks from msg
-    mpd_tracks = []
-    current_track = null
-    flush_current_track = ->
-      if current_track != null
-        mpd_tracks.push(current_track)
-      current_track = {}
-    for line in msg.split("\n")
-      [key, value] = line.split(": ")
-      if key == 'file'
-        flush_current_track()
-      current_track[key] = value
-    flush_current_track()
-
-    # convert to our track format and add to cache
-    track_table = @library.track_table
-    for mpd_track in mpd_tracks
-      track = @getOrCreateTrack(mpd_track.file)
-      $.extend track,
-        name: mpd_track.Title
-        track: mpd_track.Track
-        time: parseInt(mpd_track.Time)
-        artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
-        album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
-
-      album_tracks = track.album.tracks ||= {}
-      album_tracks[mpd_track.file] = track
-
-      artist_albums = track.artist.albums ||= {}
-      artist_albums[track.album.name] = track.album
-
-    # call the passed in function which might want to do extra things with mpd_tracks
-    mpdTracksHandler mpd_tracks
-
-    # notify listeners
-    @raiseEvent 'onLibraryUpdate'
-
   updateArtistInfo: (artist_name, cb=noop) =>
     @sendCommand "find artist \"#{escape(artist_name)}\"", (msg) =>
       @addTracksToLibrary msg
@@ -362,8 +383,7 @@ class Mpd
   updatePlaylist: (callback=noop) =>
     @sendCommand "playlistinfo", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
-        clearArray @playlist.item_list
-        clearObject @playlist.item_table
+        @clearPlaylist()
         for mpd_track in mpd_tracks
           id = parseInt(mpd_track.Id)
           obj =
@@ -402,12 +422,15 @@ class Mpd
         consume: parseInt(o.consume) != 0
         state: o.state
         time: null
-        elapsed: null
         bitrate: null
+        track_start_date: null
       
-      @status.time = parseInt(o.time.split(":")[1]) if o.time?
-      @status.elapsed = parseFloat(o.elapsed) if o.elapsed?
       @status.bitrate = parseInt(o.bitrate) if o.bitrate?
+
+      if o.time? and o.elapsed?
+        @status.time = parseInt(o.time.split(":")[1])
+        # add a field for the start date of the current track
+        @status.track_start_date = elapsedToDate(parseFloat(o.elapsed))
 
     @sendCommand "currentsong", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
@@ -446,7 +469,7 @@ class Mpd
       tracks = []
       for _, album of random_artist.albums
         for _, track of album.tracks
-          tracks.push track
+          tracks.push track if track.file?
       cb tracks[Math.floor(Math.random() * tracks.length)]
     if random_artist.albums?
       f()
@@ -455,21 +478,64 @@ class Mpd
 
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""
-  clear: => @sendCommand "clear"
+    item =
+      id: null
+      pos: @playlist.item_list.length
+      track: @library.track_table[file]
+    @playlist.item_list.push item
+    @raiseEvent 'onPlaylistUpdate'
 
-  stop: => @sendCommand "stop"
-  play: => @sendCommand "play"
-  pause: => @sendCommand "pause 1"
-  next: => @sendCommand "next"
-  prev: => @sendCommand "previous"
+  clear: =>
+    @sendCommand "clear"
+    @clearPlaylist()
+    @raiseEvent 'onPlaylistUpdate'
+
+  stop: =>
+    @sendCommand "stop"
+    @status.state = "stop"
+    @raiseEvent 'onStatusUpdate'
+
+  play: =>
+    @sendCommand "play"
+
+    if @status.state is "pause"
+      @status.state = "play"
+      @raiseEvent 'onStatusUpdate'
+
+  pause: =>
+    @sendCommand "pause 1"
+
+    if @status.state is "play"
+      @status.state = "pause"
+      @raiseEvent 'onStatusUpdate'
+
+  next: =>
+    @sendCommand "next"
+    @anticipateSkip 1
+
+  prev: =>
+    @sendCommand "previous"
+    @anticipateSkip -1
 
   playId: (track_id) =>
+    track_id = parseInt(track_id)
     @sendCommand "playid #{escape(track_id)}"
+    @anticipatePlayId track_id
+
   removeId: (track_id) =>
+    track_id = parseInt(track_id)
     @sendCommand "deleteid #{escape(track_id)}"
+    item = @playlist.item_table[track_id]
+    delete @playlist.item_table[item.id]
+    @playlist.item_list.splice(item.pos, 1)
+    @raiseEvent 'onPlaylistUpdate'
 
   close: => @send "close" # bypass message queue
 
   # in seconds
-  seek: (pos) => @sendCommand "seekcur #{Math.round(parseFloat(pos))}"
+  seek: (pos) =>
+    pos = parseFloat(pos)
+    @sendCommand "seekcur #{Math.round(pos)}"
+    @status.track_start_date = elapsedToDate(pos)
+    @raiseEvent 'onStatusUpdate'
 

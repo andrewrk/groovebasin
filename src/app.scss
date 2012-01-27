@@ -29,8 +29,12 @@ h1 {
 }
 
 #queue {
-  width: 600px;
+  width: 700px;
   float: left;
+
+  th {
+    font-weight: bold;
+  }
 
   tr:nth-child(2n+1) {
     background-color: #DCE0E5;

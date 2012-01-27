@@ -198,6 +198,12 @@ tests = [
     mpdEvent 1, 'onLibraryUpdate', ->
       mpdEvent 1, 'getRandomTrack', (track) ->
         ok track.file?
+  ->
+    lets_test "get several random songs very quickly"
+    mpdEvent 1, 'onLibraryUpdate', ->
+      for i in [0..20]
+        mpdEvent 1, 'getRandomTrack', (track) ->
+          ok track.file?
 ]
 
 runTest = (test, args...) ->

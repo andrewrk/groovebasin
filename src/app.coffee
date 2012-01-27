@@ -42,6 +42,12 @@ renderNowPlaying = ->
     [old_class, new_class] = toggle_icon[context.status.state]
     $("#nowplaying .toggle").removeClass(old_class).addClass(new_class)
 
+    # hide seeker bar if stopped
+    if context.status.state is "stop"
+      $("#track-slider").hide()
+    else
+      $("#track-slider").show()
+
   if context.status.time? and context.status.elapsed?
     track_start_date = context.track_start_date()
     $("#track-slider").slider("option", "value", context.status.elapsed / context.status.time)
@@ -50,6 +56,22 @@ render = ->
   renderPlaylist()
   renderLibrary()
   renderNowPlaying()
+
+formatTime = (seconds) ->
+  divide = (numerator, denominator) ->
+    [Math.floor(numerator / denominator), numerator % denominator]
+
+  pad = (n, len) ->
+    while n.toString().length < len
+      n = "0" + n
+    n
+
+  [min, sec]  = divide(seconds, 60)
+  [hrs, min]  = divide(min, 60)
+  sec = pad(Math.floor(sec), 2)
+  out = "#{min}:#{sec}"
+  out = "#{hrs}:#{out}" if hrs
+  out
 
 setUpUi = ->
   $queue = $("#queue")
@@ -101,6 +123,8 @@ setUpUi = ->
     min: 0
     max: 1
     change: seekTrack
+    slide: (event, ui) ->
+      $("#nowplaying .elapsed").html formatTime(ui.value * context.status.time)
     start: (event, ui) -> userIsSeeking = true
     stop: (event, ui) -> userIsSeeking = false
 
@@ -109,10 +133,9 @@ setUpUi = ->
     return if userIsSeeking
     if context.status?.time? and track_start_date? and context.status.current_item? and context.status.state == "play"
       diff_sec = (new Date() - track_start_date) / 1000
-      $("#track-slider").show()
       $("#track-slider").slider("option", "value", diff_sec / context.status.time)
-    else
-      $("#track-slider").hide()
+      $("#nowplaying .elapsed").html formatTime(diff_sec)
+      $("#nowplaying .left").html formatTime(context.status.time)
 
   # debug text box
   $("#line").keydown (event) ->

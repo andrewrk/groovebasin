@@ -445,3 +445,5 @@ class Mpd
   playId: (track_id) =>
     @sendCommand "playid #{escape(track_id)}"
 
+  close: =>
+    @socket.emit "disconnect"

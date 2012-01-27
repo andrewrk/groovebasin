@@ -1,0 +1,20 @@
+<p> {{pass}} passed, {{fail}} failed.  </p>
+<table border="1">
+  <tr>
+    <th>Status</th>
+    <th>Name</th>
+    <th>Details</th>
+  </tr>
+  {{#hash results}}
+    <tr>
+      <td class="{{#if success}}pass{{else}}fail{{/if}}">
+      </td>
+      <td>
+        {{name}}
+      </td>
+      <td>
+        {{{details}}}
+      </td>
+    </tr>
+  {{/hash}}
+</table>

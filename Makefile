@@ -4,6 +4,9 @@ views=views/*.handlebars
 src=src/*.coffee
 scss=src/app.scss
 
+testjs=public/test.js
+testsrc=test/test.coffee src/mpd.coffee
+testview=test/view.handlebars
 
 ifeq ($(DEBUG),) # if not debugging
 coffee_min=| uglifyjs
@@ -14,7 +17,7 @@ endif
 
 .PHONY: build clean
 
-build: $(appjs)  $(appcss)
+build: $(appjs) $(appcss) $(testjs) $(testhtml)
 
 $(appjs): $(views) $(src)
 	cat $(src) | coffee -ps $(coffee_min) >$(appjs)
@@ -23,6 +26,10 @@ $(appjs): $(views) $(src)
 $(appcss): $(scss)
 	sass --no-cache --scss $(sass_min) $(scss) $(appcss)
 
+$(testjs): $(testview) $(testsrc)
+	cat $(testsrc) | coffee -ps >$(testjs)
+	handlebars $(testview) >>$(testjs)
+
 clean:
-	rm -f $(appjs) $(appcss)
+	rm -f $(appjs) $(appcss) $(testjs)
 

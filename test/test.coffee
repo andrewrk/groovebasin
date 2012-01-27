@@ -135,16 +135,25 @@ tests = [
           lets_test "add tracks such as '#{tracks_to_add[0].name}' to playlist"
           count = 0
           mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
-            mpd.removeEventListeners 'onPlaylistUpdate'
             count += 1
             eq mpd.playlist.item_list.length, count
+            eq track.name, mpd.playlist.item_list[count-1].track.name
+            eq track.file, mpd.playlist.item_list[count-1].track.file
+            eq track.time, mpd.playlist.item_list[count-1].track.time
+            eq track.artist, mpd.playlist.item_list[count-1].track.artist
+
+            if count < tracks_to_add.length
+              mpd.queueFile tracks_to_add[count].file
+              return
+            
+            mpd.removeEventListeners 'onPlaylistUpdate'
 
             lets_test "clear playlist 2"
             mpdEvent 1, 'onPlaylistUpdate', ->
               mpd.removeEventListeners 'onPlaylistUpdate'
               eq mpd.playlist.item_list.length, 0
             mpd.clear()
-          mpd.queueFile track.file for track in tracks_to_add
+          mpd.queueFile tracks_to_add[count].file
         mpd.clear()
       mpd.updateArtistInfo random_artist.name
  

@@ -78,7 +78,7 @@ setUpUi = ->
   $nowplaying = $("#nowplaying")
   for span, action of actions
     do (span, action) ->
-      $nowplaying.on 'click', "span.#{span}", (event) ->
+      $nowplaying.on 'mousedown', "span.#{span}", (event) ->
         action()
         return false
 

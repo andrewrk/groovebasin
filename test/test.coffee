@@ -76,35 +76,35 @@ fail = (msg) ->
   throw "TestFail"
 
 tests = [
- ->
-   lets_test "connection to mpd"
-   mpdEvent 1, 'sendCommand', "status", (msg) ->
-     ok /^playlist:/m.test(msg)
-     ok /^repeat:/m.test(msg)
-     ok /^random:/m.test(msg)
- ->
-   lets_test "two instances of mpd"
-   mpdEvent 1, 'sendCommand', "status", (msg) ->
-     ok /^playlist:/m.test(msg)
-     ok /^repeat:/m.test(msg)
-     ok /^random:/m.test(msg)
- ->
-   lets_test "remove event listeners"
-   count = 0
-   mpdEvent 1, 'onStatusUpdate', ->
-     count += 1
-     ok count < 2
-     mpd.removeEventListeners 'onStatusUpdate'
-     mpdEvent 1, 'onStatusUpdate', ->
-       ok true
-     mpd.updateStatus()
-   mpd.updateStatus()
+  ->
+    lets_test "connection to mpd"
+    mpdEvent 1, 'sendCommand', "status", (msg) ->
+      ok /^playlist:/m.test(msg)
+      ok /^repeat:/m.test(msg)
+      ok /^random:/m.test(msg)
+  ->
+    lets_test "two instances of mpd"
+    mpdEvent 1, 'sendCommand', "status", (msg) ->
+      ok /^playlist:/m.test(msg)
+      ok /^repeat:/m.test(msg)
+      ok /^random:/m.test(msg)
+  ->
+    lets_test "remove event listeners"
+    count = 0
+    mpdEvent 1, 'onStatusUpdate', ->
+      count += 1
+      ok count < 2
+      mpd.removeEventListeners 'onStatusUpdate'
+      mpdEvent 1, 'onStatusUpdate', ->
+        ok true
+      mpd.updateStatus()
+    mpd.updateStatus()
   ->
     lets_test "get artist list and detailed info"
     mpdEvent 1, 'onLibraryUpdate', ->
       ok mpd.library.artist_list.length > 1
       mpd.removeEventListeners 'onLibraryUpdate'
-
+ 
       rand_index = Math.floor(Math.random()*mpd.library.artist_list.length)
       random_artist = mpd.library.artist_list[rand_index]
       mpdEvent 1, 'onLibraryUpdate', ->
@@ -117,13 +117,13 @@ tests = [
             eq track.artist, random_artist
             eq track.album, album
       mpd.updateArtistInfo random_artist.name
-
+ 
     mpd.updateArtistList()
- ->
-   lets_test "get current track"
-   mpdEvent 1, 'onStatusUpdate', ->
-     ok mpd.status.state is "play" or mpd.status.state is "stop" or mpd.status.state is "pause"
-   mpd.updateStatus()
+  ->
+    lets_test "get current track"
+    mpdEvent 1, 'onStatusUpdate', ->
+      ok mpd.status.state is "play" or mpd.status.state is "stop" or mpd.status.state is "pause"
+    mpd.updateStatus()
 ]
 
 runTest = (test, args...) ->

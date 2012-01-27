@@ -35,6 +35,7 @@ mpdEvent = (expect_calls, event, args..., cb) ->
   active_mpd = mpd
   mpd[event] args..., (cb_args...) ->
     active_test.threads[thread_name] -= 1
+    return if active_test.threads[thread_name] < 0
     temp = [cur_test, mpd]
     cur_test = active_test
     mpd = active_mpd
@@ -48,6 +49,7 @@ lets_test = (name) ->
     success: true
     threads: {}
     running: ->
+      return false if not this.success
       sum = 0
       sum += count for _, count of this.threads
       sum > 0
@@ -175,6 +177,34 @@ tests = [
       mpd.updateArtistInfo random_artist.name
  
     mpd.updateArtistList()
+  ->
+    lets_test "pausing a track"
+    count = 0
+    mpdEvent 3, 'onStatusUpdate', ->
+      mpd.updateStatus()
+      return if count++ < 3
+      mpd.removeEventListeners 'onStatusUpdate'
+      eq mpd.status.state, "pause"
+
+    mpd.pause()
+  ->
+    lets_test "unpausing a track"
+    count = 0
+    mpdEvent 3, 'onStatusUpdate', ->
+      mpd.updateStatus()
+      return if count++ < 3
+      mpd.removeEventListeners 'onStatusUpdate'
+      eq mpd.status.state, "play"
+
+    mpd.play()
+  ->
+    lets_test "clear playlist 2"
+    count = 0
+    mpdEvent 1, 'onPlaylistUpdate', ->
+      mpd.removeEventListeners 'onPlaylistUpdate'
+      eq mpd.playlist.item_list.length, 0
+
+    mpd.clear()
 ]
 
 runTest = (test, args...) ->

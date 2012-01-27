@@ -470,4 +470,3 @@ class Mpd
       f()
     else
       @updateArtistInfo random_artist.name, f
-    

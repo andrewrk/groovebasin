@@ -90,6 +90,14 @@ setUpUi = ->
       diff_sec = (new Date() - track_start_date) / 1000
       $("#track-slider").slider("option", "value", diff_sec / context.status.time)
 
+  # debug text box
+  $("#line").keydown (event) ->
+    if event.keyCode == 13
+      line = $("#line").val()
+      $("#line").val('')
+      mpd.sendCommand line, (msg) ->
+        $("#text").val(msg)
+
 
 initHandlebars = ->
   Handlebars.registerHelper 'hash', (context, options) ->

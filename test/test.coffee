@@ -74,12 +74,4 @@ $(document).ready ->
       ret += options.fn(v)
     ret
 
-  # debug text box
-  $("#line").keydown (event) ->
-    if event.keyCode == 13
-      line = $("#line").val()
-      $("#line").val('')
-      mpd.sendCommand line, (msg) ->
-        $("#text").val(msg)
-
   runTests()

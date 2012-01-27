@@ -409,9 +409,6 @@ class Mpd
       @status.elapsed = parseFloat(o.elapsed) if o.elapsed?
       @status.bitrate = parseInt(o.bitrate) if o.bitrate?
 
-      # temporarily set current item to null until we figure it out in the currentsong command
-      @status.current_item = null
-
     @sendCommand "currentsong", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
         if mpd_tracks.length == 0

@@ -1,5 +1,4 @@
-* add tests
-* seeker bar
+* use album artist over artist when we have it
 * display track time
 * same track multiple times in playlist doesn't show up
 * sometimes updatePlaylist and updateStatus get into a loop calling each other

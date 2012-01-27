@@ -93,7 +93,9 @@ setUpUi = ->
 
   seekTrack = (event, ui) ->
     return if not event.originalEvent?
-    mpd.seek ui.value * context.status.time
+    context.status.elapsed = ui.value * context.status.time
+    track_start_date = context.track_start_date()
+    mpd.seek context.status.elapsed
   $("#track-slider").slider
     step: 0.0001
     min: 0

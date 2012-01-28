@@ -150,8 +150,9 @@ class Mpd
     handler(args...) for handler in handlersList
 
   handleMessage: (msg) =>
-    @debugMsgConsole?.log "get-: #{@msgHandlerQueue[0].debug_id}: " + JSON.stringify(msg)
-    @msgHandlerQueue.shift().cb(msg)
+    handler = @msgHandlerQueue.shift()
+    @debugMsgConsole?.log "get-: #{handler.debug_id}: " + JSON.stringify(msg)
+    handler.cb(msg) if msg?
 
   send: (msg) =>
     @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
@@ -287,6 +288,8 @@ class Mpd
         [line, code, str] = m
         if code == "ACK"
           @raiseEvent 'onError', str
+          # flush the handler
+          @handleMessage null
         else if line.indexOf("OK MPD") == 0
           # new connection, ignore
         else

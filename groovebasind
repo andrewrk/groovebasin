@@ -30,32 +30,18 @@ app = http.createServer((request, response) ->
 ).listen(nconf.get('http:port'))
 console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 
-# check for mpd
-connect_mpd = (connected_callback=->) ->
-  # have to pass in the 'connection' event handler.
-  # once we call connect(), it's too late to attach a handler for 'connection'.
-  mpd_socket = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
-    console.log 'mpd connected'
-    connected_callback()
-  mpd_socket.on 'end', -> console.log 'mpd disconnected'
-  mpd_socket
-(->
-  console.log "Checking for mpd daemon"
-  mpd = connect_mpd ->
-    console.log "Found mpd daemon. Closing test socket."
-    mpd.end()
-  mpd.on 'error', ->
-    console.log "ERROR: No mpd daemon found."
-)()
-
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
-  mpd = connect_mpd()
+  mpd = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
+    console.log "mpd connect"
   mpd.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd.on 'end', ->
+    console.log "mpd disconnect"
     try socket.emit 'disconnect'
+  mpd.on 'error', ->
+    console.log "No mpd daemon found."
 
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data

@@ -228,9 +228,11 @@ class Mpd
     track_table = @library.track_table
     for mpd_track in mpd_tracks
       track = @getOrCreateTrack(mpd_track.file)
+      track_number = parseInt(mpd_track.Track)
+      track_number = "" if isNaN(track_number)
       $.extend track,
         name: mpd_track.Title
-        track: mpd_track.Track
+        track: track_number
         time: parseInt(mpd_track.Time)
         artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
         album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)

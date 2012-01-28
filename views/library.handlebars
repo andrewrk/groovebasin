@@ -12,7 +12,7 @@
           {{#hash albums}}
             <li class="expand"><a href="#" class="album">{{name}}</a>
               <ul>
-                {{#hash tracks}}
+                {{#hash tracks orderby="track,name"}}
                   <li>
                   <a href="#" class="track" data-file="{{file}}">{{#if track}}{{track}}. {{/if}}{{name}}</a>
                   </li>

@@ -545,6 +545,8 @@ class Mpd
 
   removeId: (track_id) =>
     track_id = parseInt(track_id)
+    if @status.current_item?.id == track_id
+      @anticipateSkip 1
     @sendCommand "deleteid #{escape(track_id)}"
     item = @playlist.item_table[track_id]
     delete @playlist.item_table[item.id]

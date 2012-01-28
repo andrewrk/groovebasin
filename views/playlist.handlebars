@@ -16,7 +16,7 @@
       <th>Actions</th>
     </tr>
     {{#playlist}}
-      <tr>
+      <tr{{#if id}} id="playlist-track-{{id}}"{{/if}}>
         <td>{{track.track}}</td>
         <td>
           <a href="#" class="track" data-id="{{id}}">{{track.name}}</a>

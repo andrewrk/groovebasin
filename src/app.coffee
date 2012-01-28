@@ -9,7 +9,12 @@ base_title = document.title
 userIsSeeking = false
 
 renderPlaylist = ->
-  $("#queue").html Handlebars.templates.playlist(context)
+  $queue = $("#queue")
+  $queue.html Handlebars.templates.playlist(context)
+
+  if (cur_id = context.status?.current_item?.id)?
+    $("#playlist-track-#{cur_id}").addClass('current')
+
 
 renderLibrary = ->
   $("#library").html Handlebars.templates.library(context)
@@ -96,7 +101,6 @@ setUpUi = ->
     return false
 
   $queue.on 'click', 'a.repopulate', ->
-    mpd.clear()
     mpd.queueRandomTracks 20
     return false
 
@@ -164,7 +168,9 @@ $(document).ready ->
   mpd.onError (msg) -> alert msg
   mpd.onLibraryUpdate renderLibrary
   mpd.onPlaylistUpdate renderPlaylist
-  mpd.onStatusUpdate renderNowPlaying
+  mpd.onStatusUpdate ->
+    renderNowPlaying()
+    renderPlaylist()
   context.artists = mpd.library.artist_list
   context.playlist = mpd.playlist.item_list
   context.status = mpd.status

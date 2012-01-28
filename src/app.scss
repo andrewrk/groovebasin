@@ -39,4 +39,13 @@ h1 {
   tr:nth-child(2n+1) {
     background-color: #DCE0E5;
   }
+
+  tr.current {
+    background-color: #2A2A2A;
+    color: #ffffff;
+
+    a {
+      color: #ffffff;
+    }
+  }
 }

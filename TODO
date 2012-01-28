@@ -1,3 +1,4 @@
+* not going to the end of the song like it should
 * same track multiple times in playlist doesn't show up
 * sometimes updatePlaylist and updateStatus get into a loop calling each other
 * handle albums better

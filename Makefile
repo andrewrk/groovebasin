@@ -20,7 +20,7 @@ endif
 build: $(appjs) $(appcss) $(testjs) $(testhtml)
 
 $(appjs): $(views) $(src)
-	cat $(src) | coffee -ps $(coffee_min) >$(appjs)
+	(cat $(src) | coffee -ps $(coffee_min) >$@) || (rm -f $@; exit 1)
 	handlebars $(views) $(handlebars_min) -k if -k each -k hash >>$(appjs)
 
 $(appcss): $(scss)

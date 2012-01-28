@@ -16,11 +16,14 @@ renderLibrary = ->
 
 updateSliderPos = ->
   return if userIsSeeking
-  if context.status?.time? and context.status.track_start_date? and context.status.current_item? and context.status.state == "play"
+  return if not context.status?.time? or not context.status.current_item?
+  if context.status.track_start_date? and context.status.state == "play"
     diff_sec = (new Date() - context.status.track_start_date) / 1000
-    $("#track-slider").slider("option", "value", diff_sec / context.status.time)
-    $("#nowplaying .elapsed").html formatTime(diff_sec)
-    $("#nowplaying .left").html formatTime(context.status.time)
+  else
+    diff_sec = context.status.elapsed
+  $("#track-slider").slider("option", "value", diff_sec / context.status.time)
+  $("#nowplaying .elapsed").html formatTime(diff_sec)
+  $("#nowplaying .left").html formatTime(context.status.time)
 
 renderNowPlaying = ->
   # set window title

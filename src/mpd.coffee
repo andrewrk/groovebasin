@@ -48,8 +48,8 @@ class Mpd
   DEFAULT_ARTIST = "[Unknown Artist]"
   DEFAULT_ALBUM = "[Unknown Album]"
 
-  elapsedToDate = (elapsed) ->
-    new Date((new Date()) - elapsed * 1000)
+  elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
+  dateToElapsed = (date) -> ((new Date()) - date) / 1000
 
   startsWith = (string, str) -> string.substring(0, str.length) == str
   stripPrefixes = ['the ', 'a ', 'an ']
@@ -441,8 +441,10 @@ class Mpd
 
       if o.time? and o.elapsed?
         @status.time = parseInt(o.time.split(":")[1])
+        # we still add elapsed for when its paused
+        @status.elapsed = parseFloat(o.elapsed)
         # add a field for the start date of the current track
-        @status.track_start_date = elapsedToDate(parseFloat(o.elapsed))
+        @status.track_start_date = elapsedToDate(@status.elapsed)
 
     @sendCommand "currentsong", (msg) =>
       @addTracksToLibrary msg, (mpd_tracks) =>
@@ -516,6 +518,7 @@ class Mpd
     @sendCommand "play"
 
     if @status.state is "pause"
+      @status.track_start_date = elapsedToDate(@status.elapsed)
       @status.state = "play"
       @raiseEvent 'onStatusUpdate'
 
@@ -523,6 +526,7 @@ class Mpd
     @sendCommand "pause 1"
 
     if @status.state is "play"
+      @status.elapsed = dateToElapsed(@status.track_start_date)
       @status.state = "pause"
       @raiseEvent 'onStatusUpdate'
 

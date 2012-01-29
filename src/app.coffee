@@ -66,20 +66,16 @@ render = ->
   renderNowPlaying()
 
 formatTime = (seconds) ->
-  divide = (numerator, denominator) ->
-    [Math.floor(numerator / denominator), numerator % denominator]
-
-  pad = (n, len) ->
-    while n.toString().length < len
-      n = "0" + n
-    n
-
-  [min, sec]  = divide(seconds, 60)
-  [hrs, min]  = divide(min, 60)
-  sec = pad(Math.floor(sec), 2)
-  out = "#{min}:#{sec}"
-  out = "#{hrs}:#{out}" if hrs
-  out
+  minutes = Math.floor seconds / 60
+  seconds -= minutes * 60
+  hours = Math.floor minutes / 60
+  minutes -= hours * 60
+  zfill = (n) ->
+    if n < 10 then "0" + n else "" + n
+  if hours != 0
+    return "#{hours}:#{zfill minutes}:#{zfill seconds}"
+  else
+    return "#{minutes}:#{zfill seconds}"
 
 
 setUpUi = ->
@@ -152,19 +148,8 @@ setUpUi = ->
       mpd.sendCommand line, (msg) ->
         $("#text").val(msg)
 
-
 initHandlebars = ->
-  Handlebars.registerHelper 'time', (seconds) ->
-    minutes = Math.floor seconds / 60
-    seconds -= minutes * 60
-    hours = Math.floor minutes / 60
-    minutes -= hours * 60
-    zfill = (n) ->
-      if n < 10 then "0" + n else "" + n
-    if hours != 0
-      return "#{hours}:#{zfill minutes}:#{zfill seconds}"
-    else
-      return "#{minutes}:#{zfill seconds}"
+  Handlebars.registerHelper 'time', formatTime
   Handlebars.registerHelper 'hash', (context, options) ->
     values = (v for k,v of context)
     if options.hash.orderby?

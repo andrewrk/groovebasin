@@ -168,7 +168,7 @@ $(document).ready ->
   setUpUi()
   initHandlebars()
 
-  mpd = new Mpd()
+  mpd = new window.Mpd()
   mpd.onError (msg) -> alert msg
   mpd.onLibraryUpdate renderLibrary
   mpd.onPlaylistUpdate renderPlaylist

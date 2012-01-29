@@ -41,91 +41,98 @@
 #   bitrate: 192, # number of kbps
 # }
 
+######################### global #####################
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
-class Mpd
-  ######################### private #####################
 
-  DEFAULT_ARTIST = "[Unknown Artist]"
-  DEFAULT_ALBUM = "[Unknown Album]"
 
-  elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
-  dateToElapsed = (date) -> ((new Date()) - date) / 1000
+######################### static #####################
+DEFAULT_ARTIST = "[Unknown Artist]"
+DEFAULT_ALBUM = "[Unknown Album]"
 
-  startsWith = (string, str) -> string.substring(0, str.length) == str
-  stripPrefixes = ['the ', 'a ', 'an ']
-  sortableTitle = (title) ->
-    t = title.toLowerCase()
-    for prefix in stripPrefixes
-      if startsWith(t, prefix)
-        t = t.substring(prefix.length)
-        break
-    t
+MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
 
-  titleCompare = (a,b) ->
-    _a = sortableTitle(a)
-    _b = sortableTitle(b)
-    if _a < _b
+elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
+dateToElapsed = (date) -> ((new Date()) - date) / 1000
+
+startsWith = (string, str) -> string.substring(0, str.length) == str
+stripPrefixes = ['the ', 'a ', 'an ']
+sortableTitle = (title) ->
+  t = title.toLowerCase()
+  for prefix in stripPrefixes
+    if startsWith(t, prefix)
+      t = t.substring(prefix.length)
+      break
+  t
+
+titleCompare = (a,b) ->
+  _a = sortableTitle(a)
+  _b = sortableTitle(b)
+  if _a < _b
+    -1
+  else if _a > _b
+    1
+  else
+    # At this point we compare the original strings. Our cache update code
+    # depends on this behavior.
+    if a < b
       -1
-    else if _a > _b
+    else if a > b
       1
     else
-      # At this point we compare the original strings. Our cache update code
-      # depends on this behavior.
-      if a < b
-        -1
-      else if a > b
-        1
-      else
-        0
+      0
 
-  bSearch = (list, obj, accessor, compare) ->
-    # binary search list
-    needle = accessor(obj)
-    high = list.length - 1
-    low = 0
-    while low <= high
-      mid = Math.floor((low + high) / 2)
-      elem = accessor(list[mid])
-      cmp = compare(elem, needle)
-      if cmp > 0
-        high = mid - 1
-      else if cmp < 0
-        low = mid + 1
-      else
-        return [true, mid]
+bSearch = (list, obj, accessor, compare) ->
+  # binary search list
+  needle = accessor(obj)
+  high = list.length - 1
+  low = 0
+  while low <= high
+    mid = Math.floor((low + high) / 2)
+    elem = accessor(list[mid])
+    cmp = compare(elem, needle)
+    if cmp > 0
+      high = mid - 1
+    else if cmp < 0
+      low = mid + 1
+    else
+      return [true, mid]
 
-    return [false, low]
+  return [false, low]
 
-  bSearchDelete = (list, obj, accessor, compare) ->
-    [found, pos] = bSearch list, obj, accessor, compare
-    if not found
-      throw "obj not found"
-    list.splice pos, 1
+bSearchDelete = (list, obj, accessor, compare) ->
+  [found, pos] = bSearch list, obj, accessor, compare
+  if not found
+    throw "obj not found"
+  list.splice pos, 1
 
-  bSearchInsert = (list, obj, accessor, compare) ->
-    [found, pos] = bSearch list, obj, accessor, compare
-    if found
-      throw "obj already exists"
-    list.splice pos, 0, obj
+bSearchInsert = (list, obj, accessor, compare) ->
+  [found, pos] = bSearch list, obj, accessor, compare
+  if found
+    throw "obj already exists"
+  list.splice pos, 0, obj
 
-  noop = ->
+noop = ->
 
-  escape = (str) ->
-    # replace all " with \"
-    str.toString().replace /"/g, '\\"'
+escape = (str) ->
+  # replace all " with \"
+  str.toString().replace /"/g, '\\"'
 
-  clearArray = (arr) -> arr.length = 0
-  clearObject = (obj) -> delete obj[prop] for own prop of obj
+clearArray = (arr) -> arr.length = 0
+clearObject = (obj) -> delete obj[prop] for own prop of obj
 
-  pickNRandomProps = (obj, n) ->
-    results = []
-    count = 0
-    for prop of obj
-      count += 1
-      for i in [0...n]
-        if Math.random() < 1 / count
-          results[i] = prop
-    return results
+pickNRandomProps = (obj, n) ->
+  results = []
+  count = 0
+  for prop of obj
+    count += 1
+    for i in [0...n]
+      if Math.random() < 1 / count
+        results[i] = prop
+  return results
+
+window.Mpd = class _
+
+  ######################### private #####################
 
 
   createEventHandlers: =>
@@ -265,7 +272,6 @@ class Mpd
 
   ######################### public #####################
   
-  MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
   constructor: ->
     @socket = io.connect(undefined, {'force new connection': true})
     @buffer = ""

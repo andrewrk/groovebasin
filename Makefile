@@ -14,14 +14,15 @@ handlebars_min=-m
 sass_min=-t compressed
 endif
 
+or_die = || (rm -f $@; exit 1)
 
 .PHONY: build clean
 
 build: $(appjs) $(appcss) $(testjs) $(testhtml)
 
 $(appjs): $(views) $(src)
-	(cat $(src) | coffee -ps $(coffee_min) >$@) || (rm -f $@; exit 1)
-	handlebars $(views) $(handlebars_min) -k if -k each -k hash >>$(appjs)
+	(cat $(src) | coffee -ps $(coffee_min) >$@) $(or_die)
+	(handlebars $(views) $(handlebars_min) -k if -k each -k hash >>$@) $(or_die)
 
 $(appcss): $(scss)
 	sass --no-cache --scss $(sass_min) $(scss) $(appcss)

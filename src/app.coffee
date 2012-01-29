@@ -154,6 +154,17 @@ setUpUi = ->
 
 
 initHandlebars = ->
+  Handlebars.registerHelper 'time', (seconds) ->
+    minutes = Math.floor seconds / 60
+    seconds -= minutes * 60
+    hours = Math.floor minutes / 60
+    minutes -= hours * 60
+    zfill = (n) ->
+      if n < 10 then "0" + n else "" + n
+    if hours != 0
+      return "#{hours}:#{zfill minutes}:#{zfill seconds}"
+    else
+      return "#{minutes}:#{zfill seconds}"
   Handlebars.registerHelper 'hash', (context, options) ->
     values = (v for k,v of context)
     if options.hash.orderby?

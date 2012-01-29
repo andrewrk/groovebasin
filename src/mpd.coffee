@@ -489,12 +489,9 @@ window.Mpd = class _
               @raiseEvent 'onStatusUpdate'
 
   queueRandomTracks: (n) =>
-    f = =>
-      @sendCommands ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
-    if @haveFileListCache
-      f()
-    else
-      @updateFileList f
+    if not @haveFileListCache
+      await @updateFileList defer()
+    @sendCommands ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
 
   updateFileList: (cb) =>
     @haveFileListCache = true

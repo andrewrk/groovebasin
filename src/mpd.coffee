@@ -557,10 +557,13 @@ window.Mpd = class _
     track_id = parseInt(track_id)
     if @status.current_item?.id == track_id
       @anticipateSkip 1
+      if @status.state isnt "play"
+        @status.state = "stop"
     @sendCommand "deleteid #{escape(track_id)}"
     item = @playlist.item_table[track_id]
     delete @playlist.item_table[item.id]
     @playlist.item_list.splice(item.pos, 1)
+    it.pos = index for it, index in @playlist.item_list
     @raiseEvent 'onPlaylistUpdate'
 
   close: => @send "close" # bypass message queue

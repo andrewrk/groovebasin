@@ -19,7 +19,7 @@
         Unfortunately we have to install some manually because we need their
         binaries. There's a better way to do this, but for now...
 
-            $ sudo npm install -g uglify-js handlebars coffee-script
+            $ sudo npm install -g uglify-js handlebars iced-coffee-script
 
     mpd (musicpd.org)
         Compile from source; we depend on some new stuff.

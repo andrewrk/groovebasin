@@ -1,3 +1,4 @@
+coffee=iced
 appjs=public/app.js
 appcss=public/app.css
 views=views/*.handlebars
@@ -21,14 +22,14 @@ or_die = || (rm -f $@; exit 1)
 build: $(appjs) $(appcss) $(testjs) $(testhtml)
 
 $(appjs): $(views) $(src)
-	(cat $(src) | coffee -ps $(coffee_min) >$@) $(or_die)
+	(cat $(src) | $(coffee) -ps $(coffee_min) >$@) $(or_die)
 	(handlebars $(views) $(handlebars_min) -k if -k each -k hash >>$@) $(or_die)
 
 $(appcss): $(scss)
 	sass --no-cache --scss $(sass_min) $(scss) $(appcss)
 
 $(testjs): $(testview) $(testsrc)
-	cat $(testsrc) | coffee -ps >$(testjs)
+	cat $(testsrc) | $(coffee) -ps >$(testjs)
 	handlebars $(testview) >>$(testjs)
 
 clean:

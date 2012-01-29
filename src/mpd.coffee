@@ -360,75 +360,75 @@ window.Mpd = class _
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   updateArtistList: =>
-    @sendCommand 'list artist', (msg) =>
-      # remove the 'Artist: ' text from every line and convert to array
-      newNames = (line.substring(8) for line in msg.split('\n'))
-      newNames.sort titleCompare
+    await @sendCommand 'list artist', defer msg
+    # remove the 'Artist: ' text from every line and convert to array
+    newNames = (line.substring(8) for line in msg.split('\n'))
+    newNames.sort titleCompare
 
-      # merge with cache
-      artistList = @library.artist_list
-      artistTable = @library.artist_table
-      for newName, i in newNames
-        artistEntry = artistList[i]
-        oldName = artistEntry?.name
-        cmp = titleCompare(oldName, newName) if oldName?
-        if i >= artistList.length or cmp > 0 # old > new
-          # there's a new artist name. insert it.
-          newArtist = {name: newName}
-          artistList.splice(i, 0, newArtist)
-          artistTable[newName] = newArtist
-        else if cmp < 0 # old < new
-          # an old artist name no longer exists. remove it.
-          # find all the tracks that belong to this artist and remove them
-          track_table = @library.track_table
-          for album_key, album of artistEntry.albums
-            for track_file of album
-              @deleteTrack track_table[track_file]
+    # merge with cache
+    artistList = @library.artist_list
+    artistTable = @library.artist_table
+    for newName, i in newNames
+      artistEntry = artistList[i]
+      oldName = artistEntry?.name
+      cmp = titleCompare(oldName, newName) if oldName?
+      if i >= artistList.length or cmp > 0 # old > new
+        # there's a new artist name. insert it.
+        newArtist = {name: newName}
+        artistList.splice(i, 0, newArtist)
+        artistTable[newName] = newArtist
+      else if cmp < 0 # old < new
+        # an old artist name no longer exists. remove it.
+        # find all the tracks that belong to this artist and remove them
+        track_table = @library.track_table
+        for album_key, album of artistEntry.albums
+          for track_file of album
+            @deleteTrack track_table[track_file]
 
-          # remove from artist list and table
-          artistList.splice(i, 1)
-          delete artistTable[oldName]
-          i -= 1
-
-      # delete any remnant old list items
-      for oldName in artistList[newNames.length..]
+        # remove from artist list and table
+        artistList.splice(i, 1)
         delete artistTable[oldName]
-      artistList[newNames.length..] = []
+        i -= 1
 
-      # notify listeners
-      @raiseEvent 'onLibraryUpdate'
+    # delete any remnant old list items
+    for oldName in artistList[newNames.length..]
+      delete artistTable[oldName]
+    artistList[newNames.length..] = []
+
+    # notify listeners
+    @raiseEvent 'onLibraryUpdate'
 
   updateArtistInfo: (artist_name, cb=noop) =>
-    @sendCommand "find artist \"#{escape(artist_name)}\"", (msg) =>
-      @addTracksToLibrary msg
-      cb()
+    await @sendCommand "find artist \"#{escape(artist_name)}\"", defer msg
+    await @addTracksToLibrary msg
+    cb()
 
   updatePlaylist: (callback=noop) =>
-    @sendCommand "playlistinfo", (msg) =>
-      @addTracksToLibrary msg, (mpd_tracks) =>
-        @clearPlaylist()
-        for mpd_track in mpd_tracks
-          id = parseInt(mpd_track.Id)
-          obj =
-            id: id
-            track: @library.track_table[mpd_track.file]
-            pos: @playlist.item_list.length
-          @playlist.item_list.push obj
-          @playlist.item_table[id] = obj
+    await @sendCommand "playlistinfo", defer msg
+    await @addTracksToLibrary msg, defer mpd_tracks
+    @clearPlaylist()
+    for mpd_track in mpd_tracks
+      id = parseInt(mpd_track.Id)
+      obj =
+        id: id
+        track: @library.track_table[mpd_track.file]
+        pos: @playlist.item_list.length
+      @playlist.item_list.push obj
+      @playlist.item_table[id] = obj
 
-        # make sure current track data is correct
-        if @status.current_item?
-          @status.current_item = @playlist.item_table[@status.current_item.id]
+    # make sure current track data is correct
+    if @status.current_item?
+      @status.current_item = @playlist.item_table[@status.current_item.id]
 
-        if @status.current_item?
-          # looks good, notify listeners
-          @raiseEvent 'onPlaylistUpdate'
-          callback()
-        else
-          # we need a status update before raising a playlist update event
-          @updateStatus =>
-            callback()
-            @raiseEvent 'onPlaylistUpdate'
+    if @status.current_item?
+      # looks good, notify listeners
+      @raiseEvent 'onPlaylistUpdate'
+      callback()
+    else
+      # we need a status update before raising a playlist update event
+      @updateStatus =>
+        callback()
+        @raiseEvent 'onPlaylistUpdate'
 
   updateStatus: (callback=noop) =>
     # can't use await/defer yet:

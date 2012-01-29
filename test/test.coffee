@@ -1,4 +1,3 @@
-wait = (delay, func) -> setTimeout func, delay
 mpd = null
 
 results = []
@@ -111,13 +110,6 @@ tests = [
       mpd.updateStatus()
     mpd.updateStatus()
   ->
-    lets_test "clear playlist 1"
-    mpdEvent 1, 'onPlaylistUpdate', ->
-      mpd.removeEventListeners 'onPlaylistUpdate'
-      mpdEvent 1, 'onPlaylistUpdate', ->
-        eq mpd.playlist.item_list.length, 0
-      mpd.clear()
-  ->
     lets_test "get artist list"
     mpdEvent 1, 'onLibraryUpdate', ->
       ok mpd.library.artist_list.length > 1
@@ -143,88 +135,7 @@ tests = [
             # save for next test
             album_tracks.push track
 
-        tracks_to_add = album_tracks[0..2]
-        lets_test "add tracks such as '#{tracks_to_add[0].name}' to playlist"
-        count = 0
-        mpdEvent tracks_to_add.length, 'onPlaylistUpdate', ->
-          count += 1
-          eq mpd.playlist.item_list.length, count
-          eq tracks_to_add[count-1].name, mpd.playlist.item_list[count-1].track.name
-          eq tracks_to_add[count-1].file, mpd.playlist.item_list[count-1].track.file
-          eq tracks_to_add[count-1].time, mpd.playlist.item_list[count-1].track.time
-          eq tracks_to_add[count-1].artist, mpd.playlist.item_list[count-1].track.artist
-
-          if count < tracks_to_add.length
-            mpd.queueFile tracks_to_add[count].file
-            return
-          
-          mpd.removeEventListeners 'onPlaylistUpdate'
-
-
-          lets_test "playing a track"
-          id_to_play = mpd.playlist.item_list[mpd.playlist.item_list.length-1].id
-          count = 0
-          mpdEvent 3, 'onStatusUpdate', ->
-            # call updateStatus again to flush the event queue
-            mpd.updateStatus()
-            return if count++ < 3
-            mpd.removeEventListeners 'onStatusUpdate'
-
-            eq mpd.status.state, "play"
-            eq mpd.status.current_item.id, id_to_play
-
-          mpd.playId id_to_play
-        mpd.queueFile tracks_to_add[count].file
       mpd.updateArtistInfo random_artist.name
-  ->
-    lets_test "pausing a track"
-    mpdEvent 1, 'onStatusUpdate', ->
-      eq mpd.status.state, "pause"
-
-    mpd.pause()
-  ->
-    lets_test "unpausing a track"
-    mpdEvent 1, 'onStatusUpdate', ->
-      eq mpd.status.state, "play"
-
-    mpd.play()
-  ->
-    lets_test "seeking current track"
-    mpdEvent 1, 'onStatusUpdate', ->
-      mpd.removeEventListeners 'onStatusUpdate'
-      ok mpd.status.state, 'play'
-      mpdEvent 1, 'onStatusUpdate', ->
-        ok mpd.status.elapsed >= mpd.status.time / 2
-      mpd.seek mpd.status.time / 2
-  ->
-    lets_test "remove item from playlist"
-    mpdEvent 1, 'onPlaylistUpdate', ->
-      mpd.removeEventListeners 'onPlaylistUpdate'
-      old_len = mpd.playlist.item_list.length
-      ok old_len > 0
-      mpdEvent 1, 'onPlaylistUpdate', ->
-        eq mpd.playlist.item_list.length, old_len - 1
-      mpd.removeId mpd.playlist.item_list[0].id
-  ->
-    lets_test "clear playlist 3"
-    mpdEvent 1, 'onPlaylistUpdate', ->
-      mpd.removeEventListeners 'onPlaylistUpdate'
-
-      mpdEvent 1, 'onPlaylistUpdate', ->
-        eq mpd.playlist.item_list.length, 0
-
-      mpd.clear()
-  ->
-    lets_test "get random song"
-    mpdEvent 1, 'onLibraryUpdate', ->
-      mpdEvent 1, 'getRandomTrack', (track) ->
-        ok track.file?
-  ->
-    lets_test "get several random songs very quickly"
-    mpdEvent 1, 'onLibraryUpdate', ->
-      for i in [0..20]
-        mpdEvent 1, 'getRandomTrack', (track) ->
-          ok track.file?
 ]
 
 runTest = (test, args...) ->
@@ -243,9 +154,8 @@ runTest = (test, args...) ->
 runNextTest = ->
   if test_index < tests.length
     test_to_run = tests[test_index++]
-    wait 100, ->
-      mpd = new Mpd()
-      runTest(test_to_run)
+    mpd = new window.Mpd()
+    runTest(test_to_run)
 
 $(document).ready ->
   Handlebars.registerHelper 'hash', (context, options) ->

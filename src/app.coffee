@@ -155,19 +155,17 @@ setUpUi = ->
 
 initHandlebars = ->
   Handlebars.registerHelper 'hash', (context, options) ->
-    values = []
-    for k,v of context
-      values.push(v)
+    values = (v for k,v of context)
     if options.hash.orderby?
       order_keys = options.hash.orderby.split(",")
       order_keys.reverse()
       for order_key in order_keys
         values.sort (a, b) ->
-          if a[order_key] < b[order_key] then -1 else 1
-    ret = []
-    for value in values
-      ret.push(options.fn(value))
-    ret.join("")
+          a = a[order_key]
+          b = b[order_key]
+          if a < b then -1 else if a == b then 0 else 1
+    (options.fn(value) for value in values).join("")
+
 
 $(document).ready ->
   setUpUi()

@@ -563,7 +563,7 @@ class Mpd
   # in seconds
   seek: (pos) =>
     pos = parseFloat(pos)
-    @sendCommand "seekcur #{Math.round(pos)}"
+    @sendCommand "seekid #{@status.current_item.id} #{Math.round(pos)}"
     @status.track_start_date = elapsedToDate(pos)
     @raiseEvent 'onStatusUpdate'
 

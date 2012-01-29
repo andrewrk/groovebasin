@@ -66,6 +66,7 @@ render = ->
   renderNowPlaying()
 
 formatTime = (seconds) ->
+  seconds = Math.floor seconds
   minutes = Math.floor seconds / 60
   seconds -= minutes * 60
   hours = Math.floor minutes / 60

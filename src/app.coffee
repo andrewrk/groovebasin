@@ -8,6 +8,7 @@ mpd = null
 base_title = document.title
 userIsSeeking = false
 userIsVolumeSliding = false
+MARGIN = 10
 
 renderPlaylist = ->
   $playlist = $("#playlist")
@@ -16,9 +17,12 @@ renderPlaylist = ->
   if (cur_id = context.status?.current_item?.id)?
     $("#playlist-track-#{cur_id}").addClass('current')
 
+  handleResize()
+
 
 renderLibrary = ->
   $("#library").html Handlebars.templates.library(context)
+  handleResize()
 
 updateSliderPos = ->
   return if userIsSeeking
@@ -65,6 +69,8 @@ renderNowPlaying = ->
   if mpd.status?.volume? and not userIsVolumeSliding
     $("#vol-slider").slider 'option', 'value', mpd.status.volume
 
+  handleResize()
+
 render = ->
   renderPlaylist()
   renderLibrary()
@@ -86,6 +92,7 @@ formatTime = (seconds) ->
 clearFilter = (event) ->
   if event.keyCode == 27
     $(event.target).val("")
+    return false
 
 setUpUi = ->
   $pl_window = $("#playlist-window")
@@ -183,7 +190,33 @@ initHandlebars = ->
     (options.fn(value) for value in values).join("")
 
 handleResize = ->
-  $("#nowplaying").width $(document).width() - $("#nowplaying").data("margin")
+  $nowplaying = $("#nowplaying")
+  $lib = $("#library-window")
+  $pl_window = $("#playlist-window")
+
+  # go really small to make the window as small as possible
+  $nowplaying.width MARGIN
+  $pl_window.height MARGIN
+  $lib.height MARGIN
+  $pl_window.css 'position', 'absolute'
+  $lib.css 'position', 'absolute'
+
+  # then fit back up to the window
+  $nowplaying.width $(document).width() - MARGIN * 2
+  second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN
+  $lib.offset
+    left: MARGIN
+    top: second_layer_top
+  $pl_window.offset
+    left: $lib.offset().left + $lib.width() + MARGIN
+    top: second_layer_top
+  $pl_window.width $(window).width() - $pl_window.offset().left - MARGIN
+  $lib.height $(window).height() - $lib.offset().top - MARGIN
+  $pl_window.height $lib.height()
+
+  # make the inside containers fit
+  $("#library-items").height $lib.height() - $lib.find(".window-header").height() - MARGIN
+  $("#playlist-items").height $pl_window.height() - $pl_window.find(".window-header").height() - MARGIN
 
 $(document).ready ->
   setUpUi()

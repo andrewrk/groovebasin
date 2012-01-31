@@ -63,8 +63,7 @@ html {
 
 #library-window {
   width: 400px;
-  float: left;
-  margin: 0 10px 10px;
+  position: absolute;
 }
 
 #library-items {
@@ -81,17 +80,25 @@ html {
 
 #lib-filter {
   margin: 4px;
+  width: 175px;
+}
+
+#organize {
+  width: 200px;
 }
 
 #playlist-window {
   width: 700px;
-  float: left;
-
+  position: absolute;
 }
 
 #playlist-items {
   height: 400px;
   overflow-y: auto;
+
+  table {
+    width: 100%;
+  }
 
   th {
     font-weight: bold;
@@ -101,13 +108,14 @@ html {
     background-color: #2A2A2A;
   }
 
+  $highlight: #1A1F24;
   tr.current {
     background-color: #3D80C0;
-    color: #000000;
+    color: $highlight;
     font-weight: bold;
 
     a {
-      color: #000000;
+      color: $highlight;
     }
   }
   td.time {

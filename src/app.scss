@@ -40,6 +40,24 @@ h1 {
   }
 }
 
+#vol {
+  margin: 10px;
+  span {
+    float: left;
+    margin: -2px 2px 0px 12px;
+  }
+}
+
+#vol-slider {
+  float: left;
+  width: 60px;
+  height: 10px;
+
+  .ui-slider-handle {
+    height: 16px;
+  }
+}
+
 #library {
   width: 500px;
   float: left;

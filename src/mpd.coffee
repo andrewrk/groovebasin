@@ -30,7 +30,7 @@
 #   track: {track structure},
 # }
 # status structure: {
-#   volume: 100, # int 0-100
+#   volume: .89, # float 0-1
 #   repeat: true, # whether we're in repeat mode. see also `single`
 #   random: false, # random mode makes the next song random within the playlist
 #   single: true, # true -> repeat the current song, false -> repeat the playlist
@@ -53,6 +53,9 @@ MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
 
 elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
 dateToElapsed = (date) -> ((new Date()) - date) / 1000
+
+fromMpdVol = (vol) -> vol / 100
+toMpdVol = (vol) -> Math.round(parseFloat(vol) * 100)
 
 startsWith = (string, str) -> string.substring(0, str.length) == str
 stripPrefixes = ['the ', 'a ', 'an ']
@@ -438,7 +441,7 @@ window.Mpd = class _
       for [key, val] in (line.split(": ") for line in msg.split("\n"))
         o[key] = val
       $.extend @status,
-        volume: parseInt(o.volume)
+        volume: parseInt(o.volume) / 100
         repeat: parseInt(o.repeat) != 0
         random: parseInt(o.random) != 0
         single: parseInt(o.single) != 0
@@ -573,3 +576,9 @@ window.Mpd = class _
     @status.track_start_date = elapsedToDate(pos)
     @raiseEvent 'onStatusUpdate'
 
+  # between 0 and 1
+  setVolume: (vol) =>
+    vol = toMpdVol(vol)
+    @sendCommand "setvol #{vol}"
+    @status.volume = fromMpdVol(vol)
+    @raiseEvent 'onStatusUpdate'

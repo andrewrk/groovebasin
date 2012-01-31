@@ -7,6 +7,7 @@ context =
 mpd = null
 base_title = document.title
 userIsSeeking = false
+userIsVolumeSliding = false
 
 renderPlaylist = ->
   $playlist = $("#playlist")
@@ -59,6 +60,10 @@ renderNowPlaying = ->
       $("#track-slider").show()
 
   updateSliderPos()
+
+  # update volume pos
+  if mpd.status?.volume? and not userIsVolumeSliding
+    $("#vol-slider").slider 'option', 'value', mpd.status.volume
 
 render = ->
   renderPlaylist()
@@ -125,18 +130,27 @@ setUpUi = ->
         action()
         return false
 
-  seekTrack = (event, ui) ->
-    return if not event.originalEvent?
-    mpd.seek ui.value * context.status.time
   $("#track-slider").slider
     step: 0.0001
     min: 0
     max: 1
-    change: seekTrack
+    change: (event, ui) ->
+      return if not event.originalEvent?
+      mpd.seek ui.value * context.status.time
     slide: (event, ui) ->
       $("#nowplaying .elapsed").html formatTime(ui.value * context.status.time)
     start: (event, ui) -> userIsSeeking = true
     stop: (event, ui) -> userIsSeeking = false
+  setVol = (event, ui) ->
+    return if not event.originalEvent?
+    mpd.setVolume ui.value
+  $("#vol-slider").slider
+    step: 0.01
+    min: 0
+    max: 1
+    change: setVol
+    start: (event, ui) -> userIsVolumeSliding = true
+    stop: (event, ui) -> userIsVolumeSliding = false
 
   # move the slider along the path
   schedule 100, updateSliderPos

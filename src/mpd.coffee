@@ -213,10 +213,9 @@ window.Mpd = class _
     if next_item?
       @anticipatePlayId next_item.id
 
-  addTracksToLibrary: (msg, mpdTracksHandler=noop) =>
+  addTracksToLibrary: (msg) =>
     if msg == ""
-      mpdTracksHandler []
-      return
+      return []
 
     # build list of tracks from msg
     mpd_tracks = []
@@ -242,8 +241,8 @@ window.Mpd = class _
         name: mpd_track.Title
         track: track_number
         time: parseInt(mpd_track.Time)
-        artist: @getOrCreateArtist(mpd_track.Artist ? DEFAULT_ARTIST)
-        album: @getOrCreateAlbum(mpd_track.Album ? DEFAULT_ALBUM)
+        artist: @getOrCreateArtist(mpd_track.Artist || DEFAULT_ARTIST)
+        album: @getOrCreateAlbum(mpd_track.Album || DEFAULT_ALBUM)
 
       album_tracks = track.album.tracks ||= {}
       album_tracks[mpd_track.file] = track
@@ -252,10 +251,7 @@ window.Mpd = class _
       artist_albums[track.album.name] = track.album
 
     # call the passed in function which might want to do extra things with mpd_tracks
-    mpdTracksHandler mpd_tracks
-
-    # notify listeners
-    @raiseEvent 'onLibraryUpdate'
+    return mpd_tracks
 
   rawSendCmd: (cmd, cb=noop) =>
     @msgHandlerQueue.push
@@ -311,7 +307,9 @@ window.Mpd = class _
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
-      database: @updateArtistList # the song database has been modified after update.
+      database: -> # the song database has been modified after update.
+        @haveFileListCache = false
+        @updateArtistList()
       update: noop # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
       stored_playlist: noop # a stored playlist has been modified, renamed, created or deleted
       playlist: @updatePlaylist # the current playlist has been modified
@@ -400,12 +398,12 @@ window.Mpd = class _
 
   updateArtistInfo: (artist_name, cb=noop) =>
     await @sendCommand "find artist \"#{escape(artist_name)}\"", defer msg
-    await @addTracksToLibrary msg
+    @addTracksToLibrary msg
     cb()
 
   updatePlaylist: (callback=noop) =>
     await @sendCommand "playlistinfo", defer msg
-    await @addTracksToLibrary msg, defer mpd_tracks
+    mpd_tracks = @addTracksToLibrary msg
     @clearPlaylist()
     for mpd_track in mpd_tracks
       id = parseInt(mpd_track.Id)
@@ -460,35 +458,35 @@ window.Mpd = class _
         @status.track_start_date = elapsedToDate(@status.elapsed)
 
     @sendCommand "currentsong", (msg) =>
-      @addTracksToLibrary msg, (mpd_tracks) =>
-        if mpd_tracks.length == 0
-          # no current song
-          @status.current_item = null
-          callback()
+      mpd_tracks = @addTracksToLibrary msg
+      if mpd_tracks.length == 0
+        # no current song
+        @status.current_item = null
+        callback()
+        @raiseEvent 'onStatusUpdate'
+        return
+
+      # there's either 0 or 1
+      for mpd_track in mpd_tracks
+        id = parseInt(mpd_track.Id)
+        pos = parseInt(mpd_track.Pos)
+
+        @status.current_item = @playlist.item_table[id]
+
+        if @status.current_item? and @status.current_item.pos == pos
+          @status.current_item.track = @library.track_table[mpd_track.file]
+          # looks good, notify listeners
           @raiseEvent 'onStatusUpdate'
-          return
-
-        # there's either 0 or 1
-        for mpd_track in mpd_tracks
-          id = parseInt(mpd_track.Id)
-          pos = parseInt(mpd_track.Pos)
-
-          @status.current_item = @playlist.item_table[id]
-
-          if @status.current_item? and @status.current_item.pos == pos
-            @status.current_item.track = @library.track_table[mpd_track.file]
-            # looks good, notify listeners
-            @raiseEvent 'onStatusUpdate'
+          callback()
+        else
+          # missing or inconsistent playlist data, need to get playlist update
+          @status.current_item =
+            id: id
+            pos: pos
+            track: @library.track_table[mpd_track.file]
+          @updatePlaylist =>
             callback()
-          else
-            # missing or inconsistent playlist data, need to get playlist update
-            @status.current_item =
-              id: id
-              pos: pos
-              track: @library.track_table[mpd_track.file]
-            @updatePlaylist =>
-              callback()
-              @raiseEvent 'onStatusUpdate'
+            @raiseEvent 'onStatusUpdate'
 
   queueRandomTracks: (n) =>
     if not @haveFileListCache

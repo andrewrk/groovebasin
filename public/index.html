@@ -12,7 +12,7 @@
   <link rel="stylesheet" type="text/css" href="vendor/css/dot-luv/jquery-ui-1.8.17.custom.css">
 </head>
 <body>
-  <div id="nowplaying">
+  <div id="nowplaying" class="ui-widget-content ui-corner-all" data-margin="20">
     <ul class="playback-btns ui-widget ui-helper-clearfix">
       <li class="ui-state-default ui-corner-all">
         <span class="ui-icon ui-icon-seek-prev prev"></span>
@@ -31,20 +31,11 @@
     <div id="track-slider"></div>
     <span class="time elapsed"></span>
     <span class="time left"></span>
+    <div style="clear: both;"></div>
   </div>
   <div id="library">
   </div>
-  <div id="queue">
-  </div>
-  <div id="playlists">
-  </div>
-  <div id="add-music">
-  </div>
-  <div style="clear:both"></div>
-  <h2>Debug Sandbox</h2>
-  <div id="debug">
-    <input type="text" id="line" size="100"><br>
-    <textarea rows="20" cols="100" id="text"></textarea>
+  <div id="playlist">
   </div>
 </body>
 </html>

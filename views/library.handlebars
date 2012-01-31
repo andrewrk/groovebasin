@@ -5,22 +5,11 @@
   </select>
 </div>
 {{#if artists}}
-  <ul>
+  <ul id="library-items">
     {{#artists}}
-      <li class="expand"><a href="#" class="artist">{{name}}</a>
-        <ul>
-          {{#hash albums}}
-            <li class="expand"><a href="#" class="album">{{name}}</a>
-              <ul>
-                {{#hash tracks orderby="track,name"}}
-                  <li>
-                  <a href="#" class="track" data-file="{{file}}">{{#if track}}{{track}}. {{/if}}{{name}}</a>
-                  </li>
-                {{/hash}}
-              </ul>
-            </li>
-          {{/hash}}
-        </ul>
+      <li class="expand">
+        <div class="ui-icon ui-icon-triangle-1-e"></div>
+        <a href="#" class="artist">{{name}}</a>
       </li>
     {{/artists}}
   </ul>

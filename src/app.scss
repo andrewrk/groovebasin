@@ -2,35 +2,71 @@ h1 {
   font-weight: bold;
 }
 
-#nowplaying {
-  height: 200px;
+#track-slider {
+  margin: 10px 10px 5px;
+}
 
-  .playback-btns li {
-    cursor: pointer;
+#nowplaying {
+  margin: 6px auto;
+  text-align: center;
+
+  .playback-btns {
     float: left;
-    list-style: none outside none;
-    margin: 2px;
-    padding: 4px;
+
+    li {
+      cursor: pointer;
+      float: left;
+      list-style: none outside none;
+      margin: 2px;
+      padding: 4px;
+    }
+  }
+  
+  h1 {
+    font-family: Impact, Charcoal, sans-serif;
+    margin-top: 8px;
   }
 
+  .time {
+    margin: 4px;
+    font-weight: bold;
+    font-family: monospace;
+  }
   .left {
     float: right;
+  }
+  .elapsed {
+    float: left;
   }
 }
 
 #library {
   width: 500px;
-  overflow-y: auto;
   float: left;
 
+}
+
+#library-items {
+  div.ui-icon {
+    float: left;
+  }
+  height: 400px;
+  overflow-y: auto;
+
   li {
-    margin-left: 20px;
+    cursor: pointer;
   }
 }
 
-#queue {
+#playlist {
   width: 700px;
   float: left;
+
+}
+
+#playlist-items {
+  height: 400px;
+  overflow-y: auto;
 
   th {
     font-weight: bold;
@@ -51,4 +87,8 @@ h1 {
   td.time {
     text-align: right;
   }
+  td {
+    overflow-x: hidden;
+  }
+
 }

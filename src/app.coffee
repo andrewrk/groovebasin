@@ -9,8 +9,8 @@ base_title = document.title
 userIsSeeking = false
 
 renderPlaylist = ->
-  $queue = $("#queue")
-  $queue.html Handlebars.templates.playlist(context)
+  $playlist = $("#playlist")
+  $playlist.html Handlebars.templates.playlist(context)
 
   if (cur_id = context.status?.current_item?.id)?
     $("#playlist-track-#{cur_id}").addClass('current')
@@ -80,24 +80,24 @@ formatTime = (seconds) ->
 
 
 setUpUi = ->
-  $queue = $("#queue")
-  $queue.on 'click', 'a.track', (event) ->
+  $playlist = $("#playlist")
+  $playlist.on 'click', 'a.track', (event) ->
     track_id = $(event.target).data('id')
     mpd.playId track_id
     return false
-  $queue.on 'click', 'a.remove', (event) ->
+  $playlist.on 'click', 'a.remove', (event) ->
     $target = $(event.target)
     track_id = $target.data('id')
     mpd.removeId track_id
     return false
-  $queue.on 'click', 'a.clear', ->
+  $playlist.on 'click', 'a.clear', ->
     mpd.clear()
     return false
-  $queue.on 'click', 'a.randommix', ->
+  $playlist.on 'click', 'a.randommix', ->
     mpd.queueRandomTracks 1
     return false
 
-  $queue.on 'click', 'a.repopulate', ->
+  $playlist.on 'click', 'a.repopulate', ->
     mpd.queueRandomTracks 20
     return false
 
@@ -163,6 +163,8 @@ initHandlebars = ->
           if a < b then -1 else if a == b then 0 else 1
     (options.fn(value) for value in values).join("")
 
+handleResize = ->
+  $("#nowplaying").width $(document).width() - $("#nowplaying").data("margin")
 
 $(document).ready ->
   setUpUi()
@@ -180,6 +182,8 @@ $(document).ready ->
   context.status = mpd.status
 
   render()
+  handleResize()
 
+$(window).resize handleResize
 
 window._debug_context = context

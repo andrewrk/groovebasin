@@ -48,6 +48,7 @@ window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 ######################### static #####################
 DEFAULT_ARTIST = "[Unknown Artist]"
 DEFAULT_ALBUM = "[Unknown Album]"
+DEFAULT_TITLE = "[Unknown Track]"
 
 MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
 
@@ -216,6 +217,9 @@ window.Mpd = class _
     if next_item?
       @anticipatePlayId next_item.id
 
+  parseArtistName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_ARTIST
+  parseAlbumName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_ALBUM
+  parseTrackName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_TITLE
   addTracksToLibrary: (msg) =>
     if msg == ""
       return []
@@ -241,11 +245,11 @@ window.Mpd = class _
       track_number = parseInt(mpd_track.Track)
       track_number = "" if isNaN(track_number)
       $.extend track,
-        name: mpd_track.Title
+        name: parseTrackName(mpd_track.Title)
         track: track_number
         time: parseInt(mpd_track.Time)
-        artist: @getOrCreateArtist(mpd_track.Artist || DEFAULT_ARTIST)
-        album: @getOrCreateAlbum(mpd_track.Album || DEFAULT_ALBUM)
+        artist: @getOrCreateArtist(parseArtistName(mpd_track.Artist))
+        album: @getOrCreateAlbum(parseAlbumName(mpd_track.Album))
 
       album_tracks = track.album.tracks ||= {}
       album_tracks[mpd_track.file] = track
@@ -363,7 +367,7 @@ window.Mpd = class _
   updateArtistList: =>
     await @sendCommand 'list artist', defer msg
     # remove the 'Artist: ' text from every line and convert to array
-    newNames = (line.substring(8) for line in msg.split('\n'))
+    newNames = (parseArtistName(line.substring(8)) for line in msg.split('\n'))
     newNames.sort titleCompare
 
     # merge with cache

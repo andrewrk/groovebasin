@@ -1,15 +1,9 @@
-<div>
-  <input type="text" id="lib-filter" placeholder="filter">
-  <select id="organize">
-    <option selected="selected">Artist / Album / Song</option>
-  </select>
-</div>
 {{#if artists}}
   <ul id="library-items">
     {{#artists}}
-      <li class="expand">
+      <li class="expand artist">
         <div class="ui-icon ui-icon-triangle-1-e"></div>
-        <a href="#" class="artist">{{name}}</a>
+        <span>{{name}}{{^name}}hi{{/name}}</span>
       </li>
     {{/artists}}
   </ul>

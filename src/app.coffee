@@ -107,12 +107,16 @@ setUpUi = ->
     return false
 
   $library = $("#library")
-  $library.on 'click', 'a.artist', (event) ->
-    artist_name = $(event.target).text()
+  $library.on 'click', 'li.artist', (event) ->
+    artist_name = $(this).find("span").text()
     mpd.updateArtistInfo(artist_name)
     return false
+  $library.on 'mouseover', 'li', (event) ->
+    $(this).addClass "ui-state-active"
+  $library.on 'mouseout', 'li', (event) ->
+    $(this).removeClass "ui-state-active"
 
-  $library.on 'click', 'a.track', (event) ->
+  $library.on 'click', 'li.track', (event) ->
     file = $(event.target).data('file')
     mpd.queueFile file
     return false

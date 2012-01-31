@@ -44,7 +44,7 @@ h1 {
   margin: 10px;
   span {
     float: left;
-    margin: -2px 2px 0px 12px;
+    margin: -2px 2px 0px 10px;
   }
 }
 
@@ -55,13 +55,15 @@ h1 {
 
   .ui-slider-handle {
     height: 16px;
+    width: 16px;
+    margin-top: 2px;
   }
 }
 
-#library {
-  width: 500px;
+#library-window {
+  width: 400px;
   float: left;
-
+  margin: 0 10px 10px;
 }
 
 #library-items {
@@ -74,6 +76,10 @@ h1 {
   li {
     cursor: pointer;
   }
+}
+
+#lib-filter {
+  margin: 4px;
 }
 
 #playlist {

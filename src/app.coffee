@@ -83,6 +83,9 @@ formatTime = (seconds) ->
   else
     return "#{minutes}:#{zfill seconds}"
 
+clearFilter = (event) ->
+  if event.keyCode == 27
+    $(event.target).val("")
 
 setUpUi = ->
   $playlist = $("#playlist")
@@ -120,6 +123,9 @@ setUpUi = ->
     file = $(event.target).data('file')
     mpd.queueFile file
     return false
+  
+  $("#lib-filter").on 'keydown', clearFilter
+  $("#pl-filter").on 'keydown', clearFilter
 
   actions =
     'ui-icon-pause': -> mpd.pause()
@@ -159,13 +165,7 @@ setUpUi = ->
   # move the slider along the path
   schedule 100, updateSliderPos
 
-  # debug text box
-  $("#line").keydown (event) ->
-    if event.keyCode == 13
-      line = $("#line").val()
-      $("#line").val('')
-      mpd.sendCommand line, (msg) ->
-        $("#text").val(msg)
+
 
 initHandlebars = ->
   Handlebars.registerHelper 'time', formatTime

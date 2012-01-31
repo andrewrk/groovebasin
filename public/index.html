@@ -39,7 +39,7 @@
     <div style="clear: both;"></div>
   </div>
   <div id="library-window" class="ui-widget-content ui-corner-all">
-    <div>
+    <div class="window-header">
       <input type="text" id="lib-filter" placeholder="filter">
       <select id="organize">
         <option selected="selected">Artist / Album / Song</option>
@@ -48,7 +48,17 @@
     <div id="library">
     </div>
   </div>
-  <div id="playlist">
+  <div id="playlist-window" class="ui-widget-content ui-corner-all">
+    <div class="window-header">
+      <a href="#" class="clear">Clear</a>
+      <a href="#">Save</a>
+      <input type="text" id="pl-filter" placeholder="filter">
+      <a href="#" class="randommix">Random Mix</a>
+      <a href="#" class="repopulate">Repopulate</a>
+    </div>
+    <div id="playlist">
+    </div>
   </div>
+  <div style="clear: both"></div>
 </body>
 </html>

@@ -1,5 +1,5 @@
-h1 {
-  font-weight: bold;
+html {
+  background: url(vendor/css/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png);
 }
 
 #track-slider {
@@ -25,6 +25,7 @@ h1 {
   h1 {
     font-family: Impact, Charcoal, sans-serif;
     margin-top: 8px;
+    font-weight: bold;
   }
 
   .time {
@@ -82,7 +83,7 @@ h1 {
   margin: 4px;
 }
 
-#playlist {
+#playlist-window {
   width: 700px;
   float: left;
 
@@ -97,15 +98,16 @@ h1 {
   }
 
   tr:nth-child(2n+1) {
-    background-color: #DCE0E5;
+    background-color: #2A2A2A;
   }
 
   tr.current {
-    background-color: #2A2A2A;
-    color: #ffffff;
+    background-color: #3D80C0;
+    color: #000000;
+    font-weight: bold;
 
     a {
-      color: #ffffff;
+      color: #000000;
     }
   }
   td.time {
@@ -115,4 +117,8 @@ h1 {
     overflow-x: hidden;
   }
 
+}
+
+.window-header {
+  height: 30px;
 }

@@ -88,6 +88,17 @@ clearFilter = (event) ->
     $(event.target).val("")
 
 setUpUi = ->
+  $pl_window = $("#playlist-window")
+  $pl_window.on 'click', 'a.clear', ->
+    mpd.clear()
+    return false
+  $pl_window.on 'click', 'a.randommix', ->
+    mpd.queueRandomTracks 1
+    return false
+  $pl_window.on 'click', 'a.repopulate', ->
+    mpd.queueRandomTracks 20
+    return false
+
   $playlist = $("#playlist")
   $playlist.on 'click', 'a.track', (event) ->
     track_id = $(event.target).data('id')
@@ -97,16 +108,6 @@ setUpUi = ->
     $target = $(event.target)
     track_id = $target.data('id')
     mpd.removeId track_id
-    return false
-  $playlist.on 'click', 'a.clear', ->
-    mpd.clear()
-    return false
-  $playlist.on 'click', 'a.randommix', ->
-    mpd.queueRandomTracks 1
-    return false
-
-  $playlist.on 'click', 'a.repopulate', ->
-    mpd.queueRandomTracks 20
     return false
 
   $library = $("#library")

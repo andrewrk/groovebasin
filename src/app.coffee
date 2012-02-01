@@ -55,7 +55,7 @@ renderNowPlaying = ->
       stop: ['ui-icon-pause', 'ui-icon-play']
     toggle_icon.pause = toggle_icon.stop
     [old_class, new_class] = toggle_icon[context.status.state]
-    $("#nowplaying .toggle").removeClass(old_class).addClass(new_class)
+    $("#nowplaying .toggle span").removeClass(old_class).addClass(new_class)
 
     # hide seeker bar if stopped
     if context.status.state is "stop"
@@ -136,15 +136,18 @@ setUpUi = ->
   $("#pl-filter").on 'keydown', clearFilter
 
   actions =
-    'ui-icon-pause': -> mpd.pause()
-    'ui-icon-play': -> mpd.play()
-    'ui-icon-seek-prev': -> mpd.prev()
-    'ui-icon-seek-next': -> mpd.next()
-    'ui-icon-stop': -> mpd.stop()
+    'toggle': ->
+      if mpd.status.state == 'play'
+        mpd.pause()
+      else
+        mpd.play()
+    'prev': -> mpd.prev()
+    'next': -> mpd.next()
+    'stop': -> mpd.stop()
   $nowplaying = $("#nowplaying")
-  for span, action of actions
-    do (span, action) ->
-      $nowplaying.on 'mousedown', "span.#{span}", (event) ->
+  for cls, action of actions
+    do (cls, action) ->
+      $nowplaying.on 'mousedown', "li.#{cls}", (event) ->
         action()
         return false
 

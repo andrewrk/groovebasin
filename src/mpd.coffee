@@ -182,8 +182,10 @@ window.Mpd = class _
   getOrCreateArtist: (artist_name) =>
     @getOrCreate(artist_name, @library.artist_table, @library.artist_list, -> {name: artist_name})
 
-  getOrCreateAlbum: (album_name) =>
-    @getOrCreate(album_name, @library.album_table, @library.album_list, -> {name: album_name})
+  getOrCreateAlbum: (album_name, album_year) =>
+    album = @getOrCreate(album_name, @library.album_table, @library.album_list, -> {name: album_name, year: album_year})
+    album.year = album_year if not album.year?
+    return album
 
   getOrCreateTrack: (file) =>
     @library.track_table[file] ||= {file: file}
@@ -220,6 +222,10 @@ window.Mpd = class _
   parseArtistName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_ARTIST
   parseAlbumName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_ALBUM
   parseTrackName = (mpd_name) -> $.trim(mpd_name) || DEFAULT_TITLE
+  parseMaybeUndefNumber = (n) ->
+    n = parseInt(n)
+    n = "" if isNaN(n)
+    return n
   addTracksToLibrary: (msg) =>
     if msg == ""
       return []
@@ -242,14 +248,12 @@ window.Mpd = class _
     track_table = @library.track_table
     for mpd_track in mpd_tracks
       track = @getOrCreateTrack(mpd_track.file)
-      track_number = parseInt(mpd_track.Track)
-      track_number = "" if isNaN(track_number)
       $.extend track,
         name: parseTrackName(mpd_track.Title)
-        track: track_number
+        track: parseMaybeUndefNumber(mpd_track.Track)
         time: parseInt(mpd_track.Time)
         artist: @getOrCreateArtist(parseArtistName(mpd_track.Artist))
-        album: @getOrCreateAlbum(parseAlbumName(mpd_track.Album))
+        album: @getOrCreateAlbum(parseAlbumName(mpd_track.Album), parseMaybeUndefNumber(mpd_track.Date))
 
       album_tracks = track.album.tracks ||= {}
       album_tracks[mpd_track.file] = track

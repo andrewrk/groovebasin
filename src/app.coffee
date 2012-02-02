@@ -124,10 +124,18 @@ setUpUi = ->
     if not $div.data('cached')
       mpd.updateArtistInfo artist_name, ->
         $div.data 'cached', true
-        $div.parent().find("> ul").toggle().html Handlebars.templates.album_list
+        $div.parent().find("> ul").html Handlebars.templates.album_list
           albums: mpd.library.artist_table[artist_name].albums
 
-    $div.parent().find("> ul").toggle()
+  $library.on 'click', 'div.expandable', (event) ->
+    $div = $(this)
+    $ul = $div.parent().find("> ul")
+    $ul.toggle()
+
+    old_class = 'ui-icon-triangle-1-se'
+    new_class = 'ui-icon-triangle-1-e'
+    [new_class, old_class] = [old_class, new_class] if $ul.is(":visible")
+    $div.find("div").removeClass(old_class).addClass(new_class)
     return false
   $library.on 'mouseover', 'div.hoverable', (event) ->
     $(this).addClass "ui-state-active"

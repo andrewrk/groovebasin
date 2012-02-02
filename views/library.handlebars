@@ -1,12 +1,12 @@
 {{#if artists}}
   <ul id="library-items">
     {{#artists}}
-      <li class="outer">
-        <div class="artist hoverable">
+      <li>
+        <div class="artist hoverable expandable">
           <div class="ui-icon ui-icon-triangle-1-e"></div>
           <span>{{name}}</span>
         </div>
-        <ul></ul>
+        <ul style="display: none;"></ul>
       </li>
     {{/artists}}
   </ul>

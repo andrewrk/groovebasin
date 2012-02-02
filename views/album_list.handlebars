@@ -1,9 +1,17 @@
 {{#hash albums}}
   <li>
-    <div class="hoverable">
+    <div class="album hoverable expandable">
       <div class="ui-icon ui-icon-triangle-1-e"></div>
       <span>{{name}}</span>
     </div>
-    <ul></ul>
+    <ul style="display: none;">
+      {{#hash tracks}}
+        <li>
+          <div class="track hoverable">
+            <span>{{#if track}}{{track}}. {{/if}}{{name}}</span>
+          </div>
+        </li>
+      {{/hash}}
+    </ul>
   </li>
 {{/hash}}

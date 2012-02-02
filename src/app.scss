@@ -77,8 +77,11 @@ html {
     cursor: pointer;
   }
 
-  .outer li {
+  ul {
     margin-left: 9px;
+    ul {
+      margin-left: 16px;
+    }
   }
 }
 

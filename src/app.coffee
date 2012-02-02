@@ -126,6 +126,8 @@ setUpUi = ->
         $div.data 'cached', true
         $div.parent().find("> ul").html Handlebars.templates.album_list
           albums: mpd.library.artist_table[artist_name].albums
+  $library.on 'click', 'div.track', (event) ->
+    mpd.queueFileNext $(this).data('file')
 
   $library.on 'click', 'div.expandable', (event) ->
     $div = $(this)

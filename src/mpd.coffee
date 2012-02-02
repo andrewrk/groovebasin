@@ -519,6 +519,25 @@ window.Mpd = class _
     @playlist.item_list.push item
     @raiseEvent 'onPlaylistUpdate'
 
+  queueFileNext: (file) =>
+    cur_pos = @status.current_item?.pos
+    if not cur_pos
+      @queueFile file
+      return
+    new_pos = cur_pos + 1
+    item =
+      id: null
+      pos: @playlist.item_list.length
+      track: @library.track_table[file]
+    @sendCommand "addid \"#{escape(file)}\" #{new_pos}", (msg) =>
+      item.id = parseInt(msg.substring(4))
+      @playlist.item_table[item.id] = item
+
+    @playlist.item_list.splice new_pos, 0, item
+    # fix the pos property of each item
+    item.pos = i for item, i in @playlist.item_list
+    @raiseEvent 'onPlaylistUpdate'
+
   clear: =>
     @sendCommand "clear"
     @clearPlaylist()

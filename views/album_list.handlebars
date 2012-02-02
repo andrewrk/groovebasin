@@ -7,7 +7,7 @@
     <ul style="display: none;">
       {{#hash tracks}}
         <li>
-          <div class="track hoverable">
+          <div class="track hoverable" data-file="{{file}}">
             <span>{{#if track}}{{track}}. {{/if}}{{name}}</span>
           </div>
         </li>

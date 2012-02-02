@@ -73,8 +73,12 @@ html {
   height: 400px;
   overflow-y: auto;
 
-  li {
+  .hoverable {
     cursor: pointer;
+  }
+
+  .outer li {
+    margin-left: 9px;
   }
 }
 

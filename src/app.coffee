@@ -118,13 +118,20 @@ setUpUi = ->
     return false
 
   $library = $("#library")
-  $library.on 'click', 'li.artist', (event) ->
-    artist_name = $(this).find("span").text()
-    mpd.updateArtistInfo(artist_name)
+  $library.on 'click', 'div.artist', (event) ->
+    $div = $(this)
+    artist_name = $div.find("span").text()
+    if not $div.data('cached')
+      mpd.updateArtistInfo artist_name, ->
+        $div.data 'cached', true
+        $div.parent().find("> ul").toggle().html Handlebars.templates.album_list
+          albums: mpd.library.artist_table[artist_name].albums
+
+    $div.parent().find("> ul").toggle()
     return false
-  $library.on 'mouseover', 'li', (event) ->
+  $library.on 'mouseover', 'div.hoverable', (event) ->
     $(this).addClass "ui-state-active"
-  $library.on 'mouseout', 'li', (event) ->
+  $library.on 'mouseout', 'div.hoverable', (event) ->
     $(this).removeClass "ui-state-active"
 
   $library.on 'click', 'li.track', (event) ->

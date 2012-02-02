@@ -11,33 +11,40 @@ userIsVolumeSliding = false
 MARGIN = 10
 
 renderPlaylist = ->
+  context.playlist = mpd.playlist.item_list
   $playlist = $("#playlist")
   $playlist.html Handlebars.templates.playlist(context)
 
-  if (cur_id = context.status?.current_item?.id)?
+  if (cur_id = mpd.status?.current_item?.id)?
     $("#playlist-track-#{cur_id}").addClass('current')
 
   handleResize()
 
 
 renderLibrary = ->
+  context.artists = mpd.library.artist_list
+  $("#library").html Handlebars.templates.library(context)
+  handleResize()
+
+renderSearch = ->
+  context.artists = mpd.search_results.artist_list
   $("#library").html Handlebars.templates.library(context)
   handleResize()
 
 updateSliderPos = ->
   return if userIsSeeking
-  return if not context.status?.time? or not context.status.current_item?
-  if context.status.track_start_date? and context.status.state == "play"
-    diff_sec = (new Date() - context.status.track_start_date) / 1000
+  return if not mpd.status?.time? or not mpd.status.current_item?
+  if mpd.status.track_start_date? and mpd.status.state == "play"
+    diff_sec = (new Date() - mpd.status.track_start_date) / 1000
   else
-    diff_sec = context.status.elapsed
-  $("#track-slider").slider("option", "value", diff_sec / context.status.time)
+    diff_sec = mpd.status.elapsed
+  $("#track-slider").slider("option", "value", diff_sec / mpd.status.time)
   $("#nowplaying .elapsed").html formatTime(diff_sec)
-  $("#nowplaying .left").html formatTime(context.status.time)
+  $("#nowplaying .left").html formatTime(mpd.status.time)
 
 renderNowPlaying = ->
   # set window title
-  track = context.status.current_item?.track
+  track = mpd.status.current_item?.track
   if track?
     track_display = "#{track.name} - #{track.artist.name} - #{track.album.name}"
     document.title = "#{track_display} - #{base_title}"
@@ -48,20 +55,17 @@ renderNowPlaying = ->
   # set song title
   $("#track-display").html(track_display)
 
-  if context.status.state?
+  if mpd.status.state?
     # set correct pause/play icon
     toggle_icon =
       play: ['ui-icon-play', 'ui-icon-pause']
       stop: ['ui-icon-pause', 'ui-icon-play']
     toggle_icon.pause = toggle_icon.stop
-    [old_class, new_class] = toggle_icon[context.status.state]
+    [old_class, new_class] = toggle_icon[mpd.status.state]
     $("#nowplaying .toggle span").removeClass(old_class).addClass(new_class)
 
     # hide seeker bar if stopped
-    if context.status.state is "stop"
-      $("#track-slider").hide()
-    else
-      $("#track-slider").show()
+    $("#track-slider").toggle mpd.status.state isnt "stop"
 
   updateSliderPos()
 
@@ -88,11 +92,6 @@ formatTime = (seconds) ->
     return "#{hours}:#{zfill minutes}:#{zfill seconds}"
   else
     return "#{minutes}:#{zfill seconds}"
-
-clearFilter = (event) ->
-  if event.keyCode == 27
-    $(event.target).val("")
-    return false
 
 setUpUi = ->
   $pl_window = $("#playlist-window")
@@ -149,8 +148,14 @@ setUpUi = ->
     mpd.queueFile file
     return false
   
-  $("#lib-filter").on 'keydown', clearFilter
-  $("#pl-filter").on 'keydown', clearFilter
+  $("#lib-filter").on 'keydown', (event) ->
+    if event.keyCode == 27
+      $(event.target).val("")
+      mpd.search ""
+      return false
+    else if event.keyCode == 13
+      mpd.search $(event.target).val()
+      return false
 
   actions =
     'toggle': ->
@@ -174,9 +179,9 @@ setUpUi = ->
     max: 1
     change: (event, ui) ->
       return if not event.originalEvent?
-      mpd.seek ui.value * context.status.time
+      mpd.seek ui.value * mpd.status.time
     slide: (event, ui) ->
-      $("#nowplaying .elapsed").html formatTime(ui.value * context.status.time)
+      $("#nowplaying .elapsed").html formatTime(ui.value * mpd.status.time)
     start: (event, ui) -> userIsSeeking = true
     stop: (event, ui) -> userIsSeeking = false
   setVol = (event, ui) ->
@@ -245,13 +250,11 @@ $(document).ready ->
   mpd = new window.Mpd()
   mpd.onError (msg) -> alert msg
   mpd.onLibraryUpdate renderLibrary
+  mpd.onSearchResults renderSearch
   mpd.onPlaylistUpdate renderPlaylist
   mpd.onStatusUpdate ->
     renderNowPlaying()
     renderPlaylist()
-  context.artists = mpd.library.artist_list
-  context.playlist = mpd.playlist.item_list
-  context.status = mpd.status
 
   render()
   handleResize()

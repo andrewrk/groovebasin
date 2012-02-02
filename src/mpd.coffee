@@ -40,6 +40,7 @@
 #   track_start_date: new Date(), # absolute datetime of now - position of current time
 #   bitrate: 192, # number of kbps
 # }
+# search_results structure mimics library structure
 
 ######################### global #####################
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
@@ -143,6 +144,7 @@ window.Mpd = class _
     registrarNames = [
       'onError'
       'onLibraryUpdate'
+      'onSearchResults'
       'onPlaylistUpdate'
       'onStatusUpdate'
     ]
@@ -179,16 +181,16 @@ window.Mpd = class _
       bSearchInsert list, result, ((obj) -> obj.name), titleCompare
     return result
 
-  getOrCreateArtist: (artist_name) =>
-    @getOrCreate(artist_name, @library.artist_table, @library.artist_list, -> {name: artist_name})
+  getOrCreateArtist: (artist_name, library=@library) =>
+    @getOrCreate(artist_name, library.artist_table, library.artist_list, -> {name: artist_name})
 
-  getOrCreateAlbum: (album_name, album_year) =>
-    album = @getOrCreate(album_name, @library.album_table, @library.album_list, -> {name: album_name, year: album_year})
+  getOrCreateAlbum: (album_name, album_year, library=@library) =>
+    album = @getOrCreate(album_name, library.album_table, library.album_list, -> {name: album_name, year: album_year})
     album.year = album_year if not album.year?
     return album
 
-  getOrCreateTrack: (file) =>
-    @library.track_table[file] ||= {file: file}
+  getOrCreateTrack: (file, library=@library) =>
+    library.track_table[file] ||= {file: file}
 
   deleteTrack: (track) =>
     delete @library.track_table[track.file]
@@ -226,7 +228,7 @@ window.Mpd = class _
     n = parseInt(n)
     n = "" if isNaN(n)
     return n
-  addTracksToLibrary: (msg) =>
+  addTracksToLibrary: (msg, library=@library) =>
     if msg == ""
       return []
 
@@ -245,15 +247,15 @@ window.Mpd = class _
     flush_current_track()
 
     # convert to our track format and add to cache
-    track_table = @library.track_table
+    track_table = library.track_table
     for mpd_track in mpd_tracks
-      track = @getOrCreateTrack(mpd_track.file)
+      track = @getOrCreateTrack(mpd_track.file, library)
       $.extend track,
         name: parseTrackName(mpd_track.Title)
         track: parseMaybeUndefNumber(mpd_track.Track)
         time: parseInt(mpd_track.Time)
-        artist: @getOrCreateArtist(parseArtistName(mpd_track.Artist))
-        album: @getOrCreateAlbum(parseAlbumName(mpd_track.Album), parseMaybeUndefNumber(mpd_track.Date))
+        artist: @getOrCreateArtist(parseArtistName(mpd_track.Artist), library)
+        album: @getOrCreateAlbum(parseAlbumName(mpd_track.Album), parseMaybeUndefNumber(mpd_track.Date), library)
 
       album_tracks = track.album.tracks ||= {}
       album_tracks[mpd_track.file] = track
@@ -276,6 +278,13 @@ window.Mpd = class _
     if @msgHandlerQueue.length == 0
       @rawSendCmd "idle", @handleIdleResultsLoop
 
+  clearLibraryObj: (prop_name) =>
+    this[prop_name] =
+      artist_list: []
+      artist_table: {}
+      album_list: []
+      album_table: {}
+      track_table: {}
 
   ######################### public #####################
   
@@ -334,12 +343,9 @@ window.Mpd = class _
 
 
     # cache of library data from mpd. See comment at top of this file
-    @library =
-      artist_list: []
-      artist_table: {}
-      album_list: []
-      album_table: {}
-      track_table: {}
+    @clearLibraryObj 'library'
+    # mimics library but it's the search results
+    @search_results = @library
     # cache of playlist data from mpd.
     @playlist =
       item_list: []
@@ -498,6 +504,23 @@ window.Mpd = class _
           @updatePlaylist =>
             callback()
             @raiseEvent 'onStatusUpdate'
+
+  # puts the search results in search_results
+  search: (query) =>
+    query = $.trim(query)
+    if query.length == 0
+      @search_results = @library
+      @raiseEvent 'onSearchResults'
+      return
+    mpd_query = "search"
+    words = query.split(/\s+/)
+    for word in words
+      mpd_query += " any \"#{escape(word)}\""
+    @clearLibraryObj 'search_results'
+    @sendCommand mpd_query, (msg) =>
+      @addTracksToLibrary msg, @library
+      @addTracksToLibrary msg, @search_results
+      @raiseEvent 'onSearchResults'
 
   queueRandomTracks: (n) =>
     if not @haveFileListCache

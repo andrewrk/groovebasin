@@ -1,41 +1,9 @@
-* ability to filter library
-* drag/drop songs / better ui
-* handle albums better
-  - when two different artists have samely titled album
-  - albums with various artists
-* ability to filter playlist
-* playlist management
-  - save
-  - display
-  - grab individual tracks
-  - switch to
 * ability to upload songs
   - support multiple upload
   - support uploading zip files
   - drag a file to the web page to upload and queue
   - uploaded songs are auto-queued
     > option to not auto-queue
-* ability to download songs
-  - in playlist
-  - in now playing
-  - in library
-* implement the intelligent shuffling
-* library management
-  - duplicate detection and elimination
-    > if a song is byte for byte the same (check md5's) then ignore the
-      new song
-    > use heuristics to guess if songs are probably the same (using tags). if
-      we are reasonably confident that the songs are the same, delete the one
-      with the lower quality.
-    > if we're not confident enough, there will be an
-      api that lists possible duplicates and actions to resolve them.
-  - when a song is added to the library, automatically replaygain scan it
-    and the album from whence it came. Do this for update as well.
-  - ability to add song to library by URL
-* plugin API
-  - plugin to submit songs to last.fm
-  - plugin to import songs to library from youtube URL
-  - wolfebin plugin?
 * dynamic playlist mode
   - togglable
     > ON:
@@ -54,10 +22,50 @@
           to the manual section. the "repopulate" button only affects this area
     > OFF:
       ~ playlist is only changed manually.
+* drag/drop songs / better ui
+* display an icon when connection to server is lost.
+* attempt to reconnect when lost connection to server.
+* ability to filter library
+  - patch mpd to support a capresults arg
+  - filter on key press
+* handle albums better
+  - when two different artists have samely titled album
+  - albums with various artists
+* ability to filter playlist
+* playlist management
+  - save
+  - display
+  - grab individual tracks
+  - switch to
+* ability to download songs
+  - in playlist
+  - in now playing
+  - in library
+* implement the intelligent shuffling
+* ability to ban from random
+* library management
+  - duplicate detection and elimination
+    > if a song is byte for byte the same (check md5's) then ignore the
+      new song
+    > use heuristics to guess if songs are probably the same (using tags). if
+      we are reasonably confident that the songs are the same, delete the one
+      with the lower quality.
+    > if we're not confident enough, there will be an
+      api that lists possible duplicates and actions to resolve them.
+  - when a song is added to the library, automatically replaygain scan it
+    and the album from whence it came. Do this for update as well.
+  - ability to add song to library by URL
+* plugin API
+  - plugin to submit songs to last.fm
+  - plugin to import songs to library from youtube URL
+  - wolfebin plugin?
 * file folder inbox to import stuff
 * playlist colors:
   - already played songs are a color
   - queued random songs are one color
   - manually queued songs are another color
-* ability to ban from random
-
+* take mpd's status into account. Make them editable?
+  - consume
+  - random
+  - repeat
+  - single 

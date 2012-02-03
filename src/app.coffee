@@ -198,6 +198,11 @@ setUpUi = ->
   # move the slider along the path
   schedule 100, updateSliderPos
 
+  $lib_tabs = $("#lib-tabs")
+  $lib_tabs.on 'mouseover', 'li', (event) ->
+    $(this).addClass 'ui-state-hover'
+  $lib_tabs.on 'mouseout', 'li', (event) ->
+    $(this).removeClass 'ui-state-hover'
 
 
 initHandlebars = ->

@@ -66,6 +66,26 @@ html {
   position: absolute;
 }
 
+#lib-tabs {
+  ul {
+    margin-bottom: -1px;
+
+    li {
+      display: inline;
+
+      a {
+        font-size: .6em;
+        padding: 2px 4px;
+        font-weight: normal;
+      }
+    }
+    li.ui-state-active a {
+      font-size: .8em;
+      font-weight: bold;
+    }
+  }
+}
+
 #library-items {
   div.ui-icon {
     float: left;

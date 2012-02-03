@@ -39,14 +39,23 @@
     <span class="time left"></span>
     <div style="clear: both;"></div>
   </div>
-  <div id="library-window" class="ui-widget-content ui-corner-all">
-    <div class="window-header">
-      <input type="text" id="lib-filter" placeholder="filter">
-      <select id="organize">
-        <option selected="selected">Artist / Album / Song</option>
-      </select>
+  <div id="library-window">
+    <div id="lib-tabs" class="ui-widget ui-corner-all">
+      <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
+        <li class="ui-state-default ui-corner-top ui-state-active"><a href="#">Library</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="#">Upload</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="#">Playlists</a></li>
+      </ul>
     </div>
-    <div id="library">
+    <div class="ui-widget-content ui-corner-all">
+      <div class="window-header">
+        <input type="text" id="lib-filter" placeholder="filter">
+        <select id="organize">
+          <option selected="selected">Artist / Album / Song</option>
+        </select>
+      </div>
+      <div id="library">
+      </div>
     </div>
   </div>
   <div id="playlist-window" class="ui-widget-content ui-corner-all">

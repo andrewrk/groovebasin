@@ -240,8 +240,10 @@ handleResize = ->
   $pl_window.height $lib.height()
 
   # make the inside containers fit
-  $("#library-items").height $lib.height() - $lib.find(".window-header").height() - MARGIN
-  $("#playlist-items").height $pl_window.height() - $pl_window.find(".window-header").height() - MARGIN
+  $lib_header = $lib.find(".window-header")
+  $("#library-items").height $lib.height() - $lib_header.position().top - $lib_header.height() - MARGIN
+  $pl_header = $pl_window.find(".window-header")
+  $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height() - MARGIN
 
 $(document).ready ->
   setUpUi()

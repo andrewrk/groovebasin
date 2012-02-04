@@ -1,3 +1,4 @@
+* make with minification breaks callbacks
 * ability to upload songs
   - support multiple upload
   - support uploading zip files

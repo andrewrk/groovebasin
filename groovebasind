@@ -1,5 +1,6 @@
 #!/usr/bin/env coffee
 
+fs = require 'fs'
 http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
@@ -21,6 +22,12 @@ nconf
       host: 'localhost'
       port: 6600
       conf: "/etc/mpd.conf"
+
+# check for library link
+public_dir = "./public"
+library_link = public_dir + "/library"
+fs.readdir library_link, (err, files) ->
+  err? and console.log "ERROR: #{library_link} not linked to media library"
 
 # static server
 fileServer = new (static.Server) './public'

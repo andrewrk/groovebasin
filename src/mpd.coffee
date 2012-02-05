@@ -377,7 +377,7 @@ window.Mpd = class _
   updateArtistList: =>
     @sendCommand 'list artist', (msg) =>
       # remove the 'Artist: ' text from every line and convert to array
-      newNames = (parseArtistName(line.substring(8)) for line in msg.split('\n'))
+      newNames = (parseArtistName(line.substring(8)) for line in $.trim(msg).split('\n'))
       newNames.sort titleCompare
 
       # merge with cache

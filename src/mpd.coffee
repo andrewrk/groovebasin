@@ -521,12 +521,12 @@ window.Mpd = class _
       @raiseEvent 'onSearchResults'
 
   queueRandomTracks: (n) =>
-    f = ->
+    f = =>
       @sendCommands ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
     if not @haveFileListCache
       @updateFileList f
     else
-      f
+      f()
 
   updateFileList: (cb) =>
     @haveFileListCache = true

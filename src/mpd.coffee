@@ -414,6 +414,7 @@ window.Mpd = class _
       @raiseEvent 'onLibraryUpdate'
 
   updateArtistInfo: (artist_name, cb=noop) =>
+    artist_name = "" if artist_name == DEFAULT_ARTIST
     @sendCommand "find artist \"#{escape(artist_name)}\"", (msg) =>
       @addTracksToLibrary msg
       cb()

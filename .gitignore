@@ -3,3 +3,4 @@ public/app.css
 public/test.js
 node_modules/
 public/library
+.rvmrc

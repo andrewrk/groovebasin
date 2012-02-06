@@ -45,6 +45,6 @@
 
     Auto-comile with DEBUG on:
 
-        $ watch -n0.5 make -e DEBUG=true
+        $ watch -n0.5 make
 
     To run the test suite, navigate to /test.html

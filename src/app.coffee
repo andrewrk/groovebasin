@@ -22,12 +22,12 @@ renderPlaylist = ->
 
 
 renderLibrary = ->
-  context.artists = mpd.library.artist_list
+  context.artists = mpd.library.artists
   $("#library").html Handlebars.templates.library(context)
   handleResize()
 
 renderSearch = ->
-  context.artists = mpd.search_results.artist_list
+  context.artists = mpd.search_results.artists
   $("#library").html Handlebars.templates.library(context)
   handleResize()
 
@@ -46,7 +46,7 @@ renderNowPlaying = ->
   # set window title
   track = mpd.status.current_item?.track
   if track?
-    track_display = "#{track.name} - #{track.artist.name} - #{track.album.name}"
+    track_display = "#{track.name} - #{track.artist_name} - #{track.album.name}"
     document.title = "#{track_display} - #{base_title}"
   else
     track_display = ""
@@ -117,14 +117,6 @@ setUpUi = ->
     return false
 
   $library = $("#library")
-  $library.on 'click', 'div.artist', (event) ->
-    $div = $(this)
-    artist_name = $div.find("span").text()
-    if not $div.data('cached')
-      mpd.updateArtistInfo artist_name, ->
-        $div.data 'cached', true
-        $div.parent().find("> ul").html Handlebars.templates.album_list
-          albums: mpd.library.artist_table[artist_name].albums
   $library.on 'click', 'div.track', (event) ->
     mpd.queueFileNext $(this).data('file')
 
@@ -207,17 +199,6 @@ setUpUi = ->
 
 initHandlebars = ->
   Handlebars.registerHelper 'time', formatTime
-  Handlebars.registerHelper 'hash', (context, options) ->
-    values = (v for k,v of context)
-    if options.hash.orderby?
-      order_keys = options.hash.orderby.split(",")
-      order_keys.reverse()
-      for order_key in order_keys
-        values.sort (a, b) ->
-          a = a[order_key]
-          b = b[order_key]
-          if a < b then -1 else if a == b then 0 else 1
-    (options.fn(value) for value in values).join("")
 
 handleResize = ->
   $nowplaying = $("#nowplaying")

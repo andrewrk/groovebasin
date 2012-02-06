@@ -20,16 +20,13 @@ renderPlaylist = ->
 
   handleResize()
 
-
-renderLibrary = ->
-  context.artists = mpd.library.artists
+renderLibraryTree = (artists, empty_message) ->
+  context.artists = artists
+  context.empty_library_message = if mpd.haveFileListCache then empty_message else "loading..."
   $("#library").html Handlebars.templates.library(context)
   handleResize()
-
-renderSearch = ->
-  context.artists = mpd.search_results.artists
-  $("#library").html Handlebars.templates.library(context)
-  handleResize()
+renderLibrary = -> renderLibraryTree mpd.library.artists, "Empty Library"
+renderSearch = -> renderLibraryTree mpd.search_results.artists, "No Results Found"
 
 updateSliderPos = ->
   return if userIsSeeking

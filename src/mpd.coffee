@@ -234,7 +234,9 @@ window.Mpd = class _
       album_key = [album_name, track.year].join("\n")
       if album_name == DEFAULT_ALBUM
         album_key = "#{track.album_artist_name}\n#{album_key}"
-      album = getOrCreate album_key, album_table, -> {name: album_name, year: track.year, tracks: [track]}
+      album_key = album_key.toLowerCase()
+      album = getOrCreate album_key, album_table, -> {name: album_name, year: track.year, tracks: []}
+      album.tracks.push track
       album.year = album_year if not album.year?
       track.album = album
 
@@ -245,11 +247,11 @@ window.Mpd = class _
       album_artists = {}
       album.tracks.sort trackComparator
       for track in album.tracks
-        album_artists[track.album_artist_name] = 1
-        album_artists[track.artist_name] = 1
+        album_artist_name = track.album_artist_name
+        album_artists[album_artist_name.toLowerCase()] = 1
+        album_artists[track.artist_name.toLowerCase()] = 1
       artist_count = 0
       for k of album_artists
-        album_artist_name = k
         artist_count += 1
       if artist_count > 1
         # multiple artists. we're sure it's a compilation album.
@@ -258,7 +260,7 @@ window.Mpd = class _
         # make sure to disambiguate the artist names
         for track in album.tracks
           track.artist_disambiguation = track.artist_name
-      artist = getOrCreate album_artist_name, artist_table, -> {name: album_artist_name, albums: []}
+      artist = getOrCreate album_artist_name.toLowerCase(), artist_table, -> {name: album_artist_name, albums: []}
       artist.albums.push album
 
     # collect list of artists and sort albums

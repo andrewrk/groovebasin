@@ -6,10 +6,12 @@
   <script type="text/javascript" src="vendor/jquery-ui-1.8.17.custom.min.js"></script>
   <script type="text/javascript" src="vendor/socket.io/socket.io.min.js"></script>
   <script type="text/javascript" src="vendor/handlebars.runtime.js"></script>
+  <script type="text/javascript" src="vendor/fileuploader/fileuploader.js"></script>
   <script type="text/javascript" src="app.js"></script>
   <link rel="stylesheet" type="text/css" href="vendor/reset.min.css">
-  <link rel="stylesheet" type="text/css" href="app.css">
   <link rel="stylesheet" type="text/css" href="vendor/css/dot-luv/jquery-ui-1.8.17.custom.css">
+  <link rel="stylesheet" type="text/css" href="vendor/fileuploader/fileuploader.css">
+  <link rel="stylesheet" type="text/css" href="app.css">
   <link rel="shortcut icon" href="/favicon.png" type="image/png">
 </head>
 <body>
@@ -42,12 +44,12 @@
   <div id="library-window">
     <div id="lib-tabs" class="ui-widget ui-corner-all">
       <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
-        <li class="ui-state-default ui-corner-top ui-state-active"><a href="#">Library</a></li>
-        <li class="ui-state-default ui-corner-top"><a href="#">Upload</a></li>
-        <li class="ui-state-default ui-corner-top"><a href="#">Playlists</a></li>
+        <li class="ui-state-default ui-corner-top ui-state-active library-tab"><span>Library</span></li>
+        <li class="ui-state-default ui-corner-top upload-tab"><span>Upload</span></li>
+        <li class="ui-state-default ui-corner-top playlist-tab"><span>Playlists</span></li>
       </ul>
     </div>
-    <div class="ui-widget-content ui-corner-all">
+    <div id="library-tab" class="ui-widget-content ui-corner-all">
       <div class="window-header">
         <input type="text" id="lib-filter" placeholder="filter">
         <select id="organize">
@@ -55,6 +57,16 @@
         </select>
       </div>
       <div id="library">
+      </div>
+    </div>
+    <div id="upload-tab" class="ui-widget-content ui-corner-all" style="display: none">
+      <div id="upload">
+        <h2>Browse for files</h2>
+        <div id="upload-widget"></div>
+        <h2>Drag and drop</h2>
+        <div>(doesn't work)</div>
+        <h2>Paste URL</h2>
+        <input type="text" value="(doesn't work)">
       </div>
     </div>
   </div>

@@ -73,13 +73,15 @@ html {
     li {
       display: inline;
 
-      a {
+      span {
         font-size: .6em;
         padding: 2px 4px;
         font-weight: normal;
       }
+
+      cursor: pointer;
     }
-    li.ui-state-active a {
+    li.ui-state-active span {
       font-size: .8em;
       font-weight: bold;
     }

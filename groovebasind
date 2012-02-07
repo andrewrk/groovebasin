@@ -6,6 +6,9 @@ net = require 'net'
 socketio = require 'socket.io'
 static = require 'node-static'
 nconf = require 'nconf'
+formidable = require 'formidable'
+url = require 'url'
+util = require 'util'
 
 nconf
   .argv()
@@ -23,17 +26,40 @@ nconf
       port: 6600
       conf: "/etc/mpd.conf"
 
+# read mpd conf
+music_directory = null
+fs.readFile nconf.get('mpd:conf'), (err, data) ->
+  m = data.toString().match /^music_directory\s+"(.*)"$/m
+  music_directory = m[1] if m?
+  if music_directory?
+    console.log "Music directory: #{music_directory}"
+  else
+    console.log "ERROR - music directory not found"
+
 # check for library link
 public_dir = "./public"
 library_link = public_dir + "/library"
 fs.readdir library_link, (err, files) ->
   err? and console.log "ERROR: #{library_link} not linked to media library"
 
+moveFile = (source, dest) ->
+  in_stream = fs.createReadStream(source)
+  out_stream = fs.createWriteStream(dest)
+  util.pump in_stream, out_stream, -> fs.unlink source
+
 # static server
 fileServer = new (static.Server) './public'
 app = http.createServer((request, response) ->
-  request.addListener 'end', ->
-    fileServer.serve request, response
+  parsed_url = url.parse(request.url)
+  if parsed_url.pathname == '/upload' and request.method == 'POST'
+    form = new formidable.IncomingForm()
+    form.parse request, (err, fields, file) ->
+      moveFile file.qqfile.path, "#{music_directory}/#{file.qqfile.name}"
+      response.writeHead 200, {'content-type': 'text/html'}
+      response.end JSON.stringify {success: true}
+  else
+    request.addListener 'end', ->
+      fileServer.serve request, response
 ).listen(nconf.get('http:port'))
 console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 

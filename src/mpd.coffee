@@ -420,7 +420,7 @@ window.Mpd = class _
   updateStatus: (callback=noop) =>
     # can't use await/defer yet:
     # https://github.com/jashkenas/coffee-script/pull/1942#issuecomment-3707044
-    @sendCommands ["status"], (msg) =>
+    @sendCommand "status", (msg) =>
       # no dict comprehensions :(
       # https://github.com/jashkenas/coffee-script/issues/77
       o = {}

@@ -18,8 +18,8 @@
         "socket.io": ">=0.8.7",
         "node-static": ">=0.5.9",
         "nconf": ">=0.5.1",
-        "iced-coffee-script": ">=1.2.0i",
-        "uglify-js": ">=1.2.5",
-        "handlebars": ">=1.0.4beta"
+        "coffee-script": ">=1.2.0i",
+        "handlebars": ">=1.0.4beta",
+        "formidable": ">=1.0.8"
     }
 }

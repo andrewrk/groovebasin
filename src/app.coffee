@@ -132,11 +132,6 @@ setUpUi = ->
   $library.on 'mouseout', 'div.hoverable', (event) ->
     $(this).removeClass "ui-state-active"
 
-  $library.on 'click', 'li.track', (event) ->
-    file = $(event.target).data('file')
-    mpd.queueFile file
-    return false
-  
   $("#lib-filter").on 'keydown', (event) ->
     if event.keyCode == 27
       $(event.target).val("")
@@ -192,6 +187,29 @@ setUpUi = ->
     $(this).addClass 'ui-state-hover'
   $lib_tabs.on 'mouseout', 'li', (event) ->
     $(this).removeClass 'ui-state-hover'
+
+  tabs = [
+    'library-tab'
+    'upload-tab'
+    'playlist-tab'
+  ]
+
+  unselectTabs = ->
+    $lib_tabs.find('li').removeClass 'ui-state-active'
+    for tab in tabs
+      $("##{tab}").hide()
+
+  for tab in tabs
+    do (tab) ->
+      $lib_tabs.on 'click', "li.#{tab}", (event) ->
+        unselectTabs()
+        $(this).addClass 'ui-state-active'
+        $("##{tab}").show()
+
+  uploader = new qq.FileUploader
+    element: document.getElementById("upload-widget")
+    action: '/upload'
+    encoding: 'multipart'
 
 
 initHandlebars = ->

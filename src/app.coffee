@@ -43,7 +43,9 @@ renderNowPlaying = ->
   # set window title
   track = mpd.status.current_item?.track
   if track?
-    track_display = "#{track.name} - #{track.artist_name} - #{track.album_name}"
+    track_display = "#{track.name} - #{track.artist_name}"
+    if track.album_name != ""
+      track_display += " - " + track.album_name
     document.title = "#{track_display} - #{base_title}"
   else
     track_display = ""

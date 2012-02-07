@@ -46,7 +46,6 @@ window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 
 ######################### static #####################
 DEFAULT_ARTIST = "[Unknown Artist]"
-DEFAULT_ALBUM = "[Unknown Album]"
 VARIOUS_ARTISTS = "Various Artists"
 
 MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
@@ -192,7 +191,7 @@ window.Mpd = class _
         artist_name: artist_name
         artist_disambiguation: ""
         album_artist_name: mpd_track.AlbumArtist or artist_name
-        album_name: $.trim(mpd_track.Album) || DEFAULT_ALBUM
+        album_name: $.trim(mpd_track.Album)
         track: parseMaybeUndefNumber(mpd_track.Track)
         time: parseInt(mpd_track.Time)
         year: parseMaybeUndefNumber(mpd_track.Date)
@@ -230,7 +229,7 @@ window.Mpd = class _
     for track in tracks
       library.track_table[track.file] = track
       album_key = [track.album_name, track.year].join("\n")
-      if track.album_name == DEFAULT_ALBUM
+      if track.album_name == ""
         album_key = "#{track.album_artist_name}\n#{album_key}"
       album_key = album_key.toLowerCase()
       album = getOrCreate album_key, album_table, -> {name: track.album_name, year: track.year, tracks: []}

@@ -132,14 +132,19 @@ setUpUi = ->
   $library.on 'mouseout', 'div.hoverable', (event) ->
     $(this).removeClass "ui-state-active"
 
+  search_is_waiting = false
   $("#lib-filter").on 'keydown', (event) ->
     if event.keyCode == 27
       $(event.target).val("")
       mpd.search ""
       return false
     else
-      # FIXME: need to get value after this keystroke changes it
-      mpd.search $(event.target).val()
+      if not search_is_waiting
+        search_is_waiting = true
+        deffered_query = ->
+          mpd.search $(event.target).val()
+          search_is_waiting = false
+        setTimeout deffered_query, 200
       return true
 
   actions =

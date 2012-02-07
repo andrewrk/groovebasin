@@ -137,9 +137,10 @@ setUpUi = ->
       $(event.target).val("")
       mpd.search ""
       return false
-    else if event.keyCode == 13
+    else
+      # FIXME: need to get value after this keystroke changes it
       mpd.search $(event.target).val()
-      return false
+      return true
 
   actions =
     'toggle': ->

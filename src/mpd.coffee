@@ -139,15 +139,6 @@ window.Mpd = class _
     @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
     @socket.emit 'ToMpd', msg + "\n"
 
-
-  deleteTrack: (track) =>
-    delete @library.track_table[track.file]
-
-    # remove albums rendered empty from the missing tracks
-    album = track.album
-    if album.tracks? and Object.keys(album.tracks).length == 0
-      delete @library.album_table[album.key]
-
   handleIdleResults: (msg) =>
     (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
 
@@ -191,6 +182,24 @@ window.Mpd = class _
     n = parseInt(n)
     n = "" if isNaN(n)
     return n
+  mpdTracksToTrackObjects: (mpd_tracks) =>
+    tracks = []
+    for mpd_track in mpd_tracks
+      artist_name = $.trim(mpd_track.Artist) || DEFAULT_ARTIST
+      track =
+        file: mpd_track.file
+        name: mpd_track.Title || mpd_track.file.substr mpd_track.file.lastIndexOf('/') + 1
+        artist_name: artist_name
+        artist_disambiguation: ""
+        album_artist_name: mpd_track.AlbumArtist or artist_name
+        album_name: $.trim(mpd_track.Album) || DEFAULT_ALBUM
+        track: parseMaybeUndefNumber(mpd_track.Track)
+        time: parseInt(mpd_track.Time)
+        year: parseMaybeUndefNumber(mpd_track.Date)
+      track.search_tags = [track.artist_name, track.album_artist_name, track.album_name, track.name].join("\n").toLowerCase()
+      tracks.push track
+    tracks
+
   getOrCreate = (key, table, initObjFunc) ->
     result = table[key]
     if not result?
@@ -214,31 +223,19 @@ window.Mpd = class _
     a = a["name"]
     b = b["name"]
     if a < b then -1 else if a == b then 0 else 1
-  addTracksToLibrary: (mpd_tracks, library=@library) =>
-    # construct tracks and determine set of albums
+  buildArtistAlbumTree: (tracks, library) =>
+    # determine set of albums
     library.track_table = {}
     album_table = {}
-    for mpd_track in mpd_tracks
-      artist_name = $.trim(mpd_track.Artist) || DEFAULT_ARTIST
-      track =
-        file: mpd_track.file
-        name: mpd_track.Title || mpd_track.file.substr mpd_track.file.lastIndexOf('/') + 1
-        artist_name: artist_name
-        artist_disambiguation: ""
-        album_artist_name: mpd_track.AlbumArtist or artist_name
-        track: parseMaybeUndefNumber(mpd_track.Track)
-        time: parseInt(mpd_track.Time)
-        year: parseMaybeUndefNumber(mpd_track.Date)
-      library.track_table[mpd_track.file] = track
-      album_name = $.trim(mpd_track.Album) || DEFAULT_ALBUM
-      album_key = [album_name, track.year].join("\n")
-      if album_name == DEFAULT_ALBUM
+    for track in tracks
+      library.track_table[track.file] = track
+      album_key = [track.album_name, track.year].join("\n")
+      if track.album_name == DEFAULT_ALBUM
         album_key = "#{track.album_artist_name}\n#{album_key}"
       album_key = album_key.toLowerCase()
-      album = getOrCreate album_key, album_table, -> {name: album_name, year: track.year, tracks: []}
+      album = getOrCreate album_key, album_table, -> {name: track.album_name, year: track.year, tracks: []}
       album.tracks.push track
       album.year = album_year if not album.year?
-      track.album = album
 
     # find compilation albums and create artist objects
     artist_table = {}
@@ -289,11 +286,6 @@ window.Mpd = class _
     # if we have nothing else to do, idle.
     if @msgHandlerQueue.length == 0
       @rawSendCmd "idle", @handleIdleResultsLoop
-
-  clearLibraryObj: (prop_name) =>
-    this[prop_name] =
-      artists: []
-      track_table: {}
 
   ######################### public #####################
   
@@ -352,9 +344,12 @@ window.Mpd = class _
 
 
     # cache of library data from mpd. See comment at top of this file
-    @clearLibraryObj 'library'
-    # mimics library but it's the search results
-    @search_results = @library
+    makeLibrary = ->
+      artists: []
+      track_table: {}
+    @library = makeLibrary()
+    @search_results = makeLibrary()
+    @last_query = ""
     # cache of playlist data from mpd.
     @playlist =
       item_list: []
@@ -385,7 +380,8 @@ window.Mpd = class _
 
   updateLibrary: =>
     @sendCommand 'listallinfo', (msg) =>
-      @addTracksToLibrary @parseMpdTracks msg
+      tracks = @mpdTracksToTrackObjects @parseMpdTracks msg
+      @buildArtistAlbumTree tracks, @library
       @haveFileListCache = true
       # notify listeners
       @raiseEvent 'onLibraryUpdate'
@@ -481,17 +477,24 @@ window.Mpd = class _
   search: (query) =>
     query = $.trim(query)
     if query.length == 0
-      @search_results = @library
-      @raiseEvent 'onSearchResults'
+      @raiseEvent 'onLibraryUpdate'
       return
-    mpd_query = "search"
-    words = query.split(/\s+/)
-    for word in words
-      mpd_query += " any \"#{escape(word)}\""
-    @clearLibraryObj 'search_results'
-    @sendCommand mpd_query, (msg) =>
-      @addTracksToLibrary @parseMpdTracks(msg), @search_results
-      @raiseEvent 'onSearchResults'
+    words = query.toLowerCase().split(/\s+/)
+    query = words.join(" ")
+    return if query == @last_query
+    @last_query = query
+    result = []
+    for k, track of @library.track_table
+      is_match = (->
+        for word in words
+          if track.search_tags.indexOf(word) == -1
+            return false
+        return true
+      )()
+      result.push track if is_match
+    # zip results into album
+    @buildArtistAlbumTree result, @search_results
+    @raiseEvent 'onSearchResults'
 
   queueRandomTracks: (n) =>
     if @haveFileListCache

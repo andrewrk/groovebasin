@@ -18,7 +18,8 @@ nconf
   .file({file: "/etc/groovebasinrc"})
   .file({file: "#{process.env.HOME}/.groovebasinrc"})
   .defaults
-    log_level: 3
+    user_id: "mpd"
+    log_level: 1
     http:
       port: 80
     mpd:
@@ -29,6 +30,9 @@ nconf
 # read mpd conf
 music_directory = null
 fs.readFile nconf.get('mpd:conf'), (err, data) ->
+  if err
+    console.log "Error reading mpd conf file: #{err}"
+    return
   m = data.toString().match /^music_directory\s+"(.*)"$/m
   music_directory = m[1] if m?
   if music_directory?
@@ -81,3 +85,7 @@ io.sockets.on 'connection', (socket) ->
     try mpd.write data
 
   socket.on 'disconnect', -> mpd.end()
+
+# downgrade user permissions
+uid = nconf.get('user_id')
+try process.setuid uid if uid?

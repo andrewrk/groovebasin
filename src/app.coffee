@@ -135,6 +135,7 @@ setUpUi = ->
     $(this).removeClass "ui-state-active"
 
   search_is_waiting = false
+  wait = (delay, func) -> setTimeout func, delay
   $("#lib-filter").on 'keydown', (event) ->
     if event.keyCode == 27
       $(event.target).val("")
@@ -143,10 +144,9 @@ setUpUi = ->
     else
       if not search_is_waiting
         search_is_waiting = true
-        deffered_query = ->
+        wait 200, ->
           mpd.search $(event.target).val()
           search_is_waiting = false
-        setTimeout deffered_query, 200
       return true
 
   actions =

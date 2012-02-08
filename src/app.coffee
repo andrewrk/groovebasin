@@ -26,7 +26,26 @@ renderLibraryTree = (artists, empty_message) ->
   $("#library").html Handlebars.templates.library(context)
   handleResize()
 renderLibrary = -> renderLibraryTree mpd.library.artists, "Empty Library"
-renderSearch = -> renderLibraryTree mpd.search_results.artists, "No Results Found"
+renderSearch = ->
+  renderLibraryTree mpd.search_results.artists, "No Results Found"
+  # auto expand small datasets
+  $artists = $("#library").children("ul").children("li")
+  node_count = $artists.length
+  node_count_limit = 30
+  expand_stuff = ($li_set) ->
+    for $li in $li_set
+      $li = $($li)
+      return if node_count >= node_count_limit
+      $ul = $li.children("ul")
+      $sub_li_set = $ul.children("li")
+      proposed_node_count = node_count + $sub_li_set.length
+      if proposed_node_count <= node_count_limit
+        toggleExpansion $li
+        node_count = proposed_node_count
+        expand_stuff $sub_li_set
+  expand_stuff $artists
+
+
 
 updateSliderPos = ->
   return if userIsSeeking
@@ -92,6 +111,17 @@ formatTime = (seconds) ->
   else
     return "#{minutes}:#{zfill seconds}"
 
+toggleExpansion = ($li) ->
+  $div = $li.find("> div")
+  $ul = $div.parent().find("> ul")
+  $ul.toggle()
+
+  old_class = 'ui-icon-triangle-1-se'
+  new_class = 'ui-icon-triangle-1-e'
+  [new_class, old_class] = [old_class, new_class] if $ul.is(":visible")
+  $div.find("div").removeClass(old_class).addClass(new_class)
+  return false
+
 setUpUi = ->
   $pl_window = $("#playlist-window")
   $pl_window.on 'click', 'a.clear', ->
@@ -121,14 +151,7 @@ setUpUi = ->
 
   $library.on 'click', 'div.expandable', (event) ->
     $div = $(this)
-    $ul = $div.parent().find("> ul")
-    $ul.toggle()
-
-    old_class = 'ui-icon-triangle-1-se'
-    new_class = 'ui-icon-triangle-1-e'
-    [new_class, old_class] = [old_class, new_class] if $ul.is(":visible")
-    $div.find("div").removeClass(old_class).addClass(new_class)
-    return false
+    toggleExpansion $div.parent()
   $library.on 'mouseover', 'div.hoverable', (event) ->
     $(this).addClass "ui-state-active"
   $library.on 'mouseout', 'div.hoverable', (event) ->

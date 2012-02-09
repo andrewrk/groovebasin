@@ -20,27 +20,28 @@ renderPlaylist = ->
 
   handleResize()
 
-renderLibraryTree = (artists, empty_message) ->
-  context.artists = artists
-  context.empty_library_message = if mpd.haveFileListCache then empty_message else "loading..."
+renderLibrary = ->
+  context.artists = mpd.search_results.artists
+  context.empty_library_message = if mpd.haveFileListCache then "No Results" else "loading..."
   $("#library").html Handlebars.templates.library(context)
   handleResize()
-renderLibrary = -> renderLibraryTree mpd.library.artists, "Empty Library"
-renderSearch = ->
-  renderLibraryTree mpd.search_results.artists, "No Results Found"
   # auto expand small datasets
   $artists = $("#library").children("ul").children("li")
   node_count = $artists.length
-  node_count_limit = 30
+  node_count_limit = 20
   expand_stuff = ($li_set) ->
-    for $li in $li_set
-      $li = $($li)
+    for li in $li_set
+      $li = $(li)
       return if node_count >= node_count_limit
       $ul = $li.children("ul")
       $sub_li_set = $ul.children("li")
       proposed_node_count = node_count + $sub_li_set.length
       if proposed_node_count <= node_count_limit
         toggleExpansion $li
+        # get these vars again because they might have been dynamically added
+        # by toggleExpansion
+        $ul = $li.children("ul")
+        $sub_li_set = $ul.children("li")
         node_count = proposed_node_count
         expand_stuff $sub_li_set
   expand_stuff $artists
@@ -113,7 +114,14 @@ formatTime = (seconds) ->
 
 toggleExpansion = ($li) ->
   $div = $li.find("> div")
-  $ul = $div.parent().find("> ul")
+  $ul = $li.find("> ul")
+  if $div.hasClass('artist')
+    if not $li.data('cached')
+      $li.data 'cached', true
+      $ul.html Handlebars.templates.albums
+        albums: mpd.search_results.artist_table[$div.find("span").text().toLowerCase()].albums
+      $ul.toggle()
+
   $ul.toggle()
 
   old_class = 'ui-icon-triangle-1-se'
@@ -150,27 +158,21 @@ setUpUi = ->
     mpd.queueFileNext $(this).data('file')
 
   $library.on 'click', 'div.expandable', (event) ->
-    $div = $(this)
-    toggleExpansion $div.parent()
+    toggleExpansion $(this).parent()
   $library.on 'mouseover', 'div.hoverable', (event) ->
     $(this).addClass "ui-state-active"
   $library.on 'mouseout', 'div.hoverable', (event) ->
     $(this).removeClass "ui-state-active"
 
-  search_is_waiting = false
   wait = (delay, func) -> setTimeout func, delay
-  $("#lib-filter").on 'keydown', (event) ->
+  $lib_filter = $("#lib-filter")
+  $lib_filter.on 'keydown', (event) ->
     if event.keyCode == 27
       $(event.target).val("")
       mpd.search ""
       return false
-    else
-      if not search_is_waiting
-        search_is_waiting = true
-        wait 200, ->
-          mpd.search $(event.target).val()
-          search_is_waiting = false
-      return true
+  $lib_filter.on 'keyup', (event) ->
+      mpd.search $(event.target).val()
 
   actions =
     'toggle': ->
@@ -282,9 +284,9 @@ $(document).ready ->
   initHandlebars()
 
   mpd = new window.Mpd()
+  window._debug_mpd = mpd
   mpd.onError (msg) -> alert msg
   mpd.onLibraryUpdate renderLibrary
-  mpd.onSearchResults renderSearch
   mpd.onPlaylistUpdate renderPlaylist
   mpd.onStatusUpdate ->
     renderNowPlaying()

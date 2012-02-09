@@ -111,7 +111,6 @@ window.Mpd = class _
     registrarNames = [
       'onError'
       'onLibraryUpdate'
-      'onSearchResults'
       'onPlaylistUpdate'
       'onStatusUpdate'
     ]
@@ -274,6 +273,8 @@ window.Mpd = class _
     # various artists goes first
     library.artists.splice 0, 0, various_artist if various_artist?
 
+    library.artist_table = artist_table
+
   rawSendCmd: (cmd, cb=noop) =>
     @msgHandlerQueue.push
       debug_id: @msgCounter++
@@ -343,11 +344,10 @@ window.Mpd = class _
 
 
     # cache of library data from mpd. See comment at top of this file
-    makeLibrary = ->
+    @library =
       artists: []
       track_table: {}
-    @library = makeLibrary()
-    @search_results = makeLibrary()
+    @search_results = @library
     @last_query = ""
     # cache of playlist data from mpd.
     @playlist =
@@ -476,6 +476,7 @@ window.Mpd = class _
   search: (query) =>
     query = $.trim(query)
     if query.length == 0
+      @search_results = @library
       @raiseEvent 'onLibraryUpdate'
       return
     words = query.toLowerCase().split(/\s+/)
@@ -492,8 +493,8 @@ window.Mpd = class _
       )()
       result.push track if is_match
     # zip results into album
-    @buildArtistAlbumTree result, @search_results
-    @raiseEvent 'onSearchResults'
+    @buildArtistAlbumTree result, @search_results = {}
+    @raiseEvent 'onLibraryUpdate'
 
   queueRandomTracks: (n) =>
     if @haveFileListCache

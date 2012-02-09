@@ -1,0 +1,17 @@
+{{#albums}}
+  <li>
+    <div class="album hoverable expandable">
+      <div class="ui-icon ui-icon-triangle-1-e"></div>
+      <span>{{#if name}}{{name}}{{else}}[Unknown Album]{{/if}}</span>
+    </div>
+    <ul style="display: none;">
+      {{#tracks}}
+        <li>
+          <div class="track hoverable" data-file="{{file}}">
+            <span>{{#if track}}{{track}}. {{/if}}{{#if artist_disambiguation}}{{artist_disambiguation}} - {{/if}}{{name}}</span>
+          </div>
+        </li>
+      {{/tracks}}
+    </ul>
+  </li>
+{{/albums}}

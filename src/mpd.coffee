@@ -509,7 +509,7 @@ window.Mpd = class _
 
   queueFileNext: (file) =>
     cur_pos = @status.current_item?.pos
-    if not cur_pos
+    if not cur_pos?
       @queueFile file
       return
     new_pos = cur_pos + 1

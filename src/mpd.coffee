@@ -218,9 +218,7 @@ window.Mpd = class _
   trackComparator = makeComparator ["track", "name"]
   albumComparator = makeComparator ["year", "name"]
   artistComparator = (a, b) ->
-    a = a["name"]
-    b = b["name"]
-    if a < b then -1 else if a == b then 0 else 1
+    titleCompare a.name, b.name
   buildArtistAlbumTree: (tracks, library) =>
     # determine set of albums
     library.track_table = {}

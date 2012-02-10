@@ -1,9 +1,3 @@
-* ability to upload songs
-  - support multiple upload
-  - support uploading zip files
-  - drag a file to the web page to upload and queue
-  - uploaded songs are auto-queued
-    > option to not auto-queue
 * dynamic playlist mode
   - togglable
     > ON:
@@ -23,14 +17,15 @@
     > OFF:
       ~ playlist is only changed manually.
 * drag/drop songs / better ui
+* ability to upload songs
+  - update library without refreshing
+  - update search results without refreshing
+  - uploaded songs are auto-queued
+    > option to not auto-queue
+  - support uploading zip files
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
-* ability to filter library
-  - patch mpd to support a capresults arg
-  - filter on key press
-* handle albums better
-  - when two different artists have samely titled album
-  - albums with various artists
+* button to turn on streaming so you don't have to open another tab
 * ability to filter playlist
 * playlist management
   - save
@@ -38,7 +33,6 @@
   - grab individual tracks
   - switch to
 * ability to download songs
-  - in playlist
   - in now playing
   - in library
 * implement the intelligent shuffling

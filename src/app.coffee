@@ -155,7 +155,7 @@ setUpUi = ->
 
   $library = $("#library")
   $library.on 'click', 'div.track', (event) ->
-    mpd.queueFileNext $(this).data('file')
+    mpd.queueFile $(this).data('file')
 
   $library.on 'click', 'div.expandable', (event) ->
     toggleExpansion $(this).parent()

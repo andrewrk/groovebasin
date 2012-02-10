@@ -243,6 +243,7 @@ setUpUi = ->
     element: document.getElementById("upload-widget")
     action: '/upload'
     encoding: 'multipart'
+    onComplete: -> mpd.sendCommand 'update'
 
 
 initHandlebars = ->

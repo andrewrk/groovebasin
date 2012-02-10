@@ -225,9 +225,11 @@ window.Mpd = class _
     album_table = {}
     for track in tracks
       library.track_table[track.file] = track
-      album_key = [track.album_name, track.year].join("\n")
       if track.album_name == ""
-        album_key = "#{track.album_artist_name}\n#{album_key}"
+        # don't bother including the year
+        album_key = "#{track.album_artist_name}\n\n"
+      else
+        album_key = [track.album_name, track.year].join("\n")
       album_key = album_key.toLowerCase()
       album = getOrCreate album_key, album_table, -> {name: track.album_name, year: track.year, tracks: []}
       album.tracks.push track

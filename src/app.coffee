@@ -131,6 +131,11 @@ toggleExpansion = ($li) ->
   return false
 
 setUpUi = ->
+  $(document).on 'mouseover', '.hoverable', (event) ->
+    $(this).addClass "ui-state-hover"
+  $(document).on 'mouseout', '.hoverable', (event) ->
+    $(this).removeClass "ui-state-hover"
+
   $pl_window = $("#playlist-window")
   $pl_window.on 'click', 'a.clear', ->
     mpd.clear()
@@ -159,11 +164,6 @@ setUpUi = ->
 
   $library.on 'click', 'div.expandable', (event) ->
     toggleExpansion $(this).parent()
-  $library.on 'mouseover', 'div.hoverable', (event) ->
-    $(this).addClass "ui-state-active"
-  $library.on 'mouseout', 'div.hoverable', (event) ->
-    $(this).removeClass "ui-state-active"
-
   wait = (delay, func) -> setTimeout func, delay
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->

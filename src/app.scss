@@ -89,10 +89,11 @@ html {
 }
 
 #library-items {
+  overflow-y: auto;
+
   div.ui-icon {
     float: left;
   }
-  overflow-y: auto;
 
   .hoverable {
     cursor: pointer;
@@ -121,11 +122,12 @@ html {
 }
 
 #playlist-items {
-  height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
 
   table {
     width: 100%;
+    border-collapse: collapse;
   }
 
   th {
@@ -136,21 +138,8 @@ html {
     background-color: #2A2A2A;
   }
 
-  $highlight: #1A1F24;
-  tr.current {
-    background-color: #3D80C0;
-    color: $highlight;
-    font-weight: bold;
-
-    a {
-      color: $highlight;
-    }
-  }
   td.time {
     text-align: right;
-  }
-  td {
-    overflow-x: hidden;
   }
 
 }

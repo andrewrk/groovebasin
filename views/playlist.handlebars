@@ -2,7 +2,7 @@
   <div id="playlist-items">
     <table>
       <tr>
-        <th>Track</th>
+        <th>&nbsp;</th>
         <th>Title</th>
         <th>Artist</th>
         <th>Album</th>
@@ -12,9 +12,7 @@
       {{#playlist}}
         <tr id="playlist-track-{{id}}">
           <td>{{track.track}}</td>
-          <td>
-            <a href="#" class="track" data-id="{{id}}">{{track.name}}</a>
-          </td>
+          <td>{{track.name}}</td>
           <td>{{track.artist_name}}</td>
           <td>{{track.album_name}}</td>
           <td class="time">{{time track.time}}</td>

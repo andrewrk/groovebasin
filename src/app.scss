@@ -134,6 +134,10 @@ html {
     font-weight: bold;
   }
 
+  tr {
+    cursor: pointer;
+  }
+
   tr:nth-child(2n+1) {
     background-color: #2A2A2A;
   }

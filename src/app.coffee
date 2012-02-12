@@ -148,13 +148,12 @@ setUpUi = ->
     return false
 
   $playlist = $("#playlist")
-  $playlist.on 'click', 'a.track', (event) ->
-    track_id = $(event.target).data('id')
+  $playlist.on 'click', 'tr', (event) ->
+    track_id = $(this).data('id')
     mpd.playId track_id
     return false
   $playlist.on 'click', 'a.remove', (event) ->
-    $target = $(event.target)
-    track_id = $target.data('id')
+    track_id = $(this).closest("tr").data("id")
     mpd.removeId track_id
     return false
 

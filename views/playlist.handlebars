@@ -10,7 +10,7 @@
         <th>Actions</th>
       </tr>
       {{#playlist}}
-        <tr id="playlist-track-{{id}}">
+        <tr id="playlist-track-{{id}}" data-id="{{id}}" class="hoverable">
           <td>{{track.track}}</td>
           <td>{{track.name}}</td>
           <td>{{track.artist_name}}</td>
@@ -18,7 +18,7 @@
           <td class="time">{{time track.time}}</td>
           <td>
             <a href="library/{{track.file}}" target="_blank">Download</a>
-            <a href="#" class="remove" data-id="{{id}}">Remove</a>
+            <a href="#" class="remove">Remove</a>
           </td>
         </tr>
       {{/playlist}}

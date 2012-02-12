@@ -10,6 +10,19 @@ formidable = require 'formidable'
 url = require 'url'
 util = require 'util'
 
+class DirectMpd extends require('./lib/mpd').Mpd
+  constructor: (@mpd_socket) ->
+    super()
+    @mpd_socket.on 'data', (data) =>
+      @receive data.toString()
+    @mpd_socket.on 'end', ->
+      console.log "server mpd disconnect"
+    @mpd_socket.on 'error', ->
+      console.log "server no mpd daemon found."
+
+  send: (data) =>
+    try @mpd_socket.write data
+
 nconf
   .argv()
   .env()
@@ -67,24 +80,37 @@ app = http.createServer((request, response) ->
 ).listen(nconf.get('http:port'))
 console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 
+createMpdConnection = (cb) ->
+  net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), cb
+
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
-  mpd = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
-    console.log "mpd connect"
-  mpd.on 'data', (data) ->
+  mpd_socket = createMpdConnection ->
+    console.log "browser to mpd connect"
+  mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
-  mpd.on 'end', ->
-    console.log "mpd disconnect"
+  mpd_socket.on 'end', ->
+    console.log "browser mpd disconnect"
     try socket.emit 'disconnect'
-  mpd.on 'error', ->
-    console.log "No mpd daemon found."
+  mpd_socket.on 'error', ->
+    console.log "browser no mpd daemon found."
 
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
-    try mpd.write data
+    try mpd_socket.write data
 
-  socket.on 'disconnect', -> mpd.end()
+  socket.on 'disconnect', -> mpd_socket.end()
+
+# our own mpd connection
+my_mpd = null
+my_mpd_socket = createMpdConnection ->
+  console.log "server to mpd connect"
+  my_mpd.handleConnectionStart()
+my_mpd = new DirectMpd(my_mpd_socket)
+my_mpd.on 'statusupdate', ->
+  cur_name = my_mpd.status?.current_item?.track?.name
+  console.log "status update. now playing #{cur_name}" if cur_name?
 
 # downgrade user permissions
 uid = nconf.get('user_id')

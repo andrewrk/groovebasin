@@ -5,10 +5,7 @@ window.SocketMpd = class _ extends window.Mpd
     @socket = io.connect(undefined, {'force new connection': true})
     @socket.on 'FromMpd', (data) =>
       @receive data
-    @socket.on 'connect', =>
-      @updateLibrary()
-      @updateStatus()
-      @updatePlaylist()
+    @socket.on 'connect', @handleConnectionStart
 
   send: (msg) =>
     @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)

@@ -37,6 +37,7 @@
 #   time: 234, # length of song in seconds
 #   track_start_date: new Date(), # absolute datetime of now - position of current time
 #   bitrate: 192, # number of kbps
+#   current_item: {playlist item structure},
 # }
 # search_results structure mimics library structure
 
@@ -56,6 +57,22 @@ DEFAULT_ARTIST = "[Unknown Artist]"
 VARIOUS_ARTISTS = "Various Artists"
 
 MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
+
+__trimLeft = /^\s+/
+__trimRight = /\s+$/
+__trim = String.prototype.trim
+trim = if __trim?
+  (text) ->
+    if not text? then "" else __trim.call text
+else
+  (text) ->
+    if not text? then "" else text.toString().replace(trimLeft, "").replace(trimRight, "")
+
+extend = (obj, args...) ->
+  for arg in args
+    for prop, val of arg
+      obj[prop] = val
+  return obj
 
 elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
 dateToElapsed = (date) -> ((new Date()) - date) / 1000
@@ -115,7 +132,7 @@ exports.Mpd = class _
 
   raiseEvent: (event_name, args...) =>
     # create copy so handlers can remove themselves
-    handlers_list = $.extend [], @event_handlers[event_name] || []
+    handlers_list = extend [], @event_handlers[event_name] || []
     handler(args...) for handler in handlers_list
 
   handleMessage: (msg) =>
@@ -143,7 +160,7 @@ exports.Mpd = class _
       @buffer = @buffer.substring(msg.length+line.length+1)
 
   handleIdleResults: (msg) =>
-    (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
+    (@updateFuncs[system.substring(9)] ? noop)() for system in trim(msg).split("\n") when system.length > 0
 
   # cache of playlist data from mpd
   clearPlaylist: =>
@@ -190,14 +207,14 @@ exports.Mpd = class _
   mpdTracksToTrackObjects: (mpd_tracks) =>
     tracks = []
     for mpd_track in mpd_tracks
-      artist_name = $.trim(mpd_track.Artist) || DEFAULT_ARTIST
+      artist_name = trim(mpd_track.Artist) || DEFAULT_ARTIST
       track =
         file: mpd_track.file
         name: mpd_track.Title || mpd_track.file.substr mpd_track.file.lastIndexOf('/') + 1
         artist_name: artist_name
         artist_disambiguation: ""
         album_artist_name: mpd_track.AlbumArtist or artist_name
-        album_name: $.trim(mpd_track.Album)
+        album_name: trim(mpd_track.Album)
         track: parseMaybeUndefNumber(mpd_track.Track)
         time: parseInt(mpd_track.Time)
         year: parseMaybeUndefNumber(mpd_track.Date)
@@ -346,6 +363,11 @@ exports.Mpd = class _
         handlers.splice i, 1
         return
 
+  handleConnectionStart: =>
+    @updateLibrary()
+    @updateStatus()
+    @updatePlaylist()
+
   sendCommand: (command, callback=noop) =>
     @send "noidle\n" if @idling
     @rawSendCmd command, callback
@@ -398,7 +420,7 @@ exports.Mpd = class _
       o = {}
       for [key, val] in (line.split(": ") for line in msg.split("\n"))
         o[key] = val
-      $.extend @status,
+      extend @status,
         volume: parseInt(o.volume) / 100
         repeat: parseInt(o.repeat) != 0
         random: parseInt(o.random) != 0
@@ -451,7 +473,7 @@ exports.Mpd = class _
 
   # puts the search results in search_results
   search: (query) =>
-    query = $.trim(query)
+    query = trim(query)
     if query.length == 0
       @search_results = @library
       @raiseEvent 'libraryupdate'

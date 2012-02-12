@@ -66,7 +66,7 @@ trim = if __trim?
     if not text? then "" else __trim.call text
 else
   (text) ->
-    if not text? then "" else text.toString().replace(trimLeft, "").replace(trimRight, "")
+    if not text? then "" else text.toString().replace(__trimLeft, "").replace(__trimRight, "")
 
 extend = (obj, args...) ->
   for arg in args

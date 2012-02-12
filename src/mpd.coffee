@@ -41,8 +41,7 @@
 # search_results structure mimics library structure
 
 ######################### global #####################
-window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
-
+exports ?= window
 
 ######################### static #####################
 DEFAULT_ARTIST = "[Unknown Artist]"
@@ -102,31 +101,17 @@ pickNRandomProps = (obj, n) ->
         results[i] = prop
   return results
 
-window.Mpd = class _
+exports.Mpd = class Mpd
 
   ######################### private #####################
 
+  on: (event_name, handler) =>
+    (@event_handlers[event_name] ||= []).push handler
 
-  createEventHandlers: =>
-    registrarNames = [
-      'onError'
-      'onLibraryUpdate'
-      'onPlaylistUpdate'
-      'onStatusUpdate'
-    ]
-    @nameToHandlers = {}
-    createEventRegistrar = (name) =>
-      handlers = []
-      registrar = (handler) -> handlers.push handler
-      registrar._name = name
-      @nameToHandlers[name] = handlers
-      this[name] = registrar
-    createEventRegistrar(name) for name in registrarNames
-
-  raiseEvent: (eventName, args...) =>
+  raiseEvent: (event_name, args...) =>
     # create copy so handlers can remove themselves
-    handlersList = $.extend [], @nameToHandlers[eventName]
-    handler(args...) for handler in handlersList
+    handlers_list = $.extend [], @event_handlers[event_name] || []
+    handler(args...) for handler in handlers_list
 
   handleMessage: (msg) =>
     handler = @msgHandlerQueue.shift()
@@ -150,7 +135,7 @@ window.Mpd = class _
     @status.state = "play"
     @status.time = item.track.time
     @status.track_start_date = new Date()
-    @raiseEvent 'onStatusUpdate'
+    @raiseEvent 'statusupdate'
 
   anticipateSkip: (direction) =>
     next_item = @playlist.item_list[@status.current_item.pos + direction]
@@ -310,7 +295,7 @@ window.Mpd = class _
         msg = @buffer.substring(0, m.index)
         [line, code, str] = m
         if code == "ACK"
-          @raiseEvent 'onError', str
+          @raiseEvent 'error', str
           # flush the handler
           @handleMessage null
         else if line.indexOf("OK MPD") == 0
@@ -323,7 +308,7 @@ window.Mpd = class _
       @updateStatus()
       @updatePlaylist()
 
-    @createEventHandlers()
+    @event_handlers = {}
     @haveFileListCache = false
     
     # maps mpd subsystems to our function to call which will update ourself
@@ -357,11 +342,10 @@ window.Mpd = class _
       current_item: null
 
   removeEventListeners: (event_name) =>
-    handlers = @nameToHandlers[event_name]
-    handlers.length = 0
+    (@event_handlers[event_name] || []).length = 0
     
-  removeListener: (registrar, handler) =>
-    handlers = @nameToHandlers[registrar._name]
+  removeListener: (event_name, handler) =>
+    handlers = @event_handlers[event_name] || []
     for h, i in handlers
       if h is handler
         handlers.splice i, 1
@@ -383,7 +367,7 @@ window.Mpd = class _
       @buildArtistAlbumTree tracks, @library
       @haveFileListCache = true
       # notify listeners
-      @raiseEvent 'onLibraryUpdate'
+      @raiseEvent 'libraryupdate'
 
   updatePlaylist: (callback=noop) =>
     @sendCommand "playlistinfo", (msg) =>
@@ -404,17 +388,15 @@ window.Mpd = class _
 
       if @status.current_item?
         # looks good, notify listeners
-        @raiseEvent 'onPlaylistUpdate'
+        @raiseEvent 'playlistupdate'
         callback()
       else
         # we need a status update before raising a playlist update event
         @updateStatus =>
           callback()
-          @raiseEvent 'onPlaylistUpdate'
+          @raiseEvent 'playlistupdate'
 
   updateStatus: (callback=noop) =>
-    # can't use await/defer yet:
-    # https://github.com/jashkenas/coffee-script/pull/1942#issuecomment-3707044
     @sendCommand "status", (msg) =>
       # no dict comprehensions :(
       # https://github.com/jashkenas/coffee-script/issues/77
@@ -447,7 +429,7 @@ window.Mpd = class _
         # no current song
         @status.current_item = null
         callback()
-        @raiseEvent 'onStatusUpdate'
+        @raiseEvent 'statusupdate'
         return
 
       # there's either 0 or 1
@@ -460,7 +442,7 @@ window.Mpd = class _
         if @status.current_item? and @status.current_item.pos == pos
           @status.current_item.track = @library.track_table[mpd_track.file]
           # looks good, notify listeners
-          @raiseEvent 'onStatusUpdate'
+          @raiseEvent 'statusupdate'
           callback()
         else
           # missing or inconsistent playlist data, need to get playlist update
@@ -470,14 +452,14 @@ window.Mpd = class _
             track: @library.track_table[mpd_track.file]
           @updatePlaylist =>
             callback()
-            @raiseEvent 'onStatusUpdate'
+            @raiseEvent 'statusupdate'
 
   # puts the search results in search_results
   search: (query) =>
     query = $.trim(query)
     if query.length == 0
       @search_results = @library
-      @raiseEvent 'onLibraryUpdate'
+      @raiseEvent 'libraryupdate'
       return
     words = query.toLowerCase().split(/\s+/)
     query = words.join(" ")
@@ -494,7 +476,7 @@ window.Mpd = class _
       result.push track if is_match
     # zip results into album
     @buildArtistAlbumTree result, @search_results = {}
-    @raiseEvent 'onLibraryUpdate'
+    @raiseEvent 'libraryupdate'
 
   queueRandomTracks: (n) =>
     if @haveFileListCache
@@ -507,7 +489,7 @@ window.Mpd = class _
       pos: @playlist.item_list.length
       track: @library.track_table[file]
     @playlist.item_list.push item
-    @raiseEvent 'onPlaylistUpdate'
+    @raiseEvent 'playlistupdate'
 
   queueFileNext: (file) =>
     cur_pos = @status.current_item?.pos
@@ -526,17 +508,17 @@ window.Mpd = class _
     @playlist.item_list.splice new_pos, 0, item
     # fix the pos property of each item
     item.pos = i for item, i in @playlist.item_list
-    @raiseEvent 'onPlaylistUpdate'
+    @raiseEvent 'playlistupdate'
 
   clear: =>
     @sendCommand "clear"
     @clearPlaylist()
-    @raiseEvent 'onPlaylistUpdate'
+    @raiseEvent 'playlistupdate'
 
   stop: =>
     @sendCommand "stop"
     @status.state = "stop"
-    @raiseEvent 'onStatusUpdate'
+    @raiseEvent 'statusupdate'
 
   play: =>
     @sendCommand "play"
@@ -544,7 +526,7 @@ window.Mpd = class _
     if @status.state is "pause"
       @status.track_start_date = elapsedToDate(@status.elapsed)
       @status.state = "play"
-      @raiseEvent 'onStatusUpdate'
+      @raiseEvent 'statusupdate'
 
   pause: =>
     @sendCommand "pause 1"
@@ -552,7 +534,7 @@ window.Mpd = class _
     if @status.state is "play"
       @status.elapsed = dateToElapsed(@status.track_start_date)
       @status.state = "pause"
-      @raiseEvent 'onStatusUpdate'
+      @raiseEvent 'statusupdate'
 
   next: =>
     @sendCommand "next"
@@ -578,7 +560,7 @@ window.Mpd = class _
     delete @playlist.item_table[item.id]
     @playlist.item_list.splice(item.pos, 1)
     it.pos = index for it, index in @playlist.item_list
-    @raiseEvent 'onPlaylistUpdate'
+    @raiseEvent 'playlistupdate'
 
   close: => @send "close" # bypass message queue
 
@@ -587,11 +569,11 @@ window.Mpd = class _
     pos = parseFloat(pos)
     @sendCommand "seekid #{@status.current_item.id} #{Math.round(pos)}"
     @status.track_start_date = elapsedToDate(pos)
-    @raiseEvent 'onStatusUpdate'
+    @raiseEvent 'statusupdate'
 
   # between 0 and 1
   setVolume: (vol) =>
     vol = toMpdVol(vol)
     @sendCommand "setvol #{vol}"
     @status.volume = fromMpdVol(vol)
-    @raiseEvent 'onStatusUpdate'
+    @raiseEvent 'statusupdate'

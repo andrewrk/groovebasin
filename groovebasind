@@ -9,6 +9,7 @@ nconf = require 'nconf'
 formidable = require 'formidable'
 url = require 'url'
 util = require 'util'
+mpd = require './src/mpd'
 
 nconf
   .argv()
@@ -67,24 +68,31 @@ app = http.createServer((request, response) ->
 ).listen(nconf.get('http:port'))
 console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 
+# client listener
+createMpdConnection = ->
+  net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
+    console.log "mpd connect"
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
-  mpd = net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), ->
-    console.log "mpd connect"
-  mpd.on 'data', (data) ->
+  mpd_socket = createMpdConnection()
+  mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
-  mpd.on 'end', ->
+  mpd_socket.on 'end', ->
     console.log "mpd disconnect"
     try socket.emit 'disconnect'
-  mpd.on 'error', ->
+  mpd_socket.on 'error', ->
     console.log "No mpd daemon found."
 
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
-    try mpd.write data
+    try mpd_socket.write data
 
-  socket.on 'disconnect', -> mpd.end()
+  socket.on 'disconnect', -> mpd_socket.end()
+
+# our own mpd connection
+
+#global_mpd = new (mpd.Mpd) createMpdConnection()
 
 # downgrade user permissions
 uid = nconf.get('user_id')

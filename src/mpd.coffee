@@ -41,7 +41,8 @@
 # search_results structure mimics library structure
 
 ######################### global #####################
-window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
+global = window ? exports
+global.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 
 
 ######################### static #####################
@@ -102,7 +103,7 @@ pickNRandomProps = (obj, n) ->
         results[i] = prop
   return results
 
-window.Mpd = class _
+global.Mpd = class _
 
   ######################### private #####################
 
@@ -134,8 +135,9 @@ window.Mpd = class _
     handler.cb(msg) if msg?
 
   send: (msg) =>
+    msg += "\n"
     @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
-    @socket.emit 'ToMpd', msg + "\n"
+    @toMpd msg
 
   handleIdleResults: (msg) =>
     (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
@@ -287,10 +289,29 @@ window.Mpd = class _
     if @msgHandlerQueue.length == 0
       @rawSendCmd "idle", @handleIdleResultsLoop
 
+  fromMpd: (data) =>
+    @buffer += data
+
+    loop
+      m = @buffer.match(MPD_SENTINEL)
+      return if not m?
+
+      msg = @buffer.substring(0, m.index)
+      [line, code, str] = m
+      if code == "ACK"
+        @raiseEvent 'onError', str
+        # flush the handler
+        @handleMessage null
+      else if line.indexOf("OK MPD") == 0
+        # new connection, ignore
+      else
+        @handleMessage msg
+      @buffer = @buffer.substring(msg.length+line.length+1)
+
+
   ######################### public #####################
-  
-  constructor: ->
-    @socket = io.connect(undefined, {'force new connection': true})
+
+  constructor: (existing_direct_connection) ->
     @buffer = ""
     @msgHandlerQueue = []
     # assign to console to enable message passing debugging
@@ -300,28 +321,23 @@ window.Mpd = class _
     # whether we've sent the idle command to mpd
     @idling = false
 
-    @socket.on 'FromMpd', (data) =>
-      @buffer += data
-      
-      loop
-        m = @buffer.match(MPD_SENTINEL)
-        return if not m?
-
-        msg = @buffer.substring(0, m.index)
-        [line, code, str] = m
-        if code == "ACK"
-          @raiseEvent 'onError', str
-          # flush the handler
-          @handleMessage null
-        else if line.indexOf("OK MPD") == 0
-          # new connection, ignore
-        else
-          @handleMessage msg
-        @buffer = @buffer.substring(msg.length+line.length+1)
-    @socket.on 'connect', =>
+    initAllTheData = =>
       @updateLibrary()
       @updateStatus()
       @updatePlaylist()
+    if existing_direct_connection?
+      existing_direct_connection.on 'data', (data) ->
+        @fromMpd data
+      @toMpd = (msg) ->
+        existing_direct_connection.write msg
+      initAllTheData()
+    else
+      socket = io.connect(undefined, {'force new connection': true})
+      socket.on 'FromMpd', (data) =>
+        @fromMpd data
+      @toMpd = (msg) =>
+        socket.emit 'ToMpd', msg
+      socket.on 'connect', initAllTheData
 
     @createEventHandlers()
     @haveFileListCache = false

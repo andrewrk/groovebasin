@@ -333,7 +333,7 @@ exports.Mpd = class Mpd
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
-      database: -> # the song database has been modified after update.
+      database: => # the song database has been modified after update.
         @haveFileListCache = false
         @updateLibrary()
       update: noop # a database update has started or finished. If the database was modified during the update, the database event is also emitted.

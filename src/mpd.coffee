@@ -88,9 +88,6 @@ escape = (str) ->
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
-clearArray = (arr) -> arr.length = 0
-clearObject = (obj) -> delete obj[prop] for own prop of obj
-
 pickNRandomProps = (obj, n) ->
   results = []
   count = 0
@@ -125,9 +122,11 @@ exports.Mpd = class Mpd
   handleIdleResults: (msg) =>
     (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
 
+  # cache of playlist data from mpd
   clearPlaylist: =>
-    clearArray @playlist.item_list
-    clearObject @playlist.item_table
+    @playlist = {}
+    @playlist.item_list = []
+    @playlist.item_table = {}
 
   anticipatePlayId: (track_id) =>
     item = @playlist.item_table[track_id]
@@ -334,10 +333,7 @@ exports.Mpd = class Mpd
       track_table: {}
     @search_results = @library
     @last_query = ""
-    # cache of playlist data from mpd.
-    @playlist =
-      item_list: []
-      item_table: {}
+    @clearPlaylist()
     @status =
       current_item: null
 

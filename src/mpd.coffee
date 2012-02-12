@@ -40,6 +40,14 @@
 # }
 # search_results structure mimics library structure
 
+
+# To inherit from this class:
+# Define these methods:
+#   send: (data) => # send data untouched to mpd
+#
+# Call these methods:
+#   receive: (data) => # when you get data from mpd
+
 ######################### global #####################
 exports ?= window
 
@@ -98,12 +106,12 @@ pickNRandomProps = (obj, n) ->
         results[i] = prop
   return results
 
-exports.Mpd = class Mpd
+exports.Mpd = class _
 
   ######################### private #####################
 
   on: (event_name, handler) =>
-    (@event_handlers[event_name] ||= []).push handler
+    (@event_handlers[event_name] ?= []).push handler
 
   raiseEvent: (event_name, args...) =>
     # create copy so handlers can remove themselves
@@ -115,9 +123,24 @@ exports.Mpd = class Mpd
     @debugMsgConsole?.log "get-: #{handler.debug_id}: " + JSON.stringify(msg)
     handler.cb(msg) if msg?
 
-  send: (msg) =>
-    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
-    @socket.emit 'ToMpd', msg + "\n"
+  receive: (data) =>
+    @buffer += data
+    
+    loop
+      m = @buffer.match(MPD_SENTINEL)
+      return if not m?
+
+      msg = @buffer.substring(0, m.index)
+      [line, code, str] = m
+      if code == "ACK"
+        @raiseEvent 'error', str
+        # flush the handler
+        @handleMessage null
+      else if line.indexOf("OK MPD") == 0
+        # new connection, ignore
+      else
+        @handleMessage msg
+      @buffer = @buffer.substring(msg.length+line.length+1)
 
   handleIdleResults: (msg) =>
     (@updateFuncs[system.substring(9)] ? noop)() for system in $.trim(msg).split("\n") when system.length > 0
@@ -263,7 +286,7 @@ exports.Mpd = class Mpd
     @msgHandlerQueue.push
       debug_id: @msgCounter++
       cb: cb
-    @send cmd
+    @send cmd + "\n"
 
   handleIdleResultsLoop: (msg) =>
     @handleIdleResults(msg)
@@ -274,7 +297,6 @@ exports.Mpd = class Mpd
   ######################### public #####################
   
   constructor: ->
-    @socket = io.connect(undefined, {'force new connection': true})
     @buffer = ""
     @msgHandlerQueue = []
     # assign to console to enable message passing debugging
@@ -283,29 +305,6 @@ exports.Mpd = class Mpd
 
     # whether we've sent the idle command to mpd
     @idling = false
-
-    @socket.on 'FromMpd', (data) =>
-      @buffer += data
-      
-      loop
-        m = @buffer.match(MPD_SENTINEL)
-        return if not m?
-
-        msg = @buffer.substring(0, m.index)
-        [line, code, str] = m
-        if code == "ACK"
-          @raiseEvent 'error', str
-          # flush the handler
-          @handleMessage null
-        else if line.indexOf("OK MPD") == 0
-          # new connection, ignore
-        else
-          @handleMessage msg
-        @buffer = @buffer.substring(msg.length+line.length+1)
-    @socket.on 'connect', =>
-      @updateLibrary()
-      @updateStatus()
-      @updatePlaylist()
 
     @event_handlers = {}
     @haveFileListCache = false
@@ -348,7 +347,7 @@ exports.Mpd = class Mpd
         return
 
   sendCommand: (command, callback=noop) =>
-    @send("noidle") if @idling
+    @send "noidle\n" if @idling
     @rawSendCmd command, callback
     @rawSendCmd "idle", @handleIdleResultsLoop
     @idling = true # we're always idling after the first command.
@@ -558,7 +557,7 @@ exports.Mpd = class Mpd
     it.pos = index for it, index in @playlist.item_list
     @raiseEvent 'playlistupdate'
 
-  close: => @send "close" # bypass message queue
+  close: => @send "close\n" # bypass message queue
 
   # in seconds
   seek: (pos) =>

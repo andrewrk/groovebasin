@@ -280,12 +280,11 @@ handleResize = ->
   $pl_header = $pl_window.find(".window-header")
   $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height() - MARGIN
 
-window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 $(document).ready ->
   setUpUi()
   initHandlebars()
 
-  mpd = new window.Mpd()
+  mpd = new window.SocketMpd()
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist

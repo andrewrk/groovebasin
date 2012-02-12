@@ -123,7 +123,12 @@ pickNRandomProps = (obj, n) ->
         results[i] = prop
   return results
 
-exports.Mpd = class _
+split_once = (line, separator) ->
+  # should be line.split(separator, 1), but javascript is stupid
+  index = line.indexOf(separator)
+  return [line.substr(0, index), line.substr(index + separator.length)]
+
+exports.Mpd = class Mpd
 
   ######################### private #####################
 
@@ -193,7 +198,7 @@ exports.Mpd = class _
         mpd_tracks.push(current_track)
       current_track = {}
     for line in msg.split("\n")
-      [key, value] = line.split(": ")
+      [key, value] = split_once line, ": "
       if key == 'file'
         flush_current_track()
       current_track[key] = value
@@ -418,7 +423,7 @@ exports.Mpd = class _
       # no dict comprehensions :(
       # https://github.com/jashkenas/coffee-script/issues/77
       o = {}
-      for [key, val] in (line.split(": ") for line in msg.split("\n"))
+      for [key, val] in (split_once(line, ": ") for line in msg.split("\n"))
         o[key] = val
       extend @status,
         volume: parseInt(o.volume) / 100

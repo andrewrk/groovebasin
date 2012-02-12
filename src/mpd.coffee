@@ -223,7 +223,7 @@ exports.Mpd = class Mpd
         track: parseMaybeUndefNumber(mpd_track.Track)
         time: parseInt(mpd_track.Time)
         year: parseMaybeUndefNumber(mpd_track.Date)
-      track.search_tags = [track.artist_name, track.album_artist_name, track.album_name, track.name].join("\n").toLowerCase()
+      track.search_tags = [track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n").toLowerCase()
       tracks.push track
     tracks
 

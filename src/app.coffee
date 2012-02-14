@@ -16,7 +16,7 @@ renderPlaylist = ->
   $playlist.html Handlebars.templates.playlist(context)
 
   if (cur_id = mpd.status?.current_item?.id)?
-    $("#playlist-track-#{cur_id}").addClass('ui-state-error')
+    $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
 
   handleResize()
 

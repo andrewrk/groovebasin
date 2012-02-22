@@ -83,11 +83,40 @@ console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
 createMpdConnection = (cb) ->
   net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), cb
 
+status =
+  dynamic_mode: false
+send_status = (socket) ->
+  socket.emit 'Status', JSON.stringify(status)
+
+set_dynamic_mode = (value) ->
+  return if status.dynamic_mode == value
+  status.dynamic_mode = value
+  check_dynamic_mode()
+  # TODO: push a status update to all connected sockets
+check_dynamic_mode = ->
+  return if not status.dynamic_mode
+  item_list = my_mpd.playlist.item_list
+  current_id = my_mpd.status?.current_item?.id
+  # if no track is playing, assume the first track is about to be
+  current_index = 0
+  for item, i in item_list
+    if item.id == current_id
+      current_index = i
+      break
+  commands = []
+  delete_count = Math.max(current_index - 10, 0)
+  for i in [0...delete_count]
+    commands.push "deleteid #{item_list[i].id}"
+  add_count = Math.max(11 - (item_list.length - current_index), 0)
+  commands = commands.concat my_mpd.queueRandomTracksCommands add_count
+  my_mpd.sendCommands commands
+
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
   mpd_socket = createMpdConnection ->
     console.log "browser to mpd connect"
+    send_status socket
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd_socket.on 'end', ->
@@ -99,6 +128,13 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'ToMpd', (data) ->
     console.log "[in] " + data
     try mpd_socket.write data
+  socket.on 'DynamicMode', (data) ->
+    console.log "DynamicMode is being turned #{data.toString()}"
+    value = JSON.parse data.toString()
+    if !(value == true || value == false)
+      console.log "ERROR: wtf #{data.toString()}"
+      return
+    set_dynamic_mode value
 
   socket.on 'disconnect', -> mpd_socket.end()
 
@@ -108,9 +144,8 @@ my_mpd_socket = createMpdConnection ->
   console.log "server to mpd connect"
   my_mpd.handleConnectionStart()
 my_mpd = new DirectMpd(my_mpd_socket)
-my_mpd.on 'statusupdate', ->
-  cur_name = my_mpd.status?.current_item?.track?.name
-  console.log "status update. now playing #{cur_name}" if cur_name?
+my_mpd.on 'statusupdate', check_dynamic_mode
+my_mpd.on 'playlistupdate', check_dynamic_mode
 
 # downgrade user permissions
 uid = nconf.get('user_id')

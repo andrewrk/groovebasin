@@ -114,6 +114,7 @@ escape = (str) ->
   str.toString().replace /"/g, '\\"'
 
 pickNRandomProps = (obj, n) ->
+  return [] if n == 0
   results = []
   count = 0
   for prop of obj
@@ -500,9 +501,12 @@ exports.Mpd = class Mpd
     @buildArtistAlbumTree result, @search_results = {}
     @raiseEvent 'libraryupdate'
 
+  queueRandomTracksCommands: (n) =>
+    if not @haveFileListCache
+      return []
+    ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
   queueRandomTracks: (n) =>
-    if @haveFileListCache
-      @sendCommands ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
+    @sendCommands @queueRandomTracksCommands n
 
   queueFile: (file) =>
     @sendCommand "add \"#{escape(file)}\""

@@ -140,11 +140,20 @@ setUpUi = ->
   $pl_window.on 'click', 'a.clear', ->
     mpd.clear()
     return false
-  $pl_window.on 'click', 'a.randommix', ->
+  $pl_window.on 'click', 'a.random1', ->
     mpd.queueRandomTracks 1
     return false
-  $pl_window.on 'click', 'a.repopulate', ->
+  $pl_window.on 'click', 'a.random20', ->
     mpd.queueRandomTracks 20
+    return false
+  $pl_window.on 'click', 'a.dynamic-mode', ->
+    value = $(this).html().indexOf("On") != -1
+    value = !value
+    if value
+      $(this).html "Dynamic Mode is On"
+    else
+      $(this).html "Dynamic Mode is Off"
+    socket.emit 'DynamicMode', JSON.stringify (value)
     return false
 
   $playlist = $("#playlist")
@@ -279,11 +288,13 @@ handleResize = ->
   $pl_header = $pl_window.find(".window-header")
   $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height() - MARGIN
 
+socket = null
 $(document).ready ->
   setUpUi()
   initHandlebars()
 
-  mpd = new window.SocketMpd()
+  socket = io.connect(undefined, {'force new connection': true})
+  mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist

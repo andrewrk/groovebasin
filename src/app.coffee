@@ -293,7 +293,7 @@ $(document).ready ->
   setUpUi()
   initHandlebars()
 
-  socket = io.connect(undefined, {'force new connection': true})
+  socket = io.connect()
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', renderLibrary

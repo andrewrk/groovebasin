@@ -5,30 +5,24 @@
   <a href="#" class="dynamic-mode">Dynamic Mode is {{#if server_status}}{{#if server_status.dynamic_mode}}On{{else}}Off{{/if}}{{else}}??{{/if}}</a>
 </div>
 <div id="playlist">
+  <div class="header">
+    <span class="track">&nbsp;</span>
+    <span class="title">Title</span>
+    <span class="artist">Artist</span>
+    <span class="album">Album</span>
+    <span class="time">Time</span>
+  </div>
   {{#if playlist}}
     <div id="playlist-items">
-      <table>
-        <tr>
-          <th>&nbsp;</th>
-          <th>Title</th>
-          <th>Artist</th>
-          <th>Album</th>
-          <th>Length</th>
-          <th>Actions</th>
-        </tr>
-        {{#playlist}}
-          <tr id="playlist-track-{{id}}" data-id="{{id}}">
-            <td>{{track.track}}</td>
-            <td>{{track.name}}</td>
-            <td>{{track.artist_name}}</td>
-            <td>{{track.album_name}}</td>
-            <td class="time">{{time track.time}}</td>
-            <td>
-              <a href="library/{{track.file}}" target="_blank">Download</a>&nbsp;<a href="#" class="remove">Remove</a>
-            </td>
-          </tr>
-        {{/playlist}}
-      </table>
+      {{#playlist}}
+        <div class="pl-item" id="playlist-track-{{id}}" data-id="{{id}}">
+          <span class="track">{{track.track}}</span>
+          <span class="title">{{track.name}}</span>
+          <span class="artist">{{track.artist_name}}</span>
+          <span class="album">{{track.album_name}}</span>
+          <span class="time">{{time track.time}}</span>
+        </div>
+      {{/playlist}}
     </div>
   {{/if}}
 </div>

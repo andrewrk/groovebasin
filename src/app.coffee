@@ -1,5 +1,6 @@
 # convenience
 schedule = (delay, func) -> window.setInterval(func, delay)
+wait = (delay, func) -> setTimeout func, delay
 
 context =
   playing: -> this.status?.state == 'play'
@@ -17,11 +18,11 @@ renderPlaylist = ->
   $playlist.html Handlebars.templates.playlist(context)
   # label the random ones
   if mpd.server_status?
-    for tr in $playlist.find("tr")
-      $tr = $(tr)
-      id = $tr.data 'id'
+    for pl_item in $playlist.find(".pl-item")
+      $pl_item = $(pl_item)
+      id = $pl_item.data 'id'
       if mpd.server_status.random_ids[id]?
-        $tr.addClass "random"
+        $pl_item.addClass "random"
 
   if (cur_id = mpd.status?.current_item?.id)?
     $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
@@ -161,7 +162,7 @@ setUpUi = ->
     return false
 
   $playlist = $("#playlist-window")
-  $playlist.on 'click', 'tr', (event) ->
+  $playlist.on 'click', '.pl-item', (event) ->
     console.log 1
     track_id = $(this).data('id')
     mpd.playId track_id
@@ -177,7 +178,6 @@ setUpUi = ->
 
   $library.on 'click', 'div.expandable', (event) ->
     toggleExpansion $(this).parent()
-  wait = (delay, func) -> setTimeout func, delay
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
     if event.keyCode == 27
@@ -284,14 +284,14 @@ handleResize = ->
     left: $lib.offset().left + $lib.width() + MARGIN
     top: second_layer_top
   $pl_window.width $(window).width() - $pl_window.offset().left - MARGIN
-  $lib.height $(window).height() - $lib.offset().top - MARGIN
-  $pl_window.height $lib.height()
+  $lib.height $(window).height() - $lib.offset().top
+  $pl_window.height $lib.height() - MARGIN
 
   # make the inside containers fit
   $lib_header = $lib.find(".window-header")
   $("#library-items").height $lib.height() - $lib_header.position().top - $lib_header.height() - MARGIN
-  $pl_header = $pl_window.find(".window-header")
-  $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height() - MARGIN
+  $pl_header = $pl_window.find("#playlist .header")
+  $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
 socket = null
 $(document).ready ->

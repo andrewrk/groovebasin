@@ -1,5 +1,15 @@
+@mixin user-select($value) {
+  -moz-user-select: $value;
+  -khtml-user-select: $value;
+  user-select: $value;
+}
+
 html {
   background: url(vendor/css/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png);
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
 }
 
 #track-slider {
@@ -23,7 +33,7 @@ html {
   }
   
   h1 {
-    font-family: sans-serif;
+    letter-spacing: 0.1em;
     margin-top: 8px;
     font-weight: bold;
   }
@@ -91,6 +101,8 @@ html {
 #library-items {
   overflow-y: auto;
 
+  @include user-select(none);
+
   div.ui-icon {
     float: left;
   }
@@ -121,31 +133,74 @@ html {
   position: absolute;
 }
 
+#playlist {
+  .header {
+    font-weight: bold;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    height: 1.2em;
+  }
+
+  span.track {
+    width: 26px;
+    padding-right: 8px;
+  }
+
+  span.title {
+    width: 30%;
+  }
+
+  span.artist {
+    width: 30%;
+  }
+
+  span.album {
+    width: 30%;
+  }
+
+  span.time {
+    width: 36px;
+  }
+
+  span {
+    white-space: nowrap;
+    height: 1.2em;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    float: left;
+  }
+}
+
 #playlist-items {
   overflow-y: auto;
   overflow-x: hidden;
+  clear: both;
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
+  width: 100%;
 
-  th {
-    font-weight: bold;
-  }
+  @include user-select(none);
 
-  tr {
+  div {
+    clear: both;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    height: 1.2em;
     cursor: pointer;
   }
-  tr.random {
+
+  div.random {
     color: #555555;
   }
 
-  tr:nth-child(2n+1) {
+  div:nth-child(2n+1) {
     background-color: #2A2A2A;
   }
 
-  td.time {
+  span.track {
+    text-align: right;
+  }
+
+  span.time {
     text-align: right;
   }
 

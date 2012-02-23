@@ -534,12 +534,19 @@ exports.Mpd = class Mpd
     @sendCommands @queueRandomTracksCommands n
 
   queueFile: (file) =>
-    @sendCommand "add \"#{escape(file)}\""
+    # queue tracks just before any random ones
+    pos = @playlist.item_list.length
+    if @server_status?
+      for item, i in @playlist.item_list
+        if @server_status.random_ids[item.id]?
+          pos = i
+          break
+    @sendCommand "addid \"#{escape(file)}\" #{pos}"
     item =
       id: null
-      pos: @playlist.item_list.length
+      pos: pos
       track: @library.track_table[file]
-    @playlist.item_list.push item
+    @playlist.item_list.splice pos, 0, item
     @raiseEvent 'playlistupdate'
 
   queueFileNext: (file) =>

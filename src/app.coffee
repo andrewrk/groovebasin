@@ -14,13 +14,12 @@ MARGIN = 10
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
   context.server_status = mpd.server_status
-  $playlist = $("#playlist-window")
+  $playlist = $("#playlist")
   $playlist.html Handlebars.templates.playlist(context)
-  # turn check box into jquery button
-  $playlist.find(".clear").button()
-  $playlist.find(".random1").button()
-  $playlist.find(".random20").button()
-  $playlist.find("#dynamic-mode").button()
+  # set the state of dynamic mode button
+  $("#dynamic-mode")
+    .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
+    .button("refresh")
   # label the random ones
   if mpd.server_status?
     for pl_item in $playlist.find(".pl-item")
@@ -160,13 +159,17 @@ setUpUi = ->
   $pl_window.on 'click', 'a.random20', ->
     mpd.queueRandomTracks 20
     return false
-  $pl_window.on 'click', '.dynamic-mode', ->
-    value = $(this).val()
-    value = !value
+  $pl_window.on 'click', '#dynamic-mode', ->
+    value = $(this).prop("checked")
     socket.emit 'DynamicMode', JSON.stringify (value)
     return false
+  # turn check box into jquery button
+  $pl_window.find(".clear").button()
+  $pl_window.find(".random1").button()
+  $pl_window.find(".random20").button()
+  $pl_window.find("#dynamic-mode").button()
 
-  $playlist = $("#playlist-window")
+  $playlist = $("#playlist")
   $playlist.on 'click', '.pl-item', (event) ->
     track_id = $(this).data('id')
     mpd.playId track_id

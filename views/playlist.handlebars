@@ -1,28 +1,20 @@
-<div class="window-header">
-  <a href="#" class="clear">Clear</a>
-  <a href="#" class="random1">Queue Random 1</a>
-  <a href="#" class="random20">Queue Random 20</a>
-  <input type="checkbox" id="dynamic-mode"{{#if server_status.dynamic_mode}} checked="checked"{{/if}}><label for="dynamic-mode">Dynamic Mode</label>
+<div class="header">
+  <span class="track">&nbsp;</span>
+  <span class="title">Title</span>
+  <span class="artist">Artist</span>
+  <span class="album">Album</span>
+  <span class="time">Time</span>
 </div>
-<div id="playlist">
-  <div class="header">
-    <span class="track">&nbsp;</span>
-    <span class="title">Title</span>
-    <span class="artist">Artist</span>
-    <span class="album">Album</span>
-    <span class="time">Time</span>
+{{#if playlist}}
+  <div id="playlist-items">
+    {{#playlist}}
+      <div class="pl-item" id="playlist-track-{{id}}" data-id="{{id}}">
+        <span class="track">{{track.track}}</span>
+        <span class="title">{{track.name}}</span>
+        <span class="artist">{{track.artist_name}}</span>
+        <span class="album">{{track.album_name}}</span>
+        <span class="time">{{time track.time}}</span>
+      </div>
+    {{/playlist}}
   </div>
-  {{#if playlist}}
-    <div id="playlist-items">
-      {{#playlist}}
-        <div class="pl-item" id="playlist-track-{{id}}" data-id="{{id}}">
-          <span class="track">{{track.track}}</span>
-          <span class="title">{{track.name}}</span>
-          <span class="artist">{{track.artist_name}}</span>
-          <span class="album">{{track.album_name}}</span>
-          <span class="time">{{time track.time}}</span>
-        </div>
-      {{/playlist}}
-    </div>
-  {{/if}}
-</div>
+{{/if}}

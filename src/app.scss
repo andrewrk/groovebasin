@@ -148,7 +148,6 @@ body {
 
   span.track {
     width: 26px;
-    padding-right: 8px;
   }
 
   span.title {
@@ -173,6 +172,7 @@ body {
     overflow-x: hidden;
     overflow-y: hidden;
     float: left;
+    margin-right: 4px;
   }
 }
 

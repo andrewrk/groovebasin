@@ -213,3 +213,16 @@ body {
 #upload-widget {
   padding: 10px;
 }
+
+#menu {
+  position: absolute;
+  padding: 2px;
+  li {
+    a {
+      display: block;
+      text-decoration: none;
+      padding: 6px;
+    }
+  }
+}
+

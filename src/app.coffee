@@ -163,14 +163,37 @@ setUpUi = ->
 
   $playlist = $("#playlist-window")
   $playlist.on 'click', '.pl-item', (event) ->
-    console.log 1
     track_id = $(this).data('id')
     mpd.playId track_id
     return false
-  $playlist.on 'click', 'a.remove', (event) ->
-    track_id = $(this).closest("tr").data("id")
-    mpd.removeId track_id
+
+  removeContextMenu = -> $("#menu").remove()
+  $playlist.on 'contextmenu', '.pl-item', (event) ->
+    removeContextMenu()
+    # adds a new context menu to the document
+    track_id = parseInt($(this).data('id'))
+    $(Handlebars.templates.playlist_menu(mpd.playlist.item_table[track_id]))
+      .appendTo(document.body)
+    $menu = $("#menu") # get the newly created one
+    $menu.offset
+      left: event.pageX
+      top: event.pageY
+    # don't close menu when you click on the area next to a button
+    $menu.on 'click', -> false
+    $menu.on 'click', '.remove', ->
+      mpd.removeId track_id
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.download', ->
+      removeContextMenu()
+
     return false
+
+  # delete context menu
+  $(document).on 'click', removeContextMenu
+  $(document).on 'keydown', (event) ->
+    if event.keyCode == 27
+      removeContextMenu()
 
   $library = $("#library")
   $library.on 'click', 'div.track', (event) ->
@@ -257,6 +280,7 @@ setUpUi = ->
     action: '/upload'
     encoding: 'multipart'
     onComplete: -> mpd.sendCommand 'update'
+
 
 
 initHandlebars = ->

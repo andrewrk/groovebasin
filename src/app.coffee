@@ -12,8 +12,16 @@ MARGIN = 10
 
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
-  $playlist = $("#playlist")
+  context.server_status = mpd.server_status
+  $playlist = $("#playlist-window")
   $playlist.html Handlebars.templates.playlist(context)
+  # label the random ones
+  if mpd.server_status?
+    for tr in $playlist.find("tr")
+      $tr = $(tr)
+      id = $tr.data 'id'
+      if mpd.server_status.random_ids[id]?
+        $tr.addClass "random"
 
   if (cur_id = mpd.status?.current_item?.id)?
     $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
@@ -152,8 +160,9 @@ setUpUi = ->
     socket.emit 'DynamicMode', JSON.stringify (value)
     return false
 
-  $playlist = $("#playlist")
+  $playlist = $("#playlist-window")
   $playlist.on 'click', 'tr', (event) ->
+    console.log 1
     track_id = $(this).data('id')
     mpd.playId track_id
     return false
@@ -297,12 +306,7 @@ $(document).ready ->
   mpd.on 'statusupdate', ->
     renderNowPlaying()
     renderPlaylist()
-  mpd.on 'serverstatus', ->
-    $dynamic_mode_button = $('a.dynamic-mode')
-    if mpd.server_status.dynamic_mode
-      $dynamic_mode_button.html "Dynamic Mode is On"
-    else
-      $dynamic_mode_button.html "Dynamic Mode is Off"
+  mpd.on 'serverstatus', renderPlaylist
 
   render()
   handleResize()

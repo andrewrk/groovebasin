@@ -137,6 +137,9 @@ html {
   tr {
     cursor: pointer;
   }
+  tr.random {
+    color: #555555;
+  }
 
   tr:nth-child(2n+1) {
     background-color: #2A2A2A;

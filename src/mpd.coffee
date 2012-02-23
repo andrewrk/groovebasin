@@ -529,7 +529,7 @@ exports.Mpd = class Mpd
   queueRandomTracksCommands: (n) =>
     if not @haveFileListCache
       return []
-    ("add \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
+    ("addid \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
   queueRandomTracks: (n) =>
     @sendCommands @queueRandomTracksCommands n
 

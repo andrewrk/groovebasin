@@ -1,26 +1,34 @@
-{{#if playlist}}
-  <div id="playlist-items">
-    <table>
-      <tr>
-        <th>&nbsp;</th>
-        <th>Title</th>
-        <th>Artist</th>
-        <th>Album</th>
-        <th>Length</th>
-        <th>Actions</th>
-      </tr>
-      {{#playlist}}
-        <tr id="playlist-track-{{id}}" data-id="{{id}}">
-          <td>{{track.track}}</td>
-          <td>{{track.name}}</td>
-          <td>{{track.artist_name}}</td>
-          <td>{{track.album_name}}</td>
-          <td class="time">{{time track.time}}</td>
-          <td>
-            <a href="library/{{track.file}}" target="_blank">Download</a>&nbsp;<a href="#" class="remove">Remove</a>
-          </td>
+<div class="window-header">
+  <a href="#" class="clear">Clear</a>
+  <a href="#" class="random1">Queue Random 1</a>
+  <a href="#" class="random20">Queue Random 20</a>
+  <a href="#" class="dynamic-mode">Dynamic Mode is {{#if server_status}}{{#if server_status.dynamic_mode}}On{{else}}Off{{/if}}{{else}}??{{/if}}</a>
+</div>
+<div id="playlist">
+  {{#if playlist}}
+    <div id="playlist-items">
+      <table>
+        <tr>
+          <th>&nbsp;</th>
+          <th>Title</th>
+          <th>Artist</th>
+          <th>Album</th>
+          <th>Length</th>
+          <th>Actions</th>
         </tr>
-      {{/playlist}}
-    </table>
-  </div>
-{{/if}}
+        {{#playlist}}
+          <tr id="playlist-track-{{id}}" data-id="{{id}}">
+            <td>{{track.track}}</td>
+            <td>{{track.name}}</td>
+            <td>{{track.artist_name}}</td>
+            <td>{{track.album_name}}</td>
+            <td class="time">{{time track.time}}</td>
+            <td>
+              <a href="library/{{track.file}}" target="_blank">Download</a>&nbsp;<a href="#" class="remove">Remove</a>
+            </td>
+          </tr>
+        {{/playlist}}
+      </table>
+    </div>
+  {{/if}}
+</div>

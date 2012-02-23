@@ -88,6 +88,7 @@ createMpdConnection = (cb) ->
 
 status =
   dynamic_mode: false
+  random_ids: {}
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
 
@@ -100,19 +101,42 @@ checkDynamicMode = ->
   return if not status.dynamic_mode
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
-  # if no track is playing, assume the first track is about to be
-  current_index = 0
+  current_index = -1
+  all_ids = {}
   for item, i in item_list
+    all_ids[item.id] = true
     if item.id == current_id
       current_index = i
-      break
+  # if no track is playing, assume the first track is about to be
+  if current_index == -1
+    current_index = 0
+  else
+    # any tracks <= current track don't count as random anymore
+    for i in [0..current_index]
+      delete status.random_ids[item_list[i].id]
   commands = []
   delete_count = Math.max(current_index - 10, 0)
   for i in [0...delete_count]
     commands.push "deleteid #{item_list[i].id}"
   add_count = Math.max(11 - (item_list.length - current_index), 0)
   commands = commands.concat my_mpd.queueRandomTracksCommands add_count
-  my_mpd.sendCommands commands
+  my_mpd.sendCommands commands, (msg) ->
+    # track which ones are the automatic ones
+    changed = false
+    for line in msg.split("\n")
+      [name, value] = line.split(": ")
+      continue if name != "Id"
+      status.random_ids[value] = 1
+      changed = true
+    sendStatus() if changed
+
+  # scrub the random_ids
+  new_random_ids = {}
+  for id of status.random_ids
+    if all_ids[id]
+      new_random_ids[id] = 1
+  status.random_ids = new_random_ids
+  sendStatus()
 
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')

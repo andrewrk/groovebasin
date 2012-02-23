@@ -44,7 +44,7 @@
 
 # To inherit from this class:
 # Define these methods:
-#   send: (data) => # send data untouched to mpd
+#   rawSend: (data) => # send data untouched to mpd
 #
 # Call these methods:
 #   receive: (data) => # when you get data from mpd
@@ -145,10 +145,13 @@ exports.Mpd = class Mpd
     handler = @msgHandlerQueue.shift()
     @debugMsgConsole?.log "get-: #{handler.debug_id}: " + JSON.stringify(msg)
     handler.cb(msg) if msg?
+  send: (msg) =>
+    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
+    @rawSend msg
 
   receive: (data) =>
     @buffer += data
-    
+
     loop
       m = @buffer.match(MPD_SENTINEL)
       return if not m?
@@ -305,7 +308,7 @@ exports.Mpd = class Mpd
 
     library.artist_table = artist_table
 
-  rawSendCmd: (cmd, cb=noop) =>
+  sendWithCallback: (cmd, cb=noop) =>
     @msgHandlerQueue.push
       debug_id: @msgCounter++
       cb: cb
@@ -315,10 +318,10 @@ exports.Mpd = class Mpd
     @handleIdleResults(msg)
     # if we have nothing else to do, idle.
     if @msgHandlerQueue.length == 0
-      @rawSendCmd "idle", @handleIdleResultsLoop
+      @sendWithCallback "idle", @handleIdleResultsLoop
 
   ######################### public #####################
-  
+
   constructor: ->
     @buffer = ""
     @msgHandlerQueue = []
@@ -346,7 +349,9 @@ exports.Mpd = class Mpd
       options: @updateStatus # options like repeat, random, crossfade, replay gain
       sticker: noop # the sticker database has been modified.
       subscription: noop # a client has subscribed or unsubscribed to a channel
-      message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
+      message: @readChannelMessages # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
+    @channel_handlers =
+      Status: @handleServerStatus
 
 
     # cache of library data from mpd. See comment at top of this file
@@ -370,14 +375,15 @@ exports.Mpd = class Mpd
         return
 
   handleConnectionStart: =>
+    @sendCommand 'subscribe Status'
     @updateLibrary()
     @updateStatus()
     @updatePlaylist()
 
   sendCommand: (command, callback=noop) =>
     @send "noidle\n" if @idling
-    @rawSendCmd command, callback
-    @rawSendCmd "idle", @handleIdleResultsLoop
+    @sendWithCallback command, callback
+    @sendWithCallback "idle", @handleIdleResultsLoop
     @idling = true # we're always idling after the first command.
 
   sendCommands: (command_list, callback=noop) =>
@@ -477,6 +483,25 @@ exports.Mpd = class Mpd
             callback()
             @raiseEvent 'statusupdate'
 
+  readChannelMessages: =>
+    @sendCommand 'readmessages', (msg) =>
+      lines = msg.split("\n")
+      channel_to_messages = {}
+      current_channel = null
+      for line in lines
+        continue if line == ""
+        [name, value] = split_once line, ": "
+        if name == "channel"
+          current_channel = value
+        else if name == "message"
+          (channel_to_messages[current_channel] ?= []).push value
+        else
+          throw null
+      for channel, messages of channel_to_messages
+        @channel_handlers[channel] message for message in messages
+  handleServerStatus: (msg) =>
+    @server_status = JSON.parse(msg)
+    @raiseEvent 'serverstatus'
   # puts the search results in search_results
   search: (query) =>
     query = trim(query)

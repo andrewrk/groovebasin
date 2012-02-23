@@ -149,10 +149,6 @@ setUpUi = ->
   $pl_window.on 'click', 'a.dynamic-mode', ->
     value = $(this).html().indexOf("On") != -1
     value = !value
-    if value
-      $(this).html "Dynamic Mode is On"
-    else
-      $(this).html "Dynamic Mode is Off"
     socket.emit 'DynamicMode', JSON.stringify (value)
     return false
 
@@ -301,6 +297,12 @@ $(document).ready ->
   mpd.on 'statusupdate', ->
     renderNowPlaying()
     renderPlaylist()
+  mpd.on 'serverstatus', ->
+    $dynamic_mode_button = $('a.dynamic-mode')
+    if mpd.server_status.dynamic_mode
+      $dynamic_mode_button.html "Dynamic Mode is On"
+    else
+      $dynamic_mode_button.html "Dynamic Mode is Off"
 
   render()
   handleResize()

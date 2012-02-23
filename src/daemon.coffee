@@ -19,8 +19,11 @@ class DirectMpd extends require('./lib/mpd').Mpd
       console.log "server mpd disconnect"
     @mpd_socket.on 'error', ->
       console.log "server no mpd daemon found."
+    # whenever anyone joins, send status to everyone
+    @updateFuncs.subscription = ->
+      sendStatus()
 
-  send: (data) =>
+  rawSend: (data) =>
     try @mpd_socket.write data
 
 nconf
@@ -85,15 +88,15 @@ createMpdConnection = (cb) ->
 
 status =
   dynamic_mode: false
-send_status = (socket) ->
-  socket.emit 'Status', JSON.stringify(status)
+sendStatus = ->
+  my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
 
-set_dynamic_mode = (value) ->
+setDynamicMode = (value) ->
   return if status.dynamic_mode == value
   status.dynamic_mode = value
-  check_dynamic_mode()
-  # TODO: push a status update to all connected sockets
-check_dynamic_mode = ->
+  checkDynamicMode()
+  sendStatus()
+checkDynamicMode = ->
   return if not status.dynamic_mode
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
@@ -116,7 +119,6 @@ io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
   mpd_socket = createMpdConnection ->
     console.log "browser to mpd connect"
-    send_status socket
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd_socket.on 'end', ->
@@ -134,7 +136,7 @@ io.sockets.on 'connection', (socket) ->
     if !(value == true || value == false)
       console.log "ERROR: wtf #{data.toString()}"
       return
-    set_dynamic_mode value
+    setDynamicMode value
 
   socket.on 'disconnect', -> mpd_socket.end()
 
@@ -144,8 +146,10 @@ my_mpd_socket = createMpdConnection ->
   console.log "server to mpd connect"
   my_mpd.handleConnectionStart()
 my_mpd = new DirectMpd(my_mpd_socket)
-my_mpd.on 'statusupdate', check_dynamic_mode
-my_mpd.on 'playlistupdate', check_dynamic_mode
+my_mpd.on 'error', (msg) ->
+  console.log "ERROR: " + msg
+my_mpd.on 'statusupdate', checkDynamicMode
+my_mpd.on 'playlistupdate', checkDynamicMode
 
 # downgrade user permissions
 uid = nconf.get('user_id')

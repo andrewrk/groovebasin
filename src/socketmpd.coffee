@@ -7,6 +7,5 @@ window.SocketMpd = class _ extends window.Mpd
       @receive data
     @socket.on 'connect', @handleConnectionStart
 
-  send: (msg) =>
-    @debugMsgConsole?.log "send: #{@msgHandlerQueue[@msgHandlerQueue.length - 1]?.debug_id ? -1}: " + JSON.stringify(msg)
+  rawSend: (msg) =>
     @socket.emit 'ToMpd', msg

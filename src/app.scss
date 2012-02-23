@@ -74,6 +74,10 @@ body {
 #library-window {
   width: 400px;
   position: absolute;
+
+  .window-header {
+    height: 30px;
+  }
 }
 
 #lib-tabs {
@@ -90,10 +94,6 @@ body {
       }
 
       cursor: pointer;
-    }
-    li.ui-state-active span {
-      font-size: .8em;
-      font-weight: bold;
     }
   }
 }
@@ -131,6 +131,11 @@ body {
 #playlist-window {
   width: 700px;
   position: absolute;
+
+  .window-header {
+    margin-bottom: 4px;
+    font-size: .7em;
+  }
 }
 
 #playlist {
@@ -204,10 +209,6 @@ body {
     text-align: right;
   }
 
-}
-
-.window-header {
-  height: 30px;
 }
 
 #upload-widget {

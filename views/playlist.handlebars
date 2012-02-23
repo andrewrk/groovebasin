@@ -2,7 +2,7 @@
   <a href="#" class="clear">Clear</a>
   <a href="#" class="random1">Queue Random 1</a>
   <a href="#" class="random20">Queue Random 20</a>
-  <a href="#" class="dynamic-mode">Dynamic Mode is {{#if server_status}}{{#if server_status.dynamic_mode}}On{{else}}Off{{/if}}{{else}}??{{/if}}</a>
+  <input type="checkbox" id="dynamic-mode"{{#if server_status.dynamic_mode}} checked="checked"{{/if}}><label for="dynamic-mode">Dynamic Mode</label>
 </div>
 <div id="playlist">
   <div class="header">

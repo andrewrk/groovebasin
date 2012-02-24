@@ -608,18 +608,25 @@ exports.Mpd = class Mpd
     @sendCommand "playid #{escape(track_id)}"
     @anticipatePlayId track_id
 
-  removeId: (track_id) =>
-    track_id = parseInt(track_id)
-    if @status.current_item?.id == track_id
-      @anticipateSkip 1
-      if @status.state isnt "play"
-        @status.state = "stop"
-    @sendCommand "deleteid #{escape(track_id)}"
-    item = @playlist.item_table[track_id]
-    delete @playlist.item_table[item.id]
-    @playlist.item_list.splice(item.pos, 1)
-    it.pos = index for it, index in @playlist.item_list
+  removeIds: (track_ids) =>
+    cmds = []
+    for track_id in track_ids
+      track_id = parseInt(track_id)
+      if @status.current_item?.id == track_id
+        @anticipateSkip 1
+        if @status.state isnt "play"
+          @status.state = "stop"
+      cmds.push "deleteid #{escape(track_id)}"
+      item = @playlist.item_table[track_id]
+      delete @playlist.item_table[item.id]
+      @playlist.item_list.splice(item.pos, 1)
+      it.pos = index for it, index in @playlist.item_list
+
+    @sendCommands cmds
     @raiseEvent 'playlistupdate'
+
+  removeId: (track_id) =>
+    @removeIds [track_id]
 
   close: => @send "close\n" # bypass message queue
 

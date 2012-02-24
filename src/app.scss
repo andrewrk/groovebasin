@@ -108,7 +108,7 @@ body {
   }
 
   .hoverable {
-    cursor: pointer;
+    cursor: default;
   }
 
   ul {
@@ -190,7 +190,7 @@ body {
     overflow-x: hidden;
     overflow-y: hidden;
     height: 1.2em;
-    cursor: pointer;
+    cursor: default;
   }
 
   div.random {

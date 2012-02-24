@@ -5,6 +5,10 @@ wait = (delay, func) -> setTimeout func, delay
 context =
   playing: -> this.status?.state == 'play'
 
+selection =
+  type: null # 'library' or 'playlist'
+  ids: {} # key is id, value is some dummy value
+
 mpd = null
 base_title = document.title
 userIsSeeking = false
@@ -35,7 +39,28 @@ renderPlaylist = ->
   if cur_id?
     $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
 
+  refreshSelection()
+
   handleResize()
+
+refreshSelection = ->
+  return unless mpd?.playlist?.item_table?
+
+  # clear all selection
+  $("#playlist-items .pl-item").removeClass('ui-state-active')
+
+  if selection.type is 'playlist'
+    # if any selected ids are not in mpd.playlist, unselect them
+    badIds = []
+    for id of selection.ids
+      badIds.push id unless mpd.playlist.item_table[id]?
+    for id in badIds
+      delete selection.ids[id]
+
+    # highlight selected rows
+    for id of selection.ids
+      $playlist_track = $("#playlist-track-#{id}")
+      $playlist_track.addClass('ui-state-active') unless $playlist_track.hasClass('ui-state-hover')
 
 renderLibrary = ->
   context.artists = mpd.search_results.artists
@@ -174,16 +199,36 @@ setUpUi = ->
   $pl_window.find("#dynamic-mode").button()
 
   $playlist = $("#playlist")
-  $playlist.on 'click', '.pl-item', (event) ->
+  $playlist.on 'dblclick', '.pl-item', (event) ->
     track_id = $(this).data('id')
     mpd.playId track_id
-    return false
+
+  $playlist.on 'click', '.pl-item', (event) ->
+    track_id = $(this).data('id')
+    if selection.type isnt 'playlist'
+      selection.type = 'playlist'
+      (selection.ids = {})[track_id] = true
+    else if event.ctrlKey
+      if selection.ids[track_id]?
+        delete selection.ids[track_id]
+      else
+        selection.ids[track_id] = true
+    else
+      (selection.ids = {})[track_id] = true
+    refreshSelection()
 
   removeContextMenu = -> $("#menu").remove()
   $playlist.on 'contextmenu', '.pl-item', (event) ->
     removeContextMenu()
-    # adds a new context menu to the document
+
     track_id = parseInt($(this).data('id'))
+
+    if selection.type isnt 'playlist' or not selection.ids[track_id]?
+      selection.type = 'playlist'
+      (selection.ids = {})[track_id] = true
+      refreshSelection()
+
+    # adds a new context menu to the document
     $(Handlebars.templates.playlist_menu(mpd.playlist.item_table[track_id]))
       .appendTo(document.body)
     $menu = $("#menu") # get the newly created one
@@ -193,22 +238,28 @@ setUpUi = ->
     # don't close menu when you click on the area next to a button
     $menu.on 'click', -> false
     $menu.on 'click', '.remove', ->
-      mpd.removeId track_id
+      mpd.removeIds (id for id of selection.ids)
       removeContextMenu()
+      refreshSelection()
       return false
     $menu.on 'click', '.download', ->
       removeContextMenu()
 
     return false
+  # don't remove selection in playlist click
+  $playlist.on 'click', -> false
 
   # delete context menu
-  $(document).on 'click', removeContextMenu
+  $(document).on 'click', ->
+    removeContextMenu()
+    selection.type = null
+    refreshSelection()
   $(document).on 'keydown', (event) ->
     if event.keyCode == 27
       removeContextMenu()
 
   $library = $("#library")
-  $library.on 'click', 'div.track', (event) ->
+  $library.on 'dblclick', 'div.track', (event) ->
     mpd.queueFile $(this).data('file')
 
   $library.on 'click', 'div.expandable', (event) ->

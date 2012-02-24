@@ -98,7 +98,6 @@ setDynamicMode = (value) ->
   checkDynamicMode()
   sendStatus()
 checkDynamicMode = ->
-  return if not status.dynamic_mode
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
   current_index = -1
@@ -114,21 +113,23 @@ checkDynamicMode = ->
     # any tracks <= current track don't count as random anymore
     for i in [0..current_index]
       delete status.random_ids[item_list[i].id]
-  commands = []
-  delete_count = Math.max(current_index - 10, 0)
-  for i in [0...delete_count]
-    commands.push "deleteid #{item_list[i].id}"
-  add_count = Math.max(11 - (item_list.length - current_index), 0)
-  commands = commands.concat my_mpd.queueRandomTracksCommands add_count
-  my_mpd.sendCommands commands, (msg) ->
-    # track which ones are the automatic ones
-    changed = false
-    for line in msg.split("\n")
-      [name, value] = line.split(": ")
-      continue if name != "Id"
-      status.random_ids[value] = 1
-      changed = true
-    sendStatus() if changed
+
+  if status.dynamic_mode
+    commands = []
+    delete_count = Math.max(current_index - 10, 0)
+    for i in [0...delete_count]
+      commands.push "deleteid #{item_list[i].id}"
+    add_count = Math.max(11 - (item_list.length - current_index), 0)
+    commands = commands.concat my_mpd.queueRandomTracksCommands add_count
+    my_mpd.sendCommands commands, (msg) ->
+      # track which ones are the automatic ones
+      changed = false
+      for line in msg.split("\n")
+        [name, value] = line.split(": ")
+        continue if name != "Id"
+        status.random_ids[value] = 1
+        changed = true
+      sendStatus() if changed
 
   # scrub the random_ids
   new_random_ids = {}

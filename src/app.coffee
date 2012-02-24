@@ -150,13 +150,13 @@ setUpUi = ->
     $(this).removeClass "ui-state-hover"
 
   $pl_window = $("#playlist-window")
-  $pl_window.on 'click', 'a.clear', ->
+  $pl_window.on 'click', 'button.clear', ->
     mpd.clear()
     return false
-  $pl_window.on 'click', 'a.random1', ->
+  $pl_window.on 'click', 'button.random1', ->
     mpd.queueRandomTracks 1
     return false
-  $pl_window.on 'click', 'a.random20', ->
+  $pl_window.on 'click', 'button.random20', ->
     mpd.queueRandomTracks 20
     return false
   $pl_window.on 'click', '#dynamic-mode', ->

@@ -128,6 +128,7 @@ split_once = (line, separator) ->
   # should be line.split(separator, 1), but javascript is stupid
   index = line.indexOf(separator)
   return [line.substr(0, index), line.substr(index + separator.length)]
+exports.split_once = split_once
 
 exports.Mpd = class Mpd
 

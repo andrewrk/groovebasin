@@ -9,22 +9,7 @@ nconf = require 'nconf'
 formidable = require 'formidable'
 url = require 'url'
 util = require 'util'
-
-class DirectMpd extends require('./lib/mpd').Mpd
-  constructor: (@mpd_socket) ->
-    super()
-    @mpd_socket.on 'data', (data) =>
-      @receive data.toString()
-    @mpd_socket.on 'end', ->
-      console.log "server mpd disconnect"
-    @mpd_socket.on 'error', ->
-      console.log "server no mpd daemon found."
-    # whenever anyone joins, send status to everyone
-    @updateFuncs.subscription = ->
-      sendStatus()
-
-  rawSend: (data) =>
-    try @mpd_socket.write data
+mpd = require './lib/mpd'
 
 nconf
   .argv()
@@ -97,15 +82,23 @@ setDynamicMode = (value) ->
   status.dynamic_mode = value
   checkDynamicMode()
   sendStatus()
+previous_ids = {}
 checkDynamicMode = ->
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
   current_index = -1
   all_ids = {}
+  new_files = []
   for item, i in item_list
-    all_ids[item.id] = true
     if item.id == current_id
       current_index = i
+    all_ids[item.id] = true
+    if not previous_ids[item.id]?
+      new_files.push item.track.file
+  # tag any newly queued tracks
+  my_mpd.sendCommands ("sticker set song \"#{file}\" \"#{sticker_name}\" #{JSON.stringify new Date()}" for file in new_files)
+  # anticipate the changes
+  my_mpd.library.track_table[file].last_queued = new Date() for file in new_files
   # if no track is playing, assume the first track is about to be
   if current_index == -1
     current_index = 0
@@ -120,7 +113,8 @@ checkDynamicMode = ->
     for i in [0...delete_count]
       commands.push "deleteid #{item_list[i].id}"
     add_count = Math.max(11 - (item_list.length - current_index), 0)
-    commands = commands.concat my_mpd.queueRandomTracksCommands add_count
+
+    commands = commands.concat ("addid #{JSON.stringify file}" for file in getRandomSongFiles add_count)
     my_mpd.sendCommands commands, (msg) ->
       # track which ones are the automatic ones
       changed = false
@@ -137,7 +131,54 @@ checkDynamicMode = ->
     if all_ids[id]
       new_random_ids[id] = 1
   status.random_ids = new_random_ids
+  previous_ids = all_ids
   sendStatus()
+
+sticker_name = "groovebasin.last-queued"
+updateStickers = ->
+  my_mpd.sendCommand "sticker find song \"/\" \"#{sticker_name}\"", (msg) ->
+    current_file = null
+    for line in msg.split("\n")
+      [name, value] = mpd.split_once line, ": "
+      if name == "file"
+        current_file = value
+      else if name == "sticker"
+        [_, value] = mpd.split_once value, "="
+        my_mpd.library.track_table[current_file].last_queued = new Date(value)
+
+getRandomSongFiles = (count) ->
+  return [] if count == 0
+  never_queued = []
+  sometimes_queued = []
+  for _, track of my_mpd.library.track_table
+    if track.last_queued?
+      sometimes_queued.push track
+    else
+      never_queued.push track
+  # backwards by time
+  sometimes_queued.sort (a, b) ->
+    b.last_queued.getTime() - a.last_queued.getTime()
+  # distribution is a triangle for ever queued, and a rectangle for never queued
+  #    ___
+  #   /| |
+  #  / | |
+  # /__|_|
+  max_weight = sometimes_queued.length
+  triangle_area = Math.floor(max_weight * max_weight / 2)
+  rectangle_area = max_weight * never_queued.length
+  total_size = triangle_area + rectangle_area
+  # decode indexes through the distribution shape
+  files = []
+  for i in [0...count]
+    index = Math.random() * total_size
+    if index < triangle_area
+      # triangle
+      track = sometimes_queued[Math.floor Math.sqrt index]
+    else
+      # rectangle
+      track = never_queued[Math.floor((index - triangle_area) / max_weight)]
+    files.push track.file
+  files
 
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')
@@ -158,14 +199,29 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'DynamicMode', (data) ->
     console.log "DynamicMode is being turned #{data.toString()}"
     value = JSON.parse data.toString()
-    if !(value == true || value == false)
-      console.log "ERROR: wtf #{data.toString()}"
-      return
     setDynamicMode value
 
   socket.on 'disconnect', -> mpd_socket.end()
 
 # our own mpd connection
+class DirectMpd extends mpd.Mpd
+  constructor: (@mpd_socket) ->
+    super()
+    @mpd_socket.on 'data', (data) =>
+      @receive data.toString()
+    @mpd_socket.on 'end', ->
+      console.log "server mpd disconnect"
+    @mpd_socket.on 'error', ->
+      console.log "server no mpd daemon found."
+    # whenever anyone joins, send status to everyone
+    @updateFuncs.subscription = ->
+      sendStatus()
+    @updateFuncs.sticker = ->
+      updateStickers()
+
+  rawSend: (data) =>
+    try @mpd_socket.write data
+
 my_mpd = null
 my_mpd_socket = createMpdConnection ->
   console.log "server to mpd connect"
@@ -175,6 +231,7 @@ my_mpd.on 'error', (msg) ->
   console.log "ERROR: " + msg
 my_mpd.on 'statusupdate', checkDynamicMode
 my_mpd.on 'playlistupdate', checkDynamicMode
+my_mpd.on 'libraryupdate', updateStickers
 
 # downgrade user permissions
 uid = nconf.get('user_id')

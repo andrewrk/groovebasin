@@ -22,7 +22,7 @@ renderPlaylist = ->
     .button("refresh")
   # label the random ones
   cur_id = mpd.status?.current_item?.id
-  if mpd.server_status?
+  if mpd.server_status?.random_ids?
     found_random = false
     found_current = not cur_id?
     for pl_item in $playlist.find(".pl-item")

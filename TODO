@@ -2,22 +2,11 @@
   if it's greater than 20 things
 * keyboard shortcuts
 * make dynamic playlist mode options configurable
-* dynamic playlist mode
-  - togglable
-    > ON:
-      ~ good shuffle heuristics:
-        # recently played songs have less probability of being randomly chosen
-        # songs that get skipped more often have less probability of being
-          randomly chosen.
-      ~ there are 4 sections to the dynamic playlist
-        # history of 10 songs
-        # the currently playing song
-        # the "manually" queued songs that will play next
-        # the auto-shuffle queued list of 10 songs that will play after the 
-          manual section is done. at any time you can move one of these songs
-          to the manual section. the "repopulate" button only affects this area
-    > OFF:
-      ~ playlist is only changed manually.
+* good shuffle heuristics:
+  - recently played songs have less probability of being randomly chosen
+  - songs that get skipped more often have less probability of being
+    randomly chosen.
+* ability to ban from random
 * drag/drop songs / better ui
 * ability to upload songs
   - update library without refreshing
@@ -37,8 +26,6 @@
 * ability to download songs
   - in now playing
   - in library
-* implement the intelligent shuffling
-* ability to ban from random
 * library management
   - duplicate detection and elimination
     > if a song is byte for byte the same (check md5's) then ignore the
@@ -56,10 +43,6 @@
   - plugin to import songs to library from youtube URL
   - wolfebin plugin?
 * file folder inbox to import stuff
-* playlist colors:
-  - already played songs are a color
-  - queued random songs are one color
-  - manually queued songs are another color
 * take mpd's status into account. Make them editable?
   - consume
   - random

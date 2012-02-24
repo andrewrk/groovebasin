@@ -20,15 +20,21 @@ renderPlaylist = ->
   $("#dynamic-mode")
     .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
     .button("refresh")
+  cur_id = mpd.status?.current_item?.id
   # label the random ones
   if mpd.server_status?
+    found_random_start = false
+    found_current = false
     for pl_item in $playlist.find(".pl-item")
       $pl_item = $(pl_item)
       id = $pl_item.data 'id'
-      if mpd.server_status.random_ids[id]?
-        $pl_item.addClass "random"
-
-  if (cur_id = mpd.status?.current_item?.id)?
+      found_random_start = true if id == mpd.server_status.random_start_id
+      found_current = true if id == cur_id
+      if found_random_start
+        # don't color anything <= current item if any
+        if not cur_id? or (found_current and id != cur_id)
+          $pl_item.addClass "random"
+  if cur_id?
     $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
 
   handleResize()

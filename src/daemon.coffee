@@ -88,7 +88,7 @@ createMpdConnection = (cb) ->
 
 status =
   dynamic_mode: false
-  random_ids: {}
+  random_start_id: -1
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
 
@@ -100,44 +100,42 @@ setDynamicMode = (value) ->
 checkDynamicMode = ->
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
+  found_random_start = false
+  just_saw_current_index = false
   current_index = -1
-  all_ids = {}
   for item, i in item_list
-    all_ids[item.id] = true
+    found_random_start = true if item.id == status.random_start_id
+    if found_random_start and just_saw_current_index
+      # any tracks <= current track don't count as random anymore
+      status.random_start_id = item.id
+      sendStatus()
+    just_saw_current_index = false
     if item.id == current_id
       current_index = i
+      just_saw_current_index = true
+  if not found_random_start
+    status.random_start_id = -1
+    sendStatus()
+  return if not status.dynamic_mode
   # if no track is playing, assume the first track is about to be
   if current_index == -1
     current_index = 0
-  else
-    # any tracks <= current track don't count as random anymore
-    for i in [0..current_index]
-      delete status.random_ids[item_list[i].id]
 
-  if status.dynamic_mode
-    commands = []
-    delete_count = Math.max(current_index - 10, 0)
-    for i in [0...delete_count]
-      commands.push "deleteid #{item_list[i].id}"
-    add_count = Math.max(11 - (item_list.length - current_index), 0)
-    commands = commands.concat my_mpd.queueRandomTracksCommands add_count
-    my_mpd.sendCommands commands, (msg) ->
-      # track which ones are the automatic ones
-      changed = false
+  commands = []
+  delete_count = Math.max(current_index - 10, 0)
+  for i in [0...delete_count]
+    commands.push "deleteid #{item_list[i].id}"
+  add_count = Math.max(11 - (item_list.length - current_index), 0)
+  commands = commands.concat my_mpd.queueRandomTracksCommands add_count
+  my_mpd.sendCommands commands, (msg) ->
+    if status.random_start_id == -1
+      # first random one is the start
       for line in msg.split("\n")
         [name, value] = line.split(": ")
         continue if name != "Id"
-        status.random_ids[value] = 1
-        changed = true
-      sendStatus() if changed
-
-  # scrub the random_ids
-  new_random_ids = {}
-  for id of status.random_ids
-    if all_ids[id]
-      new_random_ids[id] = 1
-  status.random_ids = new_random_ids
-  sendStatus()
+        status.random_start_id = parseInt value
+        sendStatus()
+        break
 
 io = socketio.listen(app)
 io.set 'log level', nconf.get('log_level')

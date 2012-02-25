@@ -340,6 +340,7 @@ setUpUi = ->
         return false
       $menu.on 'click', '.download', ->
         removeContextMenu()
+        return true
 
   # don't remove selection in playlist click
   $playlist.on 'mousedown', -> false

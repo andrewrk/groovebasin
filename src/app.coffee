@@ -219,22 +219,26 @@ setUpUi = ->
       if selection.type isnt 'playlist'
         selection.type = 'playlist'
         (selection.playlist_ids = {})[track_id] = true
-      else if event.ctrlKey
+        selection.cursor = track_id
+      else if event.ctrlKey or event.shiftKey
         skip_drag = true
-        if selection.playlist_ids[track_id]?
-          delete selection.playlist_ids[track_id]
-        else
-          selection.playlist_ids[track_id] = true
-      else if event.shiftKey
-        skip_drag = true
-        old_pos = if selection.cursor? then mpd.playlist.item_table[selection.cursor].pos else 0
-        new_pos = mpd.playlist.item_table[track_id].pos
-        for i in [old_pos..new_pos]
-          selection.playlist_ids[mpd.playlist.item_list[i].id] = true
+        if event.shiftKey and not event.ctrlKey
+          selection.playlist_ids = {}
+        if event.shiftKey
+          old_pos = if selection.cursor? then mpd.playlist.item_table[selection.cursor].pos else 0
+          new_pos = mpd.playlist.item_table[track_id].pos
+          for i in [old_pos..new_pos]
+            selection.playlist_ids[mpd.playlist.item_list[i].id] = true
+        else if event.ctrlKey
+          if selection.playlist_ids[track_id]?
+            delete selection.playlist_ids[track_id]
+          else
+            selection.playlist_ids[track_id] = true
+          selection.cursor = track_id
       else if not selection.playlist_ids[track_id]?
         (selection.playlist_ids = {})[track_id] = true
+        selection.cursor = track_id
 
-      selection.cursor = track_id
       refreshSelection()
       
       # dragging
@@ -293,6 +297,7 @@ setUpUi = ->
           else
             # we didn't end up dragging, select the item
             (selection.playlist_ids = {})[track_id] = true
+            selection.cursor = track_id
             refreshSelection()
 
         $(document)

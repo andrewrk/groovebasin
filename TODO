@@ -1,6 +1,5 @@
 * drag edge case when dragging 2 consecutive items to the same location with the insert
   bar on the bottom
-* ability to hold shift to select a bunch of songs in a row
 * delete button removes playlist items
 * escape button cancels drag/drop
 * shuffle playlist button

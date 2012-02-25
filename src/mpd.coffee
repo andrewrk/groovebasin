@@ -260,10 +260,9 @@ exports.Mpd = class Mpd
     for track in tracks
       library.track_table[track.file] = track
       if track.album_name == ""
-        # don't bother including the year
-        album_key = "#{track.album_artist_name}\n\n"
+        album_key = track.album_artist_name + "\n"
       else
-        album_key = [track.album_name, track.year].join("\n")
+        album_key = track.album_name + "\n"
       album_key = album_key.toLowerCase()
       album = getOrCreate album_key, album_table, -> {name: track.album_name, year: track.year, tracks: []}
       album.tracks.push track

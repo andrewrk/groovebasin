@@ -1,7 +1,6 @@
 * drag edge case when dragging 2 consecutive items to the same location with the insert
   bar on the bottom
 * delete button removes playlist items
-* escape button cancels drag/drop
 * shuffle playlist button
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist

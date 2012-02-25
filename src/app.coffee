@@ -243,6 +243,10 @@ setUpUi = ->
       
       # dragging
       if not skip_drag
+        started_drag = false
+        start_drag_x = event.pageX
+        start_drag_y = event.pageY
+
         getDragPosition = (x, y) ->
           # loop over the playlist items and find where it fits
           best =
@@ -269,9 +273,19 @@ setUpUi = ->
 
           return best
 
-        started_drag = false
-        start_drag_x = event.pageX
-        start_drag_y = event.pageY
+        abortDrag = ->
+          $(document)
+            .off('mousemove', onDragMove)
+            .off('mouseup', onDragEnd)
+            .off('keydown', onKeyDown)
+
+          if started_drag
+            $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+
+        onKeyDown = (event) ->
+          if event.keyCode == 27
+            abortDrag()
+
         onDragMove = (event) ->
           if not started_drag
             dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
@@ -282,12 +296,9 @@ setUpUi = ->
           $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
         onDragEnd = (event) ->
-          $(document)
-            .off('mousemove', onDragMove)
-            .off('mouseup', onDragEnd)
+          abortDrag()
 
           if started_drag
-            $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
             result = getDragPosition(event.pageX, event.pageY)
             delta =
               top: 0
@@ -303,6 +314,7 @@ setUpUi = ->
         $(document)
           .on('mousemove', onDragMove)
           .on('mouseup', onDragEnd)
+          .on('keydown', onKeyDown)
 
         onDragMove event
 

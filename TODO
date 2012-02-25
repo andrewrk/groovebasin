@@ -2,10 +2,28 @@
 * ability to drag artists, albums, tracks to playlist
 * drag edge case when dragging 2 consecutive items to the same location with the insert
   bar on the bottom
+* keyboard shortcuts
+  - space toggles playback
+  - up/down to change selection
+  - shift up/down to select multiple items
+  - ctrl up/down to move playlist items
+  - right/left scrub through current track by a specific amount of time
+  - shift right/left scrub through current track by a specific percent
+  - ctrl right/left skip next/prev
+  - '>' skip next
+  - '<' skip prev
+  - '/' focuses and selects all in library filter box
+  - '?' displays keyboard shortcuts
+  - 'h' shuffles playlist
+  - 'b' ban from random
+  - 'u' switch to upload tab and pop upload dialog box
+  - '-' volume down
+  - '+' volume up
+* ability to password protect
+* ability to edit tags
 * press enter in filter box to queue every result. pop up a confirmation dialog
   if it's greater than 20 things
 * more intelligent behavior when you click download for multiple selection
-* '?' displays keyboard shortcuts
 * make dynamic playlist mode options configurable
 * good shuffle heuristics:
   - songs that get skipped more often have less probability of being
@@ -26,9 +44,7 @@
   - display
   - grab individual tracks
   - switch to
-* ability to download songs
-  - in now playing
-  - in library
+* ability to download songs in library
 * library management
   - duplicate detection and elimination
     > if a song is byte for byte the same (check md5's) then ignore the

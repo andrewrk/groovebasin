@@ -7,7 +7,10 @@ context =
 
 selection =
   type: null # 'library' or 'playlist'
-  ids: {} # key is id, value is some dummy value
+  playlist_ids: {} # key is id, value is some dummy value
+  artist_ids: {}
+  album_ids: {}
+  track_ids: {}
 
 mpd = null
 base_title = document.title
@@ -52,13 +55,13 @@ refreshSelection = ->
   if selection.type is 'playlist'
     # if any selected ids are not in mpd.playlist, unselect them
     badIds = []
-    for id of selection.ids
+    for id of selection.playlist_ids
       badIds.push id unless mpd.playlist.item_table[id]?
     for id in badIds
-      delete selection.ids[id]
+      delete selection.playlist_ids[id]
 
     # highlight selected rows
-    for id of selection.ids
+    for id of selection.playlist_ids
       $playlist_track = $("#playlist-track-#{id}")
       $playlist_track.addClass('ui-state-active') unless $playlist_track.hasClass('ui-state-hover')
 
@@ -203,54 +206,125 @@ setUpUi = ->
     track_id = $(this).data('id')
     mpd.playId track_id
 
-  $playlist.on 'click', '.pl-item', (event) ->
-    track_id = $(this).data('id')
-    if selection.type isnt 'playlist'
-      selection.type = 'playlist'
-      (selection.ids = {})[track_id] = true
-    else if event.ctrlKey
-      if selection.ids[track_id]?
-        delete selection.ids[track_id]
-      else
-        selection.ids[track_id] = true
-    else
-      (selection.ids = {})[track_id] = true
-    refreshSelection()
-
   removeContextMenu = -> $("#menu").remove()
-  $playlist.on 'contextmenu', '.pl-item', (event) ->
-    removeContextMenu()
-
-    track_id = parseInt($(this).data('id'))
-
-    if selection.type isnt 'playlist' or not selection.ids[track_id]?
-      selection.type = 'playlist'
-      (selection.ids = {})[track_id] = true
-      refreshSelection()
-
-    # adds a new context menu to the document
-    $(Handlebars.templates.playlist_menu(mpd.playlist.item_table[track_id]))
-      .appendTo(document.body)
-    $menu = $("#menu") # get the newly created one
-    $menu.offset
-      left: event.pageX
-      top: event.pageY
-    # don't close menu when you click on the area next to a button
-    $menu.on 'click', -> false
-    $menu.on 'click', '.remove', ->
-      mpd.removeIds (id for id of selection.ids)
+  $playlist.on 'contextmenu', -> false
+  $playlist.on 'mousedown', '.pl-item', (event) ->
+    event.preventDefault()
+    if event.button == 0
+      # selecting / unselecting
       removeContextMenu()
+      track_id = $(this).data('id')
+      skip_drag = false
+      if selection.type isnt 'playlist'
+        selection.type = 'playlist'
+        (selection.playlist_ids = {})[track_id] = true
+      else if event.ctrlKey
+        skip_drag = true
+        if selection.playlist_ids[track_id]?
+          delete selection.playlist_ids[track_id]
+        else
+          selection.playlist_ids[track_id] = true
+      else if not selection.playlist_ids[track_id]?
+        (selection.playlist_ids = {})[track_id] = true
       refreshSelection()
-      return false
-    $menu.on 'click', '.download', ->
+      
+      # dragging
+      if not skip_drag
+        getDragPosition = (x, y) ->
+          # loop over the playlist items and find where it fits
+          best =
+            track_id: null
+            distance: null
+            direction: null
+          for item in $playlist.find(".pl-item").get()
+            $item = $(item)
+            pos = $item.offset()
+            height = $item.height()
+            track_id = parseInt($item.data('id'))
+            # try the top of this element
+            distance = Math.abs(pos.top - y)
+            if not best.distance? or distance < best.distance
+              best.distance = distance
+              best.direction = "top"
+              best.track_id = track_id
+            # try the bottom
+            distance = Math.abs(pos.top + height - y)
+            if distance < best.distance
+              best.distance = distance
+              best.direction = "bottom"
+              best.track_id = track_id
+
+          return best
+
+        started_drag = false
+        start_drag_x = event.pageX
+        start_drag_y = event.pageY
+        onDragMove = (event) ->
+          if not started_drag
+            dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
+            started_drag = true if dist > 64
+            return unless started_drag
+          result = getDragPosition(event.pageX, event.pageY)
+          $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+          $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
+
+        onDragEnd = (event) ->
+          $(document)
+            .off('mousemove', onDragMove)
+            .off('mouseup', onDragEnd)
+
+          if started_drag
+            $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+            result = getDragPosition(event.pageX, event.pageY)
+            delta =
+              top: 0
+              bottom: 1
+            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+            mpd.moveIds (id for id of selection.playlist_ids), new_pos
+          else
+            # we didn't end up dragging, select the item
+            (selection.playlist_ids = {})[track_id] = true
+            refreshSelection()
+
+        $(document)
+          .on('mousemove', onDragMove)
+          .on('mouseup', onDragEnd)
+
+        onDragMove event
+
+    else if event.button == 2
+      # context menu
       removeContextMenu()
 
-    return false
+      track_id = parseInt($(this).data('id'))
+
+      if selection.type isnt 'playlist' or not selection.playlist_ids[track_id]?
+        selection.type = 'playlist'
+        (selection.playlist_ids = {})[track_id] = true
+        refreshSelection()
+
+      # adds a new context menu to the document
+      $(Handlebars.templates.playlist_menu(mpd.playlist.item_table[track_id]))
+        .appendTo(document.body)
+      $menu = $("#menu") # get the newly created one
+      $menu.offset
+        left: event.pageX+1
+        top: event.pageY+1
+      # don't close menu when you click on the area next to a button
+      $menu.on 'mousedown', -> false
+      $menu.on 'click', '.remove', ->
+        mpd.removeIds (id for id of selection.playlist_ids)
+        removeContextMenu()
+        refreshSelection()
+        return false
+      $menu.on 'click', '.download', ->
+        removeContextMenu()
+
   # don't remove selection in playlist click
-  $playlist.on 'click', -> false
+  $playlist.on 'mousedown', -> false
 
   # delete context menu
-  $(document).on 'click', ->
+  $(document).on 'mousedown', ->
     removeContextMenu()
     selection.type = null
     refreshSelection()
@@ -262,13 +336,17 @@ setUpUi = ->
   $library.on 'dblclick', 'div.track', (event) ->
     mpd.queueFile $(this).data('file')
 
-  $library.on 'click', 'div.expandable', (event) ->
-    toggleExpansion $(this).parent()
+  $library.on 'click', 'div.expandable > div.ui-icon', (event) ->
+    toggleExpansion $(this).closest("li")
+
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
     if event.keyCode == 27
-      $(event.target).val("")
-      mpd.search ""
+      # defer the setting of the text box until after the event loop to
+      # work around a firefox bug
+      wait 0, ->
+        $(event.target).val("")
+        mpd.search ""
       return false
   $lib_filter.on 'keyup', (event) ->
       mpd.search $(event.target).val()

@@ -1,6 +1,7 @@
 # library structure: {
 #   artists: [sorted list of {artist structure}],
 #   track_table: {"track file" => {track structure}},
+#   artist_table: {"artist name" => {artist structure}},
 # }
 # artist structure: {
 #   name: "Artist Name",
@@ -26,6 +27,7 @@
 # playlist item structure: {
 #   id: 7, # playlist song id
 #   track: {track structure},
+#   pos: 2, # 0-based position in the playlist
 # }
 # status structure: {
 #   volume: .89, # float 0-1
@@ -606,6 +608,24 @@ exports.Mpd = class Mpd
     track_id = parseInt(track_id)
     @sendCommand "playid #{escape(track_id)}"
     @anticipatePlayId track_id
+
+  moveIds: (track_ids, pos) =>
+    pos = parseInt(pos)
+    # get the playlist items for the ids
+    items = (item for id in track_ids when (item = @playlist.item_table[id])?)
+    # sort the list by the reverse order in the playlist
+    items.sort (a, b) -> b.pos - a.pos
+
+    cmds = []
+    for item in items
+      real_pos = if pos <= item.pos then pos else pos - 1
+      cmds.push "moveid #{item.id} #{real_pos}"
+      @playlist.item_list.splice item.pos, 1
+      @playlist.item_list.splice real_pos, 0, item
+      for pl_item, index in @playlist.item_list
+        pl_item.pos = index
+
+    @sendCommands cmds
 
   removeIds: (track_ids) =>
     cmds = []

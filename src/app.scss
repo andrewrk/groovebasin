@@ -102,13 +102,10 @@ body {
   overflow-y: auto;
 
   @include user-select(none);
+  cursor: default;
 
   div.ui-icon {
     float: left;
-  }
-
-  .hoverable {
-    cursor: default;
   }
 
   ul {
@@ -134,7 +131,7 @@ body {
 
   .window-header {
     margin-bottom: 4px;
-    font-size: .7em;
+    font-size: .6em;
   }
 }
 
@@ -199,6 +196,14 @@ body {
 
   div:nth-child(2n+1) {
     background-color: #2A2A2A;
+  }
+
+  div.border-bottom {
+    border-bottom: 2px dashed #ffffff;
+  }
+
+  div.border-top {
+    border-top: 2px dashed #ffffff;
   }
 
   span.track {

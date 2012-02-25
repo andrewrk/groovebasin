@@ -1,12 +1,19 @@
+* drag edge case when dragging 2 consecutive items to the same location with the insert
+  bar on the bottom
+* ability to hold shift to select a bunch of songs in a row
+* delete button removes playlist items
+* shuffle playlist button
+* ability to select artists, albums, tracks in library
+* ability to drag artists, albums, tracks to playlist
 * press enter in filter box to queue every result. pop up a confirmation dialog
   if it's greater than 20 things
-* keyboard shortcuts
+* more intelligent behavior when you click download for multiple selection
+* '?' displays keyboard shortcuts
 * make dynamic playlist mode options configurable
 * good shuffle heuristics:
   - songs that get skipped more often have less probability of being
     randomly chosen.
 * ability to ban from random
-* drag/drop songs / better ui
 * ability to upload songs
   - update library without refreshing
   - update search results without refreshing

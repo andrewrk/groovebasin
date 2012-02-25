@@ -190,22 +190,13 @@ setUpUi = ->
   $pl_window = $("#playlist-window")
   $pl_window.on 'click', 'button.clear', ->
     mpd.clear()
-    return false
-  $pl_window.on 'click', 'button.random1', ->
-    mpd.queueRandomTracks 1
-    return false
-  $pl_window.on 'click', 'button.random20', ->
-    mpd.queueRandomTracks 20
-    return false
+  $pl_window.on 'click', 'button.shuffle', ->
+    mpd.shuffle()
   $pl_window.on 'click', '#dynamic-mode', ->
     value = $(this).prop("checked")
     socket.emit 'DynamicMode', JSON.stringify (value)
     return false
-  # turn check box into jquery button
-  $pl_window.find(".clear").button()
-  $pl_window.find(".random1").button()
-  $pl_window.find(".random20").button()
-  $pl_window.find("#dynamic-mode").button()
+  $pl_window.find(".jquery-button").button()
 
   $playlist = $("#playlist")
   $playlist.on 'dblclick', '.pl-item', (event) ->

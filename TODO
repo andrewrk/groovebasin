@@ -1,8 +1,7 @@
-* drag edge case when dragging 2 consecutive items to the same location with the insert
-  bar on the bottom
-* shuffle playlist button
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
+* drag edge case when dragging 2 consecutive items to the same location with the insert
+  bar on the bottom
 * press enter in filter box to queue every result. pop up a confirmation dialog
   if it's greater than 20 things
 * more intelligent behavior when you click download for multiple selection

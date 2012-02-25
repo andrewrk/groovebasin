@@ -575,6 +575,8 @@ exports.Mpd = class Mpd
     @clearPlaylist()
     @raiseEvent 'playlistupdate'
 
+  shuffle: => @sendCommand "shuffle"
+
   stop: =>
     @sendCommand "stop"
     @status.state = "stop"
@@ -626,6 +628,7 @@ exports.Mpd = class Mpd
         pl_item.pos = index
 
     @sendCommands cmds
+    @raiseEvent 'playlistupdate'
 
   removeIds: (track_ids) =>
     cmds = []

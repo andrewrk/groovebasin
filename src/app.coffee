@@ -176,6 +176,11 @@ toggleExpansion = ($li) ->
   $div.find("div").removeClass(old_class).addClass(new_class)
   return false
 
+handleDeletePressed = ->
+  if selection.type is 'playlist'
+    mpd.removeIds (id for id of selection.playlist_ids)
+    refreshSelection()
+
 setUpUi = ->
   $(document).on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -339,9 +344,8 @@ setUpUi = ->
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false
       $menu.on 'click', '.remove', ->
-        mpd.removeIds (id for id of selection.playlist_ids)
+        handleDeletePressed()
         removeContextMenu()
-        refreshSelection()
         return false
       $menu.on 'click', '.download', ->
         removeContextMenu()
@@ -357,6 +361,8 @@ setUpUi = ->
   $(document).on 'keydown', (event) ->
     if event.keyCode == 27
       removeContextMenu()
+    else if event.keyCode == 46
+      handleDeletePressed()
 
   $library = $("#library")
   $library.on 'dblclick', 'div.track', (event) ->

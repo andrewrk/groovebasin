@@ -1,7 +1,5 @@
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
-* drag edge case when dragging 2 consecutive items to the same location with the insert
-  bar on the bottom
 * keyboard shortcuts
   - space toggles playback
   - up/down to change selection

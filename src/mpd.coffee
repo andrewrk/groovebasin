@@ -619,11 +619,19 @@ exports.Mpd = class Mpd
     items.sort (a, b) -> b.pos - a.pos
 
     cmds = []
-    for item in items
-      real_pos = if pos <= item.pos then pos else pos - 1
+    while items.length > 0
+      if pos <= items[0].pos
+        real_pos = pos
+        item = items.shift()
+      else
+        real_pos = pos - 1
+        item = items.pop()
+
       cmds.push "moveid #{item.id} #{real_pos}"
       @playlist.item_list.splice item.pos, 1
       @playlist.item_list.splice real_pos, 0, item
+
+      # fix item pos properties
       for pl_item, index in @playlist.item_list
         pl_item.pos = index
 

@@ -11,6 +11,7 @@ selection =
   artist_ids: {}
   album_ids: {}
   track_ids: {}
+  cursor: null # the last touched id
 
 mpd = null
 base_title = document.title
@@ -224,8 +225,16 @@ setUpUi = ->
           delete selection.playlist_ids[track_id]
         else
           selection.playlist_ids[track_id] = true
+      else if event.shiftKey
+        skip_drag = true
+        old_pos = if selection.cursor? then mpd.playlist.item_table[selection.cursor].pos else 0
+        new_pos = mpd.playlist.item_table[track_id].pos
+        for i in [old_pos..new_pos]
+          selection.playlist_ids[mpd.playlist.item_list[i].id] = true
       else if not selection.playlist_ids[track_id]?
         (selection.playlist_ids = {})[track_id] = true
+
+      selection.cursor = track_id
       refreshSelection()
       
       # dragging

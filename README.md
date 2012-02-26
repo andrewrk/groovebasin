@@ -2,10 +2,25 @@
 
 Multiplayer music player for your home or office.
 
-Run it on a server connected to your main speakers. Anyone can connect and
-freely play and share music.
+Run it on a server connected to your main speakers. Guests can connect with
+their laptops, tablets, and phones, and play and share music.
 
-Inspired by https://github.com/royvandewater/partybeat/
+Depends on [mpd](http://musicpd.org) for the backend. Some might call this
+project an mpd client.
+
+## Features
+
+* Lightning-fast, responsive UI. You can hardly tell that the music server is
+  on another computer.
+
+* Dynamic playlist mode which automatically queues random songs, favoring
+  songs that have not been played recently.
+
+* Drag and drop upload. Drag and drop playlist editing. Rich keyboard
+  shortcuts.
+
+* Streaming support. You can listen to your music library - or share it with
+  your friends - even when you're not physically near your home speakers.
 
 ## Dependencies
 
@@ -36,7 +51,7 @@ Inspired by https://github.com/royvandewater/partybeat/
 
 ## Installation
 
-1. Install and configure mpd, make sure it works.
+1. Install, configure, and run mpd. Make sure you can get it to make noise.
 
 2. Softlink `./public/library` to your music folder.
 
@@ -50,4 +65,11 @@ Inspired by https://github.com/royvandewater/partybeat/
    what the structure should look like at the top of `./src/daemon.coffee` source.
 
 5. You can now run `./groovebasind` to start the server.
+
+## Screenshots
+
+![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
+![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-3.png)
+![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)
+![Drag and drop / multiselect upload](http://www.superjoesoftware.com/temp/groove-basin-1.png)
 

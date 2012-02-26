@@ -1,5 +1,6 @@
 * if you move a song that was chosen randomly, it and everything from
   it to current song are marked not random
+* from a clear playlist, dynamic mode adds too many songs
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately

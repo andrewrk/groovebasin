@@ -181,6 +181,12 @@ handleDeletePressed = ->
     mpd.removeIds (id for id of selection.playlist_ids)
     refreshSelection()
 
+togglePlayback = ->
+  if mpd.status.state == 'play'
+    mpd.pause()
+  else
+    mpd.play()
+
 setUpUi = ->
   $(document).on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -351,12 +357,11 @@ setUpUi = ->
     selection.type = null
     refreshSelection()
   $(document).on 'keydown', (event) ->
-    switch event.keyCode
-      when 27
-        removeContextMenu()
-      when 46
-        handleDeletePressed()
-      when 191 # '/' or '?'
+    handlers =
+      27: removeContextMenu
+      32: togglePlayback
+      46: handleDeletePressed
+      191: ->
         if event.shiftKey
           $(Handlebars.templates.shortcuts()).appendTo(document.body)
           $("#shortcuts").dialog
@@ -367,7 +372,11 @@ setUpUi = ->
             close: -> $("#shortcuts").remove()
         else
           $("#lib-filter").focus().select()
-          return false
+
+    if (handler = handlers[event.keyCode])?
+      handler()
+      return false
+    return true
 
   $library = $("#library")
   $library.on 'dblclick', 'div.track', (event) ->
@@ -394,14 +403,11 @@ setUpUi = ->
     mpd.search $(event.target).val()
 
   actions =
-    'toggle': ->
-      if mpd.status.state == 'play'
-        mpd.pause()
-      else
-        mpd.play()
-    'prev': -> mpd.prev()
-    'next': -> mpd.next()
-    'stop': -> mpd.stop()
+    'toggle': togglePlayback
+    'prev': mpd.prev
+    'next': mpd.next
+    'stop': mpd.stop
+
   $nowplaying = $("#nowplaying")
   for cls, action of actions
     do (cls, action) ->
@@ -502,9 +508,6 @@ handleResize = ->
 
 socket = null
 $(document).ready ->
-  setUpUi()
-  initHandlebars()
-
   socket = io.connect()
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
@@ -514,6 +517,10 @@ $(document).ready ->
     renderNowPlaying()
     renderPlaylist()
   mpd.on 'serverstatus', renderPlaylist
+
+  setUpUi()
+  initHandlebars()
+
 
   render()
   handleResize()

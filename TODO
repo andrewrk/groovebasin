@@ -1,7 +1,6 @@
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * implement keyboard shortcuts
-  - space toggles playback
   - up/down to change selection
   - shift up/down to select multiple items
   - ctrl up/down to move playlist items

@@ -414,6 +414,10 @@ setUpUi = ->
         for album in artist.albums
           for track in album.tracks
             files.push track.file
+
+      if files.length > 2000
+        return false unless confirm("You are about to queue #{files.length} songs.")
+
       func = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
       func files
       return false

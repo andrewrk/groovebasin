@@ -365,6 +365,8 @@ setUpUi = ->
       32: togglePlayback
       # delete
       46: handleDeletePressed
+      # 'c'
+      67: mpd.clear
       # 'h'
       72: mpd.shuffle
       # '=' or '+'

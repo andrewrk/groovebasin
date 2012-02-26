@@ -52,7 +52,7 @@ renderPlaylist = ->
       if found_random and found_current and cur_id != id
         $pl_item.addClass "random"
   if cur_id?
-    $("#playlist-track-#{cur_id}").addClass('ui-state-hover')
+    $("#playlist-track-#{cur_id}").addClass('current')
 
   refreshSelection()
 
@@ -62,7 +62,7 @@ refreshSelection = ->
   return unless mpd?.playlist?.item_table?
 
   # clear all selection
-  $("#playlist-items .pl-item").removeClass('ui-state-active')
+  $("#playlist-items .pl-item").removeClass('selected').removeClass('cursor')
 
   if selection.type is 'playlist'
     # if any selected ids are not in mpd.playlist, unselect them
@@ -75,7 +75,9 @@ refreshSelection = ->
     # highlight selected rows
     for id of selection.playlist_ids
       $playlist_track = $("#playlist-track-#{id}")
-      $playlist_track.addClass('ui-state-active') unless $playlist_track.hasClass('ui-state-hover')
+      $playlist_track.addClass 'selected'
+
+    $("#playlist-track-#{selection.cursor}").addClass('cursor') if selection.cursor?
 
 renderLibrary = ->
   context.artists = mpd.search_results.artists
@@ -234,11 +236,11 @@ setUpUi = ->
     mpd.playId track_id
 
   removeContextMenu = -> $("#menu").remove()
-  $playlist.on 'contextmenu', -> false
+  $playlist.on 'contextmenu', (event) -> return event.altKey
   $playlist.on 'mousedown', '.pl-item', (event) ->
-    event.preventDefault()
     $("#lib-filter").blur()
     if event.button == 0
+      event.preventDefault()
       # selecting / unselecting
       removeContextMenu()
       track_id = $(this).data('id')
@@ -340,6 +342,9 @@ setUpUi = ->
         onDragMove event
 
     else if event.button == 2
+      return if event.altKey
+      event.preventDefault()
+
       # context menu
       removeContextMenu()
 

@@ -3,7 +3,6 @@
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window appropriately
-* indicate selection.cursor in the ui
 * ability to password protect
 * ability to edit tags
 * more intelligent behavior when you click download for multiple selection

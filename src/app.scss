@@ -213,6 +213,24 @@ body {
     border-top: 2px dashed #ffffff;
   }
 
+  div.selected {
+    border: 1px solid #222;
+    background: #00498F url(vendor/css/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat;
+    font-weight: bold;
+    color: #fff;
+  }
+  
+  div.current {
+    border: 1px solid #096AC8;
+    background-color: #292929;
+    font-weight: bold;
+    color: #75abff;
+  }
+
+  div.cursor {
+    text-decoration: underline;
+  }
+
   span.track {
     text-align: right;
   }

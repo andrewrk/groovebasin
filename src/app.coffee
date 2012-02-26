@@ -19,6 +19,7 @@ userIsSeeking = false
 userIsVolumeSliding = false
 started_drag = false
 abortDrag = null
+clickTab = null
 MARGIN = 10
 
 renderPlaylist = ->
@@ -195,6 +196,11 @@ togglePlayback = ->
   else
     mpd.play()
 
+setDynamicMode = (value) ->
+  socket.emit 'DynamicMode', JSON.stringify(value)
+
+toggleDynamicMode = -> setDynamicMode not mpd.server_status.dynamic_mode
+
 setUpUi = ->
   $(document).on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -208,7 +214,7 @@ setUpUi = ->
     mpd.shuffle()
   $pl_window.on 'click', '#dynamic-mode', ->
     value = $(this).prop("checked")
-    socket.emit 'DynamicMode', JSON.stringify (value)
+    setDynamicMode(value)
     return false
   $pl_window.find(".jquery-button").button()
 
@@ -409,8 +415,14 @@ setUpUi = ->
       46: handleDeletePressed
       # 'c'
       67: -> mpd.clear() if not event.ctrlKey and event.shiftKey
+      # 'd'
+      68: -> toggleDynamicMode() if not event.ctrlKey and not event.shiftKey
       # 'h'
-      72: mpd.shuffle
+      72: -> mpd.shuffle if not event.ctrlKey and event.shiftKey
+      # 'l'
+      76: -> clickTab 'library' if not event.ctrlKey and not event.shiftKey
+      # 'u'
+      85: -> clickTab 'upload' if not event.ctrlKey and not event.shiftKey
       # '=' or '+'
       187: -> mpd.setVolume mpd.status.volume + 0.10
       # ',' or '<'
@@ -430,6 +442,7 @@ setUpUi = ->
             height: $(document).height() - 40
             close: -> $("#shortcuts").remove()
         else
+          clickTab 'library'
           $("#lib-filter").focus().select()
 
     if (handler = handlers[event.keyCode])?
@@ -520,22 +533,24 @@ setUpUi = ->
     $(this).removeClass 'ui-state-hover'
 
   tabs = [
-    'library-tab'
-    'upload-tab'
-    'playlist-tab'
+    'library'
+    'upload'
   ]
 
   unselectTabs = ->
     $lib_tabs.find('li').removeClass 'ui-state-active'
     for tab in tabs
-      $("##{tab}").hide()
+      $("##{tab}-tab").hide()
+
+  clickTab = (name) ->
+    unselectTabs()
+    $lib_tabs.find("li.#{name}-tab").addClass 'ui-state-active'
+    $("##{name}-tab").show()
 
   for tab in tabs
     do (tab) ->
-      $lib_tabs.on 'click', "li.#{tab}", (event) ->
-        unselectTabs()
-        $(this).addClass 'ui-state-active'
-        $("##{tab}").show()
+      $lib_tabs.on 'click', "li.#{tab}-tab", (event) ->
+        clickTab tab
 
   uploader = new qq.FileUploader
     element: document.getElementById("upload-widget")

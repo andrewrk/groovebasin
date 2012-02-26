@@ -1,11 +1,11 @@
+* refactor - server_status stuff should not be in Mpd class, it should be in
+  GrooveBasinClient class or something like that.
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * implement keyboard shortcuts
   - right/left scrub through current track by a specific amount of time
   - shift right/left scrub through current track by a specific percent
   - ctrl right/left skip next/prev
-  - 'b' ban from random
-  - 'u' switch to upload tab and pop upload dialog box
   - shift+alt in playlist filter to queue results in a random order
   - shift+alt+enter in playlist filter to queue results next in a random order
 * auto-scroll playlist window appropriately
@@ -18,6 +18,7 @@
   - songs that get skipped more often have less probability of being
     randomly chosen.
 * ability to ban from random
+  - keyboard shortcut 'b'
 * ability to upload songs
   - update library without refreshing
   - update search results without refreshing

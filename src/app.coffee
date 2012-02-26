@@ -40,7 +40,6 @@ renderPlaylistButtons = ->
     .button("option", "label", "Repeat: #{repeat_state}")
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
-  labelPlaylistItems()
 
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
@@ -678,7 +677,9 @@ $(document).ready ->
   mpd.on 'statusupdate', ->
     renderNowPlaying()
     renderPlaylistButtons()
-  mpd.on 'serverstatus', renderPlaylistButtons
+  mpd.on 'serverstatus', ->
+    renderPlaylistButtons()
+    labelPlaylistItems()
 
   setUpUi()
   initHandlebars()

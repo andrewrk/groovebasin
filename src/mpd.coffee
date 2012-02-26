@@ -134,6 +134,8 @@ pickNRandomProps = (obj, n) ->
         results[i] = prop
   return results
 
+sign = (n) -> if n > 0 then 1 else if n < 0 then -1 else 0
+
 split_once = (line, separator) ->
   # should be line.split(separator, 1), but javascript is stupid
   index = line.indexOf(separator)
@@ -646,6 +648,30 @@ exports.Mpd = class Mpd
       @fixPlaylistPosCache()
 
     @sendCommands cmds
+    @raiseEvent 'playlistupdate'
+
+  # shifts the list of ids by offset, winamp style
+  shiftIds: (track_ids, offset) =>
+    offset = parseInt(offset)
+    return if offset == 0 or track_ids.length == 0
+
+    items = (item for id in track_ids when (item = @playlist.item_table[id])?)
+    items.sort (a,b) ->
+      sign(offset) * (b.pos - a.pos)
+
+    # abort if any are out of bounds
+    for item in [items[0], items[items.length-1]]
+      new_pos = item.pos + offset
+      return if new_pos < 0 or new_pos >= @playlist.item_list.length
+
+    @sendCommands ("moveid #{item.id} #{item.pos + offset}" for item in items)
+
+    # anticipate the result
+    for item in items
+      @playlist.item_list.splice item.pos, 1
+      @playlist.item_list.splice item.pos+offset, 0, item
+      @fixPlaylistPosCache()
+
     @raiseEvent 'playlistupdate'
 
   removeIds: (track_ids) =>

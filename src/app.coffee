@@ -367,17 +367,23 @@ setUpUi = ->
       else
         default_index = 0
         dir = 1
-      if selection.type is 'playlist'
-        next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
-        return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
-        selection.cursor = mpd.playlist.item_list[next_pos].id
-        selection.playlist_ids = {} unless event.shiftKey
-        selection.playlist_ids[selection.cursor] = true
+      if event.ctrlKey
+        if selection.type is 'playlist'
+          # re-order playlist items
+          mpd.shiftIds (id for id of selection.playlist_ids), dir
       else
-        selection.type = 'playlist'
-        selection.cursor = mpd.playlist.item_list[default_index].id
-        (selection.playlist_ids = {})[selection.cursor] = true
-      refreshSelection()
+        # change selection
+        if selection.type is 'playlist'
+          next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
+          return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
+          selection.cursor = mpd.playlist.item_list[next_pos].id
+          selection.playlist_ids = {} unless event.shiftKey
+          selection.playlist_ids[selection.cursor] = true
+        else
+          selection.type = 'playlist'
+          selection.cursor = mpd.playlist.item_list[default_index].id
+          (selection.playlist_ids = {})[selection.cursor] = true
+        refreshSelection()
 
     handlers =
       # escape

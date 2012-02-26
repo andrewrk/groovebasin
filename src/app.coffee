@@ -46,20 +46,19 @@ renderPlaylist = ->
   context.server_status = mpd.server_status
   $playlist = $("#playlist")
   $playlist.html Handlebars.templates.playlist(context)
+  cur_item = mpd.status?.current_item
+  # label the old ones
+  if cur_item? and mpd.server_status?.dynamic_mode?
+    for pos in [0...cur_item.pos]
+      id = mpd.playlist.item_list[pos].id
+      $("#playlist-track-#{id}").addClass('old')
   # label the random ones
-  cur_id = mpd.status?.current_item?.id
   if mpd.server_status?.random_ids?
-    found_random = false
-    found_current = not cur_id?
-    for pl_item in $playlist.find(".pl-item")
-      $pl_item = $(pl_item)
-      id = $pl_item.data 'id'
-      found_random = true if mpd.server_status.random_ids[id]?
-      found_current = true if cur_id == id
-      if found_random and found_current and cur_id != id
-        $pl_item.addClass "random"
-  if cur_id?
-    $("#playlist-track-#{cur_id}").addClass('current')
+    for item in mpd.playlist.item_list
+      if mpd.server_status.random_ids[item.id]
+        $("#playlist-track-#{item.id}").addClass('random')
+  # label the current one
+  $("#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
 
   refreshSelection()
   handleResize()

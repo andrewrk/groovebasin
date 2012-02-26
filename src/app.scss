@@ -197,12 +197,16 @@ body {
     cursor: default;
   }
 
-  div.random {
-    color: #555555;
-  }
-
   div:nth-child(2n+1) {
     background-color: #2A2A2A;
+  }
+
+  div.random {
+    color: #96B7EB;
+  }
+
+  div.old {
+    color: #555555;
   }
 
   div.selected {

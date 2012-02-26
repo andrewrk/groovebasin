@@ -1,4 +1,5 @@
-* songs about to be removed are faded, random songs are blue, normal white
+* if you move a song that was chosen randomly, it and everything from
+  it to current song are marked not random
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately

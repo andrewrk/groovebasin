@@ -367,8 +367,12 @@ setUpUi = ->
       46: handleDeletePressed
       # 'h'
       72: mpd.shuffle
+      # '=' or '+'
+      187: -> mpd.setVolume mpd.status.volume + 0.10
       # ',' or '<'
       188: mpd.prev
+      # '-' or '_'
+      189: -> mpd.setVolume mpd.status.volume - 0.10
       # '.' or '>'
       190: mpd.next
       # '/' or '?'

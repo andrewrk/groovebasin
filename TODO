@@ -9,8 +9,7 @@
   - ctrl right/left skip next/prev
   - 'b' ban from random
   - 'u' switch to upload tab and pop upload dialog box
-  - '-' volume down
-  - '+' volume up
+  - 'c' clear playlist
 * ability to password protect
 * ability to edit tags
 * more intelligent behavior when you click download for multiple selection

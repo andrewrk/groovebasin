@@ -79,8 +79,16 @@ extend = (obj, args...) ->
 elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
 dateToElapsed = (date) -> ((new Date()) - date) / 1000
 
+bound = (min, val, max) ->
+  if val < min
+    min
+  else if val > max
+    max
+  else
+    val
+
 fromMpdVol = (vol) -> vol / 100
-toMpdVol = (vol) -> Math.round(parseFloat(vol) * 100)
+toMpdVol = (vol) -> bound(0, Math.round(parseFloat(vol) * 100), 100)
 
 startsWith = (string, str) -> string.substring(0, str.length) == str
 stripPrefixes = ['the ', 'a ', 'an ']

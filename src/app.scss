@@ -205,14 +205,6 @@ body {
     background-color: #2A2A2A;
   }
 
-  div.border-bottom {
-    border-bottom: 2px dashed #ffffff;
-  }
-
-  div.border-top {
-    border-top: 2px dashed #ffffff;
-  }
-
   div.selected {
     border: 1px solid #222;
     background: #00498F url(vendor/css/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat;
@@ -230,6 +222,15 @@ body {
   div.cursor {
     text-decoration: underline;
   }
+
+  div.border-bottom {
+    border-bottom: 2px dashed #ffffff;
+  }
+
+  div.border-top {
+    border-top: 2px dashed #ffffff;
+  }
+
 
   span.track {
     text-align: right;

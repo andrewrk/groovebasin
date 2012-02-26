@@ -351,10 +351,23 @@ setUpUi = ->
     selection.type = null
     refreshSelection()
   $(document).on 'keydown', (event) ->
-    if event.keyCode == 27
-      removeContextMenu()
-    else if event.keyCode == 46
-      handleDeletePressed()
+    switch event.keyCode
+      when 27
+        removeContextMenu()
+      when 46
+        handleDeletePressed()
+      when 191 # '/' or '?'
+        if event.shiftKey
+          $(Handlebars.templates.shortcuts()).appendTo(document.body)
+          $("#shortcuts").dialog
+            modal: true
+            title: "Keyboard Shortcuts"
+            minWidth: 600
+            height: $(document).height() - 40
+            close: -> $("#shortcuts").remove()
+        else
+          $("#lib-filter").focus().select()
+          return false
 
   $library = $("#library")
   $library.on 'dblclick', 'div.track', (event) ->
@@ -365,15 +378,20 @@ setUpUi = ->
 
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
+    event.stopPropagation()
     if event.keyCode == 27
-      # defer the setting of the text box until after the event loop to
-      # work around a firefox bug
-      wait 0, ->
-        $(event.target).val("")
-        mpd.search ""
+      # if the box is blank, remove focus
+      if $(event.target).val().length == 0
+        $(event.target).blur()
+      else
+        # defer the setting of the text box until after the event loop to
+        # work around a firefox bug
+        wait 0, ->
+          $(event.target).val("")
+          mpd.search ""
       return false
   $lib_filter.on 'keyup', (event) ->
-      mpd.search $(event.target).val()
+    mpd.search $(event.target).val()
 
   actions =
     'toggle': ->

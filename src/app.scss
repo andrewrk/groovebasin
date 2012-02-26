@@ -232,3 +232,33 @@ body {
   }
 }
 
+#shortcuts {
+  h1 {
+    margin-bottom: 10px;
+    font-weight: bold;
+  }
+
+  dl {
+    font-size: .8em;
+    margin-bottom: 4px;
+
+    dt {
+      font-family: monospace;
+      display: inline;
+      padding: 3px;
+      background-color: #272727;
+      font-weight: bold;
+      text-shadow: 1px 1px 0 #000000;
+
+      em {
+        font-weight: normal;
+        color: #afafaf;
+        text-shadow: none;
+      }
+    }
+
+    dd {
+      display: inline;
+    }
+  }
+}

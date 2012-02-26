@@ -577,13 +577,13 @@ exports.Mpd = class Mpd
 
     @raiseEvent 'playlistupdate'
 
-  queueFile: (file) => queueFiles [file]
+  queueFile: (file) => @queueFiles [file]
 
   queueFilesNext: (files) =>
     new_pos = (@status.current_item?.pos ? -1) + 1
     @queueFilesAtPos files, new_pos
 
-  queueFileNext: (file) => queueFilesNext [file]
+  queueFileNext: (file) => @queueFilesNext [file]
 
   clear: =>
     @sendCommand "clear"

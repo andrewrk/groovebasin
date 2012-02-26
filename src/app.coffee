@@ -486,7 +486,7 @@ setUpUi = ->
       # 'd'
       68: -> toggleDynamicMode() if not event.ctrlKey and not event.shiftKey
       # 'h'
-      72: -> mpd.shuffle if not event.ctrlKey and event.shiftKey
+      72: -> mpd.shuffle() if not event.ctrlKey and event.shiftKey
       # 'l'
       76: -> clickTab 'library' if not event.ctrlKey and not event.shiftKey
       # 'r'

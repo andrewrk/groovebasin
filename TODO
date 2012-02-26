@@ -3,9 +3,6 @@
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * implement keyboard shortcuts
-  - right/left scrub through current track by a specific amount of time
-  - shift right/left scrub through current track by a specific percent
-  - ctrl right/left skip next/prev
   - shift+alt in playlist filter to queue results in a random order
   - shift+alt+enter in playlist filter to queue results next in a random order
 * auto-scroll playlist window appropriately

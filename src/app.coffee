@@ -95,15 +95,17 @@ renderLibrary = ->
         expand_stuff $sub_li_set
   expand_stuff $artists
 
-
+# returns how many seconds we are into the track
+getCurrentTrackPosition = ->
+  if mpd.status.track_start_date? and mpd.status.state == "play"
+    (new Date() - mpd.status.track_start_date) / 1000
+  else
+    mpd.status.elapsed
 
 updateSliderPos = ->
   return if userIsSeeking
   return if not mpd.status?.time? or not mpd.status.current_item?
-  if mpd.status.track_start_date? and mpd.status.state == "play"
-    diff_sec = (new Date() - mpd.status.track_start_date) / 1000
-  else
-    diff_sec = mpd.status.elapsed
+  diff_sec = getCurrentTrackPosition()
   $("#track-slider").slider("option", "value", diff_sec / mpd.status.time)
   $("#nowplaying .elapsed").html formatTime(diff_sec)
   $("#nowplaying .left").html formatTime(mpd.status.time)
@@ -391,6 +393,21 @@ setUpUi = ->
           (selection.playlist_ids = {})[selection.cursor] = true
         refreshSelection()
 
+    leftRightHandler = ->
+      if event.keyCode == 37 # left
+        dir = -1
+      else
+        dir = 1
+      if event.ctrlKey
+        if dir > 0
+          mpd.next()
+        else
+          mpd.prev()
+      else if event.shiftKey
+        mpd.seek getCurrentTrackPosition() + dir * mpd.status.time * 0.10
+      else
+        mpd.seek getCurrentTrackPosition() + dir * 10
+
     handlers =
       # escape
       27: ->
@@ -407,8 +424,12 @@ setUpUi = ->
         refreshSelection()
       # space
       32: togglePlayback
+      # left
+      37: leftRightHandler
       # up
       38: upDownHandler
+      # right
+      39: leftRightHandler
       # down
       40: upDownHandler
       # delete

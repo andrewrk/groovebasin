@@ -699,6 +699,8 @@ exports.Mpd = class Mpd
   # in seconds
   seek: (pos) =>
     pos = parseFloat(pos)
+    pos = 0 if pos < 0
+    pos = @status.time if pos > @status.time
     @sendCommand "seekid #{@status.current_item.id} #{Math.round(pos)}"
     @status.track_start_date = elapsedToDate(pos)
     @raiseEvent 'statusupdate'

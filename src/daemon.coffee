@@ -27,6 +27,7 @@ nconf
       host: 'localhost'
       port: 6600
       conf: "/etc/mpd.conf"
+      stream_url: "http://localhost:8000/mpd.ogg"
 
 # read mpd conf
 music_directory = null
@@ -74,6 +75,7 @@ createMpdConnection = (cb) ->
 status =
   dynamic_mode: false
   random_ids: {}
+  stream_url: nconf.get('mpd:stream_url')
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
 

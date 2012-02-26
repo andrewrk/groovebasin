@@ -1,3 +1,8 @@
+* prepend '!' to a search word to NOT match the word. '\!' to literally match '!'.
+  '\\' to literally match '\'
+* as part of lower casing for artist/album keys, change ñ to n, etc.
+* if ctrl/shift/alt not matched for shortcuts, don't prevent the default
+* shift+down select another item, shift+up unselect it
 * if you move a song that was chosen randomly, it and everything from
   it to current song are marked not random
 * from a clear playlist, dynamic mode adds too many songs

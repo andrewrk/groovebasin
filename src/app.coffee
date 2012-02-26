@@ -20,6 +20,7 @@ userIsVolumeSliding = false
 started_drag = false
 abortDrag = null
 clickTab = null
+stream = null
 MARGIN = 10
 
 shuffle = (array) ->
@@ -216,6 +217,20 @@ handleDeletePressed = ->
       (selection.playlist_ids = {})[selection.cursor] = true if pos > -1
     refreshSelection()
 
+changeStreamStatus = (value) ->
+  $("#stream-btn")
+    .prop("checked", value)
+    .button("refresh")
+  if value
+    stream = document.createElement("audio")
+    stream.setAttribute('src', mpd.server_status.stream_url)
+    stream.setAttribute('autoplay', 'autoplay')
+    document.body.appendChild(stream)
+    stream.play()
+  else
+    stream.parentNode.removeChild(stream)
+    stream = null
+
 togglePlayback = ->
   if mpd.status.state == 'play'
     mpd.pause()
@@ -254,6 +269,7 @@ setUpUi = ->
     $(this).addClass "ui-state-hover"
   $(document).on 'mouseout', '.hoverable', (event) ->
     $(this).removeClass "ui-state-hover"
+  $(".jquery-button").button()
 
   $pl_window = $("#playlist-window")
   $pl_window.on 'click', 'button.clear', ->
@@ -266,7 +282,6 @@ setUpUi = ->
     value = $(this).prop("checked")
     setDynamicMode(value)
     return false
-  $pl_window.find(".jquery-button").button()
 
   $playlist = $("#playlist")
   $playlist.on 'dblclick', '.pl-item', (event) ->
@@ -495,6 +510,8 @@ setUpUi = ->
       76: -> clickTab 'library' if not event.ctrlKey and not event.shiftKey
       # 'r'
       82: -> nextRepeatState() if not event.ctrlKey and not event.shiftKey
+      # 's'
+      83: -> changeStreamStatus not stream? if not event.ctrlKey and not event.shiftKey
       # 'u'
       85: -> clickTab 'upload' if not event.ctrlKey and not event.shiftKey
       # '=' or '+'
@@ -602,6 +619,14 @@ setUpUi = ->
 
   # move the slider along the path
   schedule 100, updateSliderPos
+
+  $stream_btn = $("#stream-btn")
+  $stream_btn.button
+    icons:
+      primary: "ui-icon-signal-diag"
+  $stream_btn.on 'click', (event) ->
+    value = $(this).prop("checked")
+    changeStreamStatus value
 
   $lib_tabs = $("#lib-tabs")
   $lib_tabs.on 'mouseover', 'li', (event) ->

@@ -407,6 +407,16 @@ setUpUi = ->
           $(event.target).val("")
           mpd.search ""
       return false
+    else if event.keyCode == 13
+      # queue all the search results
+      files = []
+      for artist in mpd.search_results.artists
+        for album in artist.albums
+          for track in album.tracks
+            files.push track.file
+      func = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
+      func files
+      return false
   $lib_filter.on 'keyup', (event) ->
     mpd.search $(event.target).val()
 

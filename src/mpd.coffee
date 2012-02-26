@@ -322,6 +322,8 @@ exports.Mpd = class Mpd
     if @msgHandlerQueue.length == 0
       @sendWithCallback "idle", @handleIdleResultsLoop
 
+  fixPlaylistPosCache: => item.pos = i for item, i in @playlist.item_list
+
   ######################### public #####################
 
   constructor: ->
@@ -532,10 +534,11 @@ exports.Mpd = class Mpd
     if not @haveFileListCache
       return []
     ("addid \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
+
   queueRandomTracks: (n) =>
     @sendCommands @queueRandomTracksCommands n
 
-  queueFile: (file) =>
+  queueFiles: (files) =>
     # queue tracks just before any random ones
     pos = @playlist.item_list.length
     if @server_status?
@@ -543,13 +546,21 @@ exports.Mpd = class Mpd
         if @server_status.random_ids[item.id]?
           pos = i
           break
-    @sendCommand "addid \"#{escape(file)}\" #{pos}"
-    item =
-      id: null
-      pos: pos
-      track: @library.track_table[file]
-    @playlist.item_list.splice pos, 0, item
+
+    cmds = []
+    for i in [files.length-1..0]
+      file = files[i]
+      cmds.push "addid \"#{escape(file)}\" #{pos}"
+    @sendCommands cmds
+
+    # anticipate what the playlist now looks like
+    items = ({id: null, pos: null, track: @library.track_table[file]} for file in files)
+
+    @playlist.item_list.splice pos, 0, items...
+    @fixPlaylistPosCache()
     @raiseEvent 'playlistupdate'
+
+  queueFile: (file) => queueFiles [file]
 
   queueFileNext: (file) =>
     cur_pos = @status.current_item?.pos
@@ -566,8 +577,7 @@ exports.Mpd = class Mpd
       @playlist.item_table[item.id] = item
 
     @playlist.item_list.splice new_pos, 0, item
-    # fix the pos property of each item
-    item.pos = i for item, i in @playlist.item_list
+    @fixPlaylistPosCache()
     @raiseEvent 'playlistupdate'
 
   clear: =>
@@ -631,9 +641,7 @@ exports.Mpd = class Mpd
       @playlist.item_list.splice item.pos, 1
       @playlist.item_list.splice real_pos, 0, item
 
-      # fix item pos properties
-      for pl_item, index in @playlist.item_list
-        pl_item.pos = index
+      @fixPlaylistPosCache()
 
     @sendCommands cmds
     @raiseEvent 'playlistupdate'
@@ -650,7 +658,7 @@ exports.Mpd = class Mpd
       item = @playlist.item_table[track_id]
       delete @playlist.item_table[item.id]
       @playlist.item_list.splice(item.pos, 1)
-      it.pos = index for it, index in @playlist.item_list
+      @fixPlaylistPosCache()
 
     @sendCommands cmds
     @raiseEvent 'playlistupdate'

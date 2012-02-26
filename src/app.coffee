@@ -213,6 +213,7 @@ setUpUi = ->
   $playlist.on 'contextmenu', -> false
   $playlist.on 'mousedown', '.pl-item', (event) ->
     event.preventDefault()
+    $("#lib-filter").blur()
     if event.button == 0
       # selecting / unselecting
       removeContextMenu()

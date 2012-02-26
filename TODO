@@ -1,14 +1,14 @@
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * implement keyboard shortcuts
-  - up/down to change selection
-  - shift up/down to select multiple items
   - ctrl up/down to move playlist items
   - right/left scrub through current track by a specific amount of time
   - shift right/left scrub through current track by a specific percent
   - ctrl right/left skip next/prev
   - 'b' ban from random
   - 'u' switch to upload tab and pop upload dialog box
+  - shift+enter in lib filter to queue next
+* indicate selection.cursor in the ui
 * ability to password protect
 * ability to edit tags
 * more intelligent behavior when you click download for multiple selection

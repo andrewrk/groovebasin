@@ -178,7 +178,13 @@ toggleExpansion = ($li) ->
 
 handleDeletePressed = ->
   if selection.type is 'playlist'
+    # remove items and select the item next in the list
+    pos = mpd.playlist.item_table[selection.cursor].pos
     mpd.removeIds (id for id of selection.playlist_ids)
+    pos = mpd.playlist.item_list.length - 1 if pos >= mpd.playlist.item_list.length
+    if pos > -1
+      selection.cursor = mpd.playlist.item_list[pos].id
+      (selection.playlist_ids = {})[selection.cursor] = true if pos > -1
     refreshSelection()
 
 togglePlayback = ->
@@ -358,15 +364,38 @@ setUpUi = ->
     selection.type = null
     refreshSelection()
   $(document).on 'keydown', (event) ->
+    upDownHandler = ->
+      if event.keyCode == 38 # up
+        default_index = mpd.playlist.item_list.length - 1
+        dir = -1
+      else
+        default_index = 0
+        dir = 1
+      if selection.type is 'playlist'
+        next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
+        return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
+        selection.cursor = mpd.playlist.item_list[next_pos].id
+        selection.playlist_ids = {} unless event.shiftKey
+        selection.playlist_ids[selection.cursor] = true
+      else
+        selection.type = 'playlist'
+        selection.cursor = mpd.playlist.item_list[default_index].id
+        (selection.playlist_ids = {})[selection.cursor] = true
+      refreshSelection()
+
     handlers =
       # escape
       27: removeContextMenu
       # space
       32: togglePlayback
+      # up
+      38: upDownHandler
+      # down
+      40: upDownHandler
       # delete
       46: handleDeletePressed
       # 'c'
-      67: mpd.clear
+      67: -> mpd.clear() if not event.ctrlKey and event.shiftKey
       # 'h'
       72: mpd.shuffle
       # '=' or '+'

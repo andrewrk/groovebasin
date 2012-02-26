@@ -1,5 +1,5 @@
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
-window.SocketMpd = class _ extends window.Mpd
+window.SocketMpd = class SocketMpd extends window.Mpd
   constructor: (socket) ->
     super()
     @socket = socket

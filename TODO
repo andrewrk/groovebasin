@@ -7,17 +7,12 @@
   - right/left scrub through current track by a specific amount of time
   - shift right/left scrub through current track by a specific percent
   - ctrl right/left skip next/prev
-  - '>' skip next
-  - '<' skip prev
-  - 'h' shuffles playlist
   - 'b' ban from random
   - 'u' switch to upload tab and pop upload dialog box
   - '-' volume down
   - '+' volume up
 * ability to password protect
 * ability to edit tags
-* press enter in filter box to queue every result. pop up a confirmation dialog
-  if it's greater than 20 things
 * more intelligent behavior when you click download for multiple selection
 * make dynamic playlist mode options configurable
 * good shuffle heuristics:

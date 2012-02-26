@@ -1,20 +1,21 @@
+* songs about to be removed are faded, random songs are blue, normal white
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
+* auto-scroll playlist window and library window appropriately
 * ability to password protect
 * ability to edit tags
-* auto-scroll playlist window appropriately
-* refactor - server_status stuff should not be in Mpd class, it should be in
-  GrooveBasinClient class or something like that.
-* more intelligent behavior when you click download for multiple selection
-* make dynamic playlist mode options configurable
-* ability to ban from random
-  - keyboard shortcut 'b'
 * ability to upload songs
   - update library without refreshing
   - update search results without refreshing
   - uploaded songs are auto-queued
     > option to not auto-queue
   - support uploading zip files
+* refactor - server_status stuff should not be in Mpd class, it should be in
+  GrooveBasinClient class or something like that.
+* more intelligent behavior when you click download for multiple selection
+* make dynamic playlist mode options configurable
+* ability to ban from random
+  - keyboard shortcut 'b'
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
 * button to turn on streaming so you don't have to open another tab
@@ -45,8 +46,6 @@
 * take mpd's status into account. Make them editable?
   - consume
   - random
-  - repeat
-  - single 
 * good shuffle heuristics:
   - songs that get skipped more often have less probability of being
     randomly chosen.

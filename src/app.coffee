@@ -17,6 +17,8 @@ mpd = null
 base_title = document.title
 userIsSeeking = false
 userIsVolumeSliding = false
+started_drag = false
+abortDrag = null
 MARGIN = 10
 
 renderPlaylist = ->
@@ -252,7 +254,6 @@ setUpUi = ->
       
       # dragging
       if not skip_drag
-        started_drag = false
         start_drag_x = event.pageX
         start_drag_y = event.pageY
 
@@ -286,14 +287,10 @@ setUpUi = ->
           $(document)
             .off('mousemove', onDragMove)
             .off('mouseup', onDragEnd)
-            .off('keydown', onKeyDown)
 
           if started_drag
             $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-
-        onKeyDown = (event) ->
-          if event.keyCode == 27
-            abortDrag()
+            started_drag = false
 
         onDragMove = (event) ->
           if not started_drag
@@ -305,8 +302,6 @@ setUpUi = ->
           $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
         onDragEnd = (event) ->
-          abortDrag()
-
           if started_drag
             result = getDragPosition(event.pageX, event.pageY)
             delta =
@@ -314,16 +309,17 @@ setUpUi = ->
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             mpd.moveIds (id for id of selection.playlist_ids), new_pos
+
           else
             # we didn't end up dragging, select the item
             (selection.playlist_ids = {})[track_id] = true
             selection.cursor = track_id
             refreshSelection()
+          abortDrag()
 
         $(document)
           .on('mousemove', onDragMove)
           .on('mouseup', onDragEnd)
-          .on('keydown', onKeyDown)
 
         onDragMove event
 
@@ -385,7 +381,18 @@ setUpUi = ->
 
     handlers =
       # escape
-      27: removeContextMenu
+      27: ->
+        # if the user is dragging, abort the drag
+        if started_drag
+          abortDrag()
+          return
+        # if there's a menu, only remove that
+        if $("#menu").get().length > 0
+          removeContextMenu()
+          return
+        # clear selection
+        selection.type = null
+        refreshSelection()
       # space
       32: togglePlayback
       # up

@@ -4,6 +4,13 @@
   user-select: $value;
 }
 
+@mixin border-radius($value) {
+  -moz-border-radius: $value;
+  -webkit-border-radius: $value;
+  -khtml-border-radius: $value;
+  border-radius: $value;
+}
+
 html {
   background: url(vendor/css/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png);
 }
@@ -235,6 +242,7 @@ body {
 #shortcuts {
   h1 {
     margin-bottom: 10px;
+    margin-top: 10px;
     font-weight: bold;
   }
 
@@ -249,6 +257,7 @@ body {
       background-color: #272727;
       font-weight: bold;
       text-shadow: 1px 1px 0 #000000;
+      @include border-radius(4px);
 
       em {
         font-weight: normal;

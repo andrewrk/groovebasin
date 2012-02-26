@@ -358,9 +358,17 @@ setUpUi = ->
     refreshSelection()
   $(document).on 'keydown', (event) ->
     handlers =
+      # escape
       27: removeContextMenu
+      # space
       32: togglePlayback
+      # delete
       46: handleDeletePressed
+      # ',' or '<'
+      188: mpd.prev
+      # '.' or '>'
+      190: mpd.next
+      # '/' or '?'
       191: ->
         if event.shiftKey
           $(Handlebars.templates.shortcuts()).appendTo(document.body)

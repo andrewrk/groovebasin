@@ -2,9 +2,6 @@
   GrooveBasinClient class or something like that.
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
-* implement keyboard shortcuts
-  - shift+alt in playlist filter to queue results in a random order
-  - shift+alt+enter in playlist filter to queue results next in a random order
 * auto-scroll playlist window appropriately
 * indicate selection.cursor in the ui
 * ability to password protect

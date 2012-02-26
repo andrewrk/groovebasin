@@ -22,6 +22,14 @@ abortDrag = null
 clickTab = null
 MARGIN = 10
 
+shuffle = (array) ->
+  top = array.length
+  while --top > 0
+    current = Math.floor(Math.random() * (top + 1))
+    tmp = array[current]
+    array[current] = array[top]
+    array[top] = tmp
+
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
   context.server_status = mpd.server_status
@@ -499,6 +507,9 @@ setUpUi = ->
         for album in artist.albums
           for track in album.tracks
             files.push track.file
+
+      if event.altKey
+        shuffle(files)
 
       if files.length > 2000
         return false unless confirm("You are about to queue #{files.length} songs.")

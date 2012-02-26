@@ -41,6 +41,8 @@ renderPlaylistButtons = ->
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
 
+  labelPlaylistItems()
+
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
   context.server_status = mpd.server_status
@@ -51,10 +53,13 @@ renderPlaylist = ->
   refreshSelection()
   handleResize()
 
+  labelPlaylistItems()
+
 labelPlaylistItems = ->
   cur_item = mpd.status?.current_item
   # label the old ones
-  if cur_item? and mpd.server_status?.dynamic_mode?
+  $("#playlist .pl-item").removeClass('current').removeClass('old')
+  if cur_item? and mpd.server_status?.dynamic_mode
     for pos in [0...cur_item.pos]
       id = mpd.playlist.item_list[pos].id
       $("#playlist-track-#{id}").addClass('old')
@@ -64,7 +69,6 @@ labelPlaylistItems = ->
       if mpd.server_status.random_ids[item.id]
         $("#playlist-track-#{item.id}").addClass('random')
   # label the current one
-  $("#playlist .pl-item").removeClass('current')
   $("#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
 
 
@@ -679,7 +683,6 @@ $(document).ready ->
     renderPlaylistButtons()
   mpd.on 'serverstatus', ->
     renderPlaylistButtons()
-    labelPlaylistItems()
 
   setUpUi()
   initHandlebars()

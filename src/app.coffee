@@ -30,15 +30,22 @@ shuffle = (array) ->
     array[current] = array[top]
     array[top] = tmp
 
+renderPlaylistButtons = ->
+  # set the state of dynamic mode button
+  $("#dynamic-mode")
+    .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
+    .button("refresh")
+  repeat_state = getRepeatStateName()
+  $("#pl-btn-repeat")
+    .button("option", "label", "Repeat: #{repeat_state}")
+    .prop("checked", repeat_state isnt 'Off')
+    .button("refresh")
+
 renderPlaylist = ->
   context.playlist = mpd.playlist.item_list
   context.server_status = mpd.server_status
   $playlist = $("#playlist")
   $playlist.html Handlebars.templates.playlist(context)
-  # set the state of dynamic mode button
-  $("#dynamic-mode")
-    .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
-    .button("refresh")
   # label the random ones
   cur_id = mpd.status?.current_item?.id
   if mpd.server_status?.random_ids?
@@ -55,7 +62,6 @@ renderPlaylist = ->
     $("#playlist-track-#{cur_id}").addClass('current')
 
   refreshSelection()
-
   handleResize()
 
 refreshSelection = ->
@@ -213,6 +219,28 @@ setDynamicMode = (value) ->
 
 toggleDynamicMode = -> setDynamicMode not mpd.server_status.dynamic_mode
 
+getRepeatStateName = ->
+  if not mpd.status.repeat
+    "Off"
+  else if mpd.status.repeat and not mpd.status.single
+    "All"
+  else
+    "One"
+
+nextRepeatState = ->
+  if not mpd.status.repeat
+    mpd.changeStatus
+      repeat: true
+      single: false
+  else if mpd.status.repeat and not mpd.status.single
+    mpd.changeStatus
+      repeat: true
+      single: true
+  else
+    mpd.changeStatus
+      repeat: false
+      single: false
+
 setUpUi = ->
   $(document).on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -224,6 +252,8 @@ setUpUi = ->
     mpd.clear()
   $pl_window.on 'click', 'button.shuffle', ->
     mpd.shuffle()
+  $("#pl-btn-repeat").on 'click', ->
+    nextRepeatState()
   $pl_window.on 'click', '#dynamic-mode', ->
     value = $(this).prop("checked")
     setDynamicMode(value)
@@ -455,6 +485,8 @@ setUpUi = ->
       72: -> mpd.shuffle if not event.ctrlKey and event.shiftKey
       # 'l'
       76: -> clickTab 'library' if not event.ctrlKey and not event.shiftKey
+      # 'r'
+      82: -> nextRepeatState() if not event.ctrlKey and not event.shiftKey
       # 'u'
       85: -> clickTab 'upload' if not event.ctrlKey and not event.shiftKey
       # '=' or '+'
@@ -640,8 +672,8 @@ $(document).ready ->
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'statusupdate', ->
     renderNowPlaying()
-    renderPlaylist()
-  mpd.on 'serverstatus', renderPlaylist
+    renderPlaylistButtons()
+  mpd.on 'serverstatus', renderPlaylistButtons
 
   setUpUi()
   initHandlebars()

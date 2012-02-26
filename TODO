@@ -1,15 +1,12 @@
-* refactor - server_status stuff should not be in Mpd class, it should be in
-  GrooveBasinClient class or something like that.
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
-* auto-scroll playlist window appropriately
 * ability to password protect
 * ability to edit tags
+* auto-scroll playlist window appropriately
+* refactor - server_status stuff should not be in Mpd class, it should be in
+  GrooveBasinClient class or something like that.
 * more intelligent behavior when you click download for multiple selection
 * make dynamic playlist mode options configurable
-* good shuffle heuristics:
-  - songs that get skipped more often have less probability of being
-    randomly chosen.
 * ability to ban from random
   - keyboard shortcut 'b'
 * ability to upload songs
@@ -50,3 +47,6 @@
   - random
   - repeat
   - single 
+* good shuffle heuristics:
+  - songs that get skipped more often have less probability of being
+    randomly chosen.

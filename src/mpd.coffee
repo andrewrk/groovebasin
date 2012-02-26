@@ -136,11 +136,12 @@ pickNRandomProps = (obj, n) ->
 
 sign = (n) -> if n > 0 then 1 else if n < 0 then -1 else 0
 
-split_once = (line, separator) ->
+boolToInt = (b) -> if b then 1 else 0
+
+exports.split_once = split_once = (line, separator) ->
   # should be line.split(separator, 1), but javascript is stupid
   index = line.indexOf(separator)
   return [line.substr(0, index), line.substr(index + separator.length)]
-exports.split_once = split_once
 
 exports.Mpd = class Mpd
 
@@ -710,4 +711,22 @@ exports.Mpd = class Mpd
     vol = toMpdVol(vol)
     @sendCommand "setvol #{vol}"
     @status.volume = fromMpdVol(vol)
+    @raiseEvent 'statusupdate'
+
+  changeStatus: (status) =>
+    cmds = []
+    if status.consume?
+      @status.consume = status.consume
+      cmds.push "consume #{boolToInt(status.consume)}"
+    if status.random?
+      @status.random = status.random
+      cmds.push "random #{boolToInt(status.random)}"
+    if status.repeat?
+      @status.repeat = status.repeat
+      cmds.push "repeat #{boolToInt(status.repeat)}"
+    if status.single?
+      @status.single = status.single
+      cmds.push "single #{boolToInt(status.single)}"
+
+    @sendCommands cmds
     @raiseEvent 'statusupdate'

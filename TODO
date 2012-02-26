@@ -7,7 +7,6 @@
   - ctrl right/left skip next/prev
   - 'b' ban from random
   - 'u' switch to upload tab and pop upload dialog box
-  - shift+enter in lib filter to queue next
 * indicate selection.cursor in the ui
 * ability to password protect
 * ability to edit tags

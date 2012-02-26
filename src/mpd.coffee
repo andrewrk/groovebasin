@@ -554,39 +554,33 @@ exports.Mpd = class Mpd
         if @server_status.random_ids[item.id]?
           pos = i
           break
+    @queueFilesAtPos files, pos
 
+  queueFilesAtPos: (files, pos) =>
     cmds = []
     for i in [files.length-1..0]
       file = files[i]
       cmds.push "addid \"#{escape(file)}\" #{pos}"
-    @sendCommands cmds
 
-    # anticipate what the playlist now looks like
     items = ({id: null, pos: null, track: @library.track_table[file]} for file in files)
-
     @playlist.item_list.splice pos, 0, items...
     @fixPlaylistPosCache()
+
+    @sendCommands cmds, (msg) =>
+      for line, i in msg.split("\n")
+        index = files.length - 1 - i
+        item_id = parseInt(line.substring(4))
+        items[index] = item_id
+
     @raiseEvent 'playlistupdate'
 
   queueFile: (file) => queueFiles [file]
 
-  queueFileNext: (file) =>
-    cur_pos = @status.current_item?.pos
-    if not cur_pos?
-      @queueFile file
-      return
-    new_pos = cur_pos + 1
-    item =
-      id: null
-      pos: @playlist.item_list.length
-      track: @library.track_table[file]
-    @sendCommand "addid \"#{escape(file)}\" #{new_pos}", (msg) =>
-      item.id = parseInt(msg.substring(4))
-      @playlist.item_table[item.id] = item
+  queueFilesNext: (files) =>
+    new_pos = (@status.current_item?.pos ? -1) + 1
+    @queueFilesAtPos files, new_pos
 
-    @playlist.item_list.splice new_pos, 0, item
-    @fixPlaylistPosCache()
-    @raiseEvent 'playlistupdate'
+  queueFileNext: (file) => queueFilesNext [file]
 
   clear: =>
     @sendCommand "clear"

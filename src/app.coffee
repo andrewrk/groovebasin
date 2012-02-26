@@ -230,14 +230,14 @@ nextRepeatState = ->
   if not mpd.status.repeat
     mpd.changeStatus
       repeat: true
-      single: false
+      single: true
   else if mpd.status.repeat and not mpd.status.single
     mpd.changeStatus
-      repeat: true
-      single: true
+      repeat: false
+      single: false
   else
     mpd.changeStatus
-      repeat: false
+      repeat: true
       single: false
 
 setUpUi = ->

@@ -40,12 +40,25 @@ renderPlaylistButtons = ->
   # set the state of dynamic mode button
   $("#dynamic-mode")
     .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
+    .button("option", "disabled", not mpd.server_status?.dynamic_mode?)
     .button("refresh")
+
   repeat_state = getRepeatStateName()
   $("#pl-btn-repeat")
     .button("option", "label", "Repeat: #{repeat_state}")
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
+
+  # disable stream button if we don't have it set up
+  console.log mpd.server_status
+  $("#stream-btn")
+    .button("option", "disabled", not mpd.server_status?.stream_httpd_port?)
+    .button("refresh")
+
+  # show/hide upload
+  $upload_tab = $("#lib-tabs .upload-tab")
+  $upload_tab.removeClass("ui-state-disabled")
+  $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
 
   labelPlaylistItems()
 
@@ -223,12 +236,13 @@ handleDeletePressed = ->
     refreshSelection()
 
 changeStreamStatus = (value) ->
+  return unless (port = mpd.server_status?.stream_httpd_port)?
   $("#stream-btn")
     .prop("checked", value)
     .button("refresh")
   if value
     stream = document.createElement("audio")
-    stream.setAttribute('src', mpd.server_status.stream_url)
+    stream.setAttribute('src', "#{location.protocol}//#{location.hostname}:#{port}/mpd.ogg")
     stream.setAttribute('autoplay', 'autoplay')
     document.body.appendChild(stream)
     stream.play()
@@ -414,7 +428,10 @@ setUpUi = ->
         refreshSelection()
 
       # adds a new context menu to the document
-      $(Handlebars.templates.playlist_menu(mpd.playlist.item_table[track_id]))
+      context =
+        track: mpd.playlist.item_table[track_id]
+        status: mpd.server_status
+      $(Handlebars.templates.playlist_menu(context))
         .appendTo(document.body)
       $menu = $("#menu") # get the newly created one
       $menu.offset
@@ -650,6 +667,7 @@ setUpUi = ->
       $("##{tab}-tab").hide()
 
   clickTab = (name) ->
+    return if name is 'upload' and not mpd.server_status?.upload_enabled
     unselectTabs()
     $lib_tabs.find("li.#{name}-tab").addClass 'ui-state-active'
     $("##{name}-tab").show()

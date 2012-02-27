@@ -5,15 +5,14 @@
 # (leave off the "default_config = " in your config file)
 default_config = {
   "user_id": "mpd",
-  "log_level": 1,
+  "log_level": 2, # 0 => error, 1 => warn, 2 => info, 3 => debug
   "http": {
-    "port": 10000
+    "port": 16242
   },
   "mpd": {
     "host": "localhost",
     "port": 6600,
     "conf": "/etc/mpd.conf",
-    "stream_url": "http://localhost:8000/mpd.ogg"
   }
 }
 
@@ -34,63 +33,110 @@ nconf
   .file({file: "#{process.env.HOME}/.groovebasinrc"})
   .defaults(default_config)
 
-# read mpd conf
-music_directory = null
-fs.readFile nconf.get('mpd:conf'), (err, data) ->
-  if err
-    console.log "Error reading mpd conf file: #{err}"
-    return
-  m = data.toString().match /^music_directory\s+"(.*)"$/m
-  music_directory = m[1] if m?
-  if music_directory?
-    console.log "Music directory: #{music_directory}"
-  else
-    console.log "ERROR - music directory not found"
-
-# check for library link
 public_dir = "./public"
-library_link = public_dir + "/library"
-fs.readdir library_link, (err, files) ->
-  err? and console.log "ERROR: #{library_link} not linked to media library"
+status =
+  dynamic_mode: null # null -> disabled
+  random_ids: {}
+  stream_httpd_port: null
+  upload_enabled: false
+  download_enabled: false
+stickers_enabled = false
+mpd_conf = null
+
+# static server
+fileServer = new (static.Server) public_dir
+app = http.createServer((request, response) ->
+  parsed_url = url.parse(request.url)
+  if parsed_url.pathname == '/upload' and request.method == 'POST'
+    if status.upload_enabled
+      form = new formidable.IncomingForm()
+      form.parse request, (err, fields, file) ->
+        moveFile file.qqfile.path, "#{mpd_conf.music_directory}/#{file.qqfile.name}"
+        response.writeHead 200, {'content-type': 'text/html'}
+        response.end JSON.stringify {success: true}
+    else
+      response.writeHead 500, {'content-type': 'text/plain'}
+      response.end JSON.stringify {success: false, reason: "Uploads not enabled"}
+  else
+    request.addListener 'end', ->
+      fileServer.serve request, response
+).listen(nconf.get('http:port'))
+io = socketio.listen(app)
+io.set 'log level', nconf.get('log_level')
+log = io.log
+log.info "Serving at http://localhost:#{nconf.get('http:port')}/"
+
+# read mpd conf
+do ->
+  try
+    data = fs.readFileSync(nconf.get('mpd:conf'))
+  catch error
+    log.warn "Unable to read mpd conf file: #{error}"
+    return
+  mpd_conf = require('./lib/mpdconf').parse(data.toString())
+  if mpd_conf.music_directory?
+    status.upload_enabled = true
+    status.download_enabled = true
+  else
+    log.warn "music directory not found in mpd conf"
+  if not (status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
+    log.warn "httpd streaming not enabled in mpd conf"
+  if mpd_conf.sticker_file?
+    # changing from null to false, enables but does not turn on dynamic mode
+    status.dynamic_mode = false
+    stickers_enabled = true
+  else
+    log.warn "sticker_file not set in mpd conf"
+  if mpd_conf.auto_update isnt "yes"
+    log.warn "recommended to turn auto_update on in mpd conf"
+  if mpd_conf.gapless_mp3_playback isnt "yes"
+    log.warn "recommended to turn gapless_mp3_playback on in mpd conf"
+  if mpd_conf.volume_normalization isnt "yes"
+    log.warn "recommended to turn volume_normalization on in mpd conf"
+  if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
+    log.warn "recommended to set max_command_list_size to >= 16384 in mpd conf"
+
+# set up library link
+if mpd_conf?.music_directory?
+  library_link = "#{public_dir}/library"
+  try fs.unlinkSync library_link
+  ok = true
+  do ->
+    try
+      fs.symlinkSync mpd_conf.music_directory, library_link
+    catch error
+      log.warn "Unable to link public/library to #{mpd_conf.music_directory}: #{error}"
+      status.upload_enabled = false
+      status.download_enabled = false
+      return
+    try
+      fs.readdirSync library_link
+    catch error
+      status.upload_enabled = false
+      status.download_enabled = false
+      err? and log.warn "Unable to access music directory: #{error}"
 
 moveFile = (source, dest) ->
   in_stream = fs.createReadStream(source)
   out_stream = fs.createWriteStream(dest)
   util.pump in_stream, out_stream, -> fs.unlink source
 
-# static server
-fileServer = new (static.Server) './public'
-app = http.createServer((request, response) ->
-  parsed_url = url.parse(request.url)
-  if parsed_url.pathname == '/upload' and request.method == 'POST'
-    form = new formidable.IncomingForm()
-    form.parse request, (err, fields, file) ->
-      moveFile file.qqfile.path, "#{music_directory}/#{file.qqfile.name}"
-      response.writeHead 200, {'content-type': 'text/html'}
-      response.end JSON.stringify {success: true}
-  else
-    request.addListener 'end', ->
-      fileServer.serve request, response
-).listen(nconf.get('http:port'))
-console.log "Attempting to serve http://localhost:#{nconf.get('http:port')}/"
-
 createMpdConnection = (cb) ->
   net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), cb
 
-status =
-  dynamic_mode: false
-  random_ids: {}
-  stream_url: nconf.get('mpd:stream_url')
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
 
 setDynamicMode = (value) ->
+  # return if dynamic mode is disabled
+  return unless status.dynamic_mode?
   return if status.dynamic_mode == value
   status.dynamic_mode = value
   checkDynamicMode()
   sendStatus()
 previous_ids = {}
 checkDynamicMode = ->
+  return unless stickers_enabled
   item_list = my_mpd.playlist.item_list
   current_id = my_mpd.status?.current_item?.id
   current_index = -1
@@ -187,24 +233,22 @@ getRandomSongFiles = (count) ->
     files.push track.file
   files
 
-io = socketio.listen(app)
-io.set 'log level', nconf.get('log_level')
 io.sockets.on 'connection', (socket) ->
   mpd_socket = createMpdConnection ->
-    console.log "browser to mpd connect"
+    log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd_socket.on 'end', ->
-    console.log "browser mpd disconnect"
+    log.debug "browser mpd disconnect"
     try socket.emit 'disconnect'
   mpd_socket.on 'error', ->
-    console.log "browser no mpd daemon found."
+    log.debug "browser no mpd daemon found."
 
   socket.on 'ToMpd', (data) ->
-    console.log "[in] " + data
+    log.debug "[in] " + data
     try mpd_socket.write data
   socket.on 'DynamicMode', (data) ->
-    console.log "DynamicMode is being turned #{data.toString()}"
+    log.debug "DynamicMode is being turned #{data.toString()}"
     value = JSON.parse data.toString()
     setDynamicMode value
 
@@ -217,9 +261,9 @@ class DirectMpd extends mpd.Mpd
     @mpd_socket.on 'data', (data) =>
       @receive data.toString()
     @mpd_socket.on 'end', ->
-      console.log "server mpd disconnect"
+      log.warn "server mpd disconnect"
     @mpd_socket.on 'error', ->
-      console.log "server no mpd daemon found."
+      log.warn "server no mpd daemon found."
     # whenever anyone joins, send status to everyone
     @updateFuncs.subscription = ->
       sendStatus()
@@ -231,11 +275,11 @@ class DirectMpd extends mpd.Mpd
 
 my_mpd = null
 my_mpd_socket = createMpdConnection ->
-  console.log "server to mpd connect"
+  log.debug "server to mpd connect"
   my_mpd.handleConnectionStart()
 my_mpd = new DirectMpd(my_mpd_socket)
 my_mpd.on 'error', (msg) ->
-  console.log "ERROR: " + msg
+  log.error msg
 my_mpd.on 'statusupdate', checkDynamicMode
 my_mpd.on 'playlistupdate', checkDynamicMode
 my_mpd.on 'libraryupdate', updateStickers

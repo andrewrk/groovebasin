@@ -53,8 +53,6 @@ project an mpd client.
 
 ## Configuring
 
-Some features require configuring to get working.
-
 Configuration options can be set by placing a JSON file in `~/.groovebasinrc`.
 You can see what the structure should look like at the very top of
 `./src/daemon.coffee`.
@@ -66,21 +64,10 @@ example:
 $ ./groovebasind --http.port 80 --mpd.conf ~/.mpd/mpd.conf
 ```
 
-### Upload and Download Support
-
-Softlink `./public/library` to your music folder.
-
-### Streaming Support
-
-1. In your mpd conf file, uncomment the "httpd" `audio_output` and configure
-   the port. Recommended "vorbis" encoder for better browser support.
-
-2. Add the correct `mpd.stream_url` to your `~/.groovebasinrc` config file.
-   It should look something like `http://your.server.org:8000/mpd.ogg`
-
-3. Restart mpd and groovebasind.
-
 ### Mpd Configuration
+
+* `audio_output` - Uncomment the "httpd" one and configure the port to enable
+  streaming. Recommended "vorbis" encoder for better browser support.
 
 * `sticker_file` - Groove Basin will not run without one set.
 

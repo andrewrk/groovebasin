@@ -17,7 +17,7 @@ or_die = || (rm -f $@; exit 1)
 
 build: $(serverjs) $(appjs) $(appcss)
 
-$(serverjs): $(server_src) $(mpd_lib)
+$(serverjs): $(server_src) $(mpd_lib) lib/mpdconf.js
 	(echo "#!/usr/bin/env node" >$@) $(or_die)
 	($(coffee) -p -c $(server_src) >>$@) $(or_die)
 	(chmod +x $@) $(or_die)
@@ -25,6 +25,10 @@ $(serverjs): $(server_src) $(mpd_lib)
 $(mpd_lib): $(mpd_lib_src)
 	(mkdir -p lib) $(or_die)
 	($(coffee) -p -c $(mpd_lib_src) >$@) $(or_die)
+
+lib/mpdconf.js: src/mpdconf.coffee
+	(mkdir -p lib) $(or_die)
+	($(coffee) -p -c src/mpdconf.coffee >$@) $(or_die)
 
 $(appjs): $(views) $(client_src)
 	($(coffee) -p -c $(client_src) >$@) $(or_die)

@@ -1,5 +1,22 @@
 #!/usr/bin/env coffee
 
+# default configuration options. Leave this as valid JSON, not coffee-script;
+# we're using it as an example for the ~/.groovebasinrc file.
+# (leave off the "default_config = " in your config file)
+default_config = {
+  "user_id": "mpd",
+  "log_level": 1,
+  "http": {
+    "port": 10000
+  },
+  "mpd": {
+    "host": "localhost",
+    "port": 6600,
+    "conf": "/etc/mpd.conf",
+    "stream_url": "http://localhost:8000/mpd.ogg"
+  }
+}
+
 fs = require 'fs'
 http = require 'http'
 net = require 'net'
@@ -14,20 +31,8 @@ mpd = require './lib/mpd'
 nconf
   .argv()
   .env()
-# these files in the wrong order because of
-# https://github.com/flatiron/nconf/issues/28
-  .file({file: "/etc/groovebasinrc"})
   .file({file: "#{process.env.HOME}/.groovebasinrc"})
-  .defaults
-    user_id: "mpd"
-    log_level: 1
-    http:
-      port: 80
-    mpd:
-      host: 'localhost'
-      port: 6600
-      conf: "/etc/mpd.conf"
-      stream_url: "http://localhost:8000/mpd.ogg"
+  .defaults(default_config)
 
 # read mpd conf
 music_directory = null

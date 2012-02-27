@@ -27,44 +27,61 @@ project an mpd client.
 * [node.js](http://nodejs.org)
 
     After installing node.js, install [npm](http://npmjs.org) and then
-    install most groovebasin dependencies:
+    install node dependencies:
 
     ```
     $ sudo npm link
     ```
 
-    Unfortunately we have to install some manually because we need their
-    binaries. There's a better way to do this, but for now...
-
-    ```
-    $ sudo npm install -g handlebars coffee-script
-    ```
-
 * [mpd](http://musicpd.org)
 
-    Compile from source; we depend on some new stuff.
+    Compile from source; we depend on some new stuff:
 
-* [sass](http://sass-lang.com)
+    ```
+    $ git clone git://git.musicpd.org/master/mpd.git
+    ```
 
-    On Ubuntu, be sure to install with the ruby gem, not with apt-get.
-    And then make sure the `sass` executable is in your PATH.
+* [sass](http://sass-lang.com) 3.1 or better. Make sure `sass` is in your PATH.
 
 ## Installation
 
 1. Install, configure, and run mpd. Make sure you can get it to make noise.
 
-2. Softlink `./public/library` to your music folder.
+2. Compile with `make`.
 
-3. Compile:
+3. You can now run `./groovebasind` to start the server.
 
-    ```
-    $ make
-    ```
+## Configuring
 
-4. Configure by placing a JSON file in `~/.groovebasinrc`. You can see
-   what the structure should look like at the top of `./src/daemon.coffee` source.
+Some features require configuring to get working.
 
-5. You can now run `./groovebasind` to start the server.
+Configuration options can be set by placing a JSON file in `~/.groovebasinrc`.
+You can see what the structure should look like at the very top of
+`./src/daemon.coffee`.
+
+You can also set any config options on the command line using dot syntax. For
+example:
+
+```
+$ ./groovebasind --http.port 80 --mpd.conf ~/.mpd/mpd.conf
+```
+
+### Download Support
+
+Softlink `./public/library` to your music folder.
+
+### Streaming Support
+
+1. In your mpd conf file, uncomment the "httpd" `audio_output` and configure
+   the port. Recommended "vorbis" encoder for better browser support.
+
+2. Restart mpd.
+
+3. Add the correct `mpd.stream_url` to your `~/.groovebasinrc` config file.
+   It should look something like `http://your.server.org:8000/mpd.ogg`
+
+4. Be sure that both `http.port` and the streaming port are forwarded to your
+   server in your router settings.
 
 ## Screenshots
 

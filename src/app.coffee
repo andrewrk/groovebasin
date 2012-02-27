@@ -21,7 +21,12 @@ started_drag = false
 abortDrag = null
 clickTab = null
 stream = null
+want_to_queue = []
 MARGIN = 10
+
+flushWantToQueue = ->
+  mpd.queueFiles want_to_queue
+  want_to_queue = []
 
 shuffle = (array) ->
   top = array.length
@@ -658,9 +663,8 @@ setUpUi = ->
     element: document.getElementById("upload-widget")
     action: '/upload'
     encoding: 'multipart'
-    onComplete: -> mpd.sendCommand 'update'
-
-
+    onComplete: (id, file_name, response_json) ->
+      want_to_queue.push file_name
 
 initHandlebars = ->
   Handlebars.registerHelper 'time', formatTime
@@ -701,7 +705,9 @@ $(document).ready ->
   socket = io.connect()
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
-  mpd.on 'libraryupdate', renderLibrary
+  mpd.on 'libraryupdate', ->
+    flushWantToQueue()
+    renderLibrary()
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'statusupdate', ->
     renderNowPlaying()

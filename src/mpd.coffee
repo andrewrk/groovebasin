@@ -550,6 +550,7 @@ exports.Mpd = class Mpd
     @sendCommands @queueRandomTracksCommands n
 
   queueFiles: (files) =>
+    return unless files.length
     # queue tracks just before any random ones
     pos = @playlist.item_list.length
     if @server_status?

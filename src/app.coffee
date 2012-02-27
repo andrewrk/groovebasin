@@ -429,7 +429,7 @@ setUpUi = ->
 
       # adds a new context menu to the document
       context =
-        track: mpd.playlist.item_table[track_id]
+        item: mpd.playlist.item_table[track_id]
         status: mpd.server_status
       $(Handlebars.templates.playlist_menu(context))
         .appendTo(document.body)

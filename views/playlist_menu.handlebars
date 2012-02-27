@@ -2,7 +2,7 @@
   <li><a href="#" class="remove hoverable">Remove</a></li>
   <li>
   {{#if status.download_enabled}}
-    <a href="library/{{track.file}}" class="download hoverable" target="_blank">Download</a>
+    <a href="library/{{item.track.file}}" class="download hoverable" target="_blank">Download</a>
   {{else}}
     <span title="Download is disabled due to invalid server configuration.">Download</span>
   {{/if}}

@@ -66,7 +66,7 @@ example:
 $ ./groovebasind --http.port 80 --mpd.conf ~/.mpd/mpd.conf
 ```
 
-### Download Support
+### Upload and Download Support
 
 Softlink `./public/library` to your music folder.
 
@@ -75,13 +75,10 @@ Softlink `./public/library` to your music folder.
 1. In your mpd conf file, uncomment the "httpd" `audio_output` and configure
    the port. Recommended "vorbis" encoder for better browser support.
 
-2. Restart mpd.
-
-3. Add the correct `mpd.stream_url` to your `~/.groovebasinrc` config file.
+2. Add the correct `mpd.stream_url` to your `~/.groovebasinrc` config file.
    It should look something like `http://your.server.org:8000/mpd.ogg`
 
-4. Be sure that both `http.port` and the streaming port are forwarded to your
-   server in your router settings.
+3. Restart mpd and groovebasind.
 
 ## Screenshots
 

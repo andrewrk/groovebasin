@@ -68,6 +68,7 @@ project an mpd client.
 
 ## Screenshots
 
+![Searching library](http://www.superjoesoftware.com/temp/groove-basin-5.png)
 ![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
 ![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-3.png)
 ![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)

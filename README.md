@@ -20,7 +20,7 @@ project an mpd client.
   shortcuts.
 
 * Streaming support. You can listen to your music library - or share it with
-  your friends - even when you're not physically near your home speakers.
+  your friends - even when you are not physically near your home speakers.
 
 ## Dependencies
 
@@ -79,6 +79,22 @@ Softlink `./public/library` to your music folder.
    It should look something like `http://your.server.org:8000/mpd.ogg`
 
 3. Restart mpd and groovebasind.
+
+### Mpd Configuration
+
+* `sticker_file` - Groove Basin will not run without one set.
+
+* `gapless_mp3_playback` - "yes" recommended. <3 gapless playback.
+
+* `volume_normalization` - "yes" recommended. Replaygain scanners are not
+  implemented for all the formats that can be played back. Volume normalization
+  works on all formats.
+
+* `max_command_list_size` - "16384" recommended. You do not want mpd crashing
+  when you try to remove a ton of songs from the playlist at once.
+
+* `auto_update` - "yes" recommended. Required for uploaded songs to show up
+  in your library.
 
 ## Screenshots
 

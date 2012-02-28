@@ -2,9 +2,6 @@
 schedule = (delay, func) -> window.setInterval(func, delay)
 wait = (delay, func) -> setTimeout func, delay
 
-context =
-  playing: -> this.status?.state == 'play'
-
 selection =
   type: null # 'library' or 'playlist'
   playlist_ids: {} # key is id, value is some dummy value
@@ -14,6 +11,7 @@ selection =
   cursor: null # the last touched id
 
 mpd = null
+mpd_alive = false
 base_title = document.title
 userIsSeeking = false
 userIsVolumeSliding = false
@@ -50,7 +48,6 @@ renderPlaylistButtons = ->
     .button("refresh")
 
   # disable stream button if we don't have it set up
-  console.log mpd.server_status
   $("#stream-btn")
     .button("option", "disabled", not mpd.server_status?.stream_httpd_port?)
     .button("refresh")
@@ -63,10 +60,10 @@ renderPlaylistButtons = ->
   labelPlaylistItems()
 
 renderPlaylist = ->
-  context.playlist = mpd.playlist.item_list
-  context.server_status = mpd.server_status
-  $playlist = $("#playlist")
-  $playlist.html Handlebars.templates.playlist(context)
+  context =
+    playlist: mpd.playlist.item_list
+    server_status: mpd.server_status
+  $("#playlist").html Handlebars.templates.playlist(context)
 
   labelPlaylistItems()
   refreshSelection()
@@ -113,8 +110,9 @@ refreshSelection = ->
     $("#playlist-track-#{selection.cursor}").addClass('cursor') if selection.cursor?
 
 renderLibrary = ->
-  context.artists = mpd.search_results.artists
-  context.empty_library_message = if mpd.haveFileListCache then "No Results" else "loading..."
+  context =
+    artists: mpd.search_results.artists
+    empty_library_message: if mpd.haveFileListCache then "No Results" else "loading..."
   $("#library").html Handlebars.templates.library(context)
   handleResize()
   # auto expand small datasets
@@ -189,9 +187,17 @@ renderNowPlaying = ->
   handleResize()
 
 render = ->
+  $("#playlist-window").toggle(mpd_alive)
+  $("#library-window").toggle(mpd_alive)
+  $("#nowplaying").toggle(mpd_alive)
+  $("#mpd-error").toggle(not mpd_alive)
+  return unless mpd_alive
+
   renderPlaylist()
+  renderPlaylistButtons()
   renderLibrary()
   renderNowPlaying()
+
 
 formatTime = (seconds) ->
   seconds = Math.floor seconds
@@ -732,17 +738,17 @@ $(document).ready ->
     renderPlaylistButtons()
   mpd.on 'serverstatus', ->
     renderPlaylistButtons()
+  mpd.on 'connect', ->
+    mpd_alive = true
+    render()
 
   setUpUi()
   initHandlebars()
 
-
   render()
   handleResize()
 
-
   window._debug_mpd = mpd
-  window._debug_context = context
 
 $(window).resize handleResize
 

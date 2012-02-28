@@ -177,7 +177,8 @@ exports.Mpd = class Mpd
         # flush the handler
         @handleMessage null
       else if line.indexOf("OK MPD") == 0
-        # new connection, ignore
+        # new connection
+        @raiseEvent 'connect'
       else
         @handleMessage msg
       @buffer = @buffer.substring(msg.length+line.length+1)

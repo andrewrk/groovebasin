@@ -1,15 +1,18 @@
+* right-click Remove button is broken
 * prepend '!' to a search word to NOT match the word. '\!' to literally match '!'.
   '\\' to literally match '\'
 * as part of lower casing for artist/album keys, change ñ to n, etc.
+  - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
 * if ctrl/shift/alt not matched for shortcuts, don't prevent the default
 * shift+down select another item, shift+up unselect it
 * if you move a song that was chosen randomly, it and everything from
-  it to current song are marked not random
-* from a clear playlist, dynamic mode adds too many songs
+  it to current song are marked not random (do we really want this?)
+* dynamic mode populates twice when user clicks Clear
+  - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately
-* ability to password protect
+* ability to password protect (what does this mean?)
 * ability to edit tags
 * ability to upload songs
   - update library without refreshing
@@ -19,13 +22,9 @@
   - support uploading zip files
 * refactor - server_status stuff should not be in Mpd class, it should be in
   GrooveBasinClient class or something like that.
-* more intelligent behavior when you click download for multiple selection
-* make dynamic playlist mode options configurable
-* ability to ban from random
-  - keyboard shortcut 'b'
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
-* button to turn on streaming so you don't have to open another tab
+* display any mpd status error message
 * ability to filter playlist
 * playlist management
   - save
@@ -33,6 +32,8 @@
   - grab individual tracks
   - switch to
 * ability to download songs in library
+* ability to download multiple songs at once
+  - more intelligent behavior when you click download for multiple selection
 * library management
   - duplicate detection and elimination
     > if a song is byte for byte the same (check md5's) then ignore the
@@ -49,6 +50,7 @@
   - plugin to submit songs to last.fm
   - plugin to import songs to library from youtube URL
   - wolfebin plugin?
+  - move dynamic playlist mode functionality to a plugin
 * file folder inbox to import stuff
 * take mpd's status into account. Make them editable?
   - consume
@@ -56,3 +58,6 @@
 * good shuffle heuristics:
   - songs that get skipped more often have less probability of being
     randomly chosen.
+  - ability to ban from random
+    > keyboard shortcut 'B'
+  - make dynamic playlist mode options configurable

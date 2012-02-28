@@ -1,0 +1,241 @@
+user-select()
+  -moz-user-select arguments
+  -khtml-user-select arguments
+  user-select arguments
+
+border-radius()
+  -moz-border-radius arguments
+  -webkit-border-radius arguments
+  -khtml-border-radius arguments
+  border-radius arguments
+
+html
+  background url(vendor/css/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png)
+
+body
+  font-family Arial, Helvetica, sans-serif
+
+#track-slider
+  margin 10px 10px 5px
+
+#nowplaying
+  margin 6px auto
+  text-align center
+
+  .playback-btns
+    float left
+
+    li
+      cursor pointer
+      float left
+      list-style none outside none
+      margin 2px
+      padding 4px
+  
+  h1
+    letter-spacing 0.1em
+    margin-top 8px
+    font-weight bold
+
+  .time
+    margin 4px
+    font-weight bold
+    font-family monospace
+
+  .left
+    float right
+
+  .elapsed
+    float left
+
+#vol
+  margin 10px
+  span
+    float left
+    margin -2px 2px 0px 10px
+
+#vol-slider
+  float left
+  width 60px
+  height 10px
+
+  .ui-slider-handle
+    height 16px
+    width 16px
+    margin-top 2px
+
+#more-playback-btns
+  float left
+  font-size .6em
+  margin -8px 0 0 8px
+
+#library-window
+  width 400px
+  position absolute
+
+  .window-header
+    height 30px
+
+#lib-tabs
+  ul
+    margin-bottom -1px
+
+    li
+      display inline
+
+      span
+        font-size .6em
+        padding 2px 4px
+        font-weight normal
+
+      cursor pointer
+
+#library-items
+  overflow-y auto
+
+  user-select none
+  cursor default
+
+  div.ui-icon
+    float left
+
+  ul
+    margin-left 9px
+    ul
+      margin-left 16px
+
+#lib-filter
+  margin 4px
+  width 175px
+
+#organize
+  width 200px
+
+#playlist-window
+  width 700px
+  position absolute
+
+  .window-header
+    margin-bottom 4px
+    font-size .6em
+
+#playlist
+  .header
+    font-weight bold
+    overflow-x hidden
+    overflow-y hidden
+    height 1.2em
+
+  span.track
+    width 26px
+
+  span.title
+    width 30%
+
+  span.artist
+    width 30%
+
+  span.album
+    width 30%
+
+  span.time
+    width 36px
+
+  span
+    white-space nowrap
+    height 1.2em
+    overflow-x hidden
+    overflow-y hidden
+    float left
+    margin-right 4px
+
+#playlist-items
+  overflow-y auto
+  overflow-x hidden
+  clear both
+
+  width 100%
+
+  user-select none
+
+  div
+    clear both
+    overflow-x hidden
+    overflow-y hidden
+    height 1.2em
+    cursor default
+
+  div:nth-child(2n+1)
+    background-color #2A2A2A
+
+  div.random
+    color #96B7EB
+
+  div.old
+    color #555555
+
+  div.selected
+    border 1px solid #222
+    background #00498F url(vendor/css/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat
+    font-weight bold
+    color #fff
+  
+  div.current
+    border 1px solid #096AC8
+    background-color #292929
+    font-weight bold
+    color #75abff
+
+  div.cursor
+    text-decoration underline
+
+  div.border-bottom
+    border-bottom 2px dashed #ffffff
+
+  div.border-top
+    border-top 2px dashed #ffffff
+
+  span.track
+    text-align right
+
+  span.time
+    text-align right
+
+#upload-widget
+  padding 10px
+
+#menu
+  position absolute
+  padding 2px
+  li
+    a
+      display block
+      text-decoration none
+      padding 6px
+
+#shortcuts
+  h1
+    margin-bottom 10px
+    margin-top 10px
+    font-weight bold
+
+  dl
+    font-size .8em
+    margin-bottom 4px
+
+    dt
+      font-family monospace
+      display inline
+      padding 3px
+      background-color #272727
+      font-weight bold
+      text-shadow 1px 1px 0 #000000
+      border-radius 4px
+
+      em
+        font-weight normal
+        color #afafaf
+        text-shadow none
+
+    dd
+      display inline

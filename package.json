@@ -20,6 +20,7 @@
         "nconf": ">=0.5.1",
         "coffee-script": ">=1.2.0i",
         "handlebars": ">=1.0.4beta",
-        "formidable": ">=1.0.8"
+        "formidable": ">=1.0.8",
+        "stylus": ">=0.24.0"
     }
 }

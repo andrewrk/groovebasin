@@ -41,13 +41,11 @@ project an mpd client.
     $ git clone git://git.musicpd.org/master/mpd.git
     ```
 
-* [sass](http://sass-lang.com) 3.1 or better. Make sure `sass` is in your PATH.
-
 ## Installation
 
 1. Install, configure, and run mpd. Make sure you can get it to make noise.
 
-2. Compile with `make`.
+2. Compile with `make`. For developing, you probably want `make watch`.
 
 3. You can now run `./groovebasind` to start the server.
 

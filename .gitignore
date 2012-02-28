@@ -6,3 +6,4 @@ public/test.js
 public/library
 node_modules/
 .rvmrc
+*.tmp

@@ -14,34 +14,42 @@ handlebars=node_modules/handlebars/bin/handlebars
 stylus=node_modules/stylus/bin/stylus
 
 .PHONY: build clean watch
+SHELL=bash
 
 build: $(serverjs) $(appjs) $(appcss)
+	@: # suppress 'nothing to be done' message
 
 $(serverjs): $(server_src) $(mpd_lib) $(lib)/mpdconf.js
-	echo "#!/usr/bin/env node" >$@
-	$(coffee) -p -c $(server_src) >>$@
-	chmod +x $@
+	echo "#!/usr/bin/env node" >$@.tmp
+	$(coffee) -p -c $(server_src) >>$@.tmp
+	chmod +x $@.tmp
+	mv $@{.tmp,}
 
-$(mpd_lib): $(mpd_lib_src)
+$(lib):
 	mkdir -p $(lib)
-	$(coffee) -p -c $(mpd_lib_src) >$@
 
-lib/mpdconf.js: src/mpdconf.coffee
-	mkdir -p $(lib)
-	$(coffee) -p -c src/mpdconf.coffee >$@
+$(mpd_lib): $(mpd_lib_src) | $(lib)
+	$(coffee) -p -c $(mpd_lib_src) >$@.tmp
+	mv $@{.tmp,}
+
+$(lib)/mpdconf.js: src/mpdconf.coffee | $(lib)
+	$(coffee) -p -c src/mpdconf.coffee >$@.tmp
+	mv $@{.tmp,}
 
 $(appjs): $(views) $(client_src)
-	$(coffee) -p -c $(client_src) >$@
-	$(handlebars) $(views) -k if -k each -k hash >>$@
+	$(coffee) -p -c $(client_src) >$@.tmp
+	$(handlebars) $(views) -k if -k each -k hash >>$@.tmp
+	mv $@{.tmp,}
 
 $(appcss): $(styles)
-	$(stylus) <$(styles) >$@
+	$(stylus) <$(styles) >$@.tmp
+	mv $@{.tmp,}
 
 clean:
-	rm -f ./$(appjs)
-	rm -f ./$(appcss)
-	rm -f ./$(serverjs)
+	rm -f ./$(appjs){,.tmp}
+	rm -f ./$(appcss){,.tmp}
+	rm -f ./$(serverjs){,.tmp}
 	rm -rf ./$(lib)
 
 watch:
-	bash -c 'set -e; while [ 1 ]; do make; sleep 0.5; done'
+	bash -c 'set -e; while [ 1 ]; do make --no-print-directory; sleep 0.5; done'

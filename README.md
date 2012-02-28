@@ -1,6 +1,6 @@
 # Groove Basin
 
-Multiplayer music player for your home or office.
+No-nonsense music client and server for your home or office.
 
 Run it on a server connected to your main speakers. Guests can connect with
 their laptops, tablets, and phones, and play and share music.
@@ -22,47 +22,37 @@ project an mpd client.
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
-## Dependencies
+## Get Started
 
-* [node.js](http://nodejs.org)
-
-    After installing node.js, install [npm](http://npmjs.org) and then
-    install node dependencies:
-
-    ```
-    $ sudo npm link
-    ```
-
-* [mpd](http://musicpd.org)
-
-    Compile from source; we depend on some new stuff:
-
-    ```
-    $ git clone git://git.musicpd.org/master/mpd.git
-    ```
-
-## Installation
-
-1. Install, configure, and run mpd. Make sure you can get it to make noise.
-
-2. Compile with `make`. For developing, you probably want `make watch`.
-
-3. You can now run `./groovebasind` to start the server.
-
-## Configuring
-
-Configuration options can be set by placing a JSON file in `~/.groovebasinrc`.
-You can see what the structure should look like at the very top of
-`./src/daemon.coffee`.
-
-You can also set any config options on the command line using dot syntax. For
-example:
+Make sure you have [Node](http://nodejs.org) and [npm](http://npmjs.org)
+installed, then:
 
 ```
-$ ./groovebasind --http.port 80 --mpd.conf ~/.mpd/mpd.conf
+$ npm install groovebasin
+$ npm start groovebasin
 ```
 
-### Mpd Configuration
+At this point, Groove Basin will issue warnings telling you what to do next.
+
+## Screenshots
+
+![Searching library](http://www.superjoesoftware.com/temp/groove-basin-5.png)
+![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
+![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-3.png)
+![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)
+![Drag and drop / multiselect upload](http://www.superjoesoftware.com/temp/groove-basin-1.png)
+
+## Mpd
+
+Groove Basin depends on [mpd](http://musicpd.org).
+
+Some new features are only available when you compile from source:
+
+```
+$ git clone git://git.musicpd.org/master/mpd.git
+```
+
+### Configuration
 
 * `audio_output` - Uncomment the "httpd" one and configure the port to enable
   streaming. Recommended "vorbis" encoder for better browser support.
@@ -81,11 +71,17 @@ $ ./groovebasind --http.port 80 --mpd.conf ~/.mpd/mpd.conf
 * `auto_update` - "yes" recommended. Required for uploaded songs to show up
   in your library.
 
-## Screenshots
+## Configuring Groove Basin
 
-![Searching library](http://www.superjoesoftware.com/temp/groove-basin-5.png)
-![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
-![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-3.png)
-![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)
-![Drag and drop / multiselect upload](http://www.superjoesoftware.com/temp/groove-basin-1.png)
+See http://npmjs.org/doc/config.html
 
+See the "config" section of `package.json` for configuration options and
+defaults.
+
+## Developing
+
+```
+$ sudo npm link
+$ make watch
+$ npm -g start groovebasin
+```

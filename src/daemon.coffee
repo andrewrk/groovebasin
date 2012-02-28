@@ -21,17 +21,10 @@ http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
 static = require 'node-static'
-nconf = require 'nconf'
 formidable = require 'formidable'
 url = require 'url'
 util = require 'util'
 mpd = require './lib/mpd'
-
-nconf
-  .argv()
-  .env()
-  .file({file: "#{process.env.HOME}/.groovebasinrc"})
-  .defaults(default_config)
 
 public_dir = "./public"
 status =
@@ -60,16 +53,16 @@ app = http.createServer((request, response) ->
   else
     request.addListener 'end', ->
       fileServer.serve request, response
-).listen(nconf.get('http:port'))
+).listen(process.env.npm_package_config_http_port)
 io = socketio.listen(app)
-io.set 'log level', nconf.get('log_level')
+io.set 'log level', process.env.npm_package_config_log_level
 log = io.log
-log.info "Serving at http://localhost:#{nconf.get('http:port')}/"
+log.info "Serving at http://localhost:#{process.env.npm_package_config_http_port}/"
 
 # read mpd conf
 do ->
   try
-    data = fs.readFileSync(nconf.get('mpd:conf'))
+    data = fs.readFileSync(process.env.npm_package_config_mpd_conf)
   catch error
     log.warn "Unable to read mpd conf file: #{error}"
     return
@@ -122,7 +115,7 @@ moveFile = (source, dest) ->
   util.pump in_stream, out_stream, -> fs.unlink source
 
 createMpdConnection = (cb) ->
-  net.connect nconf.get('mpd:port'), nconf.get('mpd:host'), cb
+  net.connect process.env.npm_package_config_mpd_port, process.env.npm_package_config_mpd_host, cb
 
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
@@ -285,5 +278,4 @@ my_mpd.on 'playlistupdate', checkDynamicMode
 my_mpd.on 'libraryupdate', updateStickers
 
 # downgrade user permissions
-uid = nconf.get('user_id')
-try process.setuid uid if uid?
+try process.setuid uid if (uid = process.env.npm_package_config_user_id)?

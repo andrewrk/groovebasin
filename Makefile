@@ -1,6 +1,6 @@
 appjs=public/app.js
 appcss=public/app.css
-serverjs=groovebasind
+serverjs=server.js
 views=views/*.handlebars
 client_src=src/mpd.coffee src/socketmpd.coffee src/app.coffee
 server_src=src/daemon.coffee
@@ -17,11 +17,9 @@ stylus=node_modules/stylus/bin/stylus
 SHELL=bash
 
 build: $(serverjs) $(appjs) $(appcss)
-	@: # suppress 'nothing to be done' message
 
 $(serverjs): $(server_src) $(mpd_lib) $(lib)/mpdconf.js
-	echo "#!/usr/bin/env node" >$@.tmp
-	$(coffee) -p -c $(server_src) >>$@.tmp
+	$(coffee) -p -c $(server_src) >$@.tmp
 	chmod +x $@.tmp
 	mv $@{.tmp,}
 
@@ -50,6 +48,7 @@ clean:
 	rm -f ./$(appcss){,.tmp}
 	rm -f ./$(serverjs){,.tmp}
 	rm -rf ./$(lib)
+	rm -f ./public/library
 
 watch:
 	bash -c 'set -e; while [ 1 ]; do make --no-print-directory; sleep 0.5; done'

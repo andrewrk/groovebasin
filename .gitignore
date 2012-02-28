@@ -1,9 +1,7 @@
-groovebasind
+server.js
 lib/
 public/app.js
 public/app.css
-public/test.js
 public/library
 node_modules/
-.rvmrc
 *.tmp

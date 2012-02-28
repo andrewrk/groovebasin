@@ -51,4 +51,4 @@ clean:
 	rm -f ./public/library
 
 watch:
-	bash -c 'set -e; while [ 1 ]; do make --no-print-directory; sleep 0.5; done'
+	bash -c 'while [ 1 ]; do make --no-print-directory; sleep 0.5; done'

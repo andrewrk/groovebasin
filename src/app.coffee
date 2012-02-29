@@ -380,7 +380,7 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     no
       shift:   no
-      handler: upDownHandler
+      handler: handleDeletePressed
     67: # 'c'
       ctrl:    no
       alt:     no

@@ -1,11 +1,11 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* option to not auto-queue uploaded songs
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately
 * fix some songs error message when uploading and auto-queuing if you upload
   a bunch at once
 
+* option to not auto-queue uploaded songs
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.

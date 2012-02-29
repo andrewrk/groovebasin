@@ -411,8 +411,11 @@ exports.Mpd = class Mpd
       tracks = @mpdTracksToTrackObjects @parseMpdTracks msg
       @buildArtistAlbumTree tracks, @library
       @haveFileListCache = true
-      # notify listeners
-      @raiseEvent 'libraryupdate'
+      # in case the user has a search open, we'll apply their search again.
+      last_query = @last_query
+      # reset last query so that search is forced to run again
+      @last_query = ""
+      @search last_query
 
   updatePlaylist: (callback=noop) =>
     @sendCommand "playlistinfo", (msg) =>

@@ -1,5 +1,4 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* if ctrl/shift/alt not matched for shortcuts, don't prevent the default
 * auto-update search results if library changes
 * option to not auto-queue uploaded songs
 * ability to select artists, albums, tracks in library
@@ -11,6 +10,7 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.
+* ability to delete songs from library
 * ability to edit tags
 * ability to move a file to a better location based on its tags
 * put song files in an intelligent place when uploading

@@ -289,6 +289,167 @@ nextRepeatState = ->
       repeat: true
       single: false
 
+keyboard_handlers = do ->
+  upDownHandler = (event) ->
+    if event.keyCode == 38 # up
+      default_index = mpd.playlist.item_list.length - 1
+      dir = -1
+    else
+      default_index = 0
+      dir = 1
+    if event.ctrlKey
+      if selection.type is 'playlist'
+        # re-order playlist items
+        mpd.shiftIds (id for id of selection.playlist_ids), dir
+    else
+      # change selection
+      if selection.type is 'playlist'
+        next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
+        return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
+        selection.cursor = mpd.playlist.item_list[next_pos].id
+        selection.playlist_ids = {} unless event.shiftKey
+        selection.playlist_ids[selection.cursor] = true
+      else
+        selection.type = 'playlist'
+        selection.cursor = mpd.playlist.item_list[default_index].id
+        (selection.playlist_ids = {})[selection.cursor] = true
+      refreshSelection()
+
+  leftRightHandler = (event) ->
+    if event.keyCode == 37 # left
+      dir = -1
+    else
+      dir = 1
+    if event.ctrlKey
+      if dir > 0
+        mpd.next()
+      else
+        mpd.prev()
+    else if event.shiftKey
+      mpd.seek getCurrentTrackPosition() + dir * mpd.status.time * 0.10
+    else
+      mpd.seek getCurrentTrackPosition() + dir * 10
+
+  handlers =
+    27: # escape
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: ->
+        # if the user is dragging, abort the drag
+        if started_drag
+          abortDrag()
+          return
+        # if there's a menu, only remove that
+        if $("#menu").get().length > 0
+          removeContextMenu()
+          return
+        # clear selection
+        selection.type = null
+        refreshSelection()
+    32: # space
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: togglePlayback
+    37: # left
+      ctrl:    null
+      alt:     no
+      shift:   null
+      handler: leftRightHandler
+    38: # up
+      ctrl:    null
+      alt:     no
+      shift:   null
+      handler: upDownHandler
+    39: # right
+      ctrl:    null
+      alt:     no
+      shift:   null
+      handler: leftRightHandler
+    40: # down
+      ctrl:    null
+      alt:     no
+      shift:   null
+      handler: upDownHandler
+    46: # delete
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: upDownHandler
+    67: # 'c'
+      ctrl:    no
+      alt:     no
+      shift:   yes
+      handler: -> mpd.clear()
+    68: # 'd'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: toggleDynamicMode
+    72: # 'h'
+      ctrl:    no
+      alt:     no
+      shift:   yes
+      handler: -> mpd.shuffle()
+    76: # 'l'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: -> clickTab 'library'
+    82: # 'r'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: nextRepeatState
+    83: # 's'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: -> changeStreamStatus not stream?
+    85: # 'u'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: -> clickTab 'upload'
+    187: # '=' or '+'
+      ctrl:    no
+      alt:     no
+      shift:   null
+      handler: -> mpd.setVolume mpd.status.volume + 0.10
+    188: # ',' or '<'
+      ctrl:    no
+      alt:     no
+      shift:   null
+      handler: -> mpd.prev()
+    189: # '-' or '_'
+      ctrl:    no
+      alt:     no
+      shift:   null
+      handler: -> mpd.setVolume mpd.status.volume - 0.10
+    190: # '.' or '>'
+      ctrl:    no
+      alt:     no
+      shift:   null
+      handler: -> mpd.next()
+    191: # '/' or '?'
+      ctrl:    no
+      alt:     no
+      shift:   null
+      handler: (event) ->
+        if event.shiftKey
+          $(Handlebars.templates.shortcuts()).appendTo(document.body)
+          $("#shortcuts").dialog
+            modal: true
+            title: "Keyboard Shortcuts"
+            minWidth: 600
+            height: $(document).height() - 40
+            close: -> $("#shortcuts").remove()
+        else
+          clickTab 'library'
+          $("#lib-filter").focus().select()
+
+
 setUpUi = ->
   $(document).on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -462,110 +623,11 @@ setUpUi = ->
     selection.type = null
     refreshSelection()
   $(document).on 'keydown', (event) ->
-    upDownHandler = ->
-      if event.keyCode == 38 # up
-        default_index = mpd.playlist.item_list.length - 1
-        dir = -1
-      else
-        default_index = 0
-        dir = 1
-      if event.ctrlKey
-        if selection.type is 'playlist'
-          # re-order playlist items
-          mpd.shiftIds (id for id of selection.playlist_ids), dir
-      else
-        # change selection
-        if selection.type is 'playlist'
-          next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
-          return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
-          selection.cursor = mpd.playlist.item_list[next_pos].id
-          selection.playlist_ids = {} unless event.shiftKey
-          selection.playlist_ids[selection.cursor] = true
-        else
-          selection.type = 'playlist'
-          selection.cursor = mpd.playlist.item_list[default_index].id
-          (selection.playlist_ids = {})[selection.cursor] = true
-        refreshSelection()
-
-    leftRightHandler = ->
-      if event.keyCode == 37 # left
-        dir = -1
-      else
-        dir = 1
-      if event.ctrlKey
-        if dir > 0
-          mpd.next()
-        else
-          mpd.prev()
-      else if event.shiftKey
-        mpd.seek getCurrentTrackPosition() + dir * mpd.status.time * 0.10
-      else
-        mpd.seek getCurrentTrackPosition() + dir * 10
-
-    handlers =
-      # escape
-      27: ->
-        # if the user is dragging, abort the drag
-        if started_drag
-          abortDrag()
-          return
-        # if there's a menu, only remove that
-        if $("#menu").get().length > 0
-          removeContextMenu()
-          return
-        # clear selection
-        selection.type = null
-        refreshSelection()
-      # space
-      32: togglePlayback
-      # left
-      37: leftRightHandler
-      # up
-      38: upDownHandler
-      # right
-      39: leftRightHandler
-      # down
-      40: upDownHandler
-      # delete
-      46: handleDeletePressed
-      # 'c'
-      67: -> mpd.clear() if not event.ctrlKey and event.shiftKey
-      # 'd'
-      68: -> toggleDynamicMode() if not event.ctrlKey and not event.shiftKey
-      # 'h'
-      72: -> mpd.shuffle() if not event.ctrlKey and event.shiftKey
-      # 'l'
-      76: -> clickTab 'library' if not event.ctrlKey and not event.shiftKey
-      # 'r'
-      82: -> nextRepeatState() if not event.ctrlKey and not event.shiftKey
-      # 's'
-      83: -> changeStreamStatus not stream? if not event.ctrlKey and not event.shiftKey
-      # 'u'
-      85: -> clickTab 'upload' if not event.ctrlKey and not event.shiftKey
-      # '=' or '+'
-      187: -> mpd.setVolume mpd.status.volume + 0.10
-      # ',' or '<'
-      188: mpd.prev
-      # '-' or '_'
-      189: -> mpd.setVolume mpd.status.volume - 0.10
-      # '.' or '>'
-      190: mpd.next
-      # '/' or '?'
-      191: ->
-        if event.shiftKey
-          $(Handlebars.templates.shortcuts()).appendTo(document.body)
-          $("#shortcuts").dialog
-            modal: true
-            title: "Keyboard Shortcuts"
-            minWidth: 600
-            height: $(document).height() - 40
-            close: -> $("#shortcuts").remove()
-        else
-          clickTab 'library'
-          $("#lib-filter").focus().select()
-
-    if (handler = handlers[event.keyCode])?
-      handler()
+    if (handler = keyboard_handlers[event.keyCode])? and
+        (not handler.ctrl? or handler.ctrl == event.ctrlKey) and
+        (not handler.alt? or handler.alt == event.altKey) and
+        (not handler.shift? or handler.shift == event.shiftKey)
+      handler.handler event
       return false
     return true
 

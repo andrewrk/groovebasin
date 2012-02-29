@@ -664,7 +664,7 @@ setUpUi = ->
           for track in album.tracks
             files.push track.file
 
-      if event.altKey
+      if event.ctrlKey
         shuffle(files)
 
       if files.length > 2000

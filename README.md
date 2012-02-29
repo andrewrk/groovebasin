@@ -78,6 +78,12 @@ See http://npmjs.org/doc/config.html
 See the "config" section of `package.json` for configuration options and
 defaults.
 
+Example:
+
+```
+$ npm config set groovebasin:log_level 1
+```
+
 ## Developing
 
 ```

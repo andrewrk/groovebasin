@@ -69,10 +69,11 @@ body
   font-size .6em
   margin -8px 0 0 8px
 
-#library-window
+#left-window
   width 400px
   position absolute
 
+#library-tab
   .window-header
     height 30px
 
@@ -90,7 +91,7 @@ body
 
       cursor pointer
 
-#library-items
+#library
   overflow-y auto
 
   user-select none
@@ -99,11 +100,16 @@ body
   div.ui-icon
     float left
 
-  ul
-    margin-left 9px
-    ul
-      margin-left 16px
+  p
+    text-align center
+    padding-top 20px
 
+  ul
+    ul
+      margin-left 9px
+      ul
+        margin-left 16px
+  
 #lib-filter
   margin 4px
   width 175px

@@ -10,11 +10,12 @@ selection =
   track_ids: {}
   cursor: null # the last touched id
 
+socket = null
 mpd = null
 mpd_alive = false
 base_title = document.title
-userIsSeeking = false
-userIsVolumeSliding = false
+user_is_seeking = false
+user_is_volume_sliding = false
 started_drag = false
 abortDrag = null
 clickTab = null
@@ -63,12 +64,9 @@ renderPlaylist = ->
   context =
     playlist: mpd.playlist.item_list
     server_status: mpd.server_status
-  $("#playlist").html Handlebars.templates.playlist(context)
+  $("#playlist-items").html Handlebars.templates.playlist(context)
 
-  labelPlaylistItems()
   refreshSelection()
-  handleResize()
-
   labelPlaylistItems()
 
 labelPlaylistItems = ->
@@ -114,7 +112,6 @@ renderLibrary = ->
     artists: mpd.search_results.artists
     empty_library_message: if mpd.haveFileListCache then "No Results" else "loading..."
   $("#library").html Handlebars.templates.library(context)
-  handleResize()
   # auto expand small datasets
   $artists = $("#library").children("ul").children("li")
   node_count = $artists.length
@@ -144,51 +141,56 @@ getCurrentTrackPosition = ->
     mpd.status.elapsed
 
 updateSliderPos = ->
-  return if userIsSeeking
-  return if not mpd.status?.time? or not mpd.status.current_item?
-  diff_sec = getCurrentTrackPosition()
-  $("#track-slider").slider("option", "value", diff_sec / mpd.status.time)
-  $("#nowplaying .elapsed").html formatTime(diff_sec)
-  $("#nowplaying .left").html formatTime(mpd.status.time)
+  return if user_is_seeking
+  if (time = mpd.status?.time)? and mpd.status?.current_item? and (mpd.status?.state ? "stop") isnt "stop"
+    disabled = false
+    elapsed = getCurrentTrackPosition()
+    slider_pos = elapsed / time
+  else
+    disabled = true
+    elapsed = time = slider_pos = 0
+
+  $("#track-slider")
+    .slider("option", "disabled", disabled)
+    .slider("option", "value", slider_pos)
+  $("#nowplaying .elapsed").html formatTime(elapsed)
+  $("#nowplaying .left").html formatTime(time)
 
 renderNowPlaying = ->
   # set window title
-  track = mpd.status.current_item?.track
-  if track?
+  if (track = mpd.status.current_item?.track)?
     track_display = "#{track.name} - #{track.artist_name}"
-    if track.album_name != ""
+    if track.album_name.length
       track_display += " - " + track.album_name
     document.title = "#{track_display} - #{base_title}"
   else
-    track_display = ""
+    track_display = "&nbsp;"
     document.title = base_title
 
   # set song title
   $("#track-display").html(track_display)
 
-  if mpd.status.state?
-    # set correct pause/play icon
-    toggle_icon =
-      play: ['ui-icon-play', 'ui-icon-pause']
-      stop: ['ui-icon-pause', 'ui-icon-play']
-    toggle_icon.pause = toggle_icon.stop
-    [old_class, new_class] = toggle_icon[mpd.status.state]
-    $("#nowplaying .toggle span").removeClass(old_class).addClass(new_class)
+  state = mpd.status.state ? "stop"
+  # set correct pause/play icon
+  toggle_icon =
+    play: ['ui-icon-play', 'ui-icon-pause']
+    stop: ['ui-icon-pause', 'ui-icon-play']
+    pause: ['ui-icon-pause', 'ui-icon-play']
+  [old_class, new_class] = toggle_icon[state]
+  $("#nowplaying .toggle span").removeClass(old_class).addClass(new_class)
 
-    # hide seeker bar if stopped
-    $("#track-slider").toggle mpd.status.state isnt "stop"
+  # hide seeker bar if stopped
+  $("#track-slider").slider "option", "disabled", state == "stop"
 
   updateSliderPos()
 
   # update volume pos
-  if mpd.status?.volume? and not userIsVolumeSliding
-    $("#vol-slider").slider 'option', 'value', mpd.status.volume
-
-  handleResize()
+  if (vol = mpd.status?.volume)? and not user_is_volume_sliding
+    $("#vol-slider").slider 'option', 'value', vol
 
 render = ->
   $("#playlist-window").toggle(mpd_alive)
-  $("#library-window").toggle(mpd_alive)
+  $("#left-window").toggle(mpd_alive)
   $("#nowplaying").toggle(mpd_alive)
   $("#mpd-error").toggle(not mpd_alive)
   return unless mpd_alive
@@ -197,6 +199,8 @@ render = ->
   renderPlaylistButtons()
   renderLibrary()
   renderNowPlaying()
+
+  handleResize()
 
 
 formatTime = (seconds) ->
@@ -694,8 +698,8 @@ setUpUi = ->
       mpd.seek ui.value * mpd.status.time
     slide: (event, ui) ->
       $("#nowplaying .elapsed").html formatTime(ui.value * mpd.status.time)
-    start: (event, ui) -> userIsSeeking = true
-    stop: (event, ui) -> userIsSeeking = false
+    start: (event, ui) -> user_is_seeking = true
+    stop: (event, ui) -> user_is_seeking = false
   setVol = (event, ui) ->
     return if not event.originalEvent?
     mpd.setVolume ui.value
@@ -704,8 +708,8 @@ setUpUi = ->
     min: 0
     max: 1
     change: setVol
-    start: (event, ui) -> userIsVolumeSliding = true
-    stop: (event, ui) -> userIsVolumeSliding = false
+    start: (event, ui) -> user_is_volume_sliding = true
+    stop: (event, ui) -> user_is_volume_sliding = false
 
   # move the slider along the path
   schedule 100, updateSliderPos
@@ -757,36 +761,33 @@ initHandlebars = ->
 
 handleResize = ->
   $nowplaying = $("#nowplaying")
-  $lib = $("#library-window")
+  $left_window = $("#left-window")
   $pl_window = $("#playlist-window")
 
   # go really small to make the window as small as possible
   $nowplaying.width MARGIN
   $pl_window.height MARGIN
-  $lib.height MARGIN
-  $pl_window.css 'position', 'absolute'
-  $lib.css 'position', 'absolute'
+  $left_window.height MARGIN
 
   # then fit back up to the window
   $nowplaying.width $(document).width() - MARGIN * 2
   second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN
-  $lib.offset
+  $left_window.offset
     left: MARGIN
     top: second_layer_top
   $pl_window.offset
-    left: $lib.offset().left + $lib.width() + MARGIN
+    left: $left_window.offset().left + $left_window.width() + MARGIN
     top: second_layer_top
   $pl_window.width $(window).width() - $pl_window.offset().left - MARGIN
-  $lib.height $(window).height() - $lib.offset().top
-  $pl_window.height $lib.height() - MARGIN
+  $left_window.height $(window).height() - $left_window.offset().top
+  $pl_window.height $left_window.height() - MARGIN
 
   # make the inside containers fit
-  $lib_header = $lib.find(".window-header")
-  $("#library-items").height $lib.height() - $lib_header.position().top - $lib_header.height() - MARGIN
+  $lib_header = $("#library-tab .window-header")
+  $("#library").height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
   $pl_header = $pl_window.find("#playlist .header")
   $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
-socket = null
 $(document).ready ->
   socket = io.connect()
   mpd = new window.SocketMpd socket
@@ -807,10 +808,7 @@ $(document).ready ->
   setUpUi()
   initHandlebars()
 
+  $(window).resize handleResize
   render()
-  handleResize()
 
   window._debug_mpd = mpd
-
-$(window).resize handleResize
-

@@ -1,5 +1,5 @@
 {{#if artists}}
-  <ul id="library-items">
+  <ul>
     {{#artists}}
       <li>
         <div class="artist expandable">
@@ -11,6 +11,7 @@
     {{/artists}}
   </ul>
 {{else}}
-  {{empty_library_message}}
+  <p>
+    {{empty_library_message}}
+  </p>
 {{/if}}
-

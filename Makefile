@@ -16,12 +16,7 @@ stylus=node_modules/stylus/bin/stylus
 .PHONY: build clean watch
 SHELL=bash
 
-build: .build.timestamp
-	@: # suppress 'nothing to be done' message
-.build.timestamp: $(serverjs) $(appjs) $(appcss)
-	@touch $@
-	@echo done building
-	@echo
+build: $(serverjs) $(appjs) $(appcss)
 
 $(serverjs): $(server_src) $(mpd_lib) $(lib)/mpdconf.js
 	$(coffee) -p -c $(server_src) >$@.tmp
@@ -56,4 +51,4 @@ clean:
 	rm -f ./public/library
 
 watch:
-	bash -c 'while [ 1 ]; do make --no-print-directory; sleep 0.5; done'
+	bash -c 'while [ 1 ]; do make -s --no-print-directory; sleep 0.5; done'

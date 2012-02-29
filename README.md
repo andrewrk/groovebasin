@@ -73,7 +73,7 @@ $ git clone git://git.musicpd.org/master/mpd.git
 
 ## Configuring Groove Basin
 
-See http://npmjs.org/doc/config.html
+See http://npmjs.org/doc/config.html#Per-Package-Config-Settings
 
 See the "config" section of `package.json` for configuration options and
 defaults.
@@ -81,7 +81,8 @@ defaults.
 Example:
 
 ```
-$ npm config set groovebasin:log_level 1
+$ npm config set groovebasin:mpd_conf ~/.mpd/mpd.conf
+$ npm config set groovebasin:http_port 80
 ```
 
 ## Developing

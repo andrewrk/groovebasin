@@ -1,25 +1,26 @@
-* right-click Remove button is broken
-* prepend '!' to a search word to NOT match the word. '\!' to literally match '!'.
-  '\\' to literally match '\'
-* as part of lower casing for artist/album keys, change ñ to n, etc.
-  - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
+Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * if ctrl/shift/alt not matched for shortcuts, don't prevent the default
-* shift+down select another item, shift+up unselect it
-* if you move a song that was chosen randomly, it and everything from
-  it to current song are marked not random (do we really want this?)
-* dynamic mode populates twice when user clicks Clear
-  - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
+* auto-update search results if library changes
+* option to not auto-queue uploaded songs
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately
-* ability to password protect (what does this mean?)
+* fix some songs error message when uploading and auto-queuing if you upload
+  a bunch at once
+
+* ability to password protect - make it so that not everybody can kill mpd,
+  enable/disable audio outputs, edit tags, upload tracks, change playback
+  state, etc.
 * ability to edit tags
-* ability to upload songs
-  - update library without refreshing
-  - update search results without refreshing
-  - uploaded songs are auto-queued
-    > option to not auto-queue
-  - support uploading zip files
+* ability to move a file to a better location based on its tags
+* put song files in an intelligent place when uploading
+* if you move a song that was chosen randomly, it and everything from
+  it to current song are marked not random (do we really want this? [yes])
+* as part of lower casing for artist/album keys, change ñ to n, etc.
+  - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
+* shift+down select another item, shift+up unselect it
+* dynamic mode populates twice when user clicks Clear
+  - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
 * refactor - server_status stuff should not be in Mpd class, it should be in
   GrooveBasinClient class or something like that.
 * display an icon when connection to server is lost.
@@ -61,3 +62,6 @@
   - ability to ban from random
     > keyboard shortcut 'B'
   - make dynamic playlist mode options configurable
+* prepend '!' to a search word to NOT match the word. '\!' to literally match
+  '!'. '\\' to literally match '\'
+* ability to upload zip files

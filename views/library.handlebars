@@ -11,7 +11,8 @@
     {{/artists}}
   </ul>
 {{else}}
-  <p>
-    {{empty_library_message}}
+  <p class="ui-state-highlight ui-corner-all">
+    <span class="ui-icon ui-icon-info"></span>
+    <strong>{{empty_library_message}}</strong>
   </p>
 {{/if}}

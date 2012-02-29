@@ -5,3 +5,4 @@ public/app.css
 public/library
 node_modules/
 *.tmp
+.build.timestamp

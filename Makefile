@@ -16,7 +16,12 @@ stylus=node_modules/stylus/bin/stylus
 .PHONY: build clean watch
 SHELL=bash
 
-build: $(serverjs) $(appjs) $(appcss)
+build: .build.timestamp
+	@: # suppress 'nothing to be done' message
+.build.timestamp: $(serverjs) $(appjs) $(appcss)
+	@touch $@
+	@echo done building
+	@echo
 
 $(serverjs): $(server_src) $(mpd_lib) $(lib)/mpdconf.js
 	$(coffee) -p -c $(server_src) >$@.tmp

@@ -1,7 +1,6 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
-* auto-scroll playlist window and library window appropriately
 * fix some songs error message when uploading and auto-queuing if you upload
   a bunch at once
 
@@ -64,3 +63,6 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * prepend '!' to a search word to NOT match the word. '\!' to literally match
   '!'. '\\' to literally match '\'
 * ability to upload zip files
+* smarter anticipation of commands to avoid the glitchy behavior when you do
+  a repetitive action quickly, such as turning the volume down incrementally
+  or moving a track down one space at a time

@@ -23,6 +23,22 @@ stream = null
 want_to_queue = []
 MARGIN = 10
 
+# cache jQuery objects
+$document = $(document)
+$playlist_items = $("#playlist-items")
+$dynamic_mode = $("#dynamic-mode")
+$pl_btn_repeat = $("#pl-btn-repeat")
+$stream_btn = $("#stream-btn")
+$lib_tabs = $("#lib-tabs")
+$upload_tab = $("#lib-tabs .upload-tab")
+$library = $("#library")
+$track_slider = $("#track-slider")
+$nowplaying = $("#nowplaying")
+$nowplaying_elapsed = $nowplaying.find(".elapsed")
+$nowplaying_left = $nowplaying.find(".left")
+$vol_slider = $("#vol-slider")
+
+
 flushWantToQueue = ->
   mpd.queueFiles want_to_queue
   want_to_queue = []
@@ -37,24 +53,23 @@ shuffle = (array) ->
 
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
-  $("#dynamic-mode")
+  $dynamic_mode
     .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
     .button("option", "disabled", not mpd.server_status?.dynamic_mode?)
     .button("refresh")
 
   repeat_state = getRepeatStateName()
-  $("#pl-btn-repeat")
+  $pl_btn_repeat
     .button("option", "label", "Repeat: #{repeat_state}")
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
 
   # disable stream button if we don't have it set up
-  $("#stream-btn")
+  $stream_btn
     .button("option", "disabled", not mpd.server_status?.stream_httpd_port?)
     .button("refresh")
 
   # show/hide upload
-  $upload_tab = $("#lib-tabs .upload-tab")
   $upload_tab.removeClass("ui-state-disabled")
   $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
 
@@ -64,15 +79,16 @@ renderPlaylist = ->
   context =
     playlist: mpd.playlist.item_list
     server_status: mpd.server_status
-  $("#playlist-items").html Handlebars.templates.playlist(context)
-
+  scroll_top = $playlist_items.scrollTop()
+  $playlist_items.html Handlebars.templates.playlist(context)
   refreshSelection()
   labelPlaylistItems()
+  $playlist_items.scrollTop(scroll_top)
 
 labelPlaylistItems = ->
   cur_item = mpd.status?.current_item
   # label the old ones
-  $("#playlist .pl-item").removeClass('current').removeClass('old')
+  $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
   if cur_item? and mpd.server_status?.dynamic_mode
     for pos in [0...cur_item.pos]
       id = mpd.playlist.item_list[pos].id
@@ -90,7 +106,7 @@ refreshSelection = ->
   return unless mpd?.playlist?.item_table?
 
   # clear all selection
-  $("#playlist-items .pl-item").removeClass('selected').removeClass('cursor')
+  $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor')
 
   if selection.type is 'playlist'
     # if any selected ids are not in mpd.playlist, unselect them
@@ -111,9 +127,11 @@ renderLibrary = ->
   context =
     artists: mpd.search_results.artists
     empty_library_message: if mpd.haveFileListCache then "No Results" else "loading..."
-  $("#library").html Handlebars.templates.library(context)
+
+  scroll_top = $library.scrollTop()
+  $library.html Handlebars.templates.library(context)
   # auto expand small datasets
-  $artists = $("#library").children("ul").children("li")
+  $artists = $library.children("ul").children("li")
   node_count = $artists.length
   node_count_limit = 20
   expand_stuff = ($li_set) ->
@@ -133,6 +151,8 @@ renderLibrary = ->
         expand_stuff $sub_li_set
   expand_stuff $artists
 
+  $library.scrollTop(scroll_top)
+
 # returns how many seconds we are into the track
 getCurrentTrackPosition = ->
   if mpd.status.track_start_date? and mpd.status.state == "play"
@@ -150,11 +170,11 @@ updateSliderPos = ->
     disabled = true
     elapsed = time = slider_pos = 0
 
-  $("#track-slider")
+  $track_slider
     .slider("option", "disabled", disabled)
     .slider("option", "value", slider_pos)
-  $("#nowplaying .elapsed").html formatTime(elapsed)
-  $("#nowplaying .left").html formatTime(time)
+  $nowplaying_elapsed.html formatTime(elapsed)
+  $nowplaying_left.html formatTime(time)
 
 renderNowPlaying = ->
   # set window title
@@ -177,16 +197,16 @@ renderNowPlaying = ->
     stop: ['ui-icon-pause', 'ui-icon-play']
     pause: ['ui-icon-pause', 'ui-icon-play']
   [old_class, new_class] = toggle_icon[state]
-  $("#nowplaying .toggle span").removeClass(old_class).addClass(new_class)
+  $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class)
 
   # hide seeker bar if stopped
-  $("#track-slider").slider "option", "disabled", state == "stop"
+  $track_slider.slider "option", "disabled", state == "stop"
 
   updateSliderPos()
 
   # update volume pos
   if (vol = mpd.status?.volume)? and not user_is_volume_sliding
-    $("#vol-slider").slider 'option', 'value', vol
+    $vol_slider.slider 'option', 'value', vol
 
 render = ->
   $("#playlist-window").toggle(mpd_alive)
@@ -247,7 +267,7 @@ handleDeletePressed = ->
 
 changeStreamStatus = (value) ->
   return unless (port = mpd.server_status?.stream_httpd_port)?
-  $("#stream-btn")
+  $stream_btn
     .prop("checked", value)
     .button("refresh")
   if value
@@ -295,6 +315,8 @@ nextRepeatState = ->
 
 keyboard_handlers = do ->
   upDownHandler = (event) ->
+    return unless mpd.playlist.item_list.length
+
     if event.keyCode == 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1
@@ -318,6 +340,29 @@ keyboard_handlers = do ->
         selection.cursor = mpd.playlist.item_list[default_index].id
         (selection.playlist_ids = {})[selection.cursor] = true
       refreshSelection()
+
+    if selection.type is 'playlist'
+      # scroll playlist into view of selection
+      top_pos = null
+      top_id = null
+      bottom_pos = null
+      bottom_id = null
+      for id of selection.playlist_ids
+        item_pos = mpd.playlist.item_table[id].pos
+        if not top_pos? or item_pos < top_pos
+          top_pos = item_pos
+          top_id = id
+        if not bottom_pos? or item_pos > bottom_pos
+          bottom_pos = item_pos
+          bottom_id = id
+      if top_pos?
+        selection_top = $("#playlist-track-#{top_id}").offset().top - $playlist_items.offset().top
+        selection_bottom = ($bottom_item = $("#playlist-track-#{bottom_id}")).offset().top + $bottom_item.height() - $playlist_items.offset().top - $playlist_items.height()
+        pl_items_scroll = $playlist_items.scrollTop()
+        if selection_top < 0
+          $playlist_items.scrollTop pl_items_scroll + selection_top
+        else if selection_bottom > 0
+          $playlist_items.scrollTop pl_items_scroll + selection_bottom
 
   leftRightHandler = (event) ->
     if event.keyCode == 37 # left
@@ -447,17 +492,18 @@ keyboard_handlers = do ->
             modal: true
             title: "Keyboard Shortcuts"
             minWidth: 600
-            height: $(document).height() - 40
+            height: $document.height() - 40
             close: -> $("#shortcuts").remove()
         else
           clickTab 'library'
           $("#lib-filter").focus().select()
 
+removeContextMenu = -> $("#menu").remove()
 
 setUpUi = ->
-  $(document).on 'mouseover', '.hoverable', (event) ->
+  $document.on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
-  $(document).on 'mouseout', '.hoverable', (event) ->
+  $document.on 'mouseout', '.hoverable', (event) ->
     $(this).removeClass "ui-state-hover"
   $(".jquery-button").button()
 
@@ -466,21 +512,19 @@ setUpUi = ->
     mpd.clear()
   $pl_window.on 'click', 'button.shuffle', ->
     mpd.shuffle()
-  $("#pl-btn-repeat").on 'click', ->
+  $pl_btn_repeat.on 'click', ->
     nextRepeatState()
-  $pl_window.on 'click', '#dynamic-mode', ->
+  $dynamic_mode.on 'click', ->
     value = $(this).prop("checked")
     setDynamicMode(value)
     return false
 
-  $playlist = $("#playlist")
-  $playlist.on 'dblclick', '.pl-item', (event) ->
+  $playlist_items.on 'dblclick', '.pl-item', (event) ->
     track_id = $(this).data('id')
     mpd.playId track_id
 
-  removeContextMenu = -> $("#menu").remove()
-  $playlist.on 'contextmenu', (event) -> return event.altKey
-  $playlist.on 'mousedown', '.pl-item', (event) ->
+  $playlist_items.on 'contextmenu', (event) -> return event.altKey
+  $playlist_items.on 'mousedown', '.pl-item', (event) ->
     $("#lib-filter").blur()
     if event.button == 0
       event.preventDefault()
@@ -524,7 +568,7 @@ setUpUi = ->
             track_id: null
             distance: null
             direction: null
-          for item in $playlist.find(".pl-item").get()
+          for item in $playlist_items.find(".pl-item").get()
             $item = $(item)
             pos = $item.offset()
             height = $item.height()
@@ -545,12 +589,12 @@ setUpUi = ->
           return best
 
         abortDrag = ->
-          $(document)
+          $document
             .off('mousemove', onDragMove)
             .off('mouseup', onDragEnd)
 
           if started_drag
-            $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+            $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
             started_drag = false
 
         onDragMove = (event) ->
@@ -559,7 +603,7 @@ setUpUi = ->
             started_drag = true if dist > 64
             return unless started_drag
           result = getDragPosition(event.pageX, event.pageY)
-          $playlist.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+          $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
           $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
         onDragEnd = (event) ->
@@ -578,7 +622,7 @@ setUpUi = ->
             refreshSelection()
           abortDrag()
 
-        $(document)
+        $document
           .on('mousemove', onDragMove)
           .on('mouseup', onDragEnd)
 
@@ -596,6 +640,7 @@ setUpUi = ->
       if selection.type isnt 'playlist' or not selection.playlist_ids[track_id]?
         selection.type = 'playlist'
         (selection.playlist_ids = {})[track_id] = true
+        selection.cursor = track_id
         refreshSelection()
 
       # adds a new context menu to the document
@@ -619,14 +664,14 @@ setUpUi = ->
         return true
 
   # don't remove selection in playlist click
-  $playlist.on 'mousedown', -> false
+  $playlist_items.on 'mousedown', -> false
 
   # delete context menu
-  $(document).on 'mousedown', ->
+  $document.on 'mousedown', ->
     removeContextMenu()
     selection.type = null
     refreshSelection()
-  $(document).on 'keydown', (event) ->
+  $document.on 'keydown', (event) ->
     if (handler = keyboard_handlers[event.keyCode])? and
         (not handler.ctrl? or handler.ctrl == event.ctrlKey) and
         (not handler.alt? or handler.alt == event.altKey) and
@@ -689,7 +734,7 @@ setUpUi = ->
         action()
         return false
 
-  $("#track-slider").slider
+  $track_slider.slider
     step: 0.0001
     min: 0
     max: 1
@@ -697,13 +742,13 @@ setUpUi = ->
       return if not event.originalEvent?
       mpd.seek ui.value * mpd.status.time
     slide: (event, ui) ->
-      $("#nowplaying .elapsed").html formatTime(ui.value * mpd.status.time)
+      $nowplaying_elapsed.html formatTime(ui.value * mpd.status.time)
     start: (event, ui) -> user_is_seeking = true
     stop: (event, ui) -> user_is_seeking = false
   setVol = (event, ui) ->
     return if not event.originalEvent?
     mpd.setVolume ui.value
-  $("#vol-slider").slider
+  $vol_slider.slider
     step: 0.01
     min: 0
     max: 1
@@ -714,7 +759,6 @@ setUpUi = ->
   # move the slider along the path
   schedule 100, updateSliderPos
 
-  $stream_btn = $("#stream-btn")
   $stream_btn.button
     icons:
       primary: "ui-icon-signal-diag"
@@ -722,7 +766,6 @@ setUpUi = ->
     value = $(this).prop("checked")
     changeStreamStatus value
 
-  $lib_tabs = $("#lib-tabs")
   $lib_tabs.on 'mouseover', 'li', (event) ->
     $(this).addClass 'ui-state-hover'
   $lib_tabs.on 'mouseout', 'li', (event) ->
@@ -770,7 +813,7 @@ handleResize = ->
   $left_window.height MARGIN
 
   # then fit back up to the window
-  $nowplaying.width $(document).width() - MARGIN * 2
+  $nowplaying.width $document.width() - MARGIN * 2
   second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN
   $left_window.offset
     left: MARGIN
@@ -788,7 +831,7 @@ handleResize = ->
   $pl_header = $pl_window.find("#playlist .header")
   $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
-$(document).ready ->
+$document.ready ->
   socket = io.connect()
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg

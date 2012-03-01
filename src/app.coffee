@@ -28,16 +28,17 @@ $document = $(document)
 $playlist_items = $("#playlist-items")
 $dynamic_mode = $("#dynamic-mode")
 $pl_btn_repeat = $("#pl-btn-repeat")
-$users_display = $("#users-display")
 $stream_btn = $("#stream-btn")
 $lib_tabs = $("#lib-tabs")
 $upload_tab = $("#lib-tabs .upload-tab")
+$chat_tab = $("#lib-tabs .chat-tab")
 $library = $("#library")
 $track_slider = $("#track-slider")
 $nowplaying = $("#nowplaying")
 $nowplaying_elapsed = $nowplaying.find(".elapsed")
 $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
+$chat = $("#chat")
 
 
 flushWantToQueue = ->
@@ -73,8 +74,6 @@ renderPlaylistButtons = ->
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
 
-  $users_display.html("users: #{mpd.server_status?.users.join(", ")}")
-
   # disable stream button if we don't have it set up
   $stream_btn
     .button("option", "disabled", not mpd.server_status?.stream_httpd_port?)
@@ -83,6 +82,12 @@ renderPlaylistButtons = ->
   # show/hide upload
   $upload_tab.removeClass("ui-state-disabled")
   $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
+
+  chat_status_text = ""
+  if (users = mpd.server_status?.users)?
+    chat_status_text = " (#{users.length - 1})" if users.length > 1
+    $chat.html Handlebars.templates.chat({users: users})
+  $chat_tab.find("span").text("Chat#{chat_status_text}")
 
   labelPlaylistItems()
 
@@ -784,6 +789,7 @@ setUpUi = ->
   tabs = [
     'library'
     'upload'
+    'chat'
   ]
 
   unselectTabs = ->

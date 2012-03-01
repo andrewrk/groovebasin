@@ -9,6 +9,12 @@ border-radius()
   -khtml-border-radius arguments
   border-radius arguments
 
+selected-div()
+  border 1px solid #222
+  background #00498F url(vendor/css/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat
+  font-weight bold
+  color #fff
+
 html
   background url(vendor/css/dot-luv/images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png)
 
@@ -118,6 +124,9 @@ body
       margin-left 9px
       ul
         margin-left 16px
+
+    div.selected
+      selected-div()
   
 #lib-filter
   margin 4px
@@ -190,10 +199,7 @@ body
     color #555555
 
   div.selected
-    border 1px solid #222
-    background #00498F url(vendor/css/dot-luv/images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat
-    font-weight bold
-    color #fff
+    selected-div()
   
   div.current
     border 1px solid #096AC8

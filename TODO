@@ -1,5 +1,8 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* ability to select artists, albums, tracks in library
+* ability to shift+click in library (implement selection.cursor)
+* make right click menu work
+  - queue, queue next
+  - download
 * ability to drag artists, albums, tracks to playlist
 
 * option to not auto-queue uploaded songs

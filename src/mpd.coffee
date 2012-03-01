@@ -2,6 +2,7 @@
 #   artists: [sorted list of {artist structure}],
 #   track_table: {"track file" => {track structure}},
 #   artist_table: {"artist name" => {artist structure}},
+#   album_table: {"album key" => {album structure}},
 # }
 # artist structure: {
 #   name: "Artist Name",
@@ -270,7 +271,7 @@ exports.Mpd = class Mpd
   buildArtistAlbumTree: (tracks, library) =>
     # determine set of albums
     library.track_table = {}
-    album_table = {}
+    library.album_table = {}
     for track in tracks
       library.track_table[track.file] = track
       if track.album_name == ""
@@ -278,13 +279,13 @@ exports.Mpd = class Mpd
       else
         album_key = track.album_name + "\n"
       album_key = album_key.toLowerCase()
-      album = getOrCreate album_key, album_table, -> {name: track.album_name, year: track.year, tracks: []}
+      album = getOrCreate album_key, library.album_table, -> {name: track.album_name, year: track.year, tracks: [], key: album_key}
       album.tracks.push track
       album.year = album_year if not album.year?
 
     # find compilation albums and create artist objects
     artist_table = {}
-    for k, album of album_table
+    for k, album of library.album_table
       # count up all the artists and album artists mentioned in this album
       album_artists = {}
       album.tracks.sort trackComparator
@@ -390,9 +391,11 @@ exports.Mpd = class Mpd
         handlers.splice i, 1
         return
 
+  artistKey: (artist_name) =>
+    if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
+
   getArtistAlbums: (artist_name) =>
-    key = if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
-    return @search_results.artist_table[key].albums
+    return @search_results.artist_table[@artistKey(artist_name)].albums
 
   handleConnectionStart: =>
     @sendCommand 'subscribe Status'

@@ -1,7 +1,4 @@
 # convenience
-schedule = (delay, func) -> window.setInterval(func, delay)
-wait = (delay, func) -> setTimeout func, delay
-
 selection =
   type: null # 'library' or 'playlist'
   playlist_ids: {} # key is id, value is some dummy value
@@ -40,7 +37,6 @@ $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
 $chat = $("#chat")
 
-
 flushWantToQueue = ->
   i = 0
   files = []
@@ -52,14 +48,6 @@ flushWantToQueue = ->
     else
       i++
   mpd.queueFiles files
-
-shuffle = (array) ->
-  top = array.length
-  while --top > 0
-    current = Math.floor(Math.random() * (top + 1))
-    tmp = array[current]
-    array[current] = array[top]
-    array[top] = tmp
 
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
@@ -120,9 +108,13 @@ labelPlaylistItems = ->
 
 refreshSelection = ->
   return unless mpd?.playlist?.item_table?
+  return unless mpd?.search_results?.artist_table?
 
   # clear all selection
   $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor')
+  $library.find(".artist").removeClass('selected').removeClass('cursor')
+  $library.find(".album").removeClass('selected').removeClass('cursor')
+  $library.find(".track").removeClass('selected').removeClass('cursor')
 
   if selection.type is 'playlist'
     # if any selected ids are not in mpd.playlist, unselect them
@@ -138,6 +130,25 @@ refreshSelection = ->
       $playlist_track.addClass 'selected'
 
     $("#playlist-track-#{selection.cursor}").addClass('cursor') if selection.cursor?
+  else if selection.type is 'library'
+    things = [
+      ["artist_ids", "artist_table", "#lib-artist-"]
+      ["album_ids", "album_table", "#lib-album-"]
+      ["track_ids", "track_table", "#lib-track-"]
+    ]
+    for [sel_name, table_name, id_prefix] in things
+      # if any selected artists are not in mpd.search_results, unselect them
+      badIds = []
+      for id of selection[sel_name]
+        badIds.push id unless mpd.search_results[table_name][id]?
+      for id in badIds
+        delete selection[sel_name][id]
+
+      # highlight selected rows
+      for id of selection[sel_name]
+        $library_artist = $(id_prefix + Util.toHtmlId(id))
+        $library_artist.addClass 'selected'
+
 
 renderLibrary = ->
   context =
@@ -189,8 +200,8 @@ updateSliderPos = ->
   $track_slider
     .slider("option", "disabled", disabled)
     .slider("option", "value", slider_pos)
-  $nowplaying_elapsed.html formatTime(elapsed)
-  $nowplaying_left.html formatTime(time)
+  $nowplaying_elapsed.html Util.formatTime(elapsed)
+  $nowplaying_left.html Util.formatTime(time)
 
 renderNowPlaying = ->
   # set window title
@@ -238,19 +249,6 @@ render = ->
 
   handleResize()
 
-
-formatTime = (seconds) ->
-  seconds = Math.floor seconds
-  minutes = Math.floor seconds / 60
-  seconds -= minutes * 60
-  hours = Math.floor minutes / 60
-  minutes -= hours * 60
-  zfill = (n) ->
-    if n < 10 then "0" + n else "" + n
-  if hours != 0
-    return "#{hours}:#{zfill minutes}:#{zfill seconds}"
-  else
-    return "#{minutes}:#{zfill seconds}"
 
 toggleExpansion = ($li) ->
   $div = $li.find("> div")
@@ -696,11 +694,94 @@ setUpUi = ->
       return false
     return true
 
-  $library.on 'dblclick', 'div.track', (event) ->
-    mpd.queueFile $(this).data('file')
-
-  $library.on 'click', 'div.expandable > div.ui-icon', (event) ->
+  $library.on 'mousedown', 'div.expandable > div.ui-icon', (event) ->
     toggleExpansion $(this).closest("li")
+    return false
+
+  $library.on 'dblclick', 'div.track', (event) ->
+    queueFunc = if event.shiftKey then mpd.queueFileNext else mpd.queueFile
+    queueFunc $(this).data('file')
+
+  $library.on 'contextmenu', (event) -> return event.altKey
+
+  libraryMouseDown = (event, sel_name, key) ->
+    $("#lib-filter").blur()
+    if event.button == 0
+      event.preventDefault()
+      removeContextMenu()
+      skip_drag = false
+      if selection.type isnt 'library'
+        selection.type = 'library'
+        selection.artist_ids = {}
+        selection.album_ids = {}
+        selection.track_ids = {}
+        selection[sel_name][key] = true
+        selection.cursor = key
+      else if event.ctrlKey or event.shiftKey
+        skip_drag = true
+        if event.shiftKey and not event.ctrlKey
+          selection[sel_name] = {}
+        if event.shiftKey
+          #borken
+          old_pos = if selection.cursor? then mpd.search_results.item_table[selection.cursor].pos else 0
+          new_pos = mpd.playlist.item_table[key].pos
+          for i in [old_pos..new_pos]
+            selection.playlist_ids[mpd.playlist.item_list[i].id] = true
+        else if event.ctrlKey
+          if selection[sel_name][key]?
+            delete selection[sel_name][key]
+          else
+            selection[sel_name][key] = true
+          selection.cursor = key
+      else if not selection[sel_name][key]?
+        selection.artist_ids = {}
+        selection.album_ids = {}
+        selection.track_ids = {}
+        selection[sel_name][key] = true
+        selection.cursor = key
+
+      refreshSelection()
+    else if event.button = 2
+      return if event.altKey
+      event.preventDefault()
+
+      removeContextMenu()
+
+      if selection.type isnt 'library' or not selection[sel_name][key]?
+        selection.type = 'library'
+        selection.artist_ids = {}
+        selection.album_ids = {}
+        selection.track_ids = {}
+        selection[sel_name][key] = true
+        selection.cursor = key
+        refreshSelection()
+
+      # adds a new context menu to the document
+      $(Handlebars.templates.library_menu()).appendTo(document.body)
+      $menu = $("#menu") # get the newly created one
+      $menu.offset
+        left: event.pageX+1
+        top: event.pageY+1
+      # don't close menu when you click on the area next to a button
+      $menu.on 'mousedown', -> false
+      $menu.on 'click', '.queue', ->
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.download', ->
+        removeContextMenu()
+        return true
+
+  $library.on 'mousedown', '.artist', (event) ->
+    artist_key = mpd.artistKey($(this).find("span").text())
+    libraryMouseDown event, 'artist_ids', artist_key
+
+  $library.on 'mousedown', '.album', (event) ->
+    libraryMouseDown event, 'album_ids', $(this).data('key')
+
+  $library.on 'mousedown', '.track', (event) ->
+    libraryMouseDown event, 'track_ids', $(this).data('file')
+
+  $library.on 'mousedown', -> false
 
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
@@ -712,7 +793,7 @@ setUpUi = ->
       else
         # defer the setting of the text box until after the event loop to
         # work around a firefox bug
-        wait 0, ->
+        Util.wait 0, ->
           $(event.target).val("")
           mpd.search ""
       return false
@@ -725,7 +806,7 @@ setUpUi = ->
             files.push track.file
 
       if event.ctrlKey
-        shuffle(files)
+        Util.shuffle(files)
 
       if files.length > 2000
         return false unless confirm("You are about to queue #{files.length} songs.")
@@ -757,7 +838,7 @@ setUpUi = ->
       return if not event.originalEvent?
       mpd.seek ui.value * mpd.status.time
     slide: (event, ui) ->
-      $nowplaying_elapsed.html formatTime(ui.value * mpd.status.time)
+      $nowplaying_elapsed.html Util.formatTime(ui.value * mpd.status.time)
     start: (event, ui) -> user_is_seeking = true
     stop: (event, ui) -> user_is_seeking = false
   setVol = (event, ui) ->
@@ -772,7 +853,7 @@ setUpUi = ->
     stop: (event, ui) -> user_is_volume_sliding = false
 
   # move the slider along the path
-  schedule 100, updateSliderPos
+  Util.schedule 100, updateSliderPos
 
   $stream_btn.button
     icons:
@@ -816,7 +897,10 @@ setUpUi = ->
       want_to_queue.push file_name
 
 initHandlebars = ->
-  Handlebars.registerHelper 'time', formatTime
+  Handlebars.registerHelper 'time', Util.formatTime
+  Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(mpd.artistKey(s))}"
+  Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
+  Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
 
 handleResize = ->
   $nowplaying = $("#nowplaying")

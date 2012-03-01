@@ -5,6 +5,13 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
   - download
 * ability to drag artists, albums, tracks to playlist
 
+* online user interaction:
+  - one big chat room with everyone in it
+  - online users should be able to set their name
+    > should be stored persistently in the browser
+  - queued tracks should know which user queued them
+    > displayed as colors?
+  - library songs should know which user uploaded them if any
 * option to not auto-queue uploaded songs
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
@@ -14,7 +21,8 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to move a file to a better location based on its tags
 * put song files in an intelligent place when uploading
 * if you move a song that was chosen randomly, it and everything from
-  it to current song are marked not random (do we really want this? [yes])
+  it to current song are marked not random
+  - however, this would be bad when you drag the last song to be next with keyboard shortcuts
 * as part of lower casing for artist/album keys, change ñ to n, etc.
   - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
 * shift+down select another item, shift+up unselect it
@@ -47,7 +55,8 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
     and the album from whence it came. Do this for update as well.
   - ability to add song to library by URL
 * plugin API
-  - plugin to submit songs to last.fm
+  - plugin to scrobble songs to last.fm
+    > global and per-user scrobbling
   - plugin to import songs to library from youtube URL
   - wolfebin plugin?
   - move dynamic playlist mode functionality to a plugin

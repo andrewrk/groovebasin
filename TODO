@@ -1,8 +1,8 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
-* fix some songs error message when uploading and auto-queuing if you upload
-  a bunch at once
+* make the list of uploaded files go away after they're all done.
+* change the uploading spinny gif to fit color theme
 
 * option to not auto-queue uploaded songs
 * ability to password protect - make it so that not everybody can kill mpd,

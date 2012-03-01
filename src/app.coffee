@@ -40,8 +40,16 @@ $vol_slider = $("#vol-slider")
 
 
 flushWantToQueue = ->
-  mpd.queueFiles want_to_queue
-  want_to_queue = []
+  i = 0
+  files = []
+  while i < want_to_queue.length
+    file = want_to_queue[i]
+    if mpd.library.track_table[file]?
+      files.push file
+      want_to_queue.splice i, 1
+    else
+      i++
+  mpd.queueFiles files
 
 shuffle = (array) ->
   top = array.length

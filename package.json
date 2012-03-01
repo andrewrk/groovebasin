@@ -28,9 +28,7 @@
     "config": {
       "user_id": "mpd",
       "log_level": 2,
-      "http_port": 16242,
-      "mpd_host": "localhost",
-      "mpd_port": 6600,
+      "port": 16242,
       "mpd_conf": "/etc/mpd.conf"
     }
 }

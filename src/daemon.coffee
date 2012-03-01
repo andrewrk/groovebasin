@@ -35,11 +35,11 @@ app = http.createServer((request, response) ->
   else
     request.addListener 'end', ->
       fileServer.serve request, response
-).listen(process.env.npm_package_config_http_port)
+).listen(process.env.npm_package_config_port)
 io = socketio.listen(app)
 io.set 'log level', process.env.npm_package_config_log_level
 log = io.log
-log.info "Serving at http://localhost:#{process.env.npm_package_config_http_port}/"
+log.info "Serving at http://localhost:#{process.env.npm_package_config_port}/"
 
 # read mpd conf
 do ->
@@ -97,7 +97,7 @@ moveFile = (source, dest) ->
   util.pump in_stream, out_stream, -> fs.unlink source
 
 createMpdConnection = (cb) ->
-  net.connect process.env.npm_package_config_mpd_port, process.env.npm_package_config_mpd_host, cb
+  net.connect mpd_conf?.port ? 6600, mpd_conf?.bind_to_address ? "localhost", cb
 
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"

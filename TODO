@@ -1,6 +1,5 @@
 Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * render unknown albums and unknown artists the same in the playlist (blank)
-* learn mpd port from mpd.conf, don't require it in config
 * ability to select artists, albums, tracks in library
 * ability to drag artists, albums, tracks to playlist
 * auto-scroll playlist window and library window appropriately

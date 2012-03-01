@@ -231,7 +231,7 @@ exports.Mpd = class Mpd
   mpdTracksToTrackObjects: (mpd_tracks) =>
     tracks = []
     for mpd_track in mpd_tracks
-      artist_name = trim(mpd_track.Artist) || DEFAULT_ARTIST
+      artist_name = trim(mpd_track.Artist)
       track =
         file: mpd_track.file
         name: mpd_track.Title || mpd_track.file.substr mpd_track.file.lastIndexOf('/') + 1
@@ -389,6 +389,10 @@ exports.Mpd = class Mpd
       if h is handler
         handlers.splice i, 1
         return
+
+  getArtistAlbums: (artist_name) =>
+    key = if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
+    return @search_results.artist_table[key].albums
 
   handleConnectionStart: =>
     @sendCommand 'subscribe Status'

@@ -4,7 +4,7 @@
       <li>
         <div class="artist expandable">
           <div class="ui-icon ui-icon-triangle-1-e"></div>
-          <span>{{name}}</span>
+          <span>{{#if name}}{{name}}{{else}}[Unknown Artist]{{/if}}</span>
         </div>
         <ul></ul>
       </li>

@@ -223,7 +223,7 @@ toggleExpansion = ($li) ->
     if not $li.data('cached')
       $li.data 'cached', true
       $ul.html Handlebars.templates.albums
-        albums: mpd.search_results.artist_table[$div.find("span").text().toLowerCase()].albums
+        albums: mpd.getArtistAlbums($div.find("span").text())
       $ul.toggle()
 
   $ul.toggle()

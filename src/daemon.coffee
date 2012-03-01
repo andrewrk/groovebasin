@@ -15,6 +15,8 @@ status =
   stream_httpd_port: null
   upload_enabled: false
   download_enabled: false
+  users: []
+next_user_id = 0
 stickers_enabled = false
 mpd_conf = null
 
@@ -209,6 +211,9 @@ getRandomSongFiles = (count) ->
   files
 
 io.sockets.on 'connection', (socket) ->
+  user_id = "user_" + next_user_id
+  next_user_id += 1
+  status.users.push user_id
   mpd_socket = createMpdConnection ->
     log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->
@@ -227,7 +232,10 @@ io.sockets.on 'connection', (socket) ->
     value = JSON.parse data.toString()
     setDynamicMode value
 
-  socket.on 'disconnect', -> mpd_socket.end()
+  socket.on 'disconnect', ->
+    mpd_socket.end()
+    status.users = (id for id in status.users when id != user_id)
+    sendStatus()
 
 # our own mpd connection
 class DirectMpd extends mpd.Mpd

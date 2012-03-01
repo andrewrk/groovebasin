@@ -28,6 +28,7 @@ $document = $(document)
 $playlist_items = $("#playlist-items")
 $dynamic_mode = $("#dynamic-mode")
 $pl_btn_repeat = $("#pl-btn-repeat")
+$users_display = $("#users-display")
 $stream_btn = $("#stream-btn")
 $lib_tabs = $("#lib-tabs")
 $upload_tab = $("#lib-tabs .upload-tab")
@@ -71,6 +72,8 @@ renderPlaylistButtons = ->
     .button("option", "label", "Repeat: #{repeat_state}")
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
+
+  $users_display.html("users: #{mpd.server_status?.users.join(", ")}")
 
   # disable stream button if we don't have it set up
   $stream_btn

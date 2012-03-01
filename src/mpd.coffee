@@ -218,8 +218,8 @@ exports.Mpd = class Mpd
       current_track = {}
     for line in msg.split("\n")
       [key, value] = split_once line, ": "
-      if key == 'file'
-        flush_current_track()
+      continue if key == 'directory'
+      flush_current_track() if key == 'file'
       current_track[key] = value
     flush_current_track()
     mpd_tracks

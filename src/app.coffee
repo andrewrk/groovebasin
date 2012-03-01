@@ -688,7 +688,6 @@ setUpUi = ->
       return false
     return true
 
-  $library = $("#library")
   $library.on 'dblclick', 'div.track', (event) ->
     mpd.queueFile $(this).data('file')
 
@@ -835,9 +834,10 @@ handleResize = ->
 
   # make the inside containers fit
   $lib_header = $("#library-tab .window-header")
-  $("#library").height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
+  $library.height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
+  $("#upload").height $left_window.height() - $lib_tabs.height() - MARGIN
   $pl_header = $pl_window.find("#playlist .header")
-  $("#playlist-items").height $pl_window.height() - $pl_header.position().top - $pl_header.height()
+  $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
 $document.ready ->
   socket = io.connect()

@@ -1,21 +1,3 @@
-#!/usr/bin/env coffee
-
-# default configuration options. Leave this as valid JSON, not coffee-script;
-# we're using it as an example for the ~/.groovebasinrc file.
-# (leave off the "default_config = " in your config file)
-default_config = {
-  "user_id": "mpd",
-  "log_level": 2, # 0 => error, 1 => warn, 2 => info, 3 => debug
-  "http": {
-    "port": 16242
-  },
-  "mpd": {
-    "host": "localhost",
-    "port": 6600,
-    "conf": "/etc/mpd.conf",
-  }
-}
-
 fs = require 'fs'
 http = require 'http'
 net = require 'net'

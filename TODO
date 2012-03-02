@@ -6,7 +6,7 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to drag artists, albums, tracks to playlist
 
 * online user interaction:
-  - one big chat room with everyone in it
+  - hotkey to focus chat box
   - online users should be able to set their name
     > should be stored persistently in the browser
   - queued tracks should know which user queued them

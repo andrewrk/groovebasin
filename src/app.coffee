@@ -18,6 +18,7 @@ abortDrag = null
 clickTab = null
 stream = null
 want_to_queue = []
+chats = []
 MARGIN = 10
 
 # cache jQuery objects
@@ -49,6 +50,18 @@ flushWantToQueue = ->
       i++
   mpd.queueFiles files
 
+renderChat = ->
+  chat_status_text = ""
+  if (users = mpd.server_status?.users)?
+    # take ourselves out of the list of users
+    users = (user_id for user_id in users when user_id != mpd.user_id)
+    chat_status_text = " (#{users.length})" if users.length > 0
+    $chat.html Handlebars.templates.chat
+      users: users
+      chats: chats
+    $("#user-id").html(mpd.user_id)
+  $chat_tab.find("span").text("Chat#{chat_status_text}")
+
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
   $dynamic_mode
@@ -71,11 +84,7 @@ renderPlaylistButtons = ->
   $upload_tab.removeClass("ui-state-disabled")
   $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
 
-  chat_status_text = ""
-  if (users = mpd.server_status?.users)?
-    chat_status_text = " (#{users.length - 1})" if users.length > 1
-    $chat.html Handlebars.templates.chat({users: users})
-  $chat_tab.find("span").text("Chat#{chat_status_text}")
+  renderChat()
 
   labelPlaylistItems()
 
@@ -817,6 +826,19 @@ setUpUi = ->
   $lib_filter.on 'keyup', (event) ->
     mpd.search $(event.target).val()
 
+  $chat_input = $("#chat-input")
+  $chat_input.on 'keydown', (event) ->
+    event.stopPropagation()
+    if event.keyCode == 27
+      $(event.target).blur()
+      return false
+    else if event.keyCode == 13
+      message = $(event.target).val()
+      Util.wait 0, ->
+        $(event.target).val("")
+      mpd.sendChat message
+      return false
+
   actions =
     'toggle': togglePlayback
     'prev': mpd.prev
@@ -945,6 +967,9 @@ $document.ready ->
     renderPlaylistButtons()
   mpd.on 'serverstatus', ->
     renderPlaylistButtons()
+  mpd.on 'chat', (chat_object) ->
+    chats.push(chat_object)
+    renderChat()
   mpd.on 'connect', ->
     mpd_alive = true
     render()

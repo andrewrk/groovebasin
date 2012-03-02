@@ -51,6 +51,9 @@
 #
 # Call these methods:
 #   receive: (data) => # when you get data from mpd
+#
+# Set these fields:
+#   user_id # assigend from server
 
 ######################### global #####################
 exports ?= window
@@ -351,6 +354,7 @@ exports.Mpd = class Mpd
 
     @event_handlers = {}
     @haveFileListCache = false
+    @user_id = ""
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
@@ -369,6 +373,7 @@ exports.Mpd = class Mpd
       message: @readChannelMessages # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
     @channel_handlers =
       Status: @handleServerStatus
+      Chat: (msg) => @raiseEvent 'chat', JSON.parse msg
 
 
     # cache of library data from mpd. See comment at top of this file
@@ -398,7 +403,7 @@ exports.Mpd = class Mpd
     return @search_results.artist_table[@artistKey(artist_name)].albums
 
   handleConnectionStart: =>
-    @sendCommand 'subscribe Status'
+    @sendCommands ("subscribe #{channel}" for channel in ['Status', 'Chat'])
     @updateLibrary()
     @updateStatus()
     @updatePlaylist()
@@ -528,6 +533,11 @@ exports.Mpd = class Mpd
   handleServerStatus: (msg) =>
     @server_status = JSON.parse(msg)
     @raiseEvent 'serverstatus'
+  sendChat: (message) =>
+    chat_object =
+      user: @user_id
+      message: message
+    @sendCommand "sendmessage Chat #{JSON.stringify JSON.stringify chat_object}"
   # puts the search results in search_results
   search: (query) =>
     query = trim(query)

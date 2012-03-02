@@ -214,6 +214,7 @@ io.sockets.on 'connection', (socket) ->
   user_id = "user_" + next_user_id
   next_user_id += 1
   status.users.push user_id
+  socket.emit 'Identify', user_id
   mpd_socket = createMpdConnection ->
     log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->
@@ -252,6 +253,7 @@ class DirectMpd extends mpd.Mpd
       sendStatus()
     @updateFuncs.sticker = ->
       updateStickers()
+    @user_id = "[server]"
 
   rawSend: (data) =>
     try @mpd_socket.write data

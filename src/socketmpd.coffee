@@ -5,6 +5,8 @@ window.SocketMpd = class SocketMpd extends window.Mpd
     @socket = socket
     @socket.on 'FromMpd', (data) =>
       @receive data
+    @socket.on 'Identify', (user_id) =>
+      @user_id = user_id
     @socket.on 'connect', @handleConnectionStart
 
   rawSend: (msg) =>

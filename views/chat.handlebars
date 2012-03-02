@@ -1,7 +1,23 @@
-<ul>
-  {{#each users}}
-    <li>
-      {{this}}
-    </li>
-  {{/each}}
-</ul>
+{{#if users}}
+  online users:
+  <ul>
+    {{#each users}}
+      <li>
+        <span class="chat-user">{{this}}</span>
+      </li>
+    {{/each}}
+  </ul>
+{{else}}
+  <div>no one else is online</div>
+{{/if}}
+{{#if chats}}
+  <hr/>
+  chatter:
+  <ul>
+    {{#each chats}}
+      <li>
+        <span class="chat-user">{{user}}</span>: {{message}}
+      </li>
+    {{/each}}
+  </ul>
+{{/if}}

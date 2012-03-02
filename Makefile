@@ -1,7 +1,7 @@
 appjs=public/app.js
 appcss=public/app.css
 serverjs=server.js
-views=views/*.handlebars
+views=src/*.handlebars
 client_src=src/util.coffee src/mpd.coffee src/socketmpd.coffee src/app.coffee
 server_src=src/daemon.coffee
 styles=src/app.styl

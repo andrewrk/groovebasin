@@ -12,6 +12,8 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
   - queued tracks should know which user queued them
     > displayed as colors?
   - library songs should know which user uploaded them if any
+* Time column disappears when window is too thin
+* Time column can cut off part of 4-digit times
 * option to not auto-queue uploaded songs
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback

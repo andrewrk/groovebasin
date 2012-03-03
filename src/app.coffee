@@ -17,9 +17,13 @@ selection =
     this.ids.album = {}
     this.ids.track = {}
     this.ids.playlist = {}
-  selectOnly: (sel_name, key) ->
-    this.type = sel_name
+  fullClear: ->
     this.clear()
+    this.type = null
+    this.cursor = null
+  selectOnly: (sel_name, key) ->
+    this.clear()
+    this.type = sel_name
     this.ids[sel_name][key] = true
     this.cursor = key
 
@@ -421,8 +425,7 @@ keyboard_handlers = do ->
         if $("#menu").get().length > 0
           removeContextMenu()
           return
-        # clear selection
-        selection.clear()
+        selection.fullClear()
         refreshSelection()
     32: # space
       ctrl:    no

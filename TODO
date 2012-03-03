@@ -7,7 +7,6 @@ Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 
 * online user interaction:
   - hotkey to focus chat box
-  - online users should be able to change their name after setting it once
   - user names should be stored persistently in the browser
   - queued tracks should know which user queued them
     > displayed as colors?

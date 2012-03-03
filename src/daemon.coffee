@@ -238,7 +238,10 @@ io.sockets.on 'connection', (socket) ->
     value = JSON.parse data.toString()
     setDynamicMode value
   socket.on 'SetUserName', (data) ->
-    status.user_names[user_id] = data.toString()
+    if (user_name = data.toString()) != ""
+      status.user_names[user_id] = user_name
+    else
+      delete status.user_names[user_id]
     sendStatus()
 
   socket.on 'disconnect', ->

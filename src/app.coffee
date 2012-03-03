@@ -67,6 +67,9 @@ renderChat = ->
     if (user_name = mpd.getUserName())?
       $("#user-id").html(user_name + ": ")
       $("#chat-input").attr('placeholder', "chat")
+    else
+      $("#user-id").html("")
+      $("#chat-input").attr('placeholder', "your name")
   $chat_tab.find("span").text("Chat#{chat_status_text}")
 
 renderPlaylistButtons = ->
@@ -832,6 +835,10 @@ setUpUi = ->
       return false
   $lib_filter.on 'keyup', (event) ->
     mpd.search $(event.target).val()
+
+  $("#user-id").on 'click', (event) ->
+    socket.emit 'SetUserName', ""
+    $chat_input.focus().select()
 
   $chat_input = $("#chat-input")
   $chat_input.on 'keydown', (event) ->

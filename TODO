@@ -7,6 +7,9 @@ Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 
 * online user interaction:
   - hotkey to focus chat box
+  - join/left messages
+  - user is typing notices
+  - attention grabbers for chat activity
   - queued tracks should know which user queued them
     > displayed as colors?
   - library songs should know which user uploaded them if any

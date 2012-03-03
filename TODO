@@ -14,6 +14,8 @@ Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
   - queued tracks should know which user queued them
     > displayed as colors?
   - library songs should know which user uploaded them if any
+* shortcuts window should be scrollable with arrows
+* shortcuts window doesn't close with Escape after a Ctrl+F in Chrome
 * Time column disappears when window is too thin
 * Time column can cut off part of 4-digit times
 * option to not auto-queue uploaded songs

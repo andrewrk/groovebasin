@@ -7,11 +7,15 @@
 # artist structure: {
 #   name: "Artist Name",
 #   albums: [sorted list of {album structure}],
+#   pos: 29, # index into library.artists structure
 # }
 # album structure:  {
 #   name: "Album Name",
 #   year: 1999,
 #   tracks: [sorted list of {track structure}],
+#   artist: {artist structure}
+#   pos: 13, # index into artist.albums structure
+#   key: "album name", # the index into album_table
 # }
 # track structure: {
 #   name: "Track Name",
@@ -20,6 +24,7 @@
 #   album: {album structure},
 #   file: "Obtuse/Cloudy Sky/06. Temple of Trance.mp3",
 #   time: 263, # length in seconds
+#   pos: 99, # index into album.track structure
 # }
 # playlist structure: {
 #   item_list: [sorted list of {playlist item structure}],
@@ -283,6 +288,7 @@ exports.Mpd = class Mpd
         album_key = track.album_name + "\n"
       album_key = album_key.toLowerCase()
       album = getOrCreate album_key, library.album_table, -> {name: track.album_name, year: track.year, tracks: [], key: album_key}
+      track.album = album
       album.tracks.push track
       album.year = album_year if not album.year?
 
@@ -292,7 +298,9 @@ exports.Mpd = class Mpd
       # count up all the artists and album artists mentioned in this album
       album_artists = {}
       album.tracks.sort trackComparator
-      for track in album.tracks
+      for track, i in album.tracks
+        # cache the track indexes
+        track.pos = i
         album_artist_name = track.album_artist_name
         album_artists[album_artist_name.toLowerCase()] = 1
         album_artists[track.artist_name.toLowerCase()] = 1
@@ -307,6 +315,7 @@ exports.Mpd = class Mpd
         for track in album.tracks
           track.artist_disambiguation = track.artist_name
       artist = getOrCreate album_artist_name.toLowerCase(), artist_table, -> {name: album_artist_name, albums: []}
+      album.artist = artist
       artist.albums.push album
 
     # collect list of artists and sort albums
@@ -314,6 +323,8 @@ exports.Mpd = class Mpd
     various_artist = null
     for k, artist of artist_table
       artist.albums.sort albumComparator
+      # cache the album indexes
+      album.pos = i for album, i in artist.albums
       if artist.name == VARIOUS_ARTISTS
         various_artist = artist
       else
@@ -323,6 +334,9 @@ exports.Mpd = class Mpd
     library.artists.sort artistComparator
     # various artists goes first
     library.artists.splice 0, 0, various_artist if various_artist?
+
+    # cache the artist indexes
+    artist.pos = i for artist, i in library.artists
 
     library.artist_table = artist_table
 

@@ -653,8 +653,7 @@ setUpUi = ->
 
           else
             # we didn't end up dragging, select the item
-            (selection.ids.playlist = {})[track_id] = true
-            selection.cursor = track_id
+            selection.selectOnly 'playlist', track_id
             refreshSelection()
           abortDrag()
 
@@ -737,7 +736,62 @@ setUpUi = ->
         if event.shiftKey and not event.ctrlKey
           selection.clear()
         if event.shiftKey
-          # TODO
+          getLibSelPos = (type, key) ->
+            val =
+              artist: null
+              album: null
+              track: null
+            if key?
+              switch type
+                when 'track'
+                  val.track = mpd.search_results.track_table[key]
+                  val.album = val.track.album
+                  val.artist = val.album.artist
+                when 'album'
+                  val.album = mpd.search_results.album_table[key]
+                  val.artist = val.album.artist
+                when 'artist'
+                  val.artist = mpd.search_results.artist_table[key]
+            else
+              val.artist = mpd.search_results.artists[0]
+            return val
+          old_pos = getLibSelPos(selection.type, selection.cursor)
+          new_pos = getLibSelPos(sel_name, key)
+
+          # swap if positions are out of order
+          new_arr = [new_pos.artist?.pos, new_pos.album?.pos, new_pos.track?.pos]
+          old_arr = [old_pos.artist?.pos, old_pos.album?.pos, old_pos.track?.pos]
+          [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
+
+          libraryPositionEqual = (old_pos, new_pos) ->
+            old_arr = [old_pos.artist?.pos, old_pos.album?.pos, old_pos.track?.pos]
+            new_arr = [new_pos.artist?.pos, new_pos.album?.pos, new_pos.track?.pos]
+            return Util.compareArrays(old_arr, new_arr) is 0
+
+          nextLibraryPosition = (lib_pos) ->
+            if lib_pos.track?
+              lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
+              if not lib_pos.track?
+                lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos + 1]
+                if not lib_pos.album?
+                  lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
+            else if lib_pos.album?
+              lib_pos.track = lib_pos.album.tracks[0]
+            else if lib_pos.artist?
+              lib_pos.album = lib_pos.artist.albums[0]
+
+          selectLibraryPosition = (lib_pos) ->
+            if lib_pos.track?
+              selection.ids.track[lib_pos.track.file] = true
+            else if lib_pos.album?
+              selection.ids.album[lib_pos.album.key] = true
+            else if lib_pos.artist?
+              selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
+
+          while old_pos.artist?
+            selectLibraryPosition old_pos
+            break if libraryPositionEqual(old_pos, new_pos)
+            nextLibraryPosition old_pos
         else if event.ctrlKey
           if selection.ids[sel_name][key]?
             delete selection.ids[sel_name][key]
@@ -749,6 +803,11 @@ setUpUi = ->
         selection.selectOnly sel_name, key
 
       refreshSelection()
+
+      if not skip_drag
+        # we didn't end up dragging, select the item
+        selection.selectOnly sel_name, key
+        refreshSelection()
     else if event.button = 2
       return if event.altKey
       event.preventDefault()

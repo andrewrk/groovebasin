@@ -36,3 +36,11 @@ exports.toHtmlId = (string) ->
     else
       out += "_" + c.charCodeAt(0)
   return out
+
+# compares 2 arrays with positive integers, returning > 0, 0, or < 0
+exports.compareArrays = (arr1, arr2) ->
+  for val1, i1 in arr1
+    val2 = arr2[i1]
+    diff = (val1 ? -1) - (val2 ? -1)
+    return diff if diff isnt 0
+  return 0

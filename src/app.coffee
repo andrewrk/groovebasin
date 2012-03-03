@@ -1,11 +1,27 @@
-# convenience
 selection =
-  type: null # 'library' or 'playlist'
-  playlist_ids: {} # key is id, value is some dummy value
-  artist_ids: {}
-  album_ids: {}
-  track_ids: {}
+  ids:
+    playlist: {} # key is id, value is some dummy value
+    artist: {}
+    album: {}
+    track: {}
   cursor: null # the last touched id
+  type: null # 'playlist', 'artist', 'album', or 'track'
+  isLibrary: ->
+    return false if not this.type?
+    return this.type isnt 'playlist'
+  isPlaylist: ->
+    return false if not this.type?
+    return this.type is 'playlist'
+  clear: ->
+    this.ids.artist = {}
+    this.ids.album = {}
+    this.ids.track = {}
+    this.ids.playlist = {}
+  selectOnly: (sel_name, key) ->
+    this.type = sel_name
+    this.clear()
+    this.ids[sel_name][key] = true
+    this.cursor = key
 
 socket = null
 mpd = null
@@ -48,6 +64,28 @@ flushWantToQueue = ->
     else
       i++
   mpd.queueFiles files
+
+scrollPlaylistToSelection = ->
+  top_pos = null
+  top_id = null
+  bottom_pos = null
+  bottom_id = null
+  for id of selection.ids.playlist
+    item_pos = mpd.playlist.item_table[id].pos
+    if not top_pos? or item_pos < top_pos
+      top_pos = item_pos
+      top_id = id
+    if not bottom_pos? or item_pos > bottom_pos
+      bottom_pos = item_pos
+      bottom_id = id
+  if top_pos?
+    selection_top = $("#playlist-track-#{top_id}").offset().top - $playlist_items.offset().top
+    selection_bottom = ($bottom_item = $("#playlist-track-#{bottom_id}")).offset().top + $bottom_item.height() - $playlist_items.offset().top - $playlist_items.height()
+    pl_items_scroll = $playlist_items.scrollTop()
+    if selection_top < 0
+      $playlist_items.scrollTop pl_items_scroll + selection_top
+    else if selection_bottom > 0
+      $playlist_items.scrollTop pl_items_scroll + selection_bottom
 
 renderChat = ->
   chat_status_text = ""
@@ -132,39 +170,22 @@ refreshSelection = ->
   $library.find(".album").removeClass('selected').removeClass('cursor')
   $library.find(".track").removeClass('selected').removeClass('cursor')
 
-  if selection.type is 'playlist'
-    # if any selected ids are not in mpd.playlist, unselect them
-    badIds = []
-    for id of selection.playlist_ids
-      badIds.push id unless mpd.playlist.item_table[id]?
-    for id in badIds
-      delete selection.playlist_ids[id]
+  return unless selection.type?
+
+  things =
+    playlist: [selection.ids.playlist, mpd.playlist.item_table, "#playlist-track-", (x) -> x]
+    artist: [selection.ids.artist, mpd.search_results.artist_table, "#lib-artist-", Util.toHtmlId]
+    album: [selection.ids.album, mpd.search_results.album_table, "#lib-album-", Util.toHtmlId]
+    track: [selection.ids.track, mpd.search_results.track_table, "#lib-track-", Util.toHtmlId]
+  for sel_name, [ids, table, id_prefix, toId] of things
+    # if any selected artists are not in mpd.search_results, unselect them
+    delete ids[id] for id in (id for id of ids when not table[id]?)
 
     # highlight selected rows
-    for id of selection.playlist_ids
-      $playlist_track = $("#playlist-track-#{id}")
-      $playlist_track.addClass 'selected'
+    $(id_prefix + toId(id)).addClass 'selected' for id of ids
 
-    $("#playlist-track-#{selection.cursor}").addClass('cursor') if selection.cursor?
-  else if selection.type is 'library'
-    things = [
-      ["artist_ids", "artist_table", "#lib-artist-"]
-      ["album_ids", "album_table", "#lib-album-"]
-      ["track_ids", "track_table", "#lib-track-"]
-    ]
-    for [sel_name, table_name, id_prefix] in things
-      # if any selected artists are not in mpd.search_results, unselect them
-      badIds = []
-      for id of selection[sel_name]
-        badIds.push id unless mpd.search_results[table_name][id]?
-      for id in badIds
-        delete selection[sel_name][id]
-
-      # highlight selected rows
-      for id of selection[sel_name]
-        $library_artist = $(id_prefix + Util.toHtmlId(id))
-        $library_artist.addClass 'selected'
-
+    if selection.cursor? and sel_name is selection.type
+      $(id_prefix + toId(selection.cursor)).addClass('cursor')
 
 renderLibrary = ->
   context =
@@ -285,14 +306,14 @@ toggleExpansion = ($li) ->
   return false
 
 handleDeletePressed = ->
-  if selection.type is 'playlist'
+  if selection.isPlaylist()
     # remove items and select the item next in the list
     pos = mpd.playlist.item_table[selection.cursor].pos
-    mpd.removeIds (id for id of selection.playlist_ids)
+    mpd.removeIds (id for id of selection.ids.playlist)
     pos = mpd.playlist.item_list.length - 1 if pos >= mpd.playlist.item_list.length
     if pos > -1
       selection.cursor = mpd.playlist.item_list[pos].id
-      (selection.playlist_ids = {})[selection.cursor] = true if pos > -1
+      (selection.ids.playlist = {})[selection.cursor] = true if pos > -1
     refreshSelection()
 
 changeStreamStatus = (value) ->
@@ -354,45 +375,22 @@ keyboard_handlers = do ->
       default_index = 0
       dir = 1
     if event.ctrlKey
-      if selection.type is 'playlist'
+      if selection.isPlaylist()
         # re-order playlist items
-        mpd.shiftIds (id for id of selection.playlist_ids), dir
+        mpd.shiftIds (id for id of selection.ids.playlist), dir
     else
       # change selection
-      if selection.type is 'playlist'
+      if selection.isPlaylist()
         next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
         return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
         selection.cursor = mpd.playlist.item_list[next_pos].id
-        selection.playlist_ids = {} unless event.shiftKey
-        selection.playlist_ids[selection.cursor] = true
+        selection.ids.playlist = {} unless event.shiftKey
+        selection.ids.playlist[selection.cursor] = true
       else
-        selection.type = 'playlist'
-        selection.cursor = mpd.playlist.item_list[default_index].id
-        (selection.playlist_ids = {})[selection.cursor] = true
+        selection.selectOnly 'playlist', mpd.playlist.item_list[default_index].id
       refreshSelection()
 
-    if selection.type is 'playlist'
-      # scroll playlist into view of selection
-      top_pos = null
-      top_id = null
-      bottom_pos = null
-      bottom_id = null
-      for id of selection.playlist_ids
-        item_pos = mpd.playlist.item_table[id].pos
-        if not top_pos? or item_pos < top_pos
-          top_pos = item_pos
-          top_id = id
-        if not bottom_pos? or item_pos > bottom_pos
-          bottom_pos = item_pos
-          bottom_id = id
-      if top_pos?
-        selection_top = $("#playlist-track-#{top_id}").offset().top - $playlist_items.offset().top
-        selection_bottom = ($bottom_item = $("#playlist-track-#{bottom_id}")).offset().top + $bottom_item.height() - $playlist_items.offset().top - $playlist_items.height()
-        pl_items_scroll = $playlist_items.scrollTop()
-        if selection_top < 0
-          $playlist_items.scrollTop pl_items_scroll + selection_top
-        else if selection_bottom > 0
-          $playlist_items.scrollTop pl_items_scroll + selection_bottom
+    scrollPlaylistToSelection() if selection.isPlaylist()
 
   leftRightHandler = (event) ->
     if event.keyCode == 37 # left
@@ -424,7 +422,7 @@ keyboard_handlers = do ->
           removeContextMenu()
           return
         # clear selection
-        selection.type = null
+        selection.clear()
         refreshSelection()
     32: # space
       ctrl:    no
@@ -562,27 +560,25 @@ setUpUi = ->
       removeContextMenu()
       track_id = $(this).data('id')
       skip_drag = false
-      if selection.type isnt 'playlist'
-        selection.type = 'playlist'
-        (selection.playlist_ids = {})[track_id] = true
-        selection.cursor = track_id
+      if not selection.isPlaylist()
+        selection.selectOnly 'playlist', track_id
       else if event.ctrlKey or event.shiftKey
         skip_drag = true
         if event.shiftKey and not event.ctrlKey
-          selection.playlist_ids = {}
+          selection.ids.playlist = {}
         if event.shiftKey
           old_pos = if selection.cursor? then mpd.playlist.item_table[selection.cursor].pos else 0
           new_pos = mpd.playlist.item_table[track_id].pos
           for i in [old_pos..new_pos]
-            selection.playlist_ids[mpd.playlist.item_list[i].id] = true
+            selection.ids.playlist[mpd.playlist.item_list[i].id] = true
         else if event.ctrlKey
-          if selection.playlist_ids[track_id]?
-            delete selection.playlist_ids[track_id]
+          if selection.ids.playlist[track_id]?
+            delete selection.ids.playlist[track_id]
           else
-            selection.playlist_ids[track_id] = true
+            selection.ids.playlist[track_id] = true
           selection.cursor = track_id
-      else if not selection.playlist_ids[track_id]?
-        (selection.playlist_ids = {})[track_id] = true
+      else if not selection.ids.playlist[track_id]?
+        (selection.ids.playlist = {})[track_id] = true
         selection.cursor = track_id
 
       refreshSelection()
@@ -643,11 +639,11 @@ setUpUi = ->
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-            mpd.moveIds (id for id of selection.playlist_ids), new_pos
+            mpd.moveIds (id for id of selection.ids.playlist), new_pos
 
           else
             # we didn't end up dragging, select the item
-            (selection.playlist_ids = {})[track_id] = true
+            (selection.ids.playlist = {})[track_id] = true
             selection.cursor = track_id
             refreshSelection()
           abortDrag()
@@ -667,10 +663,8 @@ setUpUi = ->
 
       track_id = parseInt($(this).data('id'))
 
-      if selection.type isnt 'playlist' or not selection.playlist_ids[track_id]?
-        selection.type = 'playlist'
-        (selection.playlist_ids = {})[track_id] = true
-        selection.cursor = track_id
+      if not selection.isPlaylist() or not selection.ids.playlist[track_id]?
+        selection.selectOnly 'playlist', track_id
         refreshSelection()
 
       # adds a new context menu to the document
@@ -726,35 +720,23 @@ setUpUi = ->
       event.preventDefault()
       removeContextMenu()
       skip_drag = false
-      if selection.type isnt 'library'
-        selection.type = 'library'
-        selection.artist_ids = {}
-        selection.album_ids = {}
-        selection.track_ids = {}
-        selection[sel_name][key] = true
-        selection.cursor = key
+      if not selection.isLibrary()
+        selection.selectOnly sel_name, key
       else if event.ctrlKey or event.shiftKey
         skip_drag = true
         if event.shiftKey and not event.ctrlKey
-          selection[sel_name] = {}
+          selection.clear()
         if event.shiftKey
-          #borken
-          old_pos = if selection.cursor? then mpd.search_results.item_table[selection.cursor].pos else 0
-          new_pos = mpd.playlist.item_table[key].pos
-          for i in [old_pos..new_pos]
-            selection.playlist_ids[mpd.playlist.item_list[i].id] = true
+          # TODO
         else if event.ctrlKey
-          if selection[sel_name][key]?
-            delete selection[sel_name][key]
+          if selection.ids[sel_name][key]?
+            delete selection.ids[sel_name][key]
           else
-            selection[sel_name][key] = true
+            selection.ids[sel_name][key] = true
           selection.cursor = key
-      else if not selection[sel_name][key]?
-        selection.artist_ids = {}
-        selection.album_ids = {}
-        selection.track_ids = {}
-        selection[sel_name][key] = true
-        selection.cursor = key
+          selection.type = sel_name
+      else if not selection.ids[sel_name][key]?
+        selection.selectOnly sel_name, key
 
       refreshSelection()
     else if event.button = 2
@@ -763,13 +745,8 @@ setUpUi = ->
 
       removeContextMenu()
 
-      if selection.type isnt 'library' or not selection[sel_name][key]?
-        selection.type = 'library'
-        selection.artist_ids = {}
-        selection.album_ids = {}
-        selection.track_ids = {}
-        selection[sel_name][key] = true
-        selection.cursor = key
+      if not selection.isLibrary() or not selection.ids[sel_name][key]?
+        selection.selectOnly sel_name, key
         refreshSelection()
 
       # adds a new context menu to the document
@@ -789,13 +766,13 @@ setUpUi = ->
 
   $library.on 'mousedown', '.artist', (event) ->
     artist_key = mpd.artistKey($(this).find("span").text())
-    libraryMouseDown event, 'artist_ids', artist_key
+    libraryMouseDown event, 'artist', artist_key
 
   $library.on 'mousedown', '.album', (event) ->
-    libraryMouseDown event, 'album_ids', $(this).data('key')
+    libraryMouseDown event, 'album', $(this).data('key')
 
   $library.on 'mousedown', '.track', (event) ->
-    libraryMouseDown event, 'track_ids', $(this).data('file')
+    libraryMouseDown event, 'track', $(this).data('file')
 
   $library.on 'mousedown', -> false
 

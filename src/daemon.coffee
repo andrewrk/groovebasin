@@ -251,7 +251,10 @@ io.sockets.on 'connection', (socket) ->
     value = JSON.parse data.toString()
     setDynamicMode value
   socket.on 'SetUserName', (data) ->
-    if (user_name = data.toString()) != ""
+    user_name = data.toString().trim().split(/\s+/).join(" ")
+    if user_name != ""
+      user_name_limit = 20
+      user_name = user_name.substr(0, user_name_limit)
       status.user_names[user_id] = user_name
     else
       delete status.user_names[user_id]

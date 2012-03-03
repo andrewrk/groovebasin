@@ -104,10 +104,10 @@ renderChat = ->
       users: users
       chats: mpd.chats
     if mpd.hasUserName()
-      $("#user-id").html(mpd.getUserName() + ": ")
+      $("#user-id").text(mpd.getUserName() + ": ")
       $("#chat-input").attr('placeholder', "chat")
     else
-      $("#user-id").html("")
+      $("#user-id").text("")
       $("#chat-input").attr('placeholder', "your name")
   $chat_tab.find("span").text("Chat#{chat_status_text}")
 

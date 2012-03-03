@@ -301,6 +301,7 @@ toggleExpansion = ($li) ->
       $ul.html Handlebars.templates.albums
         albums: mpd.getArtistAlbums($div.find("span").text())
       $ul.toggle()
+      refreshSelection()
 
   $ul.toggle()
 

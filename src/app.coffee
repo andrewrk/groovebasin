@@ -53,13 +53,20 @@ flushWantToQueue = ->
 renderChat = ->
   chat_status_text = ""
   if (users = mpd.server_status?.users)?
+    user_id_to_user_name = (user_id) ->
+      mpd.server_status.user_names[user_id] ? user_id
     # take ourselves out of the list of users
-    users = (user_id for user_id in users when user_id != mpd.user_id)
+    users = (user_id_to_user_name user_id for user_id in users when user_id != mpd.user_id)
     chat_status_text = " (#{users.length})" if users.length > 0
+    # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
+    for chat_object in chats
+      chat_object.user_name = user_id_to_user_name chat_object.user_id
     $chat.html Handlebars.templates.chat
       users: users
       chats: chats
-    $("#user-id").html(mpd.user_id)
+    if (user_name = mpd.getUserName())?
+      $("#user-id").html(user_name + ": ")
+      $("#chat-input").attr('placeholder', "chat")
   $chat_tab.find("span").text("Chat#{chat_status_text}")
 
 renderPlaylistButtons = ->
@@ -836,7 +843,10 @@ setUpUi = ->
       message = $(event.target).val()
       Util.wait 0, ->
         $(event.target).val("")
-      mpd.sendChat message
+      if mpd.getUserName()?
+        mpd.sendChat message
+      else
+        socket.emit 'SetUserName', message
       return false
 
   actions =

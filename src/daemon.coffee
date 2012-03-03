@@ -16,6 +16,7 @@ status =
   upload_enabled: false
   download_enabled: false
   users: []
+  user_names: {}
 next_user_id = 0
 stickers_enabled = false
 mpd_conf = null
@@ -236,6 +237,9 @@ io.sockets.on 'connection', (socket) ->
     log.debug "DynamicMode is being turned #{data.toString()}"
     value = JSON.parse data.toString()
     setDynamicMode value
+  socket.on 'SetUserName', (data) ->
+    status.user_names[user_id] = data.toString()
+    sendStatus()
 
   socket.on 'disconnect', ->
     mpd_socket.end()

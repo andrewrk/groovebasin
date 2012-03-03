@@ -1,5 +1,5 @@
 {{#if users}}
-  online users:
+  other online users:
   <ul>
     {{#each users}}
       <li>
@@ -16,7 +16,7 @@
   <ul>
     {{#each chats}}
       <li>
-        <span class="chat-user">{{user}}</span>: {{message}}
+        <span class="chat-user">{{user_name}}</span>: {{message}}
       </li>
     {{/each}}
   </ul>

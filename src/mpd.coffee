@@ -396,6 +396,9 @@ exports.Mpd = class Mpd
         handlers.splice i, 1
         return
 
+  getUserName: =>
+    @server_status?.user_names[@user_id]
+
   artistKey: (artist_name) =>
     if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
 
@@ -536,7 +539,7 @@ exports.Mpd = class Mpd
     @raiseEvent 'serverstatus'
   sendChat: (message) =>
     chat_object =
-      user: @user_id
+      user_id: @user_id
       message: message
     @sendCommand "sendmessage Chat #{JSON.stringify JSON.stringify chat_object}"
   # puts the search results in search_results

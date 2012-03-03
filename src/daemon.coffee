@@ -230,7 +230,9 @@ io.sockets.on 'connection', (socket) ->
   user_id = "user_" + next_user_id
   next_user_id += 1
   status.users.push user_id
-  socket.emit 'Identify', user_id
+  socket.emit 'Initialize', JSON.stringify
+    user_id: user_id
+    chats: my_mpd.chats
   mpd_socket = createMpdConnection ->
     log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->

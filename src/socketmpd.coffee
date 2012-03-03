@@ -5,8 +5,10 @@ window.SocketMpd = class SocketMpd extends window.Mpd
     @socket = socket
     @socket.on 'FromMpd', (data) =>
       @receive data
-    @socket.on 'Identify', (user_id) =>
-      @user_id = user_id
+    @socket.on 'Initialize', (data) =>
+      stuff = JSON.parse data.toString()
+      @user_id = stuff.user_id
+      @chats = stuff.chats
     @socket.on 'connect', @handleConnectionStart
 
   rawSend: (msg) =>

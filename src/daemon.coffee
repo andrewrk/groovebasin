@@ -165,6 +165,17 @@ checkDynamicMode = ->
   previous_ids = all_ids
   sendStatus()
 
+scrubStaleUserNames = ->
+  keep_user_ids = {}
+  for user_id in status.users
+    keep_user_ids[user_id] = true
+  for chat_object in my_mpd.chats
+    keep_user_ids[chat_object.user_id] = true
+  log.debug "keep_ids #{(copy for copy of keep_user_ids)}"
+  for user_id of status.user_names
+    delete status.user_names[user_id] unless keep_user_ids[user_id]
+  sendStatus()
+
 sticker_name = "groovebasin.last-queued"
 updateStickers = ->
   my_mpd.sendCommand "sticker find song \"/\" \"#{sticker_name}\"", (msg) ->
@@ -247,7 +258,7 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'disconnect', ->
     mpd_socket.end()
     status.users = (id for id in status.users when id != user_id)
-    sendStatus()
+    scrubStaleUserNames()
 
 # our own mpd connection
 class DirectMpd extends mpd.Mpd
@@ -279,6 +290,7 @@ my_mpd.on 'error', (msg) ->
 my_mpd.on 'statusupdate', checkDynamicMode
 my_mpd.on 'playlistupdate', checkDynamicMode
 my_mpd.on 'libraryupdate', updateStickers
+my_mpd.on 'chat', scrubStaleUserNames
 
 # downgrade user permissions
 try process.setuid uid if (uid = process.env.npm_package_config_user_id)?

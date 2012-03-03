@@ -18,7 +18,6 @@ abortDrag = null
 clickTab = null
 stream = null
 want_to_queue = []
-chats = []
 MARGIN = 10
 
 # cache jQuery objects
@@ -53,19 +52,17 @@ flushWantToQueue = ->
 renderChat = ->
   chat_status_text = ""
   if (users = mpd.server_status?.users)?
-    user_id_to_user_name = (user_id) ->
-      mpd.server_status.user_names[user_id] ? user_id
     # take ourselves out of the list of users
-    users = (user_id_to_user_name user_id for user_id in users when user_id != mpd.user_id)
+    users = (mpd.userIdToUserName user_id for user_id in users when user_id != mpd.user_id)
     chat_status_text = " (#{users.length})" if users.length > 0
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
-    for chat_object in chats
-      chat_object.user_name = user_id_to_user_name chat_object.user_id
+    for chat_object in mpd.chats
+      chat_object.user_name = mpd.userIdToUserName chat_object.user_id
     $chat.html Handlebars.templates.chat
       users: users
-      chats: chats
-    if (user_name = mpd.getUserName())?
-      $("#user-id").html(user_name + ": ")
+      chats: mpd.chats
+    if mpd.hasUserName()
+      $("#user-id").html(mpd.getUserName() + ": ")
       $("#chat-input").attr('placeholder', "chat")
     else
       $("#user-id").html("")
@@ -837,6 +834,7 @@ setUpUi = ->
     mpd.search $(event.target).val()
 
   $("#user-id").on 'click', (event) ->
+    localStorage?.user_name = ""
     socket.emit 'SetUserName', ""
     $chat_input.focus().select()
 
@@ -850,9 +848,10 @@ setUpUi = ->
       message = $(event.target).val()
       Util.wait 0, ->
         $(event.target).val("")
-      if mpd.getUserName()?
+      if mpd.hasUserName()
         mpd.sendChat message
       else
+        localStorage?.user_name = message
         socket.emit 'SetUserName', message
       return false
 
@@ -984,17 +983,16 @@ $document.ready ->
     renderPlaylistButtons()
   mpd.on 'serverstatus', ->
     renderPlaylistButtons()
-  mpd.on 'chat', (chat_object) ->
-    chats.push(chat_object)
-    chats_limit = 20
-    chats.splice(0, chats.length - chats_limit) if chats.length > chats_limit
-    renderChat()
+  mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true
     render()
 
   setUpUi()
   initHandlebars()
+
+  if (user_name = localStorage?.user_name)?
+    socket.emit 'SetUserName', user_name
 
   $(window).resize handleResize
   render()

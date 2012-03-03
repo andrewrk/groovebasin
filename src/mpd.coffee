@@ -355,6 +355,7 @@ exports.Mpd = class Mpd
     @event_handlers = {}
     @haveFileListCache = false
     @user_id = ""
+    @chats = []
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
@@ -373,7 +374,7 @@ exports.Mpd = class Mpd
       message: @readChannelMessages # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
     @channel_handlers =
       Status: @handleServerStatus
-      Chat: (msg) => @raiseEvent 'chat', JSON.parse msg
+      Chat: @handleChat
 
 
     # cache of library data from mpd. See comment at top of this file
@@ -396,8 +397,19 @@ exports.Mpd = class Mpd
         handlers.splice i, 1
         return
 
+  hasUserName: =>
+    @server_status?.user_names[@user_id]?
   getUserName: =>
-    @server_status?.user_names[@user_id]
+    @userIdToUserName @user_id
+  userIdToUserName: (user_id) ->
+    return user_id if not @server_status?
+    user_name = @server_status.user_names[user_id]
+    return user_id if not user_name?
+    # disambiguate name collisions
+    for k, other_name of @server_status.user_names
+      continue if k == user_id
+      return "#{user_name} (#{user_id})" if other_name == user_name
+    return user_name
 
   artistKey: (artist_name) =>
     if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
@@ -534,6 +546,12 @@ exports.Mpd = class Mpd
           throw null
       for channel, messages of channel_to_messages
         @channel_handlers[channel] message for message in messages
+  handleChat: (msg) =>
+    chat_object = JSON.parse msg
+    @chats.push(chat_object)
+    chats_limit = 20
+    @chats.splice(0, @chats.length - chats_limit) if @chats.length > chats_limit
+    @raiseEvent 'chat'
   handleServerStatus: (msg) =>
     @server_status = JSON.parse(msg)
     @raiseEvent 'serverstatus'

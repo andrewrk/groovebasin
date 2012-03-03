@@ -527,6 +527,7 @@ exports.Mpd = class Mpd
         else if name == "message"
           (channel_to_messages[current_channel] ?= []).push value
         else
+          console.log msg
           throw null
       for channel, messages of channel_to_messages
         @channel_handlers[channel] message for message in messages

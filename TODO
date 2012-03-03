@@ -1,4 +1,4 @@
-Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
+Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to shift+click in library (implement selection.cursor)
 * make right click menu work
   - queue, queue next
@@ -35,12 +35,6 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
 * display any mpd status error message
-* ability to filter playlist
-* playlist management
-  - save
-  - display
-  - grab individual tracks
-  - switch to
 * ability to download songs in library
 * ability to download multiple songs at once
   - more intelligent behavior when you click download for multiple selection
@@ -60,7 +54,6 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
   - plugin to scrobble songs to last.fm
     > global and per-user scrobbling
   - plugin to import songs to library from youtube URL
-  - wolfebin plugin?
   - move dynamic playlist mode functionality to a plugin
 * file folder inbox to import stuff
 * take mpd's status into account. Make them editable?
@@ -79,3 +72,9 @@ Version 0.0.1 - I want to demo it at Hacker News meetup Tue March 6th 2012.
   a repetitive action quickly, such as turning the volume down incrementally
   or moving a track down one space at a time
 * make the list of uploaded files go away after they're all done.
+* ability to filter playlist
+* playlist management
+  - save
+  - display
+  - grab individual tracks
+  - switch to

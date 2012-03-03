@@ -3,5 +3,14 @@
   <li><a href="#" class="queue-next hoverable">Queue Next</a></li>
   <li><a href="#" class="queue-random hoverable">Queue in Random Order</a></li>
   <li><a href="#" class="queue-next-random hoverable">Queue Next in Random Order</a></li>
+  {{#if track}}
+    <li>
+      {{#if status.download_enabled}}
+        <a href="library/{{track.file}}" class="download hoverable" target="_blank">Download</a>
+      {{else}}
+        <span title="Download is disabled due to invalid server configuration.">Download</span>
+      {{/if}}
+    </li>
+  {{/if}}
 </ul>
 

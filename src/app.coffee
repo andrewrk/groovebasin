@@ -829,10 +829,14 @@ setUpUi = ->
         refreshSelection()
 
       # adds a new context menu to the document
-      $(Handlebars.templates.library_menu()).appendTo(document.body)
+      context =
+        status: mpd.server_status
+      if sel_name is 'track'
+        context.track = mpd.search_results.track_table[key]
+      $(Handlebars.templates.library_menu(context)).appendTo(document.body)
       $menu = $("#menu") # get the newly created one
       $menu.offset
-        left: event.pageX+1
+        left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
         top: event.pageY+1
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false

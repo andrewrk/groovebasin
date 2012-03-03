@@ -969,6 +969,8 @@ $document.ready ->
     renderPlaylistButtons()
   mpd.on 'chat', (chat_object) ->
     chats.push(chat_object)
+    chats_limit = 20
+    chats.splice(0, chats.length - chats_limit) if chats.length > chats_limit
     renderChat()
   mpd.on 'connect', ->
     mpd_alive = true

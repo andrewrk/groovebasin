@@ -487,6 +487,13 @@ keyboard_handlers = do ->
       alt:     no
       shift:   no
       handler: -> changeStreamStatus not stream?
+    84: # 't'
+      ctrl:    no
+      alt:     no
+      shift:   no
+      handler: ->
+        clickTab 'chat'
+        $("#chat-input").focus().select()
     85: # 'u'
       ctrl:    no
       alt:     no

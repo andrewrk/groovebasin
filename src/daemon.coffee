@@ -173,8 +173,12 @@ updateStickers = ->
       if name == "file"
         current_file = value
       else if name == "sticker"
-        [_, value] = mpd.split_once value, "="
-        my_mpd.library.track_table[current_file].last_queued = new Date(value)
+        value = mpd.split_once(value, "=")[1]
+        track = my_mpd.library.track_table[current_file]
+        if track?
+          track.last_queued = new Date(value)
+        else
+          log.error "#{current_file} has a last-queued sticker of #{value} but we don't have it in our library cache."
 
 getRandomSongFiles = (count) ->
   return [] if count == 0
@@ -243,7 +247,7 @@ class DirectMpd extends mpd.Mpd
   constructor: (@mpd_socket) ->
     super()
     @mpd_socket.on 'data', (data) =>
-      @receive data.toString()
+      @receive data
     @mpd_socket.on 'end', ->
       log.warn "server mpd disconnect"
     @mpd_socket.on 'error', ->

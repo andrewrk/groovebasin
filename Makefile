@@ -40,7 +40,7 @@ $(lib)/mpdconf.js: src/mpdconf.coffee | $(lib)
 	mv $@{.tmp,}
 
 $(appjs): $(views) $(client_src)
-	$(coffee) -p -c $(client_src) >$@.tmp
+	for f in $(client_src); do $(coffee) -p -c $$f >>$@.tmp; done
 	$(handlebars) $(views) -k if -k each -k hash >>$@.tmp
 	mv $@{.tmp,}
 

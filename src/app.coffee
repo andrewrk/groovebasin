@@ -220,6 +220,7 @@ renderLibrary = ->
   expand_stuff $artists
 
   $library.scrollTop(scroll_top)
+  refreshSelection()
 
 # returns how many seconds we are into the track
 getCurrentTrackPosition = ->
@@ -538,6 +539,33 @@ keyboard_handlers = do ->
 
 removeContextMenu = -> $("#menu").remove()
 
+getTrackSelPos = (track) ->
+  artist: track.album.artist
+  album: track.album
+  track: track
+
+getLibSelPos = (type, key) ->
+  val =
+    artist: null
+    album: null
+    track: null
+  if key?
+    switch type
+      when 'track'
+        val.track = mpd.search_results.track_table[key]
+        val.album = val.track.album
+        val.artist = val.album.artist
+      when 'album'
+        val.album = mpd.search_results.album_table[key]
+        val.artist = val.album.artist
+      when 'artist'
+        val.artist = mpd.search_results.artist_table[key]
+  else
+    val.artist = mpd.search_results.artists[0]
+  return val
+
+libPosToArr = (lib_pos) -> [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
+
 setUpUi = ->
   $document.on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -736,36 +764,17 @@ setUpUi = ->
         if event.shiftKey and not event.ctrlKey
           selection.clear()
         if event.shiftKey
-          getLibSelPos = (type, key) ->
-            val =
-              artist: null
-              album: null
-              track: null
-            if key?
-              switch type
-                when 'track'
-                  val.track = mpd.search_results.track_table[key]
-                  val.album = val.track.album
-                  val.artist = val.album.artist
-                when 'album'
-                  val.album = mpd.search_results.album_table[key]
-                  val.artist = val.album.artist
-                when 'artist'
-                  val.artist = mpd.search_results.artist_table[key]
-            else
-              val.artist = mpd.search_results.artists[0]
-            return val
           old_pos = getLibSelPos(selection.type, selection.cursor)
           new_pos = getLibSelPos(sel_name, key)
 
           # swap if positions are out of order
-          new_arr = [new_pos.artist?.pos, new_pos.album?.pos, new_pos.track?.pos]
-          old_arr = [old_pos.artist?.pos, old_pos.album?.pos, old_pos.track?.pos]
+          new_arr = libPosToArr(new_pos)
+          old_arr = libPosToArr(old_pos)
           [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
 
           libraryPositionEqual = (old_pos, new_pos) ->
-            old_arr = [old_pos.artist?.pos, old_pos.album?.pos, old_pos.track?.pos]
-            new_arr = [new_pos.artist?.pos, new_pos.album?.pos, new_pos.track?.pos]
+            old_arr = libPosToArr(old_pos)
+            new_arr = libPosToArr(new_pos)
             return Util.compareArrays(old_arr, new_arr) is 0
 
           nextLibraryPosition = (lib_pos) ->
@@ -826,7 +835,44 @@ setUpUi = ->
         top: event.pageY+1
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false
+      selectionToTrackIds = (random=false) ->
+        # render selection into a single object by file to remove duplicates
+        track_set = {}
+        selRenderArtist = (artist) ->
+          selRenderAlbum album for album in artist.albums
+        selRenderAlbum = (album) ->
+          selRenderTrack track for track in album.tracks
+        selRenderTrack = (track) ->
+          track_set[track.file] = libPosToArr(getTrackSelPos(track))
+
+        selRenderArtist(mpd.search_results.artist_table[key]) for key of selection.ids.artist
+        selRenderAlbum(mpd.search_results.album_table[key]) for key of selection.ids.album
+        selRenderTrack(mpd.search_results.track_table[file]) for file of selection.ids.track
+
+
+        if random
+          track_ids = (file for file of track_set)
+          Util.shuffle track_ids
+          return track_ids
+        else
+          track_arr = ({file: file, pos: pos} for file, pos of track_set)
+          track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
+          return (track.file for track in track_arr)
+
       $menu.on 'click', '.queue', ->
+        mpd.queueFiles selectionToTrackIds()
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-next', ->
+        mpd.queueFilesNext selectionToTrackIds()
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-random', ->
+        mpd.queueFiles selectionToTrackIds(true)
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-next-random', ->
+        mpd.queueFilesNext selectionToTrackIds(true)
         removeContextMenu()
         return false
       $menu.on 'click', '.download', ->

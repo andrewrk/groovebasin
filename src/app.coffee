@@ -829,11 +829,16 @@ setUpUi = ->
       Util.wait 0, ->
         $(event.target).val("")
       return false if message == ""
-      if mpd.hasUserName()
-        mpd.sendChat message
-      else
-        localStorage?.user_name = message
-        socket.emit 'SetUserName', message
+      if not mpd.hasUserName()
+        new_user_name = message
+      NICK = "/nick "
+      if message.substr(0, NICK.length) == NICK
+        new_user_name = message.substr(NICK.length)
+      if new_user_name?
+        localStorage?.user_name = new_user_name
+        socket.emit 'SetUserName', new_user_name
+        return false
+      mpd.sendChat message
       return false
 
   actions =

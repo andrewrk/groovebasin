@@ -825,9 +825,10 @@ setUpUi = ->
       $(event.target).blur()
       return false
     else if event.keyCode == 13
-      message = $(event.target).val()
+      message = $.trim($(event.target).val())
       Util.wait 0, ->
         $(event.target).val("")
+      return false if message == ""
       if mpd.hasUserName()
         mpd.sendChat message
       else

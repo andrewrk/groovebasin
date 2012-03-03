@@ -1,18 +1,21 @@
 Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
+* nextLibPos/prevLibPos should respect whether tree items are expanded or collapsed
 * ability to drag artists, albums, tracks to playlist
-* if you delete the selection.cursor error
-* press down in lib filter to move selection into library
-* up/down when library has selection
 * left/right should expand/collapse library tree when lib has selection
+* instead of manually blurring lib filter when clicking on playlist, find an
+  active text box if any and blur it.
+* enter in playlist with selection should play it
+* enter in library with selection should follow rules for lib-filter enter pressing
 
 * online user interaction:
   - join/left messages
-  - user is typing notices
+  - user is typing notices (typically this is not done in a room with > 2 people)
   - attention grabbers for chat activity
   - surround chatted urls with <a>
   - queued tracks should know which user queued them
     > displayed as colors?
   - library songs should know which user uploaded them if any
+    > this would require user authentication :-/
   - server-side chat logs
 * shortcuts window should be scrollable with arrows
 * shortcuts window doesn't close with Escape after a Ctrl+F in Chrome

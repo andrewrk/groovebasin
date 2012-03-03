@@ -69,6 +69,8 @@ flushWantToQueue = ->
       i++
   mpd.queueFiles files
 
+scrollLibraryToSelection = ->
+
 scrollPlaylistToSelection = ->
   top_pos = null
   top_id = null
@@ -317,9 +319,7 @@ handleDeletePressed = ->
     pos = mpd.playlist.item_table[selection.cursor].pos
     mpd.removeIds (id for id of selection.ids.playlist)
     pos = mpd.playlist.item_list.length - 1 if pos >= mpd.playlist.item_list.length
-    if pos > -1
-      selection.cursor = mpd.playlist.item_list[pos].id
-      (selection.ids.playlist = {})[selection.cursor] = true if pos > -1
+    selection.selectOnly 'playlist', mpd.playlist.item_list[pos].id if pos > -1
     refreshSelection()
 
 changeStreamStatus = (value) ->
@@ -384,19 +384,38 @@ keyboard_handlers = do ->
       if selection.isPlaylist()
         # re-order playlist items
         mpd.shiftIds (id for id of selection.ids.playlist), dir
+      else if selection.isLibrary()
+        # only move cursor
+        PASS
     else
       # change selection
       if selection.isPlaylist()
         next_pos = mpd.playlist.item_table[selection.cursor].pos + dir
         return if next_pos < 0 or next_pos >= mpd.playlist.item_list.length
         selection.cursor = mpd.playlist.item_list[next_pos].id
-        selection.ids.playlist = {} unless event.shiftKey
+        selection.clear() unless event.shiftKey
         selection.ids.playlist[selection.cursor] = true
+      else if selection.isLibrary()
+        next_pos = getLibSelPos(selection.type, selection.cursor)
+        if dir > 0 then nextLibPos(next_pos) else prevLibPos(next_pos)
+        return if not next_pos.artist?
+        selection.clear() unless event.shiftKey
+        if next_pos.track?
+          selection.type = 'track'
+          selection.cursor = next_pos.track.file
+        else if next_pos.album?
+          selection.type = 'album'
+          selection.cursor = next_pos.album.key
+        else
+          selection.type = 'artist'
+          selection.cursor = mpd.artistKey(next_pos.artist.name)
+        selection.ids[selection.type][selection.cursor] = true
       else
         selection.selectOnly 'playlist', mpd.playlist.item_list[default_index].id
       refreshSelection()
 
     scrollPlaylistToSelection() if selection.isPlaylist()
+    scrollLibraryToSelection() if selection.isLibrary()
 
   leftRightHandler = (event) ->
     if event.keyCode == 37 # left
@@ -567,6 +586,43 @@ getLibSelPos = (type, key) ->
 
 libPosToArr = (lib_pos) -> [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
 
+# modifies in place
+prevLibPos = (lib_pos) ->
+  if lib_pos.track?
+    lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos - 1]
+  else if lib_pos.album?
+    lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos - 1]
+    if lib_pos.album?
+      lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
+  else if lib_pos.artist?
+    lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos - 1]
+    if lib_pos.artist?
+      lib_pos.album = lib_pos.artist.albums[lib_pos.artist.albums.length - 1]
+      if lib_pos.album?
+        lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
+
+# modifies in place
+nextLibPos = (lib_pos) ->
+  if lib_pos.track?
+    lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
+    if not lib_pos.track?
+      lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos + 1]
+      if not lib_pos.album?
+        lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
+  else if lib_pos.album?
+    lib_pos.track = lib_pos.album.tracks[0]
+  else if lib_pos.artist?
+    lib_pos.album = lib_pos.artist.albums[0]
+
+selectLibraryPosition = (lib_pos) ->
+  if lib_pos.track?
+    selection.ids.track[lib_pos.track.file] = true
+  else if lib_pos.album?
+    selection.ids.album[lib_pos.album.key] = true
+  else if lib_pos.artist?
+    selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
+
+
 setUpUi = ->
   $document.on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -604,7 +660,7 @@ setUpUi = ->
       else if event.ctrlKey or event.shiftKey
         skip_drag = true
         if event.shiftKey and not event.ctrlKey
-          selection.ids.playlist = {}
+          selection.clear()
         if event.shiftKey
           old_pos = if selection.cursor? then mpd.playlist.item_table[selection.cursor].pos else 0
           new_pos = mpd.playlist.item_table[track_id].pos
@@ -617,8 +673,7 @@ setUpUi = ->
             selection.ids.playlist[track_id] = true
           selection.cursor = track_id
       else if not selection.ids.playlist[track_id]?
-        (selection.ids.playlist = {})[track_id] = true
-        selection.cursor = track_id
+        selection.selectOnly 'playlist', track_id
 
       refreshSelection()
       
@@ -778,30 +833,10 @@ setUpUi = ->
             new_arr = libPosToArr(new_pos)
             return Util.compareArrays(old_arr, new_arr) is 0
 
-          nextLibraryPosition = (lib_pos) ->
-            if lib_pos.track?
-              lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
-              if not lib_pos.track?
-                lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos + 1]
-                if not lib_pos.album?
-                  lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
-            else if lib_pos.album?
-              lib_pos.track = lib_pos.album.tracks[0]
-            else if lib_pos.artist?
-              lib_pos.album = lib_pos.artist.albums[0]
-
-          selectLibraryPosition = (lib_pos) ->
-            if lib_pos.track?
-              selection.ids.track[lib_pos.track.file] = true
-            else if lib_pos.album?
-              selection.ids.album[lib_pos.album.key] = true
-            else if lib_pos.artist?
-              selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
-
           while old_pos.artist?
             selectLibraryPosition old_pos
             break if libraryPositionEqual(old_pos, new_pos)
-            nextLibraryPosition old_pos
+            nextLibPos old_pos
         else if event.ctrlKey
           if selection.ids[sel_name][key]?
             delete selection.ids[sel_name][key]
@@ -899,34 +934,47 @@ setUpUi = ->
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
     event.stopPropagation()
-    if event.keyCode == 27
-      # if the box is blank, remove focus
-      if $(event.target).val().length == 0
-        $(event.target).blur()
-      else
-        # defer the setting of the text box until after the event loop to
-        # work around a firefox bug
-        Util.wait 0, ->
-          $(event.target).val("")
-          mpd.search ""
-      return false
-    else if event.keyCode == 13
-      # queue all the search results
-      files = []
-      for artist in mpd.search_results.artists
-        for album in artist.albums
-          for track in album.tracks
-            files.push track.file
+    switch event.keyCode
+      when 27
+        # if the box is blank, remove focus
+        if $(event.target).val().length == 0
+          $(event.target).blur()
+        else
+          # defer the setting of the text box until after the event loop to
+          # work around a firefox bug
+          Util.wait 0, ->
+            $(event.target).val("")
+            mpd.search ""
+        return false
+      when 13
+        # queue all the search results
+        files = []
+        for artist in mpd.search_results.artists
+          for album in artist.albums
+            for track in album.tracks
+              files.push track.file
 
-      if event.ctrlKey
-        Util.shuffle(files)
+        if event.ctrlKey
+          Util.shuffle(files)
 
-      if files.length > 2000
-        return false unless confirm("You are about to queue #{files.length} songs.")
+        if files.length > 2000
+          return false unless confirm("You are about to queue #{files.length} songs.")
 
-      func = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
-      func files
-      return false
+        func = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
+        func files
+        return false
+      when 40 # down
+        # select the first item in the library
+        selection.selectOnly 'artist', mpd.artistKey(mpd.search_results.artists[0].name)
+        refreshSelection()
+        $lib_filter.blur()
+        return false
+      when 38 # up
+        # select the last item in the library
+        selection.selectOnly 'artist', mpd.artistKey(mpd.search_results.artists[mpd.search_results.artists.length - 1].name)
+        refreshSelection()
+        $lib_filter.blur()
+        return false
   $lib_filter.on 'keyup', (event) ->
     mpd.search $(event.target).val()
 

@@ -384,9 +384,6 @@ keyboard_handlers = do ->
       if selection.isPlaylist()
         # re-order playlist items
         mpd.shiftIds (id for id of selection.ids.playlist), dir
-      else if selection.isLibrary()
-        # only move cursor
-        PASS
     else
       # change selection
       if selection.isPlaylist()

@@ -1,5 +1,5 @@
 Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* hold ctrl to move cursor without selection
+* library window should scroll down when you press up/down to move selection
 * double click artists and albums in library to queue them (respect the shift/ctrl rules)
 * ability to drag artists, albums, tracks to playlist
 * left/right should expand/collapse library tree when lib has selection
@@ -36,6 +36,8 @@ Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * as part of lower casing for artist/album keys, change ñ to n, etc.
   - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
 * shift+down select another item, shift+up unselect it
+* hold ctrl to move cursor without selection
+  - use alt for moving tracks up/down
 * dynamic mode populates twice when user clicks Clear
   - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
 * refactor - server_status stuff should not be in Mpd class, it should be in

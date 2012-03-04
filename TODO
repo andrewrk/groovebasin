@@ -1,3 +1,6 @@
+* if you select the last track in blink 182 enema of the state and press down,
+  it goes to the wrong track next
+
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child
 * online user interaction:
@@ -10,6 +13,8 @@
   - library songs should know which user uploaded them if any
     > this would require user authentication :-/
   - server-side chat logs
+* if you move a blue song such that it touches a non-blue song, it loses its
+  blueness
 * shortcuts window should be scrollable with arrows
 * shortcuts window doesn't close with Escape after a Ctrl+F in Chrome
 * Time column disappears when window is too thin
@@ -22,9 +27,10 @@
 * ability to edit tags
 * ability to move a file to a better location based on its tags
 * put song files in an intelligent place when uploading
-* if you move a song that was chosen randomly, it and everything from
-  it to current song are marked not random
-  - however, this would be bad when you drag the last song to be next with keyboard shortcuts
+* smarter anticipation of commands to avoid the glitchy behavior when you do
+  a repetitive action quickly, such as turning the volume down incrementally
+  or moving a track down one space at a time
+* make the list of uploaded files go away after they're all done.
 * as part of lower casing for artist/album keys, change ñ to n, etc.
   - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
 * shift+down select another item, shift+up unselect it
@@ -32,14 +38,10 @@
   - use alt for moving tracks up/down
 * dynamic mode populates twice when user clicks Clear
   - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
-* refactor - server_status stuff should not be in Mpd class, it should be in
-  GrooveBasinClient class or something like that.
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
 * display any mpd status error message
-* ability to download songs in library
 * ability to download multiple songs at once
-  - more intelligent behavior when you click download for multiple selection
 * library management
   - duplicate detection and elimination
     > if a song is byte for byte the same (check md5's) then ignore the
@@ -70,10 +72,6 @@
 * prepend '!' to a search word to NOT match the word. '\!' to literally match
   '!'. '\\' to literally match '\'
 * ability to upload zip files
-* smarter anticipation of commands to avoid the glitchy behavior when you do
-  a repetitive action quickly, such as turning the volume down incrementally
-  or moving a track down one space at a time
-* make the list of uploaded files go away after they're all done.
 * ability to filter playlist
 * playlist management
   - save

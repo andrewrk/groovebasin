@@ -38,7 +38,7 @@ At this point, Groove Basin will issue warnings telling you what to do next.
 
 ![Searching library](http://www.superjoesoftware.com/temp/groove-basin-5.png)
 ![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
-![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-3.png)
+![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-0.0.3.png)
 ![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)
 ![Drag and drop / multiselect upload](http://www.superjoesoftware.com/temp/groove-basin-1.png)
 
@@ -82,7 +82,7 @@ Example:
 
 ```
 $ npm config set groovebasin:mpd_conf ~/.mpd/mpd.conf
-$ npm config set groovebasin:http_port 80
+$ npm config set groovebasin:port 80
 ```
 
 ## Developing

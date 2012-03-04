@@ -722,7 +722,8 @@ setUpUi = ->
 
   $playlist_items.on 'contextmenu', (event) -> return event.altKey
   $playlist_items.on 'mousedown', '.pl-item', (event) ->
-    $("#lib-filter").blur()
+    # if any text box has focus, unfocus it
+    $(document.activeElement).blur()
     if event.button == 0
       event.preventDefault()
       # selecting / unselecting
@@ -883,7 +884,8 @@ setUpUi = ->
   $library.on 'contextmenu', (event) -> return event.altKey
 
   libraryMouseDown = (event, sel_name, key) ->
-    $("#lib-filter").blur()
+    # if any text box has focus, unfocus it
+    $(document.activeElement).blur()
     if event.button == 0
       event.preventDefault()
       removeContextMenu()

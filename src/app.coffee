@@ -34,7 +34,7 @@ base_title = document.title
 user_is_seeking = false
 user_is_volume_sliding = false
 started_drag = false
-abortDrag = null
+abortDrag = ->
 clickTab = null
 stream = null
 want_to_queue = []
@@ -725,6 +725,7 @@ queueLibSelection = (event) ->
 
 
 performDrag = (event, callbacks) ->
+  abortDrag()
   start_drag_x = event.pageX
   start_drag_y = event.pageY
 
@@ -736,6 +737,8 @@ performDrag = (event, callbacks) ->
     if started_drag
       $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
       started_drag = false
+
+    abortDrag = ->
 
   onDragMove = (event) ->
     if not started_drag
@@ -786,6 +789,7 @@ setUpUi = ->
 
   $playlist_items.on 'contextmenu', (event) -> return event.altKey
   $playlist_items.on 'mousedown', '.pl-item', (event) ->
+    return true if started_drag
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
     if event.button == 0

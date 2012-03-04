@@ -1,13 +1,13 @@
 {{#albums}}
   <li>
-  <div class="album expandable" id="{{albumid key}}" data-key="{{key}}">
+    <div class="album expandable" id="{{albumid key}}" data-key="{{key}}">
       <div class="ui-icon ui-icon-triangle-1-e"></div>
       <span>{{#if name}}{{name}}{{else}}[Unknown Album]{{/if}}</span>
     </div>
     <ul style="display: none;">
       {{#tracks}}
         <li>
-        <div class="track" id="{{trackid file}}" data-file="{{file}}">
+          <div class="track" id="{{trackid file}}" data-file="{{file}}">
             <span>{{#if track}}{{track}}. {{/if}}{{#if artist_disambiguation}}{{artist_disambiguation}} - {{/if}}{{name}}</span>
           </div>
         </li>

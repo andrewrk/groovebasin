@@ -723,6 +723,42 @@ queueLibSelection = (event) ->
   queueFunc selectionToFiles(event.altKey)
   return false
 
+
+performDrag = (callbacks) ->
+  start_drag_x = event.pageX
+  start_drag_y = event.pageY
+
+  abortDrag = ->
+    $document
+      .off('mousemove', onDragMove)
+      .off('mouseup', onDragEnd)
+
+    if started_drag
+      $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+      started_drag = false
+
+  onDragMove = (event) ->
+    if not started_drag
+      dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
+      started_drag = true if dist > 64
+      return unless started_drag
+    result = getDragPosition(event.pageX, event.pageY)
+    $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+    $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
+
+  onDragEnd = (event) ->
+    if started_drag
+      callbacks.complete getDragPosition(event.pageX, event.pageY), event
+    else
+      callbacks.cancel()
+    abortDrag()
+
+  $document
+    .on('mousemove', onDragMove)
+    .on('mouseup', onDragEnd)
+
+  onDragMove event
+
 setUpUi = ->
   $document.on 'mouseover', '.hoverable', (event) ->
     $(this).addClass "ui-state-hover"
@@ -780,48 +816,17 @@ setUpUi = ->
       
       # dragging
       if not skip_drag
-        start_drag_x = event.pageX
-        start_drag_y = event.pageY
-
-        abortDrag = ->
-          $document
-            .off('mousemove', onDragMove)
-            .off('mouseup', onDragEnd)
-
-          if started_drag
-            $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-            started_drag = false
-
-        onDragMove = (event) ->
-          if not started_drag
-            dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
-            started_drag = true if dist > 64
-            return unless started_drag
-          result = getDragPosition(event.pageX, event.pageY)
-          $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-          $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
-
-        onDragEnd = (event) ->
-          if started_drag
-            result = getDragPosition(event.pageX, event.pageY)
+        performDrag
+          complete: (result, event) ->
             delta =
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             mpd.moveIds (id for id of selection.ids.playlist), new_pos
-
-          else
+          cancel: ->
             # we didn't end up dragging, select the item
             selection.selectOnly 'playlist', track_id
             refreshSelection()
-          abortDrag()
-
-        $document
-          .on('mousemove', onDragMove)
-          .on('mouseup', onDragEnd)
-
-        onDragMove event
-
     else if event.button == 2
       return if event.altKey
       event.preventDefault()
@@ -928,47 +933,18 @@ setUpUi = ->
 
       # dragging
       if not skip_drag
-        start_drag_x = event.pageX
-        start_drag_y = event.pageY
-
-        abortDrag = ->
-          $document
-            .off('mousemove', onDragMove)
-            .off('mouseup', onDragEnd)
-
-          if started_drag
-            $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-            started_drag = false
-
-        onDragMove = (event) ->
-          if not started_drag
-            dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
-            started_drag = true if dist > 64
-            return unless started_drag
-          result = getDragPosition(event.pageX, event.pageY)
-          $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-          $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
-
-        onDragEnd = (event) ->
-          if started_drag
-            result = getDragPosition(event.pageX, event.pageY)
+        performDrag
+          complete: (result, event) ->
             delta =
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             files = selectionToFiles(event.altKey)
             mpd.queueFilesAtPos files, new_pos
-          else
+          cancel: ->
             # we didn't end up dragging, select the item
             selection.selectOnly sel_name, key
             refreshSelection()
-          abortDrag()
-
-        $document
-          .on('mousemove', onDragMove)
-          .on('mouseup', onDragEnd)
-
-        onDragMove event
     else if event.button = 2
       return if event.altKey
       event.preventDefault()

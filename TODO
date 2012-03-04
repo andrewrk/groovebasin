@@ -1,6 +1,3 @@
-Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* ability to drag artists, albums, tracks to playlist
-
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child
 * online user interaction:

@@ -104,7 +104,7 @@ scrollThingToSelection = ($scroll_area, helpers) ->
     else if selection_bottom > 0
       $scroll_area.scrollTop scroll_amt + selection_bottom
 
-selectionToTrackIds = (random=false) ->
+selectionToFiles = (random=false) ->
   # render selection into a single object by file to remove duplicates
   track_set = {}
   selRenderArtist = (artist) ->
@@ -119,13 +119,39 @@ selectionToTrackIds = (random=false) ->
   selRenderTrack(mpd.search_results.track_table[file]) for file of selection.ids.track
 
   if random
-    track_ids = (file for file of track_set)
-    Util.shuffle track_ids
-    return track_ids
+    files = (file for file of track_set)
+    Util.shuffle files
+    return files
   else
     track_arr = ({file: file, pos: pos} for file, pos of track_set)
     track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
     return (track.file for track in track_arr)
+
+getDragPosition = (x, y) ->
+  # loop over the playlist items and find where it fits
+  best =
+    track_id: null
+    distance: null
+    direction: null
+  for item in $playlist_items.find(".pl-item").get()
+    $item = $(item)
+    pos = $item.offset()
+    height = $item.height()
+    track_id = parseInt($item.data('id'))
+    # try the top of this element
+    distance = Math.abs(pos.top - y)
+    if not best.distance? or distance < best.distance
+      best.distance = distance
+      best.direction = "top"
+      best.track_id = track_id
+    # try the bottom
+    distance = Math.abs(pos.top + height - y)
+    if distance < best.distance
+      best.distance = distance
+      best.direction = "bottom"
+      best.track_id = track_id
+
+  return best
 
 renderChat = ->
   chat_status_text = ""
@@ -694,7 +720,7 @@ selectLibraryPosition = (lib_pos) ->
 
 queueLibSelection = (event) ->
   queueFunc = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
-  queueFunc selectionToTrackIds(event.altKey)
+  queueFunc selectionToFiles(event.altKey)
   return false
 
 setUpUi = ->
@@ -756,32 +782,6 @@ setUpUi = ->
       if not skip_drag
         start_drag_x = event.pageX
         start_drag_y = event.pageY
-
-        getDragPosition = (x, y) ->
-          # loop over the playlist items and find where it fits
-          best =
-            track_id: null
-            distance: null
-            direction: null
-          for item in $playlist_items.find(".pl-item").get()
-            $item = $(item)
-            pos = $item.offset()
-            height = $item.height()
-            track_id = parseInt($item.data('id'))
-            # try the top of this element
-            distance = Math.abs(pos.top - y)
-            if not best.distance? or distance < best.distance
-              best.distance = distance
-              best.direction = "top"
-              best.track_id = track_id
-            # try the bottom
-            distance = Math.abs(pos.top + height - y)
-            if distance < best.distance
-              best.distance = distance
-              best.direction = "bottom"
-              best.track_id = track_id
-
-          return best
 
         abortDrag = ->
           $document
@@ -926,10 +926,49 @@ setUpUi = ->
 
       refreshSelection()
 
+      # dragging
       if not skip_drag
-        # we didn't end up dragging, select the item
-        selection.selectOnly sel_name, key
-        refreshSelection()
+        start_drag_x = event.pageX
+        start_drag_y = event.pageY
+
+        abortDrag = ->
+          $document
+            .off('mousemove', onDragMove)
+            .off('mouseup', onDragEnd)
+
+          if started_drag
+            $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+            started_drag = false
+
+        onDragMove = (event) ->
+          if not started_drag
+            dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
+            started_drag = true if dist > 64
+            return unless started_drag
+          result = getDragPosition(event.pageX, event.pageY)
+          $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
+          $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
+
+        onDragEnd = (event) ->
+          if started_drag
+            result = getDragPosition(event.pageX, event.pageY)
+            delta =
+              top: 0
+              bottom: 1
+            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+            files = selectionToFiles(event.altKey)
+            mpd.queueFilesAtPos files, new_pos
+          else
+            # we didn't end up dragging, select the item
+            selection.selectOnly sel_name, key
+            refreshSelection()
+          abortDrag()
+
+        $document
+          .on('mousemove', onDragMove)
+          .on('mouseup', onDragEnd)
+
+        onDragMove event
     else if event.button = 2
       return if event.altKey
       event.preventDefault()
@@ -953,19 +992,19 @@ setUpUi = ->
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false
       $menu.on 'click', '.queue', ->
-        mpd.queueFiles selectionToTrackIds()
+        mpd.queueFiles selectionToFiles()
         removeContextMenu()
         return false
       $menu.on 'click', '.queue-next', ->
-        mpd.queueFilesNext selectionToTrackIds()
+        mpd.queueFilesNext selectionToFiles()
         removeContextMenu()
         return false
       $menu.on 'click', '.queue-random', ->
-        mpd.queueFiles selectionToTrackIds(true)
+        mpd.queueFiles selectionToFiles(true)
         removeContextMenu()
         return false
       $menu.on 'click', '.queue-next-random', ->
-        mpd.queueFilesNext selectionToTrackIds(true)
+        mpd.queueFilesNext selectionToFiles(true)
         removeContextMenu()
         return false
       $menu.on 'click', '.download', ->

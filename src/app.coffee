@@ -451,19 +451,31 @@ keyboard_handlers = do ->
     scrollLibraryToSelection() if selection.isLibrary()
 
   leftRightHandler = (event) ->
-    if event.keyCode == 37 # left
-      dir = -1
-    else
-      dir = 1
-    if event.ctrlKey
+    dir = if event.keyCode == 37 then -1 else 1
+    if selection.isLibrary()
+      return unless (helpers = getSelHelpers())
+      [ids, table, $getDiv] = helpers[selection.type]
+      selected_item = table[selection.cursor]
+      is_expanded_funcs =
+        artist: isArtistExpanded
+        album: isAlbumExpanded
+        track: -> true
+      is_expanded = is_expanded_funcs[selection.type](selected_item)
+      $li = $getDiv(selection.cursor).closest("li")
+      cursor_pos = getLibSelPos(selection.type, selection.cursor)
       if dir > 0
-        mpd.next()
+        # expand and jump to child
+        toggleExpansion $li unless is_expanded
       else
-        mpd.prev()
-    else if event.shiftKey
-      mpd.seek getCurrentTrackPosition() + dir * mpd.status.time * 0.10
+        # collapse; if already collapsed, jump to parent
+        toggleExpansion $li if is_expanded
     else
-      mpd.seek getCurrentTrackPosition() + dir * 10
+      if event.ctrlKey
+        if dir > 0 then mpd.next() else mpd.prev()
+      else if event.shiftKey
+        mpd.seek getCurrentTrackPosition() + dir * mpd.status.time * 0.10
+      else
+        mpd.seek getCurrentTrackPosition() + dir * 10
 
   handlers =
     27: # escape

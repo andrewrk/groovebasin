@@ -724,7 +724,7 @@ queueLibSelection = (event) ->
   return false
 
 
-performDrag = (callbacks) ->
+performDrag = (event, callbacks) ->
   start_drag_x = event.pageX
   start_drag_y = event.pageY
 
@@ -747,6 +747,8 @@ performDrag = (callbacks) ->
     $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
   onDragEnd = (event) ->
+    return false unless event.button is 0
+
     if started_drag
       callbacks.complete getDragPosition(event.pageX, event.pageY), event
     else
@@ -816,7 +818,7 @@ setUpUi = ->
       
       # dragging
       if not skip_drag
-        performDrag
+        performDrag event,
           complete: (result, event) ->
             delta =
               top: 0
@@ -933,7 +935,7 @@ setUpUi = ->
 
       # dragging
       if not skip_drag
-        performDrag
+        performDrag event,
           complete: (result, event) ->
             delta =
               top: 0

@@ -478,6 +478,15 @@ keyboard_handlers = do ->
         mpd.seek getCurrentTrackPosition() + dir * 10
 
   handlers =
+    13: # enter
+      ctrl:    no
+      alt:     null
+      shift:   null
+      handler: ->
+        if selection.isPlaylist()
+          mpd.playId selection.cursor
+        else if selection.isLibrary()
+          queueLibSelection event
     27: # escape
       ctrl:    no
       alt:     no
@@ -683,6 +692,10 @@ selectLibraryPosition = (lib_pos) ->
   else if lib_pos.artist?
     selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
 
+queueLibSelection = (event) ->
+  queueFunc = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
+  queueFunc selectionToTrackIds(event.altKey)
+  return false
 
 setUpUi = ->
   $document.on 'mouseover', '.hoverable', (event) ->
@@ -865,10 +878,7 @@ setUpUi = ->
   # suppress double click on the icon
   $library.on 'dblclick', 'div.expandable > div.ui-icon', -> false
 
-  $library.on 'dblclick', 'div.artist, div.album, div.track', (event) ->
-    queueFunc = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
-    queueFunc selectionToTrackIds(event.altKey)
-    return false
+  $library.on 'dblclick', 'div.artist, div.album, div.track', queueLibSelection
 
   $library.on 'contextmenu', (event) -> return event.altKey
 

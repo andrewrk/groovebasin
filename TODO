@@ -2,8 +2,6 @@ Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
 * ability to drag artists, albums, tracks to playlist
 * instead of manually blurring lib filter when clicking on playlist, find an
   active text box if any and blur it.
-* enter in playlist with selection should play it
-* enter in library with selection should follow rules for lib-filter enter pressing
 
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child

@@ -508,7 +508,7 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     null
       shift:   null
-      handler: ->
+      handler: (event) ->
         if selection.isPlaylist()
           mpd.playId selection.cursor
         else if selection.isLibrary()

@@ -70,28 +70,39 @@ flushWantToQueue = ->
   mpd.queueFiles files
 
 scrollLibraryToSelection = ->
+  return unless (helpers = getSelHelpers())?
+
+  delete helpers.playlist
+  scrollThingToSelection $library, helpers
 
 scrollPlaylistToSelection = ->
+  return unless (helpers = getSelHelpers())?
+
+  delete helpers.track
+  delete helpers.artist
+  delete helpers.album
+  scrollThingToSelection $playlist_items, helpers
+
+scrollThingToSelection = ($scroll_area, helpers) ->
   top_pos = null
-  top_id = null
   bottom_pos = null
-  bottom_id = null
-  for id of selection.ids.playlist
-    item_pos = mpd.playlist.item_table[id].pos
-    if not top_pos? or item_pos < top_pos
-      top_pos = item_pos
-      top_id = id
-    if not bottom_pos? or item_pos > bottom_pos
-      bottom_pos = item_pos
-      bottom_id = id
+  for sel_name, [ids, table, $getDiv] of helpers
+    for id of ids
+      item_top = ($div = $getDiv(id)).offset().top
+      item_bottom = item_top + $div.height()
+      if not top_pos? or item_top < top_pos
+        top_pos = item_top
+      if not bottom_pos? or item_bottom > bottom_pos
+        bottom_pos = item_bottom
   if top_pos?
-    selection_top = $("#playlist-track-#{top_id}").offset().top - $playlist_items.offset().top
-    selection_bottom = ($bottom_item = $("#playlist-track-#{bottom_id}")).offset().top + $bottom_item.height() - $playlist_items.offset().top - $playlist_items.height()
-    pl_items_scroll = $playlist_items.scrollTop()
+    scroll_area_top = $scroll_area.offset().top
+    selection_top = top_pos - scroll_area_top
+    selection_bottom = bottom_pos - scroll_area_top - $scroll_area.height()
+    scroll_amt = $scroll_area.scrollTop()
     if selection_top < 0
-      $playlist_items.scrollTop pl_items_scroll + selection_top
+      $scroll_area.scrollTop scroll_amt + selection_top
     else if selection_bottom > 0
-      $playlist_items.scrollTop pl_items_scroll + selection_bottom
+      $scroll_area.scrollTop scroll_amt + selection_bottom
 
 renderChat = ->
   chat_status_text = ""
@@ -165,10 +176,17 @@ labelPlaylistItems = ->
   # label the current one
   $("#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
 
+getSelHelpers = ->
+  return null unless mpd?.playlist?.item_table?
+  return null unless mpd?.search_results?.artist_table?
+  return {} =
+    playlist: [selection.ids.playlist, mpd.playlist.item_table, (id) -> $("#playlist-track-#{id}")]
+    artist: [selection.ids.artist, mpd.search_results.artist_table, (id) -> $("#lib-artist-#{Util.toHtmlId(id)}")]
+    album: [selection.ids.album, mpd.search_results.album_table, (id) -> $("#lib-album-#{Util.toHtmlId(id)}")]
+    track: [selection.ids.track, mpd.search_results.track_table, (id) -> $("#lib-track-#{Util.toHtmlId(id)}")]
 
 refreshSelection = ->
-  return unless mpd?.playlist?.item_table?
-  return unless mpd?.search_results?.artist_table?
+  return unless (helpers = getSelHelpers())?
 
   # clear all selection
   $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor')
@@ -178,20 +196,15 @@ refreshSelection = ->
 
   return unless selection.type?
 
-  things =
-    playlist: [selection.ids.playlist, mpd.playlist.item_table, "#playlist-track-", (x) -> x]
-    artist: [selection.ids.artist, mpd.search_results.artist_table, "#lib-artist-", Util.toHtmlId]
-    album: [selection.ids.album, mpd.search_results.album_table, "#lib-album-", Util.toHtmlId]
-    track: [selection.ids.track, mpd.search_results.track_table, "#lib-track-", Util.toHtmlId]
-  for sel_name, [ids, table, id_prefix, toId] of things
+  for sel_name, [ids, table, $getDiv] of helpers
     # if any selected artists are not in mpd.search_results, unselect them
     delete ids[id] for id in (id for id of ids when not table[id]?)
 
     # highlight selected rows
-    $(id_prefix + toId(id)).addClass 'selected' for id of ids
+    $getDiv(id).addClass 'selected' for id of ids
 
     if selection.cursor? and sel_name is selection.type
-      $(id_prefix + toId(selection.cursor)).addClass('cursor')
+      $getDiv(selection.cursor).addClass('cursor')
 
 renderLibrary = ->
   context =

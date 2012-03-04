@@ -559,6 +559,15 @@ keyboard_handlers = do ->
 
 removeContextMenu = -> $("#menu").remove()
 
+isArtistExpanded = (artist) ->
+  $li = $("#lib-artist-#{Util.toHtmlId(mpd.artistKey(artist.name))}").closest("li")
+  return false unless $li.data('cached')
+  return $li.find("> ul").is(":visible")
+
+isAlbumExpanded = (album) ->
+  $li = $("#lib-album-#{Util.toHtmlId(album.key)}").closest("li")
+  return $li.find("> ul").is(":visible")
+
 getTrackSelPos = (track) ->
   artist: track.album.artist
   album: track.album
@@ -592,13 +601,13 @@ prevLibPos = (lib_pos) ->
     lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos - 1]
   else if lib_pos.album?
     lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos - 1]
-    if lib_pos.album?
+    if lib_pos.album? and isAlbumExpanded(lib_pos.album)
       lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
   else if lib_pos.artist?
     lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos - 1]
-    if lib_pos.artist?
+    if lib_pos.artist? and isArtistExpanded(lib_pos.artist)
       lib_pos.album = lib_pos.artist.albums[lib_pos.artist.albums.length - 1]
-      if lib_pos.album?
+      if lib_pos.album? and isAlbumExpanded(lib_pos.album)
         lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
 
 # modifies in place
@@ -610,9 +619,16 @@ nextLibPos = (lib_pos) ->
       if not lib_pos.album?
         lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
   else if lib_pos.album?
-    lib_pos.track = lib_pos.album.tracks[0]
+    if isAlbumExpanded(lib_pos.album)
+      lib_pos.track = lib_pos.album.tracks[0]
+    else
+      lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
+      lib_pos.album = null
   else if lib_pos.artist?
-    lib_pos.album = lib_pos.artist.albums[0]
+    if isArtistExpanded(lib_pos.artist)
+      lib_pos.album = lib_pos.artist.albums[0]
+    else
+      lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
 
 selectLibraryPosition = (lib_pos) ->
   if lib_pos.track?

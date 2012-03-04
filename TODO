@@ -1,5 +1,4 @@
 Version 0.0.3 - I want to demo it at Hacker News meetup Tue March 6th 2012.
-* double click artists and albums in library to queue them (respect the shift/ctrl rules)
 * ability to drag artists, albums, tracks to playlist
 * left/right should expand/collapse library tree when lib has selection
 * instead of manually blurring lib filter when clicking on playlist, find an

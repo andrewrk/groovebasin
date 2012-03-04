@@ -104,6 +104,29 @@ scrollThingToSelection = ($scroll_area, helpers) ->
     else if selection_bottom > 0
       $scroll_area.scrollTop scroll_amt + selection_bottom
 
+selectionToTrackIds = (random=false) ->
+  # render selection into a single object by file to remove duplicates
+  track_set = {}
+  selRenderArtist = (artist) ->
+    selRenderAlbum album for album in artist.albums
+  selRenderAlbum = (album) ->
+    selRenderTrack track for track in album.tracks
+  selRenderTrack = (track) ->
+    track_set[track.file] = libPosToArr(getTrackSelPos(track))
+
+  selRenderArtist(mpd.search_results.artist_table[key]) for key of selection.ids.artist
+  selRenderAlbum(mpd.search_results.album_table[key]) for key of selection.ids.album
+  selRenderTrack(mpd.search_results.track_table[file]) for file of selection.ids.track
+
+  if random
+    track_ids = (file for file of track_set)
+    Util.shuffle track_ids
+    return track_ids
+  else
+    track_arr = ({file: file, pos: pos} for file, pos of track_set)
+    track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
+    return (track.file for track in track_arr)
+
 renderChat = ->
   chat_status_text = ""
   if (users = mpd.server_status?.users)?
@@ -827,9 +850,13 @@ setUpUi = ->
     toggleExpansion $(this).closest("li")
     return false
 
-  $library.on 'dblclick', 'div.track', (event) ->
-    queueFunc = if event.shiftKey then mpd.queueFileNext else mpd.queueFile
-    queueFunc $(this).data('file')
+  # suppress double click on the icon
+  $library.on 'dblclick', 'div.expandable > div.ui-icon', -> false
+
+  $library.on 'dblclick', 'div.artist, div.album, div.track', (event) ->
+    queueFunc = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
+    queueFunc selectionToTrackIds(event.altKey)
+    return false
 
   $library.on 'contextmenu', (event) -> return event.altKey
 
@@ -901,30 +928,6 @@ setUpUi = ->
         top: event.pageY+1
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false
-      selectionToTrackIds = (random=false) ->
-        # render selection into a single object by file to remove duplicates
-        track_set = {}
-        selRenderArtist = (artist) ->
-          selRenderAlbum album for album in artist.albums
-        selRenderAlbum = (album) ->
-          selRenderTrack track for track in album.tracks
-        selRenderTrack = (track) ->
-          track_set[track.file] = libPosToArr(getTrackSelPos(track))
-
-        selRenderArtist(mpd.search_results.artist_table[key]) for key of selection.ids.artist
-        selRenderAlbum(mpd.search_results.album_table[key]) for key of selection.ids.album
-        selRenderTrack(mpd.search_results.track_table[file]) for file of selection.ids.track
-
-
-        if random
-          track_ids = (file for file of track_set)
-          Util.shuffle track_ids
-          return track_ids
-        else
-          track_arr = ({file: file, pos: pos} for file, pos of track_set)
-          track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
-          return (track.file for track in track_arr)
-
       $menu.on 'click', '.queue', ->
         mpd.queueFiles selectionToTrackIds()
         removeContextMenu()
@@ -980,7 +983,7 @@ setUpUi = ->
             for track in album.tracks
               files.push track.file
 
-        if event.ctrlKey
+        if event.altKey
           Util.shuffle(files)
 
         if files.length > 2000

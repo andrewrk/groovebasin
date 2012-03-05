@@ -6,3 +6,4 @@ public/library
 node_modules/
 *.tmp
 .build.timestamp
+.state.json

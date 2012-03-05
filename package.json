@@ -29,6 +29,7 @@
       "user_id": "mpd",
       "log_level": 2,
       "port": 16242,
-      "mpd_conf": "/etc/mpd.conf"
+      "mpd_conf": "/etc/mpd.conf",
+      "state_file": ".state.json"
     }
 }

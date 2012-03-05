@@ -10,6 +10,8 @@ mpd = require './lib/mpd'
 
 public_dir = "./public"
 status =
+  status_version: 0 # bump this whenever persistent state should be discarded
+  next_user_id: 0 # TODO: needs to be persisted, but not sent to clients
   dynamic_mode: null # null -> disabled
   random_ids: {}
   stream_httpd_port: null
@@ -18,7 +20,13 @@ status =
   users: []
   user_names: {}
   chats: []
-next_user_id = 0
+do ->
+  try
+    loaded_status = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"
+  return unless loaded_status?.status_version == status.status_version
+  status = loaded_status
+  # the online users list is always blank at startup
+  status.users = []
 stickers_enabled = false
 mpd_conf = null
 
@@ -62,7 +70,7 @@ do ->
     log.warn "httpd streaming not enabled in mpd conf"
   if mpd_conf.sticker_file?
     # changing from null to false, enables but does not turn on dynamic mode
-    status.dynamic_mode = false
+    status.dynamic_mode = false if status.dynamic_mode == null
     stickers_enabled = true
   else
     log.warn "sticker_file not set in mpd conf"
@@ -104,7 +112,9 @@ createMpdConnection = (cb) ->
   net.connect mpd_conf?.port ? 6600, mpd_conf?.bind_to_address ? "localhost", cb
 
 sendStatus = ->
-  my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify status}"
+  status_string = JSON.stringify status
+  my_mpd.sendCommand "sendmessage Status #{JSON.stringify status_string}"
+  fs.writeFile process.env.npm_package_config_state_file, status_string, "utf8"
 
 setDynamicMode = (value) ->
   # return if dynamic mode is disabled
@@ -228,8 +238,8 @@ getRandomSongFiles = (count) ->
   files
 
 io.sockets.on 'connection', (socket) ->
-  user_id = "user_" + next_user_id
-  next_user_id += 1
+  user_id = "user_" + status.next_user_id
+  status.next_user_id += 1
   status.users.push user_id
   socket.emit 'Identify', user_id
   mpd_socket = createMpdConnection ->

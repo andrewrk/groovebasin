@@ -357,6 +357,7 @@ exports.Mpd = class Mpd
   ######################### public #####################
 
   constructor: ->
+    @initialized = false
     @buffer = ""
     @msgHandlerQueue = []
     # assign to console to enable message passing debugging
@@ -434,6 +435,7 @@ exports.Mpd = class Mpd
     @updateLibrary()
     @updateStatus()
     @updatePlaylist()
+    @initialized = true
 
   sendCommand: (command, callback=noop) =>
     @send "noidle\n" if @idling

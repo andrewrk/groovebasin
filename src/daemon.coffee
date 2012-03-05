@@ -126,9 +126,9 @@ setDynamicMode = (value) ->
 previous_ids = {}
 checkDynamicMode = ->
   return unless stickers_enabled
-  return unless my_mpd.initialized
+  return unless my_mpd.status?.current_item?
   item_list = my_mpd.playlist.item_list
-  current_id = my_mpd.status.current_item?.id
+  current_id = my_mpd.status.current_item.id
   current_index = -1
   all_ids = {}
   new_files = []

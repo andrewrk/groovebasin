@@ -17,6 +17,7 @@ status =
   download_enabled: false
   users: []
   user_names: {}
+  chats: []
 next_user_id = 0
 stickers_enabled = false
 mpd_conf = null
@@ -169,7 +170,7 @@ scrubStaleUserNames = ->
   keep_user_ids = {}
   for user_id in status.users
     keep_user_ids[user_id] = true
-  for chat_object in my_mpd.chats
+  for chat_object in status.chats
     keep_user_ids[chat_object.user_id] = true
   log.debug "keep_ids #{(copy for copy of keep_user_ids)}"
   for user_id of status.user_names
@@ -230,9 +231,7 @@ io.sockets.on 'connection', (socket) ->
   user_id = "user_" + next_user_id
   next_user_id += 1
   status.users.push user_id
-  socket.emit 'Initialize', JSON.stringify
-    user_id: user_id
-    chats: my_mpd.chats
+  socket.emit 'Identify', user_id
   mpd_socket = createMpdConnection ->
     log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->
@@ -250,6 +249,15 @@ io.sockets.on 'connection', (socket) ->
     log.debug "DynamicMode is being turned #{data.toString()}"
     value = JSON.parse data.toString()
     setDynamicMode value
+  socket.on 'Chat', (data) ->
+    chat_object =
+      user_id: user_id
+      message: data.toString()
+    chats = status.chats
+    chats.push(chat_object)
+    chats_limit = 20
+    chats.splice(0, chats.length - chats_limit) if chats.length > chats_limit
+    sendStatus()
   socket.on 'SetUserName', (data) ->
     user_name = data.toString().trim().split(/\s+/).join(" ")
     if user_name != ""

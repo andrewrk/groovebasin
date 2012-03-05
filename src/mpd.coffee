@@ -369,7 +369,6 @@ exports.Mpd = class Mpd
     @event_handlers = {}
     @haveFileListCache = false
     @user_id = ""
-    @chats = []
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
@@ -388,7 +387,6 @@ exports.Mpd = class Mpd
       message: @readChannelMessages # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
     @channel_handlers =
       Status: @handleServerStatus
-      Chat: @handleChat
 
 
     # cache of library data from mpd. See comment at top of this file
@@ -432,7 +430,7 @@ exports.Mpd = class Mpd
     return @search_results.artist_table[@artistKey(artist_name)].albums
 
   handleConnectionStart: =>
-    @sendCommands ("subscribe #{channel}" for channel in ['Status', 'Chat'])
+    @sendCommand "subscribe Status"
     @updateLibrary()
     @updateStatus()
     @updatePlaylist()
@@ -560,20 +558,9 @@ exports.Mpd = class Mpd
           throw null
       for channel, messages of channel_to_messages
         @channel_handlers[channel] message for message in messages
-  handleChat: (msg) =>
-    chat_object = JSON.parse msg
-    @chats.push(chat_object)
-    chats_limit = 20
-    @chats.splice(0, @chats.length - chats_limit) if @chats.length > chats_limit
-    @raiseEvent 'chat'
   handleServerStatus: (msg) =>
     @server_status = JSON.parse(msg)
     @raiseEvent 'serverstatus'
-  sendChat: (message) =>
-    chat_object =
-      user_id: @user_id
-      message: message
-    @sendCommand "sendmessage Chat #{JSON.stringify JSON.stringify chat_object}"
   # puts the search results in search_results
   search: (query) =>
     query = trim(query)

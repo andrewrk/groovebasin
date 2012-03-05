@@ -160,11 +160,11 @@ renderChat = ->
     users = (mpd.userIdToUserName user_id for user_id in users when user_id != mpd.user_id)
     chat_status_text = " (#{users.length})" if users.length > 0
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
-    for chat_object in mpd.chats
+    for chat_object in mpd.server_status.chats
       chat_object.user_name = mpd.userIdToUserName chat_object.user_id
     $chat.html Handlebars.templates.chat
       users: users
-      chats: mpd.chats
+      chats: mpd.server_status.chats
     if mpd.hasUserName()
       $("#user-id").text(mpd.getUserName() + ": ")
       $("#chat-input").attr('placeholder', "chat")
@@ -1086,7 +1086,7 @@ setUpUi = ->
         localStorage?.user_name = new_user_name
         socket.emit 'SetUserName', new_user_name
         return false
-      mpd.sendChat message
+      socket.emit 'Chat', message
       return false
 
   actions =

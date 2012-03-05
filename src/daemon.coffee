@@ -7,26 +7,54 @@ formidable = require 'formidable'
 url = require 'url'
 util = require 'util'
 mpd = require './lib/mpd'
+LastFmNode = require('lastfm').LastFmNode
+
+lastfm = new LastFmNode
+  api_key: process.env.npm_package_config_lastfm_api_key
+  secret: process.env.npm_package_config_lastfm_secret
+
+  #lastfm.request "track.updateNowPlaying",
+  #  track: track
+  #  artist: artist
+  #  album: album
+  #  albumArtist: albumArtist
+  #  trackNumber: trackNumber
+  #  duration: duration
+  #
+  #lastfm.request "track.scrobble",
+  #  timestamp: timestamp
+  #  album: album
+  #  track: track
+  #  artist: artist
+  #  albumArtist: albumArtist
+  #  duration: duration
+  #  trackNumber: trackNumber
 
 public_dir = "./public"
-status =
-  status_version: 0 # bump this whenever persistent state should be discarded
-  next_user_id: 0 # TODO: needs to be persisted, but not sent to clients
-  dynamic_mode: null # null -> disabled
-  random_ids: {}
-  stream_httpd_port: null
-  upload_enabled: false
-  download_enabled: false
-  users: []
-  user_names: {}
-  chats: []
+state =
+  state_version: 1 # bump this whenever persistent state should be discarded
+  next_user_id: 0
+  lastfm_scrobblers: {}
+  status: # this structure is visible to clients
+    dynamic_mode: null # null -> disabled
+    random_ids: {}
+    stream_httpd_port: null
+    upload_enabled: false
+    download_enabled: false
+    users: []
+    user_names: {}
+    chats: []
+    lastfm_api_key: process.env.npm_package_config_lastfm_api_key
+
 do ->
   try
-    loaded_status = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"
-  return unless loaded_status?.status_version == status.status_version
-  status = loaded_status
+    loaded_state = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"
+  return unless loaded_state?.state_version == state.state_version
+  state = loaded_state
   # the online users list is always blank at startup
-  status.users = []
+  state.status.users = []
+  # always use the config value for lastfm_api_key
+  state.status.lastfm_api_key = process.env.npm_package_config_lastfm_api_key
 stickers_enabled = false
 mpd_conf = null
 
@@ -35,7 +63,7 @@ fileServer = new (static.Server) public_dir
 app = http.createServer((request, response) ->
   parsed_url = url.parse(request.url)
   if parsed_url.pathname == '/upload' and request.method == 'POST'
-    if status.upload_enabled
+    if state.status.upload_enabled
       form = new formidable.IncomingForm()
       form.parse request, (err, fields, file) ->
         moveFile file.qqfile.path, "#{mpd_conf.music_directory}/#{file.qqfile.name}"
@@ -62,15 +90,15 @@ do ->
     return
   mpd_conf = require('./lib/mpdconf').parse(data.toString())
   if mpd_conf.music_directory?
-    status.upload_enabled = true
-    status.download_enabled = true
+    state.status.upload_enabled = true
+    state.status.download_enabled = true
   else
     log.warn "music directory not found in mpd conf"
-  if not (status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
+  if not (state.status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
     log.warn "httpd streaming not enabled in mpd conf"
   if mpd_conf.sticker_file?
     # changing from null to false, enables but does not turn on dynamic mode
-    status.dynamic_mode = false if status.dynamic_mode == null
+    state.status.dynamic_mode = false if state.status.dynamic_mode == null
     stickers_enabled = true
   else
     log.warn "sticker_file not set in mpd conf"
@@ -93,14 +121,14 @@ if mpd_conf?.music_directory?
       fs.symlinkSync mpd_conf.music_directory, library_link
     catch error
       log.warn "Unable to link public/library to #{mpd_conf.music_directory}: #{error}"
-      status.upload_enabled = false
-      status.download_enabled = false
+      state.status.upload_enabled = false
+      state.status.download_enabled = false
       return
     try
       fs.readdirSync library_link
     catch error
-      status.upload_enabled = false
-      status.download_enabled = false
+      state.status.upload_enabled = false
+      state.status.download_enabled = false
       err? and log.warn "Unable to access music directory: #{error}"
 
 moveFile = (source, dest) ->
@@ -112,15 +140,17 @@ createMpdConnection = (cb) ->
   net.connect mpd_conf?.port ? 6600, mpd_conf?.bind_to_address ? "localhost", cb
 
 sendStatus = ->
-  status_string = JSON.stringify status
-  my_mpd.sendCommand "sendmessage Status #{JSON.stringify status_string}"
-  fs.writeFile process.env.npm_package_config_state_file, status_string, "utf8"
+  my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify state.status}"
+  saveState()
+
+saveState = ->
+  fs.writeFile process.env.npm_package_config_state_file, JSON.stringify(state), "utf8"
 
 setDynamicMode = (value) ->
   # return if dynamic mode is disabled
-  return unless status.dynamic_mode?
-  return if status.dynamic_mode == value
-  status.dynamic_mode = value
+  return unless state.status.dynamic_mode?
+  return if state.status.dynamic_mode == value
+  state.status.dynamic_mode = value
   checkDynamicMode()
   sendStatus()
 previous_ids = {}
@@ -148,9 +178,9 @@ checkDynamicMode = ->
   else
     # any tracks <= current track don't count as random anymore
     for i in [0..current_index]
-      delete status.random_ids[item_list[i].id]
+      delete state.status.random_ids[item_list[i].id]
 
-  if status.dynamic_mode
+  if state.status.dynamic_mode
     commands = []
     delete_count = Math.max(current_index - 10, 0)
     for i in [0...delete_count]
@@ -164,28 +194,28 @@ checkDynamicMode = ->
       for line in msg.split("\n")
         [name, value] = line.split(": ")
         continue if name != "Id"
-        status.random_ids[value] = 1
+        state.status.random_ids[value] = 1
         changed = true
       sendStatus() if changed
 
   # scrub the random_ids
   new_random_ids = {}
-  for id of status.random_ids
+  for id of state.status.random_ids
     if all_ids[id]
       new_random_ids[id] = 1
-  status.random_ids = new_random_ids
+  state.status.random_ids = new_random_ids
   previous_ids = all_ids
   sendStatus()
 
 scrubStaleUserNames = ->
   keep_user_ids = {}
-  for user_id in status.users
+  for user_id in state.status.users
     keep_user_ids[user_id] = true
-  for chat_object in status.chats
+  for chat_object in state.status.chats
     keep_user_ids[chat_object.user_id] = true
   log.debug "keep_ids #{(copy for copy of keep_user_ids)}"
-  for user_id of status.user_names
-    delete status.user_names[user_id] unless keep_user_ids[user_id]
+  for user_id of state.status.user_names
+    delete state.status.user_names[user_id] unless keep_user_ids[user_id]
   sendStatus()
 
 sticker_name = "groovebasin.last-queued"
@@ -239,9 +269,9 @@ getRandomSongFiles = (count) ->
   files
 
 io.sockets.on 'connection', (socket) ->
-  user_id = "user_" + status.next_user_id
-  status.next_user_id += 1
-  status.users.push user_id
+  user_id = "user_" + state.next_user_id
+  state.next_user_id += 1
+  state.status.users.push user_id
   socket.emit 'Identify', user_id
   mpd_socket = createMpdConnection ->
     log.debug "browser to mpd connect"
@@ -254,17 +284,17 @@ io.sockets.on 'connection', (socket) ->
     log.debug "browser no mpd daemon found."
 
   socket.on 'ToMpd', (data) ->
-    log.debug "[in] " + data
+    log.debug "[in] #{data}"
     try mpd_socket.write data
   socket.on 'DynamicMode', (data) ->
-    log.debug "DynamicMode is being turned #{data.toString()}"
     value = JSON.parse data.toString()
+    log.debug "DynamicMode is being turned #{value}"
     setDynamicMode value
   socket.on 'Chat', (data) ->
     chat_object =
       user_id: user_id
       message: data.toString()
-    chats = status.chats
+    chats = state.status.chats
     chats.push(chat_object)
     chats_limit = 20
     chats.splice(0, chats.length - chats_limit) if chats.length > chats_limit
@@ -274,14 +304,42 @@ io.sockets.on 'connection', (socket) ->
     if user_name != ""
       user_name_limit = 20
       user_name = user_name.substr(0, user_name_limit)
-      status.user_names[user_id] = user_name
+      state.status.user_names[user_id] = user_name
     else
-      delete status.user_names[user_id]
+      delete state.status.user_names[user_id]
     sendStatus()
-
+  socket.on 'LastfmGetSession', (data) ->
+    console.log "getting session with #{data}"
+    lastfm.request "auth.getSession",
+      token: data.toString()
+      handlers:
+        success: (data) ->
+          # clear them from the scrobblers
+          delete state.lastfm_scrobblers[data?.session?.name]
+          socket.emit 'LastfmGetSessionSuccess', JSON.stringify(data)
+          console.log "success from last.fm auth.getSession: #{JSON.stringify data}"
+        error: (error) ->
+          console.log "error from last.fm auth.getSession: #{error.message}"
+          socket.emit 'LastfmGetSessionError', JSON.stringify(error)
+  socket.on 'LastfmScrobblersAdd', (data) ->
+    console.log "LastfmScrobblersAdd: #{data.toString()}"
+    params = JSON.parse(data.toString())
+    # ignore if scrobbling user already exists. this is a fake request.
+    return if state.lastfm_scrobblers[params.username]?
+    state.lastfm_scrobblers[params.username] = params.session_key
+    saveState()
+  socket.on 'LastfmScrobblersRemove', (data) ->
+    params = JSON.parse(data.toString())
+    session_key = state.lastfm_scrobblers[params.username]?
+    if session_key is params.session_key
+      delete state.lastfm_scrobblers[params.username]
+      saveState()
+    else
+      log.warn "Invalid session key from user trying to remove scrobbler: #{params.username}"
+    
   socket.on 'disconnect', ->
     mpd_socket.end()
-    status.users = (id for id in status.users when id != user_id)
+    state.status.users = (id for id in state.status.users when id != user_id)
     scrubStaleUserNames()
 
 # our own mpd connection

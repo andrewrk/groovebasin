@@ -1,0 +1,9 @@
+<h1>Last.fm</h1>
+{{#if lastfm.username}}
+  Authenticated as {{lastfm.username}}
+  <a href="#" class="signout">Sign out</a>
+  <a href="#" class="scrobble-on">Turn scrobbling on</a>
+  <a href="#" class="scrobble-off">Turn scrobbling off</a>
+{{else}}
+  <a href="{{lastfm.auth_url}}">Authenticate with Last.fm</a>
+{{/if}}

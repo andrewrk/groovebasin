@@ -1,3 +1,7 @@
+* when playlist is empty...
+  - alt right click broken
+  - arrow keys don't do anything in library
+  - dynamic mode doesn't work unless paused
 * if you select the last track in blink 182 enema of the state and press down,
   it goes to the wrong track next
 

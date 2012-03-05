@@ -56,6 +56,7 @@ $nowplaying_elapsed = $nowplaying.find(".elapsed")
 $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
 $chat = $("#chat")
+$settings = $("#settings")
 
 flushWantToQueue = ->
   i = 0
@@ -153,6 +154,16 @@ getDragPosition = (x, y) ->
 
   return best
 
+renderSettings = ->
+  return unless (api_key = mpd.server_status?.lastfm_api_key)?
+  context =
+    lastfm:
+      auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{escape(location.href)}"
+      username: localStorage?.lastfm_username
+      session_key: localStorage?.lastfm_session_key
+  console.log "context: #{JSON.stringify context}"
+  $settings.html Handlebars.templates.settings(context)
+
 renderChat = ->
   chat_status_text = ""
   if (users = mpd.server_status?.users)?
@@ -195,9 +206,6 @@ renderPlaylistButtons = ->
   $upload_tab.removeClass("ui-state-disabled")
   $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
 
-  renderChat()
-
-  labelPlaylistItems()
 
 renderPlaylist = ->
   context =
@@ -361,6 +369,8 @@ render = ->
   renderPlaylistButtons()
   renderLibrary()
   renderNowPlaying()
+  renderChat()
+  renderSettings()
 
   handleResize()
 
@@ -1143,6 +1153,7 @@ setUpUi = ->
     'library'
     'upload'
     'chat'
+    'settings'
   ]
 
   unselectTabs = ->
@@ -1167,6 +1178,25 @@ setUpUi = ->
     encoding: 'multipart'
     onComplete: (id, file_name, response_json) ->
       want_to_queue.push file_name
+
+  $settings.on 'click', 'a.signout', (event) ->
+    delete localStorage?.lastfm_username
+    delete localStorage?.lastfm_session_key
+    return false
+  $settings.on 'click', 'a.scrobble-on', (event) ->
+    params =
+      username: localStorage?.lastfm_username
+      session_key: localStorage?.lastfm_session_key
+    socket.emit 'LastfmScrobblersAdd', JSON.stringify(params)
+    return false
+  $settings.on 'click', 'a.scrobble-off', (event) ->
+    params =
+      username: localStorage?.lastfm_username
+      session_key: localStorage?.lastfm_session_key
+    socket.emit 'LastfmScrobblersRemove', JSON.stringify(params)
+    return false
+
+# end setUpUi
 
 initHandlebars = ->
   Handlebars.registerHelper 'time', Util.formatTime
@@ -1217,16 +1247,29 @@ $document.ready ->
     renderPlaylistButtons()
   mpd.on 'serverstatus', ->
     renderPlaylistButtons()
+    renderChat()
+    labelPlaylistItems()
+    renderSettings()
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true
     render()
 
-  setUpUi()
-  initHandlebars()
-
   if (user_name = localStorage?.user_name)?
     socket.emit 'SetUserName', user_name
+  if (token = Util.parseQuery(location.search.substring(1))?.token)?
+    console.log "get session with #{token}"
+    socket.emit 'LastfmGetSession', token
+
+  socket.on 'LastfmGetSessionSuccess', (data) ->
+    params = JSON.parse(data)
+    console.log "LastfmGetSessionSuccess: #{JSON.stringify params}"
+    localStorage?.lastfm_username = params.session.name
+    localStorage?.lastfm_session_key = params.session.key
+    renderSettings()
+
+  setUpUi()
+  initHandlebars()
 
   $(window).resize handleResize
   render()

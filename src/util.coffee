@@ -44,3 +44,13 @@ exports.compareArrays = (arr1, arr2) ->
     diff = (val1 ? -1) - (val2 ? -1)
     return diff if diff isnt 0
   return 0
+
+exports.parseQuery = (query) ->
+  obj = {}
+  return obj unless query?
+
+  for [param, val] in (valset.split('=') for valset in query.split('&'))
+    obj[unescape(param)] = unescape(val)
+  
+  return obj
+

@@ -330,7 +330,7 @@ io.sockets.on 'connection', (socket) ->
     saveState()
   socket.on 'LastfmScrobblersRemove', (data) ->
     params = JSON.parse(data.toString())
-    session_key = state.lastfm_scrobblers[params.username]?
+    session_key = state.lastfm_scrobblers[params.username]
     if session_key is params.session_key
       delete state.lastfm_scrobblers[params.username]
       saveState()

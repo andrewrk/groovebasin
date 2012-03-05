@@ -158,7 +158,7 @@ renderSettings = ->
   return unless (api_key = mpd.server_status?.lastfm_api_key)?
   context =
     lastfm:
-      auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{escape(location.href)}"
+      auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}://#{location.hostname}/"
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
   console.log "context: #{JSON.stringify context}"
@@ -1182,6 +1182,7 @@ setUpUi = ->
   $settings.on 'click', 'a.signout', (event) ->
     delete localStorage?.lastfm_username
     delete localStorage?.lastfm_session_key
+    renderSettings()
     return false
   $settings.on 'click', 'a.scrobble-on', (event) ->
     params =

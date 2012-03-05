@@ -316,6 +316,15 @@ renderNowPlaying = ->
     if track.album_name.length
       track_display += " - " + track.album_name
     document.title = "#{track_display} - #{base_title}"
+    # Easter time!
+    if track.name == "Groove Basin" and track.artist_name == "Rayza"
+      $("html").addClass('groovebasin')
+    else
+      $("html").removeClass('groovebasin')
+    if track.name == "Never Gonna Give You Up" and track.artist_name == "Rick Astley"
+      $("html").addClass('nggyu')
+    else
+      $("html").removeClass('nggyu')
   else
     track_display = "&nbsp;"
     document.title = base_title

@@ -257,7 +257,7 @@ flushScrobbleQueue = ->
   max_simultaneous = 10
   count = 0
   while (params = state.scrobbles.shift())? and count++ < max_simultaneous
-    log.debug "scrobbling #{params.track} with session #{params.sk}"
+    log.info "scrobbling #{params.track} for session #{params.sk}"
     params.handlers =
       error: (error) ->
         log.error "error from last.fm track.scrobble: #{error.message}"
@@ -294,18 +294,21 @@ checkScrobble = ->
       max_amt = 4 * 60 * 1000
       half_amt = track.time / 2 * 1000
       if playing_time >= min_amt and (playing_time >= max_amt or playing_time >= half_amt)
-        for username, session_key of state.lastfm_scrobblers
-          log.debug "queuing scrobble: #{track.name} for #{username}"
-          queueScrobble
-            sk: session_key
-            timestamp: Math.round(playing_start.getTime() / 1000)
-            album: track.album?.name or ""
-            track: track.name or ""
-            artist: track.artist_name or ""
-            albumArtist: track.album_artist_name or ""
-            duration: track.time or ""
-            trackNumber: track.track or ""
-        flushScrobbleQueue()
+        if track.artist_name
+          for username, session_key of state.lastfm_scrobblers
+            log.debug "queuing scrobble: #{track.name} for #{username}"
+            queueScrobble
+              sk: session_key
+              timestamp: Math.round(playing_start.getTime() / 1000)
+              album: track.album?.name or ""
+              track: track.name or ""
+              artist: track.artist_name or ""
+              albumArtist: track.album_artist_name or ""
+              duration: track.time or ""
+              trackNumber: track.track or ""
+          flushScrobbleQueue()
+        else
+          log.warn "Not scrobbling #{track.name} - missing artist."
 
     last_playing_item = this_item
     previous_play_state = my_mpd.status.state
@@ -319,6 +322,10 @@ updateNowPlaying = ->
 
   return unless previous_now_playing_id isnt my_mpd.status.current_item.id
   previous_now_playing_id = my_mpd.status.current_item.id
+
+  if not track.artist_name
+    log.warn "Not updating last.fm now playing for #{track.name}: missing artist"
+    return
 
   for username, session_key of state.lastfm_scrobblers
     log.debug "update now playing with session_key: #{session_key}, track: #{track.name}, artist: #{track.artist_name}, album: #{track.album?.name}"

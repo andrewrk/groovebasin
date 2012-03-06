@@ -253,11 +253,11 @@ getRandomSongFiles = (count) ->
   files
 
 flushScrobbleQueue = ->
-  console.log "flushing scrobble queue"
+  log.debug "flushing scrobble queue"
   max_simultaneous = 10
   count = 0
   while (params = state.scrobbles.shift())? and count++ < max_simultaneous
-    console.log "scrobbling #{params.track} with session #{params.sk}"
+    log.debug "scrobbling #{params.track} with session #{params.sk}"
     params.handlers =
       error: (error) ->
         log.error "error from last.fm track.scrobble: #{error.message}"
@@ -284,10 +284,10 @@ checkScrobble = ->
       playing_start = new Date(new Date().getTime() - playing_time)
       previous_play_state = my_mpd.status.state
   playing_time = new Date().getTime() - playing_start.getTime()
-  console.log "playtime so far: #{playing_time}"
+  log.debug "playtime so far: #{playing_time}"
 
   if this_item?.id isnt last_playing_item?.id
-    console.log "ids are different"
+    log.debug "ids are different"
     if (track = last_playing_item?.track)?
       # then scrobble it
       min_amt = 15 * 1000
@@ -295,7 +295,7 @@ checkScrobble = ->
       half_amt = track.time / 2 * 1000
       if playing_time >= min_amt and (playing_time >= max_amt or playing_time >= half_amt)
         for username, session_key of state.lastfm_scrobblers
-          console.log "queuing scrobble: #{track.name} for #{username}"
+          log.debug "queuing scrobble: #{track.name} for #{username}"
           queueScrobble
             sk: session_key
             timestamp: Math.round(playing_start.getTime() / 1000)
@@ -321,7 +321,7 @@ updateNowPlaying = ->
   previous_now_playing_id = my_mpd.status.current_item.id
 
   for username, session_key of state.lastfm_scrobblers
-    console.log "update now playing with session_key: #{session_key}, track: #{track.name}, artist: #{track.artist_name}, album: #{track.album?.name}"
+    log.debug "update now playing with session_key: #{session_key}, track: #{track.name}, artist: #{track.artist_name}, album: #{track.album?.name}"
     lastfm.request "track.updateNowPlaying",
       sk: session_key
       track: track.name or ""
@@ -375,7 +375,7 @@ io.sockets.on 'connection', (socket) ->
       delete state.status.user_names[user_id]
     sendStatus()
   socket.on 'LastfmGetSession', (data) ->
-    console.log "getting session with #{data}"
+    log.debug "getting session with #{data}"
     lastfm.request "auth.getSession",
       token: data.toString()
       handlers:
@@ -383,13 +383,14 @@ io.sockets.on 'connection', (socket) ->
           # clear them from the scrobblers
           delete state.lastfm_scrobblers[data?.session?.name]
           socket.emit 'LastfmGetSessionSuccess', JSON.stringify(data)
-          console.log "success from last.fm auth.getSession: #{JSON.stringify data}"
+          log.debug "success from last.fm auth.getSession: #{JSON.stringify data}"
         error: (error) ->
-          console.log "error from last.fm auth.getSession: #{error.message}"
+          log.error "error from last.fm auth.getSession: #{error.message}"
           socket.emit 'LastfmGetSessionError', JSON.stringify(error)
   socket.on 'LastfmScrobblersAdd', (data) ->
-    console.log "LastfmScrobblersAdd: #{data.toString()}"
-    params = JSON.parse(data.toString())
+    data_str = data.toString()
+    log.debug "LastfmScrobblersAdd: #{data_str}"
+    params = JSON.parse(data_str)
     # ignore if scrobbling user already exists. this is a fake request.
     return if state.lastfm_scrobblers[params.username]?
     state.lastfm_scrobblers[params.username] = params.session_key

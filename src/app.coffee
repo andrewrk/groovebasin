@@ -162,7 +162,6 @@ renderSettings = ->
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
       scrobbling_on: localStorage?.lastfm_scrobbling_on?
-  console.log "context: #{JSON.stringify context}"
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
   $settings.find("#toggle-scrobble").button()
@@ -1266,12 +1265,10 @@ $document.ready ->
   if (user_name = localStorage?.user_name)?
     socket.emit 'SetUserName', user_name
   if (token = Util.parseQuery(location.search.substring(1))?.token)?
-    console.log "get session with #{token}"
     socket.emit 'LastfmGetSession', token
 
   socket.on 'LastfmGetSessionSuccess', (data) ->
     params = JSON.parse(data)
-    console.log "LastfmGetSessionSuccess: #{JSON.stringify params}"
     localStorage?.lastfm_username = params.session.name
     localStorage?.lastfm_session_key = params.session.key
     delete localStorage?.lastfm_scrobbling_on

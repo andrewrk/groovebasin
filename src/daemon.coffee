@@ -261,7 +261,7 @@ flushScrobbleQueue = ->
     params.handlers =
       error: (error) ->
         log.error "error from last.fm track.scrobble: #{error.message}"
-        if not error?.code? or error.code is 11 or error.service is 16
+        if not error?.code? or error.code is 11 or error.code is 16
           # retryable - add to queue
           state.scrobbles.push params
           saveState()

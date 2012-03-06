@@ -20,8 +20,9 @@
 # track structure: {
 #   name: "Track Name",
 #   track: 9,
-#   artist: {artist structure},
+#   artist_name: "Artist Name",
 #   album: {album structure},
+#   album_artist_name: "Daft Punk",
 #   file: "Obtuse/Cloudy Sky/06. Temple of Trance.mp3",
 #   time: 263, # length in seconds
 #   pos: 99, # index into album.track structure

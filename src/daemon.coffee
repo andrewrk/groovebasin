@@ -13,14 +13,6 @@ lastfm = new LastFmNode
   api_key: process.env.npm_package_config_lastfm_api_key
   secret: process.env.npm_package_config_lastfm_secret
 
-  #lastfm.request "track.updateNowPlaying",
-  #  track: track
-  #  artist: artist
-  #  album: album
-  #  albumArtist: albumArtist
-  #  trackNumber: trackNumber
-  #  duration: duration
-  #
   #lastfm.request "track.scrobble",
   #  timestamp: timestamp
   #  album: album
@@ -268,6 +260,23 @@ getRandomSongFiles = (count) ->
     files.push track.file
   files
 
+updateNowPlaying = ->
+  return unless my_mpd.status.state is 'play'
+  return unless (track = my_mpd.status.current_item?.track)?
+  for username, session_key of state.lastfm_scrobblers
+    console.log "update now playing with session_key: #{session_key}, track: #{track.name}, artist: #{track.artist_name}, album: #{track.album?.name}"
+    lastfm.request "track.updateNowPlaying",
+      sk: session_key
+      track: track.name or ""
+      artist: track.artist_name or ""
+      album: track.album?.name or ""
+      albumArtist: track.album_artist_name or ""
+      trackNumber: track.track or ""
+      duration: track.time or ""
+      handlers:
+        error: (error) ->
+          log.error "error from last.fm track.updateNowPlaying: #{error.message}"
+
 io.sockets.on 'connection', (socket) ->
   user_id = "user_" + state.next_user_id
   state.next_user_id += 1
@@ -362,6 +371,7 @@ class DirectMpd extends mpd.Mpd
   rawSend: (data) =>
     try @mpd_socket.write data
 
+
 my_mpd = null
 my_mpd_socket = createMpdConnection ->
   log.debug "server to mpd connect"
@@ -369,7 +379,9 @@ my_mpd_socket = createMpdConnection ->
 my_mpd = new DirectMpd(my_mpd_socket)
 my_mpd.on 'error', (msg) ->
   log.error msg
-my_mpd.on 'statusupdate', checkDynamicMode
+my_mpd.on 'statusupdate', ->
+  checkDynamicMode()
+  updateNowPlaying()
 my_mpd.on 'playlistupdate', checkDynamicMode
 my_mpd.on 'libraryupdate', updateStickers
 my_mpd.on 'chat', scrubStaleUserNames

@@ -22,6 +22,8 @@ project an mpd client.
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
+* Last.fm scrobbling.
+
 ## Get Started
 
 Make sure you have [Node](http://nodejs.org) and [npm](http://npmjs.org)

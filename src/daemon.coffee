@@ -140,9 +140,10 @@ setDynamicMode = (value) ->
 previous_ids = {}
 checkDynamicMode = ->
   return unless stickers_enabled
-  return unless my_mpd.status?.current_item?
+  return unless my_mpd.library.artists.length
+  return unless got_stickers
   item_list = my_mpd.playlist.item_list
-  current_id = my_mpd.status.current_item.id
+  current_id = my_mpd.status.current_item?.id
   current_index = -1
   all_ids = {}
   new_files = []
@@ -203,6 +204,7 @@ scrubStaleUserNames = ->
   sendStatus()
 
 sticker_name = "groovebasin.last-queued"
+got_stickers = false
 updateStickers = ->
   my_mpd.sendCommand "sticker find song \"/\" \"#{sticker_name}\"", (msg) ->
     current_file = null
@@ -217,6 +219,7 @@ updateStickers = ->
           track.last_queued = new Date(value)
         else
           log.error "#{current_file} has a last-queued sticker of #{value} but we don't have it in our library cache."
+    got_stickers = true
 
 getRandomSongFiles = (count) ->
   return [] if count == 0

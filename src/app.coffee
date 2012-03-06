@@ -455,8 +455,6 @@ nextRepeatState = ->
 
 keyboard_handlers = do ->
   upDownHandler = (event) ->
-    return unless mpd.playlist.item_list.length
-
     if event.keyCode == 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1

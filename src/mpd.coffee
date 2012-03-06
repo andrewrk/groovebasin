@@ -417,12 +417,7 @@ exports.Mpd = class Mpd
   userIdToUserName: (user_id) ->
     return user_id if not @server_status?
     user_name = @server_status.user_names[user_id]
-    return user_id if not user_name?
-    # disambiguate name collisions
-    for k, other_name of @server_status.user_names
-      continue if k == user_id
-      return "#{user_name} (#{user_id})" if other_name == user_name
-    return user_name
+    return user_name ? user_id
 
   artistKey: (artist_name) =>
     if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()

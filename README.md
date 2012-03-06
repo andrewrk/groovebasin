@@ -38,11 +38,10 @@ At this point, Groove Basin will issue warnings telling you what to do next.
 
 ## Screenshots
 
-![Searching library](http://www.superjoesoftware.com/temp/groove-basin-5.png)
-![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-2.png)
-![Drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-0.0.3.png)
-![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-4.png)
-![Drag and drop / multiselect upload](http://www.superjoesoftware.com/temp/groove-basin-1.png)
+![Search + drag/drop support](http://www.superjoesoftware.com/temp/groove-basin-0.0.4.png)
+![Multi-select and context menu](http://www.superjoesoftware.com/temp/groove-basin-0.0.4-lib-menu.png)
+![Keyboard shortcuts](http://www.superjoesoftware.com/temp/groove-basin-0.0.4-shortcuts.png)
+![Last.fm Scrobbling](http://www.superjoesoftware.com/temp/groove-basin-0.0.4-lastfm.png)
 
 ## Mpd
 

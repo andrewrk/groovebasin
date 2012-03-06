@@ -158,7 +158,7 @@ renderSettings = ->
   return unless (api_key = mpd.server_status?.lastfm_api_key)?
   context =
     lastfm:
-      auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}://#{location.hostname}/"
+      auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}//#{location.host}/"
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
   console.log "context: #{JSON.stringify context}"

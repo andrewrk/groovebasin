@@ -89,14 +89,6 @@ extend = (obj, args...) ->
 elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
 dateToElapsed = (date) -> ((new Date()) - date) / 1000
 
-bound = (min, val, max) ->
-  if val < min
-    min
-  else if val > max
-    max
-  else
-    val
-
 fromMpdVol = (vol) -> vol / 100
 toMpdVol = (vol) -> bound(0, Math.round(parseFloat(vol) * 100), 100)
 
@@ -147,6 +139,14 @@ pickNRandomProps = (obj, n) ->
 sign = (n) -> if n > 0 then 1 else if n < 0 then -1 else 0
 
 boolToInt = (b) -> if b then 1 else 0
+
+exports.bound = (min, val, max) ->
+  if val < min
+    min
+  else if val > max
+    max
+  else
+    val
 
 exports.split_once = split_once = (line, separator) ->
   # should be line.split(separator, 1), but javascript is stupid

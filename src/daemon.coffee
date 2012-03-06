@@ -13,20 +13,12 @@ lastfm = new LastFmNode
   api_key: process.env.npm_package_config_lastfm_api_key
   secret: process.env.npm_package_config_lastfm_secret
 
-  #lastfm.request "track.scrobble",
-  #  timestamp: timestamp
-  #  album: album
-  #  track: track
-  #  artist: artist
-  #  albumArtist: albumArtist
-  #  duration: duration
-  #  trackNumber: trackNumber
-
 public_dir = "./public"
 state =
   state_version: 1 # bump this whenever persistent state should be discarded
   next_user_id: 0
   lastfm_scrobblers: {}
+  scrobbles: []
   status: # this structure is visible to clients
     dynamic_mode: null # null -> disabled
     random_ids: {}
@@ -260,9 +252,74 @@ getRandomSongFiles = (count) ->
     files.push track.file
   files
 
+flushScrobbleQueue = ->
+  console.log "flushing scrobble queue"
+  max_simultaneous = 10
+  count = 0
+  while (params = state.scrobbles.shift())? and count++ < max_simultaneous
+    console.log "scrobbling #{params.track} with session #{params.sk}"
+    params.handlers =
+      error: (error) ->
+        log.error "error from last.fm track.scrobble: #{error.message}"
+        if not error?.code? or error.code is 11 or error.service is 16
+          # retryable - add to queue
+          state.scrobbles.push params
+          saveState()
+    lastfm.request 'track.scrobble', params
+  saveState()
+
+queueScrobble = (params) ->
+  state.scrobbles.push params
+  saveState()
+
+last_playing_item = null
+playing_start = new Date()
+playing_time = 0
+previous_play_state = null
+checkScrobble = ->
+  this_item = my_mpd.status.current_item
+
+  if my_mpd.status.state is 'play'
+    if previous_play_state isnt 'play'
+      playing_start = new Date(new Date().getTime() - playing_time)
+      previous_play_state = my_mpd.status.state
+  playing_time = new Date().getTime() - playing_start.getTime()
+  console.log "playtime so far: #{playing_time}"
+
+  if this_item?.id isnt last_playing_item?.id
+    console.log "ids are different"
+    if (track = last_playing_item?.track)?
+      # then scrobble it
+      min_amt = 15 * 1000
+      max_amt = 4 * 60 * 1000
+      half_amt = track.time / 2 * 1000
+      if playing_time >= min_amt and (playing_time >= max_amt or playing_time >= half_amt)
+        for username, session_key of state.lastfm_scrobblers
+          console.log "queuing scrobble: #{track.name} for #{username}"
+          queueScrobble
+            sk: session_key
+            timestamp: Math.round(playing_start.getTime() / 1000)
+            album: track.album?.name or ""
+            track: track.name or ""
+            artist: track.artist_name or ""
+            albumArtist: track.album_artist_name or ""
+            duration: track.time or ""
+            trackNumber: track.track or ""
+        flushScrobbleQueue()
+
+    last_playing_item = this_item
+    previous_play_state = my_mpd.status.state
+    playing_start = new Date()
+    playing_time = 0
+
+previous_now_playing_id = null
 updateNowPlaying = ->
   return unless my_mpd.status.state is 'play'
   return unless (track = my_mpd.status.current_item?.track)?
+
+  return unless previous_now_playing_id isnt my_mpd.status.current_item.id
+  previous_now_playing_id = my_mpd.status.current_item.id
+
   for username, session_key of state.lastfm_scrobblers
     console.log "update now playing with session_key: #{session_key}, track: #{track.name}, artist: #{track.artist_name}, album: #{track.album?.name}"
     lastfm.request "track.updateNowPlaying",
@@ -382,9 +439,14 @@ my_mpd.on 'error', (msg) ->
 my_mpd.on 'statusupdate', ->
   checkDynamicMode()
   updateNowPlaying()
+  checkScrobble()
 my_mpd.on 'playlistupdate', checkDynamicMode
 my_mpd.on 'libraryupdate', updateStickers
 my_mpd.on 'chat', scrubStaleUserNames
+
+
+# every 2 minutes, flush scrobble queue
+setTimeout flushScrobbleQueue, 120000
 
 # downgrade user permissions
 try process.setuid uid if (uid = process.env.npm_package_config_user_id)?

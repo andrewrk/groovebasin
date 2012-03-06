@@ -161,8 +161,11 @@ renderSettings = ->
       auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}//#{location.host}/"
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
+      scrobbling_on: localStorage?.lastfm_scrobbling_on?
   console.log "context: #{JSON.stringify context}"
   $settings.html Handlebars.templates.settings(context)
+  $settings.find(".signout").button()
+  $settings.find("#toggle-scrobble").button()
 
 renderChat = ->
   chat_status_text = ""
@@ -1179,22 +1182,26 @@ setUpUi = ->
     onComplete: (id, file_name, response_json) ->
       want_to_queue.push file_name
 
-  $settings.on 'click', 'a.signout', (event) ->
+  $settings.on 'click', '.signout', (event) ->
     delete localStorage?.lastfm_username
     delete localStorage?.lastfm_session_key
+    delete localStorage?.lastfm_scrobbling_on
     renderSettings()
     return false
-  $settings.on 'click', 'a.scrobble-on', (event) ->
+  $settings.on 'click', '#toggle-scrobble', (event) ->
+    value = $(this).prop("checked")
+    if value
+      msg = 'LastfmScrobblersAdd'
+      localStorage?.lastfm_scrobbling_on = true
+    else
+      msg = 'LastfmScrobblersRemove'
+      delete localStorage?.lastfm_scrobbling_on
+
     params =
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
-    socket.emit 'LastfmScrobblersAdd', JSON.stringify(params)
-    return false
-  $settings.on 'click', 'a.scrobble-off', (event) ->
-    params =
-      username: localStorage?.lastfm_username
-      session_key: localStorage?.lastfm_session_key
-    socket.emit 'LastfmScrobblersRemove', JSON.stringify(params)
+    socket.emit msg, JSON.stringify(params)
+    renderSettings()
     return false
 
 # end setUpUi
@@ -1267,6 +1274,7 @@ $document.ready ->
     console.log "LastfmGetSessionSuccess: #{JSON.stringify params}"
     localStorage?.lastfm_username = params.session.name
     localStorage?.lastfm_session_key = params.session.key
+    delete localStorage?.lastfm_scrobbling_on
     renderSettings()
 
   setUpUi()

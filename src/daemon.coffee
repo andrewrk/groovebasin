@@ -67,33 +67,34 @@ log.info "Serving at http://localhost:#{process.env.npm_package_config_port}/"
 
 # read mpd conf
 do ->
+  mpd_conf_path = process.env.npm_package_config_mpd_conf
   try
-    data = fs.readFileSync(process.env.npm_package_config_mpd_conf)
+    data = fs.readFileSync(mpd_conf_path)
   catch error
-    log.warn "Unable to read mpd conf file: #{error}"
+    log.warn "Unable to read #{mpd_conf_path}: #{error}"
     return
   mpd_conf = require('./lib/mpdconf').parse(data.toString())
   if mpd_conf.music_directory?
     state.status.upload_enabled = true
     state.status.download_enabled = true
   else
-    log.warn "music directory not found in mpd conf"
+    log.warn "music directory not found in #{mpd_conf_path}"
   if not (state.status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
-    log.warn "httpd streaming not enabled in mpd conf"
+    log.warn "httpd streaming not enabled in #{mpd_conf_path}"
   if mpd_conf.sticker_file?
     # changing from null to false, enables but does not turn on dynamic mode
     state.status.dynamic_mode = false if state.status.dynamic_mode == null
     stickers_enabled = true
   else
-    log.warn "sticker_file not set in mpd conf"
+    log.warn "sticker_file not set in #{mpd_conf_path}"
   if mpd_conf.auto_update isnt "yes"
-    log.warn "recommended to turn auto_update on in mpd conf"
+    log.warn "recommended to turn auto_update on in #{mpd_conf_path}"
   if mpd_conf.gapless_mp3_playback isnt "yes"
-    log.warn "recommended to turn gapless_mp3_playback on in mpd conf"
+    log.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
   if mpd_conf.volume_normalization isnt "yes"
-    log.warn "recommended to turn volume_normalization on in mpd conf"
+    log.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
   if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
-    log.warn "recommended to set max_command_list_size to >= 16384 in mpd conf"
+    log.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
 
 # set up library link
 if mpd_conf?.music_directory?

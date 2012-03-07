@@ -1287,8 +1287,9 @@ $document.ready ->
     socket.emit 'SetUserName', user_name
   setUpUi()
   initHandlebars()
-
-  $(window).resize handleResize
   render()
+
+  # do this last so that everything becomes the correct size.
+  $(window).resize handleResize
 
   window._debug_mpd = mpd

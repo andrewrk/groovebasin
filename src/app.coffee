@@ -1243,6 +1243,27 @@ handleResize = ->
 
 $document.ready ->
   socket = io.connect()
+
+  # special case when we get the callback from Last.fm.
+  # tell the server the token and save the session in localStorage.
+  # then refresh but remove the "?token=*" from the URL.
+  if (token = Util.parseQuery(location.search.substring(1))?.token)?
+    socket.emit 'LastfmGetSession', token
+
+    refreshPage = ->
+      location.href = "#{location.protocol}//#{location.host}/"
+    socket.on 'LastfmGetSessionSuccess', (data) ->
+      params = JSON.parse(data)
+      localStorage?.lastfm_username = params.session.name
+      localStorage?.lastfm_session_key = params.session.key
+      delete localStorage?.lastfm_scrobbling_on
+      refreshPage()
+    socket.on 'LastfmGetSessionError', (data) ->
+      params = JSON.parse(data)
+      alert "Error authenticating: #{params.message}"
+      refreshPage()
+    return
+
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', ->
@@ -1264,16 +1285,6 @@ $document.ready ->
 
   if (user_name = localStorage?.user_name)?
     socket.emit 'SetUserName', user_name
-  if (token = Util.parseQuery(location.search.substring(1))?.token)?
-    socket.emit 'LastfmGetSession', token
-
-  socket.on 'LastfmGetSessionSuccess', (data) ->
-    params = JSON.parse(data)
-    localStorage?.lastfm_username = params.session.name
-    localStorage?.lastfm_session_key = params.session.key
-    delete localStorage?.lastfm_scrobbling_on
-    renderSettings()
-
   setUpUi()
   initHandlebars()
 

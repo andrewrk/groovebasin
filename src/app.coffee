@@ -357,8 +357,10 @@ renderNowPlaying = ->
   updateSliderPos()
 
   # update volume pos
-  if (vol = mpd.status?.volume)? and not user_is_volume_sliding
-    $vol_slider.slider 'option', 'value', vol
+  unless user_is_volume_sliding
+    enabled = (vol = mpd.status?.volume)?
+    $vol_slider.slider 'option', 'value', vol if enabled
+    $vol_slider.slider 'option', 'disabled', not enabled
 
 render = ->
   $("#playlist-window").toggle(mpd_alive)

@@ -97,7 +97,10 @@ bound = (min, val, max) ->
   else
     val
 
-fromMpdVol = (vol) -> vol / 100
+fromMpdVol = (vol) ->
+  vol = parseInt(vol)
+  return null if vol < 0 or vol > 100
+  return vol / 100
 toMpdVol = (vol) -> bound(0, Math.round(parseFloat(vol) * 100), 100)
 
 startsWith = (string, str) -> string.substring(0, str.length) == str
@@ -487,7 +490,7 @@ exports.Mpd = class Mpd
       for [key, val] in (split_once(line, ": ") for line in msg.split("\n"))
         o[key] = val
       extend @status,
-        volume: parseInt(o.volume) / 100
+        volume: fromMpdVol(o.volume)
         repeat: parseInt(o.repeat) != 0
         random: parseInt(o.random) != 0
         single: parseInt(o.single) != 0

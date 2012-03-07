@@ -289,34 +289,34 @@ checkScrobble = ->
   playing_time = new Date().getTime() - playing_start.getTime()
   log.debug "playtime so far: #{playing_time}"
 
-  if this_item?.id isnt last_playing_item?.id
-    log.debug "ids are different"
-    if (track = last_playing_item?.track)?
-      # then scrobble it
-      min_amt = 15 * 1000
-      max_amt = 4 * 60 * 1000
-      half_amt = track.time / 2 * 1000
-      if playing_time >= min_amt and (playing_time >= max_amt or playing_time >= half_amt)
-        if track.artist_name
-          for username, session_key of state.lastfm_scrobblers
-            log.debug "queuing scrobble: #{track.name} for #{username}"
-            queueScrobble
-              sk: session_key
-              timestamp: Math.round(playing_start.getTime() / 1000)
-              album: track.album?.name or ""
-              track: track.name or ""
-              artist: track.artist_name or ""
-              albumArtist: track.album_artist_name or ""
-              duration: track.time or ""
-              trackNumber: track.track or ""
-          flushScrobbleQueue()
-        else
-          log.warn "Not scrobbling #{track.name} - missing artist."
+  return unless this_item?.id isnt last_playing_item?.id
+  log.debug "ids are different"
+  if (track = last_playing_item?.track)?
+    # then scrobble it
+    min_amt = 15 * 1000
+    max_amt = 4 * 60 * 1000
+    half_amt = track.time / 2 * 1000
+    if playing_time >= min_amt and (playing_time >= max_amt or playing_time >= half_amt)
+      if track.artist_name
+        for username, session_key of state.lastfm_scrobblers
+          log.debug "queuing scrobble: #{track.name} for #{username}"
+          queueScrobble
+            sk: session_key
+            timestamp: Math.round(playing_start.getTime() / 1000)
+            album: track.album?.name or ""
+            track: track.name or ""
+            artist: track.artist_name or ""
+            albumArtist: track.album_artist_name or ""
+            duration: track.time or ""
+            trackNumber: track.track or ""
+        flushScrobbleQueue()
+      else
+        log.warn "Not scrobbling #{track.name} - missing artist."
 
-    last_playing_item = this_item
-    previous_play_state = my_mpd.status.state
-    playing_start = new Date()
-    playing_time = 0
+  last_playing_item = this_item
+  previous_play_state = my_mpd.status.state
+  playing_start = new Date()
+  playing_time = 0
 
 previous_now_playing_id = null
 updateNowPlaying = ->

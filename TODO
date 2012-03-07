@@ -1,6 +1,25 @@
-* if you select the last track in blink 182 enema of the state and press down,
-  it goes to the wrong track next
+Version 0.0.5
+* bug: if you select the last track in blink 182 enema of the state and press
+  down, it goes to the wrong track next
+* if you move a blue song such that it touches a non-blue song, it should lose
+  its blueness
+* put song files in an intelligent place when uploading
+* ability to ban from random
+  - keyboard shortcut 'B'
+* ability to mark a playlist item as "stop after this track"
+* attempt to reconnect when lost connection to server.
+* support restarting mpd without restarting daemon
 
+Version 0.0.6
+* ability to password protect - make it so that not everybody can kill mpd,
+  enable/disable audio outputs, edit tags, upload tracks, change playback
+  state, etc.
+* ability to delete songs from library
+* ability to edit tags
+* ability to move a file to a better location based on its tags
+* display an icon when connection to server is lost.
+
+Backlog
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child
 * online user interaction:
@@ -13,20 +32,11 @@
   - library songs should know which user uploaded them if any
     > this would require user authentication :-/
   - server-side chat logs
-* if you move a blue song such that it touches a non-blue song, it loses its
-  blueness
 * shortcuts window should be scrollable with arrows
 * shortcuts window doesn't close with Escape after a Ctrl+F in Chrome
 * Time column disappears when window is too thin
 * Time column can cut off part of 4-digit times
 * option to not auto-queue uploaded songs
-* ability to password protect - make it so that not everybody can kill mpd,
-  enable/disable audio outputs, edit tags, upload tracks, change playback
-  state, etc.
-* ability to delete songs from library
-* ability to edit tags
-* ability to move a file to a better location based on its tags
-* put song files in an intelligent place when uploading
 * smarter anticipation of commands to avoid the glitchy behavior when you do
   a repetitive action quickly, such as turning the volume down incrementally
   or moving a track down one space at a time
@@ -38,8 +48,6 @@
   - use alt for moving tracks up/down
 * dynamic mode populates twice when user clicks Clear
   - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
-* display an icon when connection to server is lost.
-* attempt to reconnect when lost connection to server.
 * display any mpd status error message
 * ability to download multiple songs at once
 * library management
@@ -53,22 +61,10 @@
       api that lists possible duplicates and actions to resolve them.
   - when a song is added to the library, automatically replaygain scan it
     and the album from whence it came. Do this for update as well.
-  - ability to add song to library by URL
-* plugin API
-  - plugin to scrobble songs to last.fm
-    > global and per-user scrobbling
-  - plugin to import songs to library from youtube URL
-  - move dynamic playlist mode functionality to a plugin
-* file folder inbox to import stuff
+* ability to add song to library by URL
 * take mpd's status into account. Make them editable?
   - consume
   - random
-* good shuffle heuristics:
-  - songs that get skipped more often have less probability of being
-    randomly chosen.
-  - ability to ban from random
-    > keyboard shortcut 'B'
-  - make dynamic playlist mode options configurable
 * prepend '!' to a search word to NOT match the word. '\!' to literally match
   '!'. '\\' to literally match '\'
 * ability to upload zip files
@@ -78,3 +74,6 @@
   - display
   - grab individual tracks
   - switch to
+* make dynamic playlist mode options configurable
+* ability to import songs to library from youtube URL
+* file folder inbox to import stuff

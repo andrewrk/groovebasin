@@ -37,7 +37,6 @@ started_drag = false
 abortDrag = ->
 clickTab = null
 stream = null
-want_to_queue = []
 MARGIN = 10
 
 # cache jQuery objects
@@ -57,18 +56,6 @@ $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
 $chat = $("#chat")
 $settings = $("#settings")
-
-flushWantToQueue = ->
-  i = 0
-  files = []
-  while i < want_to_queue.length
-    file = want_to_queue[i]
-    if mpd.library.track_table[file]?
-      files.push file
-      want_to_queue.splice i, 1
-    else
-      i++
-  mpd.queueFiles files
 
 scrollLibraryToSelection = ->
   return unless (helpers = getSelHelpers())?
@@ -1178,8 +1165,6 @@ setUpUi = ->
     element: document.getElementById("upload-widget")
     action: '/upload'
     encoding: 'multipart'
-    onComplete: (id, file_name, response_json) ->
-      want_to_queue.push file_name
 
   $settings.on 'click', '.signout', (event) ->
     delete localStorage?.lastfm_username
@@ -1267,7 +1252,6 @@ $document.ready ->
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', ->
-    flushWantToQueue()
     renderLibrary()
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'statusupdate', ->

@@ -16,10 +16,11 @@ lastfm = new LastFmNode
 
 public_dir = "./public"
 state =
-  state_version: 1 # bump this whenever persistent state should be discarded
+  state_version: 2 # bump this whenever persistent state should be discarded
   next_user_id: 0
   lastfm_scrobblers: {}
   scrobbles: []
+  want_to_queue: []
   status: # this structure is visible to clients
     dynamic_mode: false
     random_ids: {}
@@ -31,6 +32,19 @@ state =
     user_names: {}
     chats: []
     lastfm_api_key: process.env.npm_package_config_lastfm_api_key
+
+flushWantToQueue = ->
+  i = 0
+  files = []
+  while i < state.want_to_queue.length
+    file = state.want_to_queue[i]
+    if my_mpd.library.track_table[file]?
+      files.push file
+      state.want_to_queue.splice i, 1
+    else
+      i++
+  my_mpd.queueFiles files
+  saveState()
 
 do ->
   try
@@ -52,9 +66,12 @@ fileEscape = (filename) ->
   out
 zfill = (n) ->
   if n < 10 then "0" + n else "" + n
-getSuggestedPath = (track, default_name=mpd.trackNameFromFile(track.file)) ->
+musicLibPath = ->
   path = mpd_conf.music_directory
   path += '/' if path.substring(path.length - 1, 1) isnt '/'
+  path
+getSuggestedPath = (track, default_name=mpd.trackNameFromFile(track.file)) ->
+  path = ""
   path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
   path += "#{fileEscape track.album_name}/" if track.album_name
   path += "#{fileEscape zfill track.track} " if track.track
@@ -82,13 +99,17 @@ app = http.createServer((request, response) ->
         tmp_with_ext = file.qqfile.path + getExtension(file.qqfile.filename)
         moveFile file.qqfile.path, tmp_with_ext, ->
           my_mpd.getFileInfo "file://#{tmp_with_ext}", (track) ->
+            music_lib_path = musicLibPath()
             suggested_path = getSuggestedPath(track, file.qqfile.filename)
-            mkdirp stripFilename(suggested_path), (err) ->
+            dest = music_lib_path + suggested_path
+            mkdirp stripFilename(dest), (err) ->
               if err
                 log.error err
               else
-                moveFile tmp_with_ext, suggested_path, ->
-                  console.info "Track was uploaded: #{suggested_path}"
+                moveFile tmp_with_ext, dest, ->
+                  state.want_to_queue.push suggested_path
+                  saveState()
+                  console.info "Track was uploaded: #{dest}"
 
       response.writeHead 200, {'content-type': 'text/html'}
       response.end JSON.stringify {success: true}
@@ -504,7 +525,9 @@ my_mpd.on 'statusupdate', ->
   updateNowPlaying()
   checkScrobble()
 my_mpd.on 'playlistupdate', checkDynamicMode
-my_mpd.on 'libraryupdate', updateStickers
+my_mpd.on 'libraryupdate', ->
+  updateStickers()
+  flushWantToQueue()
 my_mpd.on 'chat', scrubStaleUserNames
 
 

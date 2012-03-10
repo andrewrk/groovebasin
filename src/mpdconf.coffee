@@ -22,7 +22,15 @@ exports.parse = (file_contents) ->
           obj[key] = new_obj = {}
         obj = new_obj
       else
-        obj[key] = JSON.parse(val)
+        val = JSON.parse(val)
+        if key is 'bind_to_address'
+          obj[key] ?= {}
+          if val[0] is '/'
+            obj[key].unix_socket = val
+          else
+            obj[key].network = val
+        else
+          obj[key] = val
 
   # arrange audio_outputs by type
   obj.audio_output = {}

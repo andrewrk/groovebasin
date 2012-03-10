@@ -190,7 +190,7 @@ renderPlaylistButtons = ->
   # set the state of dynamic mode button
   $dynamic_mode
     .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
-    .button("option", "disabled", not mpd.server_status?.dynamic_mode?)
+    .button("option", "disabled", not mpd.server_status?.dynamic_mode_enabled)
     .button("refresh")
 
   repeat_state = getRepeatStateName()

@@ -5,9 +5,6 @@ views=src/*.handlebars
 client_src=src/util.coffee src/mpd.coffee src/socketmpd.coffee src/app.coffee
 server_src=src/daemon.coffee
 styles=src/app.styl
-lib=lib
-mpd_lib=$(lib)/mpd.js
-mpd_lib_src=src/mpd.coffee
 
 coffee=node_modules/coffee-script/bin/coffee
 handlebars=node_modules/handlebars/bin/handlebars
@@ -23,19 +20,19 @@ build: .build.timestamp
 	@echo done building
 	@echo
 
-$(serverjs): $(server_src) $(mpd_lib) $(lib)/mpdconf.js
+$(serverjs): $(server_src) lib/mpd.js lib/mpdconf.js
 	$(coffee) -p -c $(server_src) >$@.tmp
 	chmod +x $@.tmp
 	mv $@{.tmp,}
 
-$(lib):
-	mkdir -p $(lib)
+lib:
+	mkdir -p lib
 
-$(mpd_lib): $(mpd_lib_src) | $(lib)
-	$(coffee) -p -c $(mpd_lib_src) >$@.tmp
+lib/mpd.js: src/mpd.coffee | lib
+	$(coffee) -p -c src/mpd.coffee >$@.tmp
 	mv $@{.tmp,}
 
-$(lib)/mpdconf.js: src/mpdconf.coffee | $(lib)
+lib/mpdconf.js: src/mpdconf.coffee | lib
 	$(coffee) -p -c src/mpdconf.coffee >$@.tmp
 	mv $@{.tmp,}
 
@@ -52,7 +49,7 @@ clean:
 	rm -f ./$(appjs){,.tmp}
 	rm -f ./$(appcss){,.tmp}
 	rm -f ./$(serverjs){,.tmp}
-	rm -rf ./$(lib)
+	rm -rf ./lib
 	rm -f ./public/library
 
 watch:

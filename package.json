@@ -21,18 +21,19 @@
         "handlebars": ">=1.0.4beta",
         "formidable": ">=1.0.8",
         "stylus": ">=0.24.0",
-        "lastfm": ">=0.8.0"
+        "lastfm": ">=0.8.0",
+        "mkdirp": ">=0.3.0"
     },
     "scripts": {
         "install": "make"
     },
     "config": {
-      "user_id": "mpd",
-      "log_level": 2,
-      "port": 16242,
-      "mpd_conf": "/etc/mpd.conf",
-      "state_file": ".state.json",
-      "lastfm_api_key": "7d831eff492e6de5be8abb736882c44d",
-      "lastfm_secret": "8713e8e893c5264608e584a232dd10a0"
+        "user_id": "mpd",
+        "log_level": 2,
+        "port": 16242,
+        "mpd_conf": "/etc/mpd.conf",
+        "state_file": ".state.json",
+        "lastfm_api_key": "7d831eff492e6de5be8abb736882c44d",
+        "lastfm_secret": "8713e8e893c5264608e584a232dd10a0"
     }
 }

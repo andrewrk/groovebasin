@@ -8,6 +8,7 @@ url = require 'url'
 util = require 'util'
 mpd = require './lib/mpd'
 LastFmNode = require('lastfm').LastFmNode
+mkdirp = require 'mkdirp'
 
 lastfm = new LastFmNode
   api_key: process.env.npm_package_config_lastfm_api_key
@@ -20,11 +21,12 @@ state =
   lastfm_scrobblers: {}
   scrobbles: []
   status: # this structure is visible to clients
-    dynamic_mode: null # null -> disabled
+    dynamic_mode: false
     random_ids: {}
     stream_httpd_port: null
     upload_enabled: false
     download_enabled: false
+    dynamic_mode_enabled: false
     users: []
     user_names: {}
     chats: []
@@ -39,8 +41,35 @@ do ->
   state.status.users = []
   # always use the config value for lastfm_api_key
   state.status.lastfm_api_key = process.env.npm_package_config_lastfm_api_key
-stickers_enabled = false
 mpd_conf = null
+
+bad_file_chars = {}
+bad_file_chars[c] = "_" for c in '/\\?%*:|"<>'
+fileEscape = (filename) ->
+  out = ""
+  for c in filename
+    out += bad_file_chars[c] ? c
+  out
+zfill = (n) ->
+  if n < 10 then "0" + n else "" + n
+getSuggestedPath = (track, default_name=mpd.trackNameFromFile(track.file)) ->
+  path = mpd_conf.music_directory
+  path += '/' if path.substring(path.length - 1, 1) isnt '/'
+  path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
+  path += "#{fileEscape track.album_name}/" if track.album_name
+  path += "#{fileEscape zfill track.track} " if track.track
+  ext = getExtension(track.file)
+  if track.name is mpd.trackNameFromFile(track.file)
+    path += fileEscape default_name
+  else
+    path += fileEscape track.name
+    path += ext
+  return path
+getExtension = (filename) ->
+  if (pos = filename.lastIndexOf('.')) is -1 then "" else "." + filename.substring(pos+1)
+stripFilename = (path) ->
+  parts = path.split('/')
+  parts[0...parts.length-1].join('/')
 
 # static server
 fileServer = new (static.Server) public_dir
@@ -50,9 +79,19 @@ app = http.createServer((request, response) ->
     if state.status.upload_enabled
       form = new formidable.IncomingForm()
       form.parse request, (err, fields, file) ->
-        moveFile file.qqfile.path, "#{mpd_conf.music_directory}/#{file.qqfile.name}"
-        response.writeHead 200, {'content-type': 'text/html'}
-        response.end JSON.stringify {success: true}
+        tmp_with_ext = file.qqfile.path + getExtension(file.qqfile.filename)
+        moveFile file.qqfile.path, tmp_with_ext, ->
+          my_mpd.getFileInfo "file://#{tmp_with_ext}", (track) ->
+            suggested_path = getSuggestedPath(track, file.qqfile.filename)
+            mkdirp stripFilename(suggested_path), (err) ->
+              if err
+                log.error err
+              else
+                moveFile tmp_with_ext, suggested_path, ->
+                  console.info "Track was uploaded: #{suggested_path}"
+
+      response.writeHead 200, {'content-type': 'text/html'}
+      response.end JSON.stringify {success: true}
     else
       response.writeHead 500, {'content-type': 'text/plain'}
       response.end JSON.stringify {success: false, reason: "Uploads not enabled"}
@@ -71,22 +110,29 @@ do ->
   try
     data = fs.readFileSync(mpd_conf_path)
   catch error
-    log.warn "Unable to read #{mpd_conf_path}: #{error}"
+    log.warn "Unable to read #{mpd_conf_path}: #{error}. Uploading, downloading, streaming, dynamic mode disabled."
     return
   mpd_conf = require('./lib/mpdconf').parse(data.toString())
-  if mpd_conf.music_directory?
-    state.status.upload_enabled = true
-    state.status.download_enabled = true
-  else
-    log.warn "music directory not found in #{mpd_conf_path}"
-  if not (state.status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
+
+  # enable all the features
+  state.status.upload_enabled = true
+  state.status.download_enabled = true
+  state.status.dynamic_mode_enabled = true
+
+  # disable the ones we can't use
+  unless mpd_conf.bind_to_address?.unix_socket?
+    state.status.upload_enabled = false
+    log.warn "bind_to_address does not have a unix socket enabled in #{mpd_conf_path}. Uploading disabled."
+  unless mpd_conf.music_directory?
+    state.status.upload_enabled = false
+    state.status.download_enabled = false
+    log.warn "music directory not found in #{mpd_conf_path}. Uploading and downloading disabled."
+  unless (state.status.stream_httpd_port = mpd_conf.audio_output?.httpd?.port)?
     log.warn "httpd streaming not enabled in #{mpd_conf_path}"
-  if mpd_conf.sticker_file?
-    # changing from null to false, enables but does not turn on dynamic mode
-    state.status.dynamic_mode = false if state.status.dynamic_mode == null
-    stickers_enabled = true
-  else
-    log.warn "sticker_file not set in #{mpd_conf_path}"
+  unless mpd_conf.sticker_file?
+    state.status.dynamic_mode_enabled = false
+    state.status.dynamic_mode = false
+    log.warn "sticker_file not set in #{mpd_conf_path}. Dynamic Mode disabled."
   if mpd_conf.auto_update isnt "yes"
     log.warn "recommended to turn auto_update on in #{mpd_conf_path}"
   if mpd_conf.gapless_mp3_playback isnt "yes"
@@ -105,7 +151,7 @@ if mpd_conf?.music_directory?
     try
       fs.symlinkSync mpd_conf.music_directory, library_link
     catch error
-      log.warn "Unable to link public/library to #{mpd_conf.music_directory}: #{error}"
+      log.warn "Unable to link public/library to #{mpd_conf.music_directory}: #{error}. Upload and download disabled."
       state.status.upload_enabled = false
       state.status.download_enabled = false
       return
@@ -114,15 +160,21 @@ if mpd_conf?.music_directory?
     catch error
       state.status.upload_enabled = false
       state.status.download_enabled = false
-      err? and log.warn "Unable to access music directory: #{error}"
+      err? and log.warn "Unable to access music directory: #{error}. Upload and download disabled."
 
-moveFile = (source, dest) ->
+moveFile = (source, dest, cb=->) ->
   in_stream = fs.createReadStream(source)
   out_stream = fs.createWriteStream(dest)
-  util.pump in_stream, out_stream, -> fs.unlink source
+  out_stream.on 'error', (error) -> log.error error
+  util.pump in_stream, out_stream, -> fs.unlink source, cb
 
-createMpdConnection = (cb) ->
-  net.connect mpd_conf?.port ? 6600, mpd_conf?.bind_to_address ? "localhost", cb
+createMpdConnection = (unix_socket, cb) ->
+  if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
+    net.connect path, cb
+  else
+    port = mpd_conf?.port ? 6600
+    host = mpd_conf?.bind_to_address?.network ? "localhost"
+    net.connect port, host, cb
 
 sendStatus = ->
   my_mpd.sendCommand "sendmessage Status #{JSON.stringify JSON.stringify state.status}"
@@ -132,15 +184,14 @@ saveState = ->
   fs.writeFile process.env.npm_package_config_state_file, JSON.stringify(state), "utf8"
 
 setDynamicMode = (value) ->
-  # return if dynamic mode is disabled
-  return unless state.status.dynamic_mode?
+  return unless state.status.dynamic_mode_enabled
   return if state.status.dynamic_mode == value
   state.status.dynamic_mode = value
   checkDynamicMode()
   sendStatus()
 previous_ids = {}
 checkDynamicMode = ->
-  return unless stickers_enabled
+  return unless state.status.dynamic_mode_enabled
   return unless my_mpd.library.artists.length
   return unless got_stickers
   item_list = my_mpd.playlist.item_list
@@ -350,7 +401,7 @@ io.sockets.on 'connection', (socket) ->
   state.next_user_id += 1
   state.status.users.push user_id
   socket.emit 'Identify', user_id
-  mpd_socket = createMpdConnection ->
+  mpd_socket = createMpdConnection false, ->
     log.debug "browser to mpd connect"
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
@@ -442,7 +493,7 @@ class DirectMpd extends mpd.Mpd
 
 
 my_mpd = null
-my_mpd_socket = createMpdConnection ->
+my_mpd_socket = createMpdConnection true, ->
   log.debug "server to mpd connect"
   my_mpd.handleConnectionStart()
 my_mpd = new DirectMpd(my_mpd_socket)

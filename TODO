@@ -1,12 +1,13 @@
 Version 0.0.5
+* restore auto-queue-after-upload
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next
 * if you move a blue song such that it touches a non-blue song, it should lose
   its blueness
-* put song files in an intelligent place when uploading
 * ability to ban from random
   - keyboard shortcut 'B'
 * ability to mark a playlist item as "stop after this track"
+* display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
 * support restarting mpd without restarting daemon
 
@@ -17,9 +18,9 @@ Version 0.0.6
 * ability to delete songs from library
 * ability to edit tags
 * ability to move a file to a better location based on its tags
-* display an icon when connection to server is lost.
 
 Backlog
+* when uploading songs into library, make sure not to overwrite existing ones
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child
 * online user interaction:

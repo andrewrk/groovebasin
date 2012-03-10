@@ -62,7 +62,7 @@
 #   user_id # assigend from server
 
 ######################### global #####################
-exports ?= window
+_exports = exports ? window
 
 ######################### static #####################
 DEFAULT_ARTIST = "[Unknown Artist]"
@@ -132,7 +132,7 @@ titleCompare = (a,b) ->
 
 noop = ->
 
-escape = (str) ->
+qEscape = (str) ->
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
@@ -151,12 +151,22 @@ sign = (n) -> if n > 0 then 1 else if n < 0 then -1 else 0
 
 boolToInt = (b) -> if b then 1 else 0
 
-exports.split_once = split_once = (line, separator) ->
+parseMaybeUndefNumber = (n) ->
+  n = parseInt(n)
+  n = "" if isNaN(n)
+  return n
+
+_exports.split_once = split_once = (line, separator) ->
   # should be line.split(separator, 1), but javascript is stupid
   index = line.indexOf(separator)
   return [line.substr(0, index), line.substr(index + separator.length)]
 
-exports.Mpd = class Mpd
+_exports.trackNameFromFile = trackNameFromFile = (filename) ->
+  filetitle = filename.substr filename.lastIndexOf('/') + 1
+  len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
+  filetitle.substr 0, len
+
+_exports.Mpd = class Mpd
 
   ######################### private #####################
 
@@ -237,17 +247,13 @@ exports.Mpd = class Mpd
     flush_current_track()
     mpd_tracks
 
-  parseMaybeUndefNumber = (n) ->
-    n = parseInt(n)
-    n = "" if isNaN(n)
-    return n
   mpdTracksToTrackObjects: (mpd_tracks) =>
     tracks = []
     for mpd_track in mpd_tracks
       artist_name = trim(mpd_track.Artist)
       track =
         file: mpd_track.file
-        name: mpd_track.Title || mpd_track.file.substr mpd_track.file.lastIndexOf('/') + 1
+        name: mpd_track.Title || trackNameFromFile(mpd_track.file)
         artist_name: artist_name
         artist_disambiguation: ""
         album_artist_name: mpd_track.AlbumArtist or artist_name
@@ -587,7 +593,7 @@ exports.Mpd = class Mpd
   queueRandomTracksCommands: (n) =>
     if not @haveFileListCache
       return []
-    ("addid \"#{escape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
+    ("addid \"#{qEscape(file)}\"" for file in pickNRandomProps(@library.track_table, n))
 
   queueRandomTracks: (n) =>
     @sendCommands @queueRandomTracksCommands n
@@ -607,7 +613,7 @@ exports.Mpd = class Mpd
     cmds = []
     for i in [files.length-1..0]
       file = files[i]
-      cmds.push "addid \"#{escape(file)}\" #{pos}"
+      cmds.push "addid \"#{qEscape(file)}\" #{pos}"
 
     items = ({id: null, pos: null, track: @library.track_table[file]} for file in files)
     @playlist.item_list.splice pos, 0, items...
@@ -667,7 +673,7 @@ exports.Mpd = class Mpd
 
   playId: (track_id) =>
     track_id = parseInt(track_id)
-    @sendCommand "playid #{escape(track_id)}"
+    @sendCommand "playid #{qEscape(track_id)}"
     @anticipatePlayId track_id
 
   moveIds: (track_ids, pos) =>
@@ -727,7 +733,7 @@ exports.Mpd = class Mpd
         @anticipateSkip 1
         if @status.state isnt "play"
           @status.state = "stop"
-      cmds.push "deleteid #{escape(track_id)}"
+      cmds.push "deleteid #{qEscape(track_id)}"
       item = @playlist.item_table[track_id]
       delete @playlist.item_table[item.id]
       @playlist.item_list.splice(item.pos, 1)
@@ -774,3 +780,9 @@ exports.Mpd = class Mpd
 
     @sendCommands cmds
     @raiseEvent 'statusupdate'
+
+  getFileInfo: (file, cb=noop) =>
+    @sendCommand "lsinfo \"#{qEscape(file)}\"", (msg) =>
+      [track] = @mpdTracksToTrackObjects @parseMpdTracks msg
+      cb track
+

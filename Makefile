@@ -1,11 +1,13 @@
+# input
+views=src/client/*.handlebars
+client_src=src/client/util.coffee src/shared/mpd.coffee src/client/socketmpd.coffee src/client/app.coffee
+server_src=src/server/server.coffee
+styles=src/client/app.styl
+# output
 appjs=public/app.js
 appcss=public/app.css
 serverjs=server.js
-views=src/*.handlebars
-client_src=src/util.coffee src/mpd.coffee src/socketmpd.coffee src/app.coffee
-server_src=src/daemon.coffee
-styles=src/app.styl
-
+# compilers
 coffee=node_modules/coffee-script/bin/coffee
 handlebars=node_modules/handlebars/bin/handlebars
 stylus=node_modules/stylus/bin/stylus
@@ -22,18 +24,17 @@ build: .build.timestamp
 
 $(serverjs): $(server_src) lib/mpd.js lib/mpdconf.js
 	$(coffee) -p -c $(server_src) >$@.tmp
-	chmod +x $@.tmp
 	mv $@{.tmp,}
 
 lib:
 	mkdir -p lib
 
-lib/mpd.js: src/mpd.coffee | lib
-	$(coffee) -p -c src/mpd.coffee >$@.tmp
+lib/mpd.js: src/shared/mpd.coffee | lib
+	$(coffee) -p -c src/shared/mpd.coffee >$@.tmp
 	mv $@{.tmp,}
 
-lib/mpdconf.js: src/mpdconf.coffee | lib
-	$(coffee) -p -c src/mpdconf.coffee >$@.tmp
+lib/mpdconf.js: src/server/mpdconf.coffee | lib
+	$(coffee) -p -c src/server/mpdconf.coffee >$@.tmp
 	mv $@{.tmp,}
 
 $(appjs): $(views) $(client_src)

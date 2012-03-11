@@ -8,6 +8,8 @@ their laptops, tablets, and phones, and play and share music.
 Depends on [mpd](http://musicpd.org) for the backend. Some might call this
 project an mpd client.
 
+Live demo: [groovebasin.com](http://groovebasin.com/)
+
 ## Features
 
 * Lightning-fast, responsive UI. You can hardly tell that the music server is

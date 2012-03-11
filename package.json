@@ -29,7 +29,7 @@
         "install": "make"
     },
     "config": {
-        "user_id": "mpd",
+        "user_id": "",
         "log_level": 2,
         "port": 16242,
         "mpd_conf": "/etc/mpd.conf",

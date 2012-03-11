@@ -20,7 +20,7 @@ log.info "Serving at http://localhost:#{process.env.npm_package_config_port}/"
 
 # downgrade user permissions
 try
-  process.setuid uid if (uid = process.env.npm_package_config_user_id)?
+  process.setuid uid if uid = process.env.npm_package_config_user_id
 catch error
   log.error "error setting uid: #{error}"
 log.info "server running as user #{process.getuid()}"

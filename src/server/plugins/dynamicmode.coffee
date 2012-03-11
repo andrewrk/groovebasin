@@ -17,7 +17,7 @@ exports.Plugin = class DynamicMode extends Plugin
   saveState: (state) =>
     state.status.dynamic_mode = @is_on
     state.status.dynamic_mode_enabled = @is_enabled
-    state.status.random_ids = {}
+    state.status.random_ids = @random_ids
 
   setConf: (conf, conf_path) =>
     @is_enabled = true

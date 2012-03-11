@@ -1295,9 +1295,5 @@ $document.ready ->
     swfPath: "/vendor/Jplayer.swf"
     preload: "auto"
     solution: "flash, html"
-    progress: (e) ->
-      console.log "progress: #{JSON.stringify e.jPlayer.status.flash}"
-      console.log "percent: #{e.jPlayer.status.currentPercentAbsolute}"
-      console.log "percent2: #{e.jPlayer.status.currentPercentRelative}"
 
   window._debug_mpd = mpd

@@ -27,6 +27,7 @@ selection =
     this.ids[sel_name][key] = true
     this.cursor = key
 
+server_status = null
 socket = null
 mpd = null
 mpd_alive = false
@@ -37,6 +38,7 @@ started_drag = false
 abortDrag = ->
 clickTab = null
 stream = null
+my_user_id = null
 MARGIN = 10
 
 # cache jQuery objects
@@ -56,6 +58,13 @@ $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
 $chat = $("#chat")
 $settings = $("#settings")
+
+haveUserName = -> server_status?.user_names[my_user_id]?
+getUserName = -> userIdToUserName my_user_id
+userIdToUserName = (user_id) ->
+  return user_id unless server_status?
+  user_name = server_status.user_names[user_id]
+  return user_name ? user_id
 
 scrollLibraryToSelection = ->
   return unless (helpers = getSelHelpers())?
@@ -142,7 +151,7 @@ getDragPosition = (x, y) ->
   return best
 
 renderSettings = ->
-  return unless (api_key = mpd.server_status?.lastfm_api_key)?
+  return unless (api_key = server_status?.lastfm_api_key)?
   context =
     lastfm:
       auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}//#{location.host}/"
@@ -155,18 +164,18 @@ renderSettings = ->
 
 renderChat = ->
   chat_status_text = ""
-  if (users = mpd.server_status?.users)?
+  if (users = server_status?.users)?
     # take ourselves out of the list of users
-    users = (mpd.userIdToUserName user_id for user_id in users when user_id != mpd.user_id)
+    users = (userIdToUserName user_id for user_id in users when user_id isnt my_user_id)
     chat_status_text = " (#{users.length})" if users.length > 0
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
-    for chat_object in mpd.server_status.chats
-      chat_object.user_name = mpd.userIdToUserName chat_object.user_id
+    for chat_object in server_status.chats
+      chat_object.user_name = userIdToUserName chat_object.user_id
     $chat.html Handlebars.templates.chat
       users: users
-      chats: mpd.server_status.chats
-    if mpd.hasUserName()
-      $("#user-id").text(mpd.getUserName() + ": ")
+      chats: server_status.chats
+    if haveUserName()
+      $("#user-id").text(getUserName() + ": ")
       $("#chat-input").attr('placeholder', "chat")
     else
       $("#user-id").text("")
@@ -176,8 +185,8 @@ renderChat = ->
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
   $dynamic_mode
-    .prop("checked", if mpd.server_status?.dynamic_mode then true else false)
-    .button("option", "disabled", not mpd.server_status?.dynamic_mode_enabled)
+    .prop("checked", if server_status?.dynamic_mode then true else false)
+    .button("option", "disabled", not server_status?.dynamic_mode_enabled)
     .button("refresh")
 
   repeat_state = getRepeatStateName()
@@ -188,18 +197,18 @@ renderPlaylistButtons = ->
 
   # disable stream button if we don't have it set up
   $stream_btn
-    .button("option", "disabled", not mpd.server_status?.stream_httpd_port?)
+    .button("option", "disabled", not server_status?.stream_httpd_port?)
     .button("refresh")
 
   # show/hide upload
   $upload_tab.removeClass("ui-state-disabled")
-  $upload_tab.addClass("ui-state-disabled") if not mpd.server_status?.upload_enabled
+  $upload_tab.addClass("ui-state-disabled") if not server_status?.upload_enabled
 
 
 renderPlaylist = ->
   context =
     playlist: mpd.playlist.item_list
-    server_status: mpd.server_status
+    server_status: server_status
   scroll_top = $playlist_items.scrollTop()
   $playlist_items.html Handlebars.templates.playlist(context)
   refreshSelection()
@@ -210,14 +219,14 @@ labelPlaylistItems = ->
   cur_item = mpd.status?.current_item
   # label the old ones
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
-  if cur_item? and mpd.server_status?.dynamic_mode
+  if cur_item? and server_status?.dynamic_mode
     for pos in [0...cur_item.pos]
       id = mpd.playlist.item_list[pos].id
       $("#playlist-track-#{id}").addClass('old')
   # label the random ones
-  if mpd.server_status?.random_ids?
+  if server_status?.random_ids?
     for item in mpd.playlist.item_list
-      if mpd.server_status.random_ids[item.id]
+      if server_status.random_ids[item.id]
         $("#playlist-track-#{item.id}").addClass('random')
   # label the current one
   $("#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
@@ -395,7 +404,7 @@ handleDeletePressed = ->
     refreshSelection()
 
 changeStreamStatus = (value) ->
-  return unless (port = mpd.server_status?.stream_httpd_port)?
+  return unless (port = server_status?.stream_httpd_port)?
   $stream_btn
     .prop("checked", value)
     .button("refresh")
@@ -418,7 +427,7 @@ togglePlayback = ->
 setDynamicMode = (value) ->
   socket.emit 'DynamicMode', JSON.stringify(value)
 
-toggleDynamicMode = -> setDynamicMode not mpd.server_status.dynamic_mode
+toggleDynamicMode = -> setDynamicMode not server_status.dynamic_mode
 
 getRepeatStateName = ->
   if not mpd.status.repeat
@@ -857,7 +866,7 @@ setUpUi = ->
       # adds a new context menu to the document
       context =
         item: mpd.playlist.item_table[track_id]
-        status: mpd.server_status
+        status: server_status
       $(Handlebars.templates.playlist_menu(context))
         .appendTo(document.body)
       $menu = $("#menu") # get the newly created one
@@ -971,7 +980,7 @@ setUpUi = ->
 
       # adds a new context menu to the document
       context =
-        status: mpd.server_status
+        status: server_status
       if sel_name is 'track'
         context.track = mpd.search_results.track_table[key]
       $(Handlebars.templates.library_menu(context)).appendTo(document.body)
@@ -1076,7 +1085,7 @@ setUpUi = ->
       Util.wait 0, ->
         $(event.target).val("")
       return false if message == ""
-      if not mpd.hasUserName()
+      unless haveUserName()
         new_user_name = message
       NICK = "/nick "
       if message.substr(0, NICK.length) == NICK
@@ -1151,7 +1160,7 @@ setUpUi = ->
       $("##{tab}-tab").hide()
 
   clickTab = (name) ->
-    return if name is 'upload' and not mpd.server_status?.upload_enabled
+    return if name is 'upload' and not server_status?.upload_enabled
     unselectTabs()
     $lib_tabs.find("li.#{name}-tab").addClass 'ui-state-active'
     $("##{name}-tab").show()
@@ -1249,6 +1258,19 @@ $document.ready ->
       refreshPage()
     return
 
+  socket.on 'Identify', (data) ->
+    my_user_id = data.toString()
+  socket.on 'Status', (data) ->
+    server_status = JSON.parse data.toString()
+    renderPlaylistButtons()
+    renderChat()
+    labelPlaylistItems()
+    renderSettings()
+
+    window._debug_server_status = server_status
+  if (user_name = localStorage?.user_name)?
+    socket.emit 'SetUserName', user_name
+
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg
   mpd.on 'libraryupdate', ->
@@ -1257,18 +1279,11 @@ $document.ready ->
   mpd.on 'statusupdate', ->
     renderNowPlaying()
     renderPlaylistButtons()
-  mpd.on 'serverstatus', ->
-    renderPlaylistButtons()
-    renderChat()
-    labelPlaylistItems()
-    renderSettings()
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true
     render()
 
-  if (user_name = localStorage?.user_name)?
-    socket.emit 'SetUserName', user_name
   setUpUi()
   initHandlebars()
   render()

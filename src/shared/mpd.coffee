@@ -57,9 +57,7 @@
 #
 # Call these methods:
 #   receive: (data) => # when you get data from mpd
-#
-# Set these fields:
-#   user_id # assigend from server
+#   handleConnectionStart: => # when you first connect
 
 ######################### global #####################
 _exports = exports ? window
@@ -82,9 +80,8 @@ else
 
 extend = (obj, args...) ->
   for arg in args
-    for prop, val of arg
-      obj[prop] = val
-  return obj
+    obj[prop] = val for prop, val of arg
+  obj
 
 elapsedToDate = (elapsed) -> new Date((new Date()) - elapsed * 1000)
 dateToElapsed = (date) -> ((new Date()) - date) / 1000
@@ -392,12 +389,10 @@ _exports.Mpd = class Mpd
       mixer: @updateStatus # the volume has been changed
       output: noop # an audio output has been enabled or disabled
       options: @updateStatus # options like repeat, random, crossfade, replay gain
-      sticker: noop # the sticker database has been modified.
+      sticker: => # the sticker database has been modified.
+        @raiseEvent 'stickerupdate'
       subscription: noop # a client has subscribed or unsubscribed to a channel
-      message: @readChannelMessages # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
-    @channel_handlers =
-      Status: @handleServerStatus
-
+      message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
 
     # cache of library data from mpd. See comment at top of this file
     @library =
@@ -418,15 +413,6 @@ _exports.Mpd = class Mpd
       if h is handler
         handlers.splice i, 1
         return
-
-  hasUserName: =>
-    @server_status?.user_names[@user_id]?
-  getUserName: =>
-    @userIdToUserName @user_id
-  userIdToUserName: (user_id) ->
-    return user_id if not @server_status?
-    user_name = @server_status.user_names[user_id]
-    return user_name ? user_id
 
   artistKey: (artist_name) =>
     if artist_name is DEFAULT_ARTIST then "" else artist_name.toLowerCase()
@@ -546,26 +532,6 @@ _exports.Mpd = class Mpd
             callback()
             @raiseEvent 'statusupdate'
 
-  readChannelMessages: =>
-    @sendCommand 'readmessages', (msg) =>
-      lines = msg.split("\n")
-      channel_to_messages = {}
-      current_channel = null
-      for line in lines
-        continue if line == ""
-        [name, value] = split_once line, ": "
-        if name == "channel"
-          current_channel = value
-        else if name == "message"
-          (channel_to_messages[current_channel] ?= []).push value
-        else
-          console.log msg
-          throw null
-      for channel, messages of channel_to_messages
-        @channel_handlers[channel] message for message in messages
-  handleServerStatus: (msg) =>
-    @server_status = JSON.parse(msg)
-    @raiseEvent 'serverstatus'
   # puts the search results in search_results
   search: (query) =>
     query = trim(query)

@@ -22,7 +22,8 @@
         "formidable": ">=1.0.8",
         "stylus": ">=0.24.0",
         "lastfm": ">=0.8.0",
-        "mkdirp": ">=0.3.0"
+        "mkdirp": ">=0.3.0",
+        "node.extend": ">=1.0.0"
     },
     "scripts": {
         "install": "make"

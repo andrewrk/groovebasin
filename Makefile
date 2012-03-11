@@ -22,12 +22,15 @@ build: .build.timestamp
 	@echo done building
 	@echo
 
-$(serverjs): $(server_src) lib/mpd.js lib/mpdconf.js
+$(serverjs): $(server_src) lib/mpd.js lib/mpdconf.js lib/plugin.js lib/plugins/chat.js lib/plugins/download.js lib/plugins/dynamicmode.js lib/plugins/lastfm.js lib/plugins/stream.js lib/plugins/upload.js
 	$(coffee) -p -c $(server_src) >$@.tmp
 	mv $@{.tmp,}
 
 lib:
 	mkdir -p lib
+
+lib/plugins:
+	mkdir -p lib/plugins
 
 lib/mpd.js: src/shared/mpd.coffee | lib
 	$(coffee) -p -c src/shared/mpd.coffee >$@.tmp
@@ -35,6 +38,34 @@ lib/mpd.js: src/shared/mpd.coffee | lib
 
 lib/mpdconf.js: src/server/mpdconf.coffee | lib
 	$(coffee) -p -c src/server/mpdconf.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugin.js: src/server/plugin.coffee | lib
+	$(coffee) -p -c src/server/plugin.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/chat.js: src/server/plugins/chat.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/chat.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/download.js: src/server/plugins/download.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/download.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/dynamicmode.js: src/server/plugins/dynamicmode.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/dynamicmode.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/lastfm.js: src/server/plugins/lastfm.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/lastfm.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/stream.js: src/server/plugins/stream.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/stream.coffee >$@.tmp
+	mv $@{.tmp,}
+
+lib/plugins/upload.js: src/server/plugins/upload.coffee | lib/plugins
+	$(coffee) -p -c src/server/plugins/upload.coffee >$@.tmp
 	mv $@{.tmp,}
 
 $(appjs): $(views) $(client_src)

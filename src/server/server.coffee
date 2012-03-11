@@ -18,6 +18,13 @@ io.set 'log level', process.env.npm_package_config_log_level
 log = io.log
 log.info "Serving at http://localhost:#{process.env.npm_package_config_port}/"
 
+# downgrade user permissions
+try
+  process.setuid uid if (uid = process.env.npm_package_config_user_id)?
+catch error
+  log.error "error setting uid: #{error}"
+log.info "server running as user #{process.getuid()}"
+
 
 plugins =
   objects:
@@ -154,6 +161,3 @@ my_mpd = new DirectMpd(my_mpd_socket)
 my_mpd.on 'error', (msg) -> log.error msg
 
 plugins.call "setMpd", my_mpd
-
-# downgrade user permissions
-try process.setuid uid if (uid = process.env.npm_package_config_user_id)?

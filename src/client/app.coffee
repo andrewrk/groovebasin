@@ -1279,6 +1279,7 @@ $document.ready ->
   mpd.on 'statusupdate', ->
     renderNowPlaying()
     renderPlaylistButtons()
+    labelPlaylistItems()
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true

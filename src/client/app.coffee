@@ -406,13 +406,14 @@ handleDeletePressed = ->
 
 changeStreamStatus = (value) ->
   return unless (port = server_status?.stream_httpd_port)?
-  stream_url = "#{location.protocol}//#{location.hostname}:#{port}/mpd.mp3"
   $stream_btn
     .prop("checked", value)
     .button("refresh")
   if value
-    $jplayer.jPlayer 'setMedia',
-      mp3: stream_url
+    format = server_status.stream_httpd_format
+    stream_url = "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
+    (jmedia = {})[format] = stream_url
+    $jplayer.jPlayer 'setMedia', jmedia
     $jplayer.jPlayer 'play'
   else
     $jplayer.jPlayer 'stop'

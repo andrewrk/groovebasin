@@ -55,9 +55,8 @@ saveState = ->
 
 restoreState = ->
   try loaded_state = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"
-  return unless loaded_state?.state_version is state.state_version
-  extend true, state, loaded_state
-
+  if loaded_state?.state_version is state.state_version
+    extend true, state, loaded_state
   # have the plugins restore and then save to delete values that should not
   # have been restored.
   plugins.call "restoreState", state

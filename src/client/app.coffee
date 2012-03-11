@@ -58,6 +58,7 @@ $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
 $chat = $("#chat")
 $settings = $("#settings")
+$jplayer = $("#jplayer")
 
 haveUserName = -> server_status?.user_names[my_user_id]?
 getUserName = -> userIdToUserName my_user_id
@@ -405,18 +406,16 @@ handleDeletePressed = ->
 
 changeStreamStatus = (value) ->
   return unless (port = server_status?.stream_httpd_port)?
+  stream_url = "#{location.protocol}//#{location.hostname}:#{port}/mpd.mp3"
   $stream_btn
     .prop("checked", value)
     .button("refresh")
   if value
-    stream = document.createElement("audio")
-    stream.setAttribute('src', "#{location.protocol}//#{location.hostname}:#{port}/mpd.ogg")
-    stream.setAttribute('autoplay', 'autoplay')
-    document.body.appendChild(stream)
-    stream.play()
+    $jplayer.jPlayer 'setMedia',
+      mp3: stream_url
+    $jplayer.jPlayer 'play'
   else
-    stream.parentNode.removeChild(stream)
-    stream = null
+    $jplayer.jPlayer 'stop'
 
 togglePlayback = ->
   if mpd.status.state == 'play'
@@ -1291,5 +1290,14 @@ $document.ready ->
 
   # do this last so that everything becomes the correct size.
   $(window).resize handleResize
+
+  $jplayer.jPlayer
+    swfPath: "/vendor/Jplayer.swf"
+    preload: "auto"
+    solution: "flash, html"
+    progress: (e) ->
+      console.log "progress: #{JSON.stringify e.jPlayer.status.flash}"
+      console.log "percent: #{e.jPlayer.status.currentPercentAbsolute}"
+      console.log "percent2: #{e.jPlayer.status.currentPercentRelative}"
 
   window._debug_mpd = mpd

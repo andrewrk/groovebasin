@@ -95,3 +95,77 @@ $ sudo npm link
 $ make watch
 $ npm -g start groovebasin
 ```
+
+## Release Notes
+
+### 0.0.5
+
+* Andrew Kelley:
+  * disable volume slider when mpd reports volume as -1. fixes #8
+  * on last.fm callback, do minimal work then refresh. fixes #7
+  * warnings output the actual mpd.conf path instead of "mpd conf". see #5
+  * resize things *after* rendering things. fixes #6
+  * put uploaded files in an intelligent place, and fix #2
+  * ability to retain server state file even when structure changes
+  * downgrade user permissions ASAP
+  * label playlist items upon status update
+  * use blank user_id to avoid error message
+  * use jplayer for streaming
+* Josh Wolfe:
+  * do not show ugly "user_n" text after usernames in chat.
+
+### 0.0.4
+
+* Andrew Kelley:
+  * update keyboard shortcuts dialog
+  * fix enter not queuing library songs in firefox
+  * ability to authenticate with last.fm, last.fm scrobbling
+  * last.fm scrobbling works
+  * fix issues with empty playlist. fixes #4
+  * fix bug with dynamic mode when playlist is clear
+* Josh Wolfe:
+  * easter eggs
+  * daemon uses a state file
+
+### 0.0.3
+
+* Andrew Kelley:
+  * ability to select artists, albums, tracks in library
+  * prevents sticker race conditions from crashing the server (#3)
+  * escape clears the selection cursor too
+  * ability to shift+click select in library
+  * right-click queuing in library works
+  * do not show download menu option since it is not supported yet
+  * show selection on expanded elements
+  * download button works for single tracks in right click library menu
+  * library up/down to change selection
+  * nextLibPos/prevLibPos respects whether tree items are expanded or collapse
+  * library window scrolls down when you press up/down to move selection
+  * double click artists and albums in library to queue
+  * left/right expands/collapses library tree when lib has selection
+  * handle enter in playlist and library
+  * ability to drag artists, albums, tracks to playlist
+* Josh Wolfe:
+  * implement chat room
+  * users can set their name in the chat room
+  * users can change their name multiple times
+  * storing username persistently. disambiguating conflicting usernames.
+  * loading recent chat history on connect
+  * normalizing usernames and sanitizing username display
+  * canot send blank chats
+  * supporting /nick renames in chat box
+  * hotkey to focus chat box
+
+### 0.0.2
+
+* Andrew Kelley:
+  * learn mpd host and port in mpd conf
+  * render unknown albums and unknown artists the same in the playlist (blank)
+  * auto-scroll playlist window and library window appropriately
+  * fix server crash when no top-level files exist
+  * fix some songs error message when uploading
+  * edit file uploader spinny gif to fit the theme
+  * move chat stuff to another tab
+* Josh Wolfe:
+  * tracking who is online
+

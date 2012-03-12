@@ -1,5 +1,7 @@
-Version 0.0.5
-* streaming button should show buffering percentage
+Version 0.0.6
+* display an icon when connection to server is lost.
+* attempt to reconnect when lost connection to server.
+* support restarting mpd without restarting daemon
 * some kind of makefile generator so we don't have to manually edit the makefile
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next
@@ -8,11 +10,8 @@ Version 0.0.5
 * ability to ban from random
   - keyboard shortcut 'B'
 * ability to mark a playlist item as "stop after this track"
-* display an icon when connection to server is lost.
-* attempt to reconnect when lost connection to server.
-* support restarting mpd without restarting daemon
 
-Version 0.0.6
+Version 0.0.7
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.
@@ -21,6 +20,7 @@ Version 0.0.6
 * ability to move a file to a better location based on its tags
 
 Backlog
+* streaming button should show buffering percentage
 * when uploading songs into library, make sure not to overwrite existing ones
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child

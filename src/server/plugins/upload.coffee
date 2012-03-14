@@ -38,6 +38,7 @@ exports.Plugin = class Upload extends Plugin
   constructor: ->
     super()
     @is_enabled = false
+    @random_ids = null
 
   restoreState: (state) =>
     @want_to_queue = state.want_to_queue ? []
@@ -89,6 +90,15 @@ exports.Plugin = class Upload extends Plugin
     response.end JSON.stringify {success: true}
     return true
 
+  onSendStatus: (status) =>
+    @random_ids = status?.random_ids
+
+  queueFilesPos: =>
+    pos = @mpd.playlist.item_list.length
+    return pos unless @random_ids?
+    for item, i in @mpd.playlist.item_list
+      return i if @random_ids[item.id]?
+
   flushWantToQueue: =>
     i = 0
     files = []
@@ -99,7 +109,7 @@ exports.Plugin = class Upload extends Plugin
         @want_to_queue.splice i, 1
       else
         i++
-    @mpd.queueFiles files
+    @mpd.queueFiles files, @queueFilesPos()
     @onStateChanged() if files.length
 
   moveFile: (source, dest, cb=->) =>

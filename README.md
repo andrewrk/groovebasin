@@ -52,7 +52,7 @@ Groove Basin depends on [mpd](http://musicpd.org).
 Some new features are only available when you compile from source:
 
 ```
-$ git clone git://git.musicpd.org/master/mpd.git
+$ git clone git://github.com/superjoe30/mpd.git
 ```
 
 ### Configuration
@@ -100,6 +100,7 @@ $ npm -g start groovebasin
 
 ### 0.0.5
 
+* Note: Requires you to pull from latest mpd git code and recompile.
 * Andrew Kelley:
   * disable volume slider when mpd reports volume as -1. fixes #8
   * on last.fm callback, do minimal work then refresh. fixes #7

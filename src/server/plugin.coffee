@@ -15,3 +15,4 @@ exports.Plugin = class Plugin
   setConf: (conf, conf_path) =>
   setMpd: (mpd) =>
   onSocketConnection: (socket) =>
+  onSendStatus: (status) =>

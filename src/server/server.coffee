@@ -70,6 +70,7 @@ restoreState = ->
   plugins.call "saveState", state
 
 sendStatus = ->
+  plugins.call "onSendStatus", state.status
   for id, socket of all_sockets
     socket.emit 'Status', JSON.stringify state.status
 

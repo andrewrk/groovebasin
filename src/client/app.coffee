@@ -735,11 +735,19 @@ selectLibraryPosition = (lib_pos) ->
   else if lib_pos.artist?
     selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
 
-queueLibSelection = (event) ->
-  queueFunc = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
-  queueFunc selectionToFiles(event.altKey)
-  return false
+queueFilesPos = ->
+  pos = mpd.playlist.item_list.length
+  return pos unless server_status?
+  for item, i in mpd.playlist.item_list
+    return i if server_status.random_ids[item.id]?
 
+queueLibSelection = (event) ->
+  files = selectionToFiles(event.altKey)
+  if event.shiftKey
+    mpd.queueFilesNext files
+  else
+    mpd.queueFiles files, queueFilesPos()
+  return false
 
 performDrag = (event, callbacks) ->
   abortDrag()
@@ -963,7 +971,7 @@ setUpUi = ->
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             files = selectionToFiles(event.altKey)
-            mpd.queueFilesAtPos files, new_pos
+            mpd.queueFiles files, new_pos
           cancel: ->
             # we didn't end up dragging, select the item
             selection.selectOnly sel_name, key

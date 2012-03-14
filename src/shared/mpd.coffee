@@ -564,18 +564,8 @@ _exports.Mpd = class Mpd
   queueRandomTracks: (n) =>
     @sendCommands @queueRandomTracksCommands n
 
-  queueFiles: (files) =>
+  queueFiles: (files, pos=@playlist.item_list.length) =>
     return unless files.length
-    # queue tracks just before any random ones
-    pos = @playlist.item_list.length
-    if @server_status?
-      for item, i in @playlist.item_list
-        if @server_status.random_ids[item.id]?
-          pos = i
-          break
-    @queueFilesAtPos files, pos
-
-  queueFilesAtPos: (files, pos) =>
     cmds = []
     for i in [files.length-1..0]
       file = files[i]
@@ -593,11 +583,11 @@ _exports.Mpd = class Mpd
 
     @raiseEvent 'playlistupdate'
 
-  queueFile: (file) => @queueFiles [file]
+  queueFile: (file, pos) => @queueFiles [file], pos
 
   queueFilesNext: (files) =>
     new_pos = (@status.current_item?.pos ? -1) + 1
-    @queueFilesAtPos files, new_pos
+    @queueFiles files, new_pos
 
   queueFileNext: (file) => @queueFilesNext [file]
 

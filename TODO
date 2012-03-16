@@ -1,7 +1,6 @@
 Version 0.0.6
 * display an icon when connection to server is lost.
 * attempt to reconnect when lost connection to server.
-* support restarting mpd without restarting daemon
 * some kind of makefile generator so we don't have to manually edit the makefile
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next

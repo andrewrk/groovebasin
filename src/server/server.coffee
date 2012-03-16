@@ -151,14 +151,25 @@ class DirectMpd extends mpd.Mpd
 
 
 my_mpd = null
-my_mpd_socket = createMpdConnection true, ->
-  log.debug "server to mpd connect"
-  my_mpd.handleConnectionStart()
-my_mpd_socket.on 'end', ->
-  log.warn "server mpd disconnect"
-my_mpd_socket.on 'error', ->
-  log.warn "server no mpd daemon found."
-my_mpd = new DirectMpd(my_mpd_socket)
-my_mpd.on 'error', (msg) -> log.error msg
+my_mpd_socket = null
+recon_interval = 1000
+connect_success = true
+connectServerMpd = ->
+  my_mpd_socket = createMpdConnection true, ->
+    log.info "server to mpd connect"
+    connect_success = true
+    my_mpd.handleConnectionStart()
+  my_mpd_socket.on 'end', ->
+    log.warn "server mpd disconnect"
+    setTimeout(connectServerMpd, recon_interval)
+  my_mpd_socket.on 'error', ->
+    if connect_success
+      connect_success = false
+      log.warn "server no mpd daemon found."
+    setTimeout(connectServerMpd, recon_interval)
+  my_mpd = new DirectMpd(my_mpd_socket)
+  my_mpd.on 'error', (msg) -> log.error msg
 
-plugins.call "setMpd", my_mpd
+  plugins.call "setMpd", my_mpd
+
+connectServerMpd()

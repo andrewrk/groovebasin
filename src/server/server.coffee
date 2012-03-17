@@ -6,7 +6,6 @@ static = require 'node-static'
 mpd = require './lib/mpd'
 extend = require 'node.extend'
 
-
 fileServer = new (static.Server) "./public"
 app = http.createServer((request, response) ->
   return if plugins.handleRequest(request, response)
@@ -71,8 +70,7 @@ restoreState = ->
 
 sendStatus = ->
   plugins.call "onSendStatus", state.status
-  for id, socket of all_sockets
-    socket.emit 'Status', JSON.stringify state.status
+  io.sockets.emit 'Status', JSON.stringify state.status
 
 plugins.initialize()
 restoreState()
@@ -115,29 +113,28 @@ createMpdConnection = (unix_socket, cb) ->
     host = mpd_conf?.bind_to_address?.network ? "localhost"
     net.connect port, host, cb
 
-next_socket_id = 0
-all_sockets = {}
-io.sockets.on 'connection', (socket) ->
-  this_socket_id = next_socket_id++
-  all_sockets[this_socket_id] = socket
-
+connectBrowserMpd = (socket) ->
   mpd_socket = createMpdConnection false, ->
     log.debug "browser to mpd connect"
+    try socket.emit 'MpdConnect'
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd_socket.on 'end', ->
     log.debug "browser mpd disconnect"
-    try socket.emit 'disconnect'
+    try socket.emit 'MpdDisconnect'
   mpd_socket.on 'error', ->
     log.debug "browser no mpd daemon found."
 
+  socket.removeAllListeners 'ToMpd'
   socket.on 'ToMpd', (data) ->
     log.debug "[in] #{data}"
     try mpd_socket.write data
+  socket.removeAllListeners 'disconnect'
   socket.on 'disconnect', ->
-    delete all_sockets[this_socket_id]
     mpd_socket.end()
 
+io.sockets.on 'connection', (socket) ->
+  connectBrowserMpd socket
   plugins.call "onSocketConnection", socket
 
 # our own mpd connection
@@ -152,24 +149,29 @@ class DirectMpd extends mpd.Mpd
 
 my_mpd = null
 my_mpd_socket = null
-recon_interval = 1000
 connect_success = true
 connectServerMpd = ->
   my_mpd_socket = createMpdConnection true, ->
     log.info "server to mpd connect"
     connect_success = true
     my_mpd.handleConnectionStart()
+
+    # connect socket clients to mpd
+    io.sockets.clients().forEach connectBrowserMpd
   my_mpd_socket.on 'end', ->
     log.warn "server mpd disconnect"
-    setTimeout(connectServerMpd, recon_interval)
+    tryReconnect()
   my_mpd_socket.on 'error', ->
     if connect_success
       connect_success = false
       log.warn "server no mpd daemon found."
-    setTimeout(connectServerMpd, recon_interval)
+    tryReconnect()
   my_mpd = new DirectMpd(my_mpd_socket)
   my_mpd.on 'error', (msg) -> log.error msg
 
   plugins.call "setMpd", my_mpd
+
+tryReconnect = ->
+  setTimeout connectServerMpd, 1000
 
 connectServerMpd()

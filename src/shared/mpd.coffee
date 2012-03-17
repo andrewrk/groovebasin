@@ -361,11 +361,11 @@ _exports.Mpd = class Mpd
 
   fixPlaylistPosCache: => item.pos = i for item, i in @playlist.item_list
 
-  ######################### public #####################
-
-  constructor: ->
+  # clear state so we can start over with new mpd connection
+  resetServerState: =>
     @buffer = ""
     @msgHandlerQueue = []
+
     # assign to console to enable message passing debugging
     @debugMsgConsole = null #console
     @msgCounter = 0
@@ -373,9 +373,25 @@ _exports.Mpd = class Mpd
     # whether we've sent the idle command to mpd
     @idling = false
 
-    @event_handlers = {}
     @haveFileListCache = false
-    @user_id = ""
+
+    # cache of library data from mpd. See comment at top of this file
+    @library =
+      artists: []
+      track_table: {}
+    @search_results = @library
+    @last_query = ""
+    @clearPlaylist()
+    @status =
+      current_item: null
+
+
+  ######################### public #####################
+
+  constructor: ->
+    @resetServerState()
+
+    @event_handlers = {}
     
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
@@ -393,16 +409,6 @@ _exports.Mpd = class Mpd
         @raiseEvent 'stickerupdate'
       subscription: noop # a client has subscribed or unsubscribed to a channel
       message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
-
-    # cache of library data from mpd. See comment at top of this file
-    @library =
-      artists: []
-      track_table: {}
-    @search_results = @library
-    @last_query = ""
-    @clearPlaylist()
-    @status =
-      current_item: null
 
   removeEventListeners: (event_name) =>
     (@event_handlers[event_name] || []).length = 0

@@ -364,7 +364,9 @@ render = ->
   $("#left-window").toggle(mpd_alive)
   $("#nowplaying").toggle(mpd_alive)
   $("#mpd-error").toggle(not mpd_alive)
-  return unless mpd_alive
+  unless mpd_alive
+    document.title = base_title
+    return
 
   renderPlaylist()
   renderPlaylistButtons()
@@ -1291,6 +1293,12 @@ $document.ready ->
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true
+    render()
+  socket.on 'disconnect', ->
+    mpd_alive = false
+    render()
+  socket.on 'MpdDisconnect', ->
+    mpd_alive = false
     render()
 
   setUpUi()

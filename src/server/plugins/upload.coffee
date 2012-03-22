@@ -84,7 +84,7 @@ exports.Plugin = class Upload extends Plugin
               @moveFile tmp_with_ext, dest, =>
                 @want_to_queue.push suggested_path
                 @onStateChanged()
-                console.info "Track was uploaded: #{dest}"
+                log.info "Track was uploaded: #{dest}"
 
     response.writeHead 200, {'content-type': 'text/html'}
     response.end JSON.stringify {success: true}

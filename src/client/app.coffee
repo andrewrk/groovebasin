@@ -1061,8 +1061,10 @@ setUpUi = ->
         if files.length > 2000
           return false unless confirm("You are about to queue #{files.length} songs.")
 
-        func = if event.shiftKey then mpd.queueFilesNext else mpd.queueFiles
-        func files
+        if event.shiftKey
+          mpd.queueFilesNext files
+        else
+          mpd.queueFiles files, queueFilesPos()
         return false
       when 40 # down
         # select the first item in the library

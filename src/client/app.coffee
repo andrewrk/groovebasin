@@ -37,7 +37,8 @@ user_is_volume_sliding = false
 started_drag = false
 abortDrag = ->
 clickTab = null
-streaming = false
+trying_to_stream = false
+actually_streaming = false
 my_user_id = null
 MARGIN = 10
 
@@ -407,20 +408,28 @@ handleDeletePressed = ->
     refreshSelection()
 
 changeStreamStatus = (value) ->
-  return unless (port = server_status?.stream_httpd_port)?
-  return if value == streaming
+  return unless server_status?.stream_httpd_port?
+  return if value == trying_to_stream
+  trying_to_stream = value
   $stream_btn
-    .prop("checked", value)
+    .prop("checked", trying_to_stream)
     .button("refresh")
-  if value
+  updateStreamingPlayer()
+  return false
+
+updateStreamingPlayer = ->
+  should_stream = trying_to_stream and mpd.status.state == "play"
+  return if actually_streaming == should_stream
+  if should_stream
     format = server_status.stream_httpd_format
+    port = server_status?.stream_httpd_port
     stream_url = "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
     (jmedia = {})[format] = stream_url
     $jplayer.jPlayer 'setMedia', jmedia
     $jplayer.jPlayer 'play'
   else
     $jplayer.jPlayer 'stop'
-  streaming = value
+  actually_streaming = should_stream
 
 togglePlayback = ->
   if mpd.status.state == 'play'
@@ -608,7 +617,7 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     no
       shift:   no
-      handler: -> changeStreamStatus not streaming
+      handler: -> changeStreamStatus not trying_to_stream
     84: # 't'
       ctrl:    no
       alt:     no
@@ -1294,6 +1303,7 @@ $document.ready ->
     renderNowPlaying()
     renderPlaylistButtons()
     labelPlaylistItems()
+    updateStreamingPlayer()
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     mpd_alive = true

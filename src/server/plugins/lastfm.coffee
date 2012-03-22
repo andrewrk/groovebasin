@@ -80,6 +80,8 @@ exports.Plugin = class LastFm extends Plugin
     @scrobbles.push params
     @onStateChanged()
 
+  checkTrackNumber: (trackNumber) =>
+    if parseInt(trackNumber) >= 0 then trackNumber else ""
   checkScrobble: =>
     this_item = @mpd.status.current_item
 
@@ -109,7 +111,7 @@ exports.Plugin = class LastFm extends Plugin
               artist: track.artist_name or ""
               albumArtist: track.album_artist_name or ""
               duration: track.time or ""
-              trackNumber: track.track or ""
+              trackNumber: @checkTrackNumber track.track
           @flushScrobbleQueue()
         else
           @log.warn "Not scrobbling #{track.name} - missing artist."
@@ -138,7 +140,7 @@ exports.Plugin = class LastFm extends Plugin
         artist: track.artist_name or ""
         album: track.album?.name or ""
         albumArtist: track.album_artist_name or ""
-        trackNumber: track.track or ""
+        trackNumber: @checkTrackNumber track.track
         duration: track.time or ""
         handlers:
           error: (error) =>

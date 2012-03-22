@@ -52,6 +52,9 @@ exports.Plugin = class Upload extends Plugin
     unless conf.bind_to_address?.unix_socket?
       @is_enabled = false
       @log.warn "bind_to_address does not have a unix socket enabled in #{conf_path}. Uploading disabled."
+    unless conf.bind_to_address?.network == "localhost"
+      @is_enabled = false
+      @log.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
     if conf.music_directory?
       @music_lib_path = conf.music_directory
       @music_lib_path += '/' if @music_lib_path.substring(@music_lib_path.length - 1, 1) isnt '/'

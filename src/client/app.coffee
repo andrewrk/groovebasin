@@ -37,7 +37,7 @@ user_is_volume_sliding = false
 started_drag = false
 abortDrag = ->
 clickTab = null
-stream = null
+streaming = false
 my_user_id = null
 MARGIN = 10
 
@@ -408,6 +408,7 @@ handleDeletePressed = ->
 
 changeStreamStatus = (value) ->
   return unless (port = server_status?.stream_httpd_port)?
+  return if value == streaming
   $stream_btn
     .prop("checked", value)
     .button("refresh")
@@ -419,6 +420,7 @@ changeStreamStatus = (value) ->
     $jplayer.jPlayer 'play'
   else
     $jplayer.jPlayer 'stop'
+  streaming = value
 
 togglePlayback = ->
   if mpd.status.state == 'play'
@@ -606,7 +608,7 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     no
       shift:   no
-      handler: -> changeStreamStatus not stream?
+      handler: -> changeStreamStatus not streaming
     84: # 't'
       ctrl:    no
       alt:     no

@@ -200,6 +200,7 @@ renderPlaylistButtons = ->
   # disable stream button if we don't have it set up
   $stream_btn
     .button("option", "disabled", not server_status?.stream_httpd_port?)
+    .prop("checked", trying_to_stream)
     .button("refresh")
 
   # show/hide upload
@@ -407,10 +408,9 @@ handleDeletePressed = ->
     selection.selectOnly 'playlist', mpd.playlist.item_list[pos].id if pos > -1
     refreshSelection()
 
-changeStreamStatus = (value) ->
+toggleStreamStatus = ->
   return unless server_status?.stream_httpd_port?
-  return if value == trying_to_stream
-  trying_to_stream = value
+  trying_to_stream = not trying_to_stream
   $stream_btn
     .prop("checked", trying_to_stream)
     .button("refresh")
@@ -617,7 +617,7 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     no
       shift:   no
-      handler: -> changeStreamStatus not trying_to_stream
+      handler: toggleStreamStatus
     84: # 't'
       ctrl:    no
       alt:     no
@@ -1161,9 +1161,7 @@ setUpUi = ->
   $stream_btn.button
     icons:
       primary: "ui-icon-signal-diag"
-  $stream_btn.on 'click', (event) ->
-    value = $(this).prop("checked")
-    changeStreamStatus value
+  $stream_btn.on 'click', toggleStreamStatus
 
   $lib_tabs.on 'mouseover', 'li', (event) ->
     $(this).addClass 'ui-state-hover'

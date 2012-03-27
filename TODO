@@ -48,7 +48,7 @@ Backlog
 * dynamic mode populates twice when user clicks Clear
   - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
 * display any mpd status error message
-* ability to download multiple songs at once
+* ability to download multiple songs at once. Issue #9.
 * library management
   - duplicate detection and elimination
     > if a song is byte for byte the same (check md5's) then ignore the
@@ -67,6 +67,7 @@ Backlog
 * prepend '!' to a search word to NOT match the word. '\!' to literally match
   '!'. '\\' to literally match '\'
 * ability to upload zip files
+* ability to upload via a url
 * ability to filter playlist
 * playlist management
   - save

@@ -23,7 +23,8 @@
         "stylus": ">=0.24.0",
         "lastfm": ">=0.8.0",
         "mkdirp": ">=0.3.0",
-        "node.extend": ">=1.0.0"
+        "node.extend": ">=1.0.0",
+        "zipstream": ">=0.2.1"
     },
     "scripts": {
         "install": "make"

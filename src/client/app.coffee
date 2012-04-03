@@ -1257,11 +1257,11 @@ handleResize = ->
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
 initjPlayer = ->
-	$jplayer.jPlayer
-		swfPath: "/vendor/Jplayer.swf"
-		preload: "auto"
-		supplied: server_status.stream_httpd_format
-		solution: "flash, html"
+  $jplayer.jPlayer
+    swfPath: "/vendor/Jplayer.swf"
+    preload: "auto"
+    supplied: server_status.stream_httpd_format
+    solution: "flash, html"
 
 $document.ready ->
   socket = io.connect()
@@ -1327,10 +1327,5 @@ $document.ready ->
 
   # do this last so that everything becomes the correct size.
   $(window).resize handleResize
-
-  $jplayer.jPlayer
-    swfPath: "/vendor/Jplayer.swf"
-    preload: "auto"
-    solution: "flash, html"
 
   window._debug_mpd = mpd

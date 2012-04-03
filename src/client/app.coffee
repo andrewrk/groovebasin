@@ -1256,6 +1256,13 @@ handleResize = ->
   $pl_header = $pl_window.find("#playlist .header")
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
+initjPlayer = ->
+	$jplayer.jPlayer
+		swfPath: "/vendor/Jplayer.swf"
+		preload: "auto"
+		supplied: server_status.stream_httpd_format
+		solution: "flash, html"
+
 $document.ready ->
   socket = io.connect()
 
@@ -1287,6 +1294,7 @@ $document.ready ->
     renderChat()
     labelPlaylistItems()
     renderSettings()
+    initjPlayer()
 
     window._debug_server_status = server_status
   if (user_name = localStorage?.user_name)?

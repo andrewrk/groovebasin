@@ -2,11 +2,11 @@ fs = require 'fs'
 http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
-static = require 'node-static'
+node_static = require 'node-static'
 mpd = require './lib/mpd'
 extend = require 'node.extend'
 
-fileServer = new (static.Server) "./public"
+fileServer = new (node_static.Server) "./public"
 app = http.createServer((request, response) ->
   return if plugins.handleRequest(request, response)
   request.addListener 'end', ->

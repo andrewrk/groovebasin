@@ -50,11 +50,13 @@ At this point, Groove Basin will issue warnings telling you what to do next.
 
 Groove Basin depends on [mpd](http://musicpd.org) version 0.17+.
 
-Some new features are only available when you compile from source:
+To compile from source, start here
 
 ```
-$ git clone git://github.com/superjoe30/mpd.git
+$ git clone git://git.musicpd.org/master/mpd.git
 ```
+
+and follow mpd's instructions from there.
 
 ### Configuration
 

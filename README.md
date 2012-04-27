@@ -5,8 +5,9 @@ No-nonsense music client and server for your home or office.
 Run it on a server connected to your main speakers. Guests can connect with
 their laptops, tablets, and phones, and play and share music.
 
-Depends on [mpd](http://musicpd.org) for the backend. Some might call this
-project an mpd client.
+Depends on [mpd](http://musicpd.org) version 0.17+ for the backend. Some might
+call this project an mpd client. (Note, version 0.17 is only available from
+source as of writing this; see below instructions regarding mpd installation.)
 
 Live demo: [groovebasin.com](http://groovebasin.com/)
 
@@ -47,7 +48,7 @@ At this point, Groove Basin will issue warnings telling you what to do next.
 
 ## Mpd
 
-Groove Basin depends on [mpd](http://musicpd.org).
+Groove Basin depends on [mpd](http://musicpd.org) version 0.17+.
 
 Some new features are only available when you compile from source:
 

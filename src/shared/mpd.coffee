@@ -544,6 +544,7 @@ _exports.Mpd = class Mpd
     if query.length == 0
       @search_results = @library
       @raiseEvent 'libraryupdate'
+      @last_query = query
       return
     words = query.toLowerCase().split(/\s+/)
     query = words.join(" ")

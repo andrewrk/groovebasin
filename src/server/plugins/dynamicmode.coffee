@@ -38,12 +38,27 @@ exports.Plugin = class DynamicMode extends Plugin
   onSocketConnection: (socket) =>
     socket.on 'DynamicMode', (data) =>
       return unless @is_enabled
-      value = JSON.parse data.toString()
-      return if @is_on == value
-      @log.debug "DynamicMode is being turned #{value}"
-      @is_on = value
-      @checkDynamicMode()
-      @onStatusChanged()
+      args = JSON.parse data.toString()
+      @log.debug "DynamicMode args:"
+      @log.debug args
+      did_anything = false
+      for key, value of args
+        switch key
+          when "dynamic_mode"
+            continue if @is_on == value
+            did_anything = true
+            @is_on = value
+          when "dynamic_history"
+            continue if @history_size is value
+            did_anything = true
+            @history_size = value
+          when "dynamic_future"
+            continue if @future_size is value
+            did_anything = true
+            @future_size = value
+      if did_anything
+        @checkDynamicMode()
+        @onStatusChanged()
 
   checkDynamicMode: =>
     return unless @is_enabled

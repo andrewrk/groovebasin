@@ -160,9 +160,38 @@ renderSettings = ->
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
       scrobbling_on: localStorage?.lastfm_scrobbling_on?
+    dynamic_mode_enabled: server_status?.dynamic_mode_enabled
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
   $settings.find("#toggle-scrobble").button()
+  if server_status?.dynamic_mode_enabled
+    stuff =
+      "history-size": "dynamic_history"
+      "future-size": "dynamic_future"
+    for html_id, server_key of stuff
+      debugger
+      $text_box = $settings.find("#" + html_id)
+      $text_box.val(server_status[server_key])
+      $text_box.on 'keydown', (event) ->
+        html_id = $(event.target).attr("id")
+        server_key = stuff[html_id]
+        event.stopPropagation()
+        if event.keyCode == 27
+          $(event.target).blur()
+          cancel = true
+        else if event.keyCode == 13
+          new_value = parseInt $(event.target).val()
+          if isNaN new_value
+            cancel = true
+          else
+            args = {}
+            args[server_key] = new_value
+            socket.emit 'DynamicMode', JSON.stringify args
+            return false
+        if cancel
+          Util.wait 0, ->
+            $(event.target).val(server_status[server_key])
+          return false
 
 renderChat = ->
   chat_status_text = ""
@@ -438,7 +467,9 @@ togglePlayback = ->
     mpd.play()
 
 setDynamicMode = (value) ->
-  socket.emit 'DynamicMode', JSON.stringify(value)
+  args =
+    dynamic_mode: value
+  socket.emit 'DynamicMode', JSON.stringify(args)
 
 toggleDynamicMode = -> setDynamicMode not server_status.dynamic_mode
 

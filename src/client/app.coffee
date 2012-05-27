@@ -169,7 +169,6 @@ renderSettings = ->
       "history-size": "dynamic_history"
       "future-size": "dynamic_future"
     for html_id, server_key of stuff
-      debugger
       $text_box = $settings.find("#" + html_id)
       $text_box.val(server_status[server_key])
       $text_box.on 'keydown', (event) ->

@@ -40,6 +40,9 @@ clickTab = null
 trying_to_stream = false
 actually_streaming = false
 my_user_id = null
+my_user_ids = {}
+if localStorage?.my_user_ids?
+  my_user_ids = JSON.parse localStorage.my_user_ids
 MARGIN = 10
 
 # cache jQuery objects
@@ -195,15 +198,20 @@ renderSettings = ->
 renderChat = ->
   chat_status_text = ""
   if (users = server_status?.users)?
-    # take ourselves out of the list of users
-    users = (userIdToUserName user_id for user_id in users when user_id isnt my_user_id)
-    chat_status_text = " (#{users.length})" if users.length > 0
+    chat_status_text = " (#{users.length})" if users.length > 1
+    user_objects = ({
+      "class": if user_id is my_user_id then "chat-user-self" else "chat-user"
+      user_name: userIdToUserName user_id
+    } for user_id in users)
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
     for chat_object in server_status.chats
+      chat_object["class"] = if my_user_ids[chat_object.user_id]? then "chat-user-self" else "chat-user"
       chat_object.user_name = userIdToUserName chat_object.user_id
     $chat.html Handlebars.templates.chat
-      users: users
+      users: user_objects
       chats: server_status.chats
+    for user_id in users
+      $chat.find("#" + user_id).text userIdToUserName user_id
     if haveUserName()
       $("#user-id").text(getUserName() + ": ")
       $("#chat-input").attr('placeholder', "chat")
@@ -1318,6 +1326,9 @@ $document.ready ->
 
   socket.on 'Identify', (data) ->
     my_user_id = data.toString()
+    my_user_ids[my_user_id] = 1
+    # TODO scrub the stale user ids
+    localStorage?.my_user_ids = JSON.stringify my_user_ids
     if (user_name = localStorage?.user_name)?
       socket.emit 'SetUserName', user_name
   socket.on 'Status', (data) ->

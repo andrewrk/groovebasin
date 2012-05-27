@@ -1,22 +1,18 @@
-{{#if users}}
-  other online users:
-  <ul>
-    {{#each users}}
-      <li>
-        <span class="chat-user">{{this}}</span>
-      </li>
-    {{/each}}
-  </ul>
-{{else}}
-  <div>no one else is online</div>
-{{/if}}
+online users:
+<ul>
+{{#each users}}
+  <li>
+    <span class="{{class}}">{{user_name}}</span>
+  </li>
+{{/each}}
+</ul>
 {{#if chats}}
   <hr/>
   chatter:
   <ul>
     {{#each chats}}
       <li>
-        <span class="chat-user">{{user_name}}</span>: {{message}}
+        <span class="{{class}}">{{user_name}}</span>: {{message}}
       </li>
     {{/each}}
   </ul>

@@ -1260,7 +1260,7 @@ initjPlayer = ->
   $jplayer.jPlayer
     swfPath: "/vendor/Jplayer.swf"
     preload: "auto"
-    supplied: server_status.stream_httpd_format
+    supplied: server_status.stream_httpd_format ? ""
     solution: "flash, html"
 
 $document.ready ->

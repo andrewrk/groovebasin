@@ -1288,6 +1288,8 @@ $document.ready ->
 
   socket.on 'Identify', (data) ->
     my_user_id = data.toString()
+    if (user_name = localStorage?.user_name)?
+      socket.emit 'SetUserName', user_name
   socket.on 'Status', (data) ->
     server_status = JSON.parse data.toString()
     renderPlaylistButtons()
@@ -1297,8 +1299,6 @@ $document.ready ->
     initjPlayer()
 
     window._debug_server_status = server_status
-  if (user_name = localStorage?.user_name)?
-    socket.emit 'SetUserName', user_name
 
   mpd = new window.SocketMpd socket
   mpd.on 'error', (msg) -> alert msg

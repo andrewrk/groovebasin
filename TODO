@@ -1,4 +1,5 @@
-Version 0.0.6
+Version 0.0.7
+* better build process
 * some kind of makefile generator so we don't have to manually edit the makefile
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next
@@ -8,7 +9,7 @@ Version 0.0.6
   - keyboard shortcut 'B'
 * ability to mark a playlist item as "stop after this track"
 
-Version 0.0.7
+Version 0.0.8
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.

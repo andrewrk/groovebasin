@@ -101,6 +101,30 @@ $ npm -g start groovebasin
 
 ## Release Notes
 
+### 0.0.6
+
+* Josh Wolfe:
+  * fixing not queuing before random when pressing enter in the search box
+  * fixing streaming hotkey not updating button ui
+  * stopping and starting streaming in sync with mpd.status.state.
+  * fixing weird bug with Stream button checked state
+  * warning when bind_to_address is not also configured for localhost
+  * fixing derpy log reference
+  * fixing negative trackNumber scrobbling
+  * directory urls download .zip files. #9
+  * document dependency on mpd version 0.17
+* Andrew Kelley:
+  * fix regression: not queuing before random songs client side
+  * uploaded songs are queued in the correct place
+  * support restarting mpd without restarting daemon
+  * ability to reconnect without refreshing
+  * log.info instead of console.info for track uploaded msg
+  * avoid the use of 'static' keyword
+* David Banham:
+  * Make jPlayer aware of which stream format is set
+  * Removed extra constructor. Changed tabs to 2spaces
+
+
 ### 0.0.5
 
 * Note: Requires you to pull from latest mpd git code and recompile.

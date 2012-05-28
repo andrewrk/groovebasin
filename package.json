@@ -15,16 +15,16 @@
         "url": "git://github.com/superjoe30/groovebasin.git"
     },
     "dependencies": {
-        "socket.io": ">=0.8.7",
-        "node-static": ">=0.5.9",
-        "coffee-script": ">=1.2.0i",
-        "handlebars": ">=1.0.4beta",
-        "formidable": ">=1.0.8",
-        "stylus": ">=0.24.0",
-        "lastfm": ">=0.8.0",
-        "mkdirp": ">=0.3.0",
-        "node.extend": ">=1.0.0",
-        "zipstream": ">=0.2.1"
+        "socket.io": "~>0.8.7",
+        "node-static": "~>0.5.9",
+        "coffee-script": "~>1.2.0i",
+        "handlebars": "~>1.0.4beta",
+        "formidable": "~>1.0.8",
+        "stylus": "~>0.24.0",
+        "lastfm": "~>0.8.0",
+        "mkdirp": "~>0.3.0",
+        "node.extend": "~>1.0.0",
+        "zipstream": "~>0.2.1"
     },
     "scripts": {
         "install": "make"

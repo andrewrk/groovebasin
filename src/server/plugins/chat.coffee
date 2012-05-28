@@ -29,7 +29,7 @@ exports.Plugin = class Chat extends Plugin
         user_id: user_id
         message: data.toString()
       @chats.push(chat_object)
-      chats_limit = 20
+      chats_limit = 100
       @chats.splice(0, @chats.length - chats_limit) if @chats.length > chats_limit
       @onStatusChanged()
     socket.on 'SetUserName', (data) =>

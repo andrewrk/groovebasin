@@ -61,8 +61,9 @@ $nowplaying = $("#nowplaying")
 $nowplaying_elapsed = $nowplaying.find(".elapsed")
 $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
+$chat_user_list = $("#chat-user-list")
+$chat_list = $("#chat-list")
 $chat_user_id_span = $("#user-id")
-$chat = $("#chat")
 $settings = $("#settings")
 $jplayer = $("#jplayer")
 
@@ -74,10 +75,10 @@ userIdToUserName = (user_id) ->
   return user_name ? user_id
 
 storeMyUserIds = ->
-  # scrub stale ids
-  if server_status?
-    for user_id of my_user_ids
-      delete my_user_ids[user_id] unless server_status.user_names[user_id]?
+  # scrub stale ids. TODO: this is broken.
+  #if server_status?
+  #  for user_id of my_user_ids
+  #    delete my_user_ids[user_id] unless server_status.user_names[user_id]?
   localStorage?.my_user_ids = JSON.stringify my_user_ids
 
 setUserName = (new_name) ->
@@ -209,6 +210,10 @@ renderSettings = ->
             $(event.target).val(server_status[server_key])
           return false
 
+scrollChatWindowToBottom = ->
+  # for some reason, Infinity goes to the top :/
+  $chat_list.scrollTop 1000000
+
 renderChat = ->
   chat_status_text = ""
   if (users = server_status?.users)?
@@ -221,11 +226,11 @@ renderChat = ->
     for chat_object in server_status.chats
       chat_object["class"] = if my_user_ids[chat_object.user_id]? then "chat-user-self" else "chat-user"
       chat_object.user_name = userIdToUserName chat_object.user_id
-    $chat.html Handlebars.templates.chat
+    $chat_user_list.html Handlebars.templates.chat_user_list
       users: user_objects
+    $chat_list.html Handlebars.templates.chat_list
       chats: server_status.chats
-    for user_id in users
-      $chat.find("#" + user_id).text userIdToUserName user_id
+    scrollChatWindowToBottom()
     $chat_user_id_span.text if chat_name_input_visible then "" else getUserName() + ": "
   $chat_tab.find("span").text("Chat#{chat_status_text}")
 
@@ -1248,6 +1253,8 @@ setUpUi = ->
     unselectTabs()
     $lib_tabs.find("li.#{name}-tab").addClass 'ui-state-active'
     $("##{name}-tab").show()
+    handleResize()
+    renderChat() if name is 'chat'
 
   for tab in tabs
     do (tab) ->
@@ -1315,7 +1322,12 @@ handleResize = ->
   # make the inside containers fit
   $lib_header = $("#library-tab .window-header")
   $library.height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
-  $("#upload").height $left_window.height() - $lib_tabs.height() - MARGIN
+  tab_contents_height = $left_window.height() - $lib_tabs.height() - MARGIN
+  $("#upload").height tab_contents_height
+  # chat layout
+  height_overshoot = $("#chat-tab").height() - tab_contents_height
+  $chat_list.height $chat_list.height() - height_overshoot
+
   $pl_header = $pl_window.find("#playlist .header")
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 

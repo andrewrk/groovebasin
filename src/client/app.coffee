@@ -43,6 +43,7 @@ my_user_id = null
 my_user_ids = {}
 if localStorage?.my_user_ids?
   my_user_ids = JSON.parse localStorage.my_user_ids
+chat_name_input_visible = false
 MARGIN = 10
 
 # cache jQuery objects
@@ -60,6 +61,7 @@ $nowplaying = $("#nowplaying")
 $nowplaying_elapsed = $nowplaying.find(".elapsed")
 $nowplaying_left = $nowplaying.find(".left")
 $vol_slider = $("#vol-slider")
+$chat_user_id_span = $("#user-id")
 $chat = $("#chat")
 $settings = $("#settings")
 $jplayer = $("#jplayer")
@@ -77,6 +79,11 @@ storeMyUserIds = ->
     for user_id of my_user_ids
       delete my_user_ids[user_id] unless server_status.user_names[user_id]?
   localStorage?.my_user_ids = JSON.stringify my_user_ids
+
+setUserName = (new_name) ->
+  new_name = $.trim new_name
+  localStorage?.user_name = new_name
+  socket.emit 'SetUserName', new_name
 
 scrollLibraryToSelection = ->
   return unless (helpers = getSelHelpers())?
@@ -219,12 +226,7 @@ renderChat = ->
       chats: server_status.chats
     for user_id in users
       $chat.find("#" + user_id).text userIdToUserName user_id
-    if haveUserName()
-      $("#user-id").text(getUserName() + ": ")
-      $("#chat-input").attr('placeholder', "chat")
-    else
-      $("#user-id").text("")
-      $("#chat-input").attr('placeholder', "your name")
+    $chat_user_id_span.text if chat_name_input_visible then "" else getUserName() + ": "
   $chat_tab.find("span").text("Chat#{chat_status_text}")
 
 renderPlaylistButtons = ->
@@ -1137,10 +1139,27 @@ setUpUi = ->
   $lib_filter.on 'keyup', (event) ->
     mpd.search $(event.target).val()
 
-  $("#user-id").on 'click', (event) ->
-    localStorage?.user_name = ""
-    socket.emit 'SetUserName', ""
-    $chat_input.focus().select()
+  $chat_name_input = $("#chat-name-input")
+  $chat_user_id_span.on 'click', (event) ->
+    $chat_input.attr "disabled", "disabled"
+    chat_name_input_visible = true
+    $chat_name_input.show().val("").focus().select()
+    renderChat()
+  $chat_name_input.on 'keydown', (event) ->
+    event.stopPropagation()
+    if event.keyCode == 27
+      # cancel
+      done = true
+    else if event.keyCode == 13
+      # accept
+      done = true
+      setUserName $(event.target).val()
+    if done
+      chat_name_input_visible = false
+      $chat_name_input.hide()
+      $chat_input.removeAttr("disabled").focus().select()
+      renderChat()
+      return false
 
   $chat_input = $("#chat-input")
   $chat_input.on 'keydown', (event) ->
@@ -1159,8 +1178,7 @@ setUpUi = ->
       if message.substr(0, NICK.length) == NICK
         new_user_name = message.substr(NICK.length)
       if new_user_name?
-        localStorage?.user_name = new_user_name
-        socket.emit 'SetUserName', new_user_name
+        setUserName new_user_name
         return false
       socket.emit 'Chat', message
       return false
@@ -1336,7 +1354,7 @@ $document.ready ->
     my_user_ids[my_user_id] = 1
     storeMyUserIds()
     if (user_name = localStorage?.user_name)?
-      socket.emit 'SetUserName', user_name
+      setUserName user_name
   socket.on 'Status', (data) ->
     server_status = JSON.parse data.toString()
     storeMyUserIds()

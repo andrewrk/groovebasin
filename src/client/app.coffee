@@ -1338,6 +1338,7 @@ initjPlayer = ->
     supplied: server_status.stream_httpd_format ? ""
     solution: "flash, html"
 
+window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 $document.ready ->
   socket = io.connect()
 

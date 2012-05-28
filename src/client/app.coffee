@@ -71,6 +71,13 @@ userIdToUserName = (user_id) ->
   user_name = server_status.user_names[user_id]
   return user_name ? user_id
 
+storeMyUserIds = ->
+  # scrub stale ids
+  if server_status?
+    for user_id of my_user_ids
+      delete my_user_ids[user_id] unless server_status.user_names[user_id]?
+  localStorage?.my_user_ids = JSON.stringify my_user_ids
+
 scrollLibraryToSelection = ->
   return unless (helpers = getSelHelpers())?
 
@@ -1327,12 +1334,12 @@ $document.ready ->
   socket.on 'Identify', (data) ->
     my_user_id = data.toString()
     my_user_ids[my_user_id] = 1
-    # TODO scrub the stale user ids
-    localStorage?.my_user_ids = JSON.stringify my_user_ids
+    storeMyUserIds()
     if (user_name = localStorage?.user_name)?
       socket.emit 'SetUserName', user_name
   socket.on 'Status', (data) ->
     server_status = JSON.parse data.toString()
+    storeMyUserIds()
     renderPlaylistButtons()
     renderChat()
     labelPlaylistItems()

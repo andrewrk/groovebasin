@@ -57,7 +57,7 @@ state =
 
 saveState = ->
   plugins.call "saveState", state
-  fs.writeFile process.env.npm_package_config_state_file, JSON.stringify(state), "utf8"
+  fs.writeFile process.env.npm_package_config_state_file, JSON.stringify(state, null, 4), "utf8"
 
 restoreState = ->
   try loaded_state = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"

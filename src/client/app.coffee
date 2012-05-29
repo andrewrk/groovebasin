@@ -233,6 +233,7 @@ renderChat = ->
     scrollChatWindowToBottom()
     $chat_user_id_span.text if chat_name_input_visible then "" else getUserName() + ": "
   $chat_tab.find("span").text("Chat#{chat_status_text}")
+  resizeChat()
 
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
@@ -1324,12 +1325,12 @@ handleResize = ->
   $library.height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
   tab_contents_height = $left_window.height() - $lib_tabs.height() - MARGIN
   $("#upload").height tab_contents_height
-  # chat layout
-  height_overshoot = $("#chat-tab").height() - tab_contents_height
-  $chat_list.height $chat_list.height() - height_overshoot
-
+  resizeChat()
   $pl_header = $pl_window.find("#playlist .header")
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
+resizeChat = ->
+  height_overshoot = $("#chat-tab").height() - $("#upload").height()
+  $chat_list.height $chat_list.height() - height_overshoot
 
 initjPlayer = ->
   $jplayer.jPlayer

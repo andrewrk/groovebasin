@@ -188,7 +188,9 @@ renderSettings = ->
       "future-size": "dynamic_future"
     for html_id, server_key of stuff
       $text_box = $settings.find("#" + html_id)
-      $text_box.val(server_status[server_key])
+      serverStatusNumber = (n) -> if n is -1 then "Infinity" else n
+      value = serverStatusNumber server_status[server_key]
+      $text_box.val value
       $text_box.on 'keydown', (event) ->
         html_id = $(event.target).attr("id")
         server_key = stuff[html_id]
@@ -207,7 +209,7 @@ renderSettings = ->
             return false
         if cancel
           Util.wait 0, ->
-            $(event.target).val(server_status[server_key])
+            $(event.target).val(serverStatusNumber server_status[server_key])
           return false
 
 scrollChatWindowToBottom = ->

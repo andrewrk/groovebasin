@@ -51,10 +51,13 @@ exports.Plugin = class DynamicMode extends Plugin
           when "dynamic_history"
             continue if @history_size is value
             did_anything = true
+            if value < 0
+              value = -1
             @history_size = value
           when "dynamic_future"
             continue if @future_size is value
             did_anything = true
+            value = Math.min(1000, Math.max(1, value))
             @future_size = value
       if did_anything
         @checkDynamicMode()
@@ -89,6 +92,8 @@ exports.Plugin = class DynamicMode extends Plugin
     if @is_on
       commands = []
       delete_count = Math.max(current_index - @history_size, 0)
+      if @history_size < 0
+        delete_count = 0
       for i in [0...delete_count]
         commands.push "deleteid #{item_list[i].id}"
       add_count = Math.max(@future_size + 1 - (item_list.length - current_index), 0)

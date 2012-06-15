@@ -1,3 +1,4 @@
+Makefile
 server.js
 lib/
 public/app.js

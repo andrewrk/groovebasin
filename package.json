@@ -29,7 +29,7 @@
     },
     "scripts": {
         "install": "cake build",
-        "test": "npm install .; ./node_modules/node-dev/node-dev server.js"
+        "test": "npm install . && ./node_modules/node-dev/node-dev server.js"
     },
     "config": {
         "user_id": "",

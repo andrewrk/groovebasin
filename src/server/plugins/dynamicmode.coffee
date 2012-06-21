@@ -1,8 +1,10 @@
 Plugin = require('../plugin').Plugin
 mpd = require '../mpd'
 
-
+history_size = parseInt(process.env.npm_package_config_dynamicmode_history_size)
+future_size = parseInt(process.env.npm_package_config_dynamicmode_future_size)
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
+
 exports.Plugin = class DynamicMode extends Plugin
   constructor: ->
     super()
@@ -13,15 +15,11 @@ exports.Plugin = class DynamicMode extends Plugin
   restoreState: (state) =>
     @is_on = state.status.dynamic_mode ? false
     @random_ids = state.status.random_ids ? {}
-    @history_size = state.status.dynamic_history ? 10
-    @future_size = state.status.dynamic_future ? 10
 
   saveState: (state) =>
     state.status.dynamic_mode = @is_on
     state.status.dynamic_mode_enabled = @is_enabled
     state.status.random_ids = @random_ids
-    state.status.dynamic_history = @history_size
-    state.status.dynamic_future = @future_size
 
   setConf: (conf, conf_path) =>
     @is_enabled = true
@@ -48,17 +46,6 @@ exports.Plugin = class DynamicMode extends Plugin
             continue if @is_on == value
             did_anything = true
             @is_on = value
-          when "dynamic_history"
-            continue if @history_size is value
-            did_anything = true
-            if value < 0
-              value = -1
-            @history_size = value
-          when "dynamic_future"
-            continue if @future_size is value
-            did_anything = true
-            value = Math.min(1000, Math.max(1, value))
-            @future_size = value
       if did_anything
         @checkDynamicMode()
         @onStatusChanged()
@@ -91,12 +78,12 @@ exports.Plugin = class DynamicMode extends Plugin
 
     if @is_on
       commands = []
-      delete_count = Math.max(current_index - @history_size, 0)
-      if @history_size < 0
+      delete_count = Math.max(current_index - history_size, 0)
+      if history_size < 0
         delete_count = 0
       for i in [0...delete_count]
         commands.push "deleteid #{item_list[i].id}"
-      add_count = Math.max(@future_size + 1 - (item_list.length - current_index), 0)
+      add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
 
       commands = commands.concat ("addid #{JSON.stringify file}" for file in @getRandomSongFiles add_count)
       @mpd.sendCommands commands, (msg) =>

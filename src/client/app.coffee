@@ -178,7 +178,8 @@ renderSettings = ->
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
       scrobbling_on: localStorage?.lastfm_scrobbling_on?
-    dynamic_mode_enabled: server_status?.dynamic_mode_enabled
+    password: localStorage?.password
+
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
   $settings.find("#toggle-scrobble").button()

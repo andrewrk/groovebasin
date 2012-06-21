@@ -749,3 +749,5 @@ _exports.Mpd = class Mpd
       [track] = @mpdTracksToTrackObjects @parseMpdTracks msg
       cb track
 
+  authenticate: (password) =>
+    @sendCommand "password \"#{qEscape(password)}\""

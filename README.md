@@ -60,6 +60,20 @@ and follow mpd's instructions from there.
 
 ### Configuration
 
+* `default_permissions` - Recommended to remove `admin` so that anonymous
+  users can't do nefarious things.
+
+* `password` - Recommended to add a password for yourself to give yourself `admin` permissions.
+
+   * `read` - allows reading the library, current playlist, and playback status.
+
+   * `add` - allows adding songs, loading playlists, and uploading songs. 
+
+   * `control` - allows controlling playback state and manipulating playlists.
+
+   * `admin` - allows updating the db, killing mpd, deleting songs from the
+     library, and updating song tags.
+
 * `audio_output` - Uncomment the "httpd" one and configure the port to enable
   streaming. Recommended "vorbis" encoder for better browser support.
 

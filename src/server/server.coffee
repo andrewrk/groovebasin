@@ -7,6 +7,11 @@ mpd = require './mpd'
 extend = require 'node.extend'
 {spawn} = require 'child_process'
 
+arrayToObject = (array) ->
+  obj = {}
+  obj[item] = true for item in array
+  obj
+
 exec = (cmd, args=[], cb=->) ->
   bin = spawn(cmd, args)
   bin.stdout.on 'data', (data) ->
@@ -93,6 +98,7 @@ restoreState()
 
 # read mpd conf
 mpd_conf = null
+root_pass = null
 do ->
   mpd_conf_path = process.env.npm_package_config_mpd_conf
   try
@@ -112,6 +118,37 @@ do ->
     log.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
   if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
     log.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
+
+
+  all_permissions = "read,add,control,admin"
+  accountIsRoot = (account) ->
+    for perm in all_permissions.split(',')
+      if not account[perm]
+        return false
+    return true
+
+  default_account = arrayToObject((mpd_conf.default_permissions ? all_permissions).split(","))
+  if accountIsRoot(default_account)
+    root_pass = ""
+  accounts = {}
+  for account_str in (mpd_conf.password ? [])
+    [password, perms] = account_str.split("@")
+    accounts[password] = account = arrayToObject(perms.split(","))
+    if not root_pass? and accountIsRoot(account)
+      root_pass = password
+
+  if default_account.admin
+    log.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
+  if not root_pass?
+    rand_pass = Math.floor(Math.random() * 99999999999)
+    log.error """
+      It is required to have at least one password which is granted all the
+      permissions. Recommended to add this line in #{mpd_conf_path}:
+
+        password "groovebasin-#{rand_pass}@#{all_permissions}"
+
+      """
+    process.exit(1)
 
 plugins.call "saveState", state
 
@@ -171,6 +208,8 @@ connectServerMpd = ->
     log.info "server to mpd connect"
     connect_success = true
     my_mpd.handleConnectionStart()
+    if root_pass.length > 0
+      my_mpd.authenticate root_pass
 
     # connect socket clients to mpd
     io.sockets.clients().forEach connectBrowserMpd

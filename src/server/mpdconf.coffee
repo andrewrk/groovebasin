@@ -29,6 +29,8 @@ exports.parse = (file_contents) ->
             obj[key].unix_socket = val
           else
             obj[key].network = val
+        else if key is 'password'
+          (obj[key] ||= []).push val
         else
           obj[key] = val
 

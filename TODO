@@ -1,5 +1,4 @@
 Version 0.0.7
-* some kind of makefile generator so we don't have to manually edit the makefile
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next
 * if you move a blue song such that it touches a non-blue song, it should lose
@@ -12,6 +11,10 @@ Version 0.0.8
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.
+  - disable buttons that we lack permission to press
+  - upload only available if you have `add` permission
+  - section to type in password in settings
+    > save it in local storage
 * ability to delete songs from library
 * ability to edit tags
 * ability to move a file to a better location based on its tags

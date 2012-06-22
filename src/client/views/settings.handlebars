@@ -1,3 +1,17 @@
+<h1>Authentication</h1>
+<p>
+  {{#if auth.show_edit}}
+    <input type="text" id="auth-password" placeholder="password" />
+    <button class="auth-save">Save</button>
+    {{#if auth.password }}
+      <button class="auth-cancel">Cancel</button>
+    {{/if}}
+  {{else}}
+    Using password <em>{{auth.password}}</em>
+    <button class="auth-edit">Edit</button>
+    <button class="auth-clear">Clear</button>
+  {{/if}}
+</p>
 <h1>Last.fm</h1>
 {{#if lastfm.username}}
   <p>

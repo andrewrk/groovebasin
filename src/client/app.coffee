@@ -178,11 +178,18 @@ renderSettings = ->
       username: localStorage?.lastfm_username
       session_key: localStorage?.lastfm_session_key
       scrobbling_on: localStorage?.lastfm_scrobbling_on?
-    password: localStorage?.password
+    auth:
+      password: localStorage?.auth_password
+      show_edit: not localStorage?.auth_password? or settings_ui.auth.show_edit
 
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
   $settings.find("#toggle-scrobble").button()
+  $settings.find(".auth-cancel").button()
+  $settings.find(".auth-save").button()
+  $settings.find(".auth-edit").button()
+  $settings.find(".auth-clear").button()
+  $settings.find("#auth-password").val(settings_ui.auth.password)
 
 scrollChatWindowToBottom = ->
   # for some reason, Infinity goes to the top :/
@@ -789,6 +796,26 @@ queueLibSelection = (event) ->
     mpd.queueFiles files, queueFilesPos()
   return false
 
+settings_ui =
+  auth:
+    show_edit: false
+    password: ""
+
+sendAuth = ->
+  if (pass = localStorage?.auth_password)?
+    mpd.authenticate pass
+
+settingsAuthSave = ->
+  settings_ui.auth.show_edit = false
+  $text_box = $("#auth-password")
+  localStorage?.auth_password = $text_box.val()
+  renderSettings()
+  sendAuth()
+
+settingsAuthCancel = ->
+  settings_ui.auth.show_edit = false
+  renderSettings()
+
 performDrag = (event, callbacks) ->
   abortDrag()
   start_drag_x = event.pageX
@@ -1262,6 +1289,26 @@ setUpUi = ->
     socket.emit msg, JSON.stringify(params)
     renderSettings()
     return false
+  $settings.on 'click', '.auth-edit', (event) ->
+    settings_ui.auth.show_edit = true
+    renderSettings()
+    $text_box = $("#auth-password")
+    $text_box.focus().val(localStorage?.auth_password ? "").select()
+  $settings.on 'click', '.auth-clear', (event) ->
+    delete localStorage?.auth_password
+    renderSettings()
+  $settings.on 'click', '.auth-save', (event) ->
+    settingsAuthSave()
+  $settings.on 'click', '.auth-cancel', (event) ->
+    settingsAuthCancel()
+  $settings.on 'keydown', '#auth-password', (event) ->
+    $text_box = $(this)
+    event.stopPropagation()
+    settings_ui.auth.password = $text_box.val()
+    if event.which is 27
+      settingsAuthCancel()
+    else if event.which is 13
+      settingsAuthSave()
 
 # end setUpUi
 
@@ -1366,6 +1413,7 @@ $document.ready ->
     updateStreamingPlayer()
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
+    sendAuth()
     mpd_alive = true
     render()
   socket.on 'disconnect', ->

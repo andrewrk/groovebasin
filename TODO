@@ -1,3 +1,7 @@
+* status updates screw up the settings UI
+* should send authentication before getting the library info
+* butter ui for authentication in settings
+
 Version 0.0.7
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next

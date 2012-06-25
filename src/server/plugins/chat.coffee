@@ -1,7 +1,7 @@
 Plugin = require('../plugin').Plugin
 exports.Plugin = class Chat extends Plugin
   constructor: ->
-    super()
+    super
     # the online users list is always blank at startup
     @users = []
 

@@ -7,7 +7,7 @@ LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
 exports.Plugin = class DynamicMode extends Plugin
   constructor: ->
-    super()
+    super
     @previous_ids = {}
     @is_enabled = false
     @got_stickers = false

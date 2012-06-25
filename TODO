@@ -17,8 +17,6 @@ Version 0.0.8
   state, etc.
   - disable buttons that we lack permission to press
   - upload only available if you have `add` permission
-  - section to type in password in settings
-    > save it in local storage
 * ability to delete songs from library
 * ability to edit tags
 * ability to move a file to a better location based on its tags

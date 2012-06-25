@@ -5,7 +5,7 @@ zipstream = require 'zipstream'
 
 exports.Plugin = class Download extends Plugin
   constructor: ->
-    super()
+    super
     @is_enabled = false
 
   saveState: (state) =>

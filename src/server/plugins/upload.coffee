@@ -36,7 +36,7 @@ stripFilename = (path) ->
 
 exports.Plugin = class Upload extends Plugin
   constructor: ->
-    super()
+    super
     @is_enabled = false
     @random_ids = null
 

@@ -3,7 +3,7 @@ LastFmNode = require('lastfm').LastFmNode
 
 exports.Plugin = class LastFm extends Plugin
   constructor: ->
-    super()
+    super
     @lastfm = new LastFmNode
       api_key: process.env.npm_package_config_lastfm_api_key
       secret: process.env.npm_package_config_lastfm_secret

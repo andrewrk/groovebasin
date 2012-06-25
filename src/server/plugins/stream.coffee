@@ -1,7 +1,7 @@
 Plugin = require('../plugin').Plugin
 exports.Plugin = class Stream extends Plugin
   constructor: ->
-    super()
+    super
     @port = null
     @format = null
     @is_enabled = false

@@ -46,6 +46,7 @@ makeMakefile = (o) ->
   SHELL=bash
 
   build: $(serverjs) $(appjs) $(appcss) #{o.server_js_files}
+  \t@: # suppress "Nothing to be done" message.
 
   #{o.server_js_rules}
   $(serverjs): ./lib/server.js

@@ -2,9 +2,13 @@
   <li><a href="#" class="remove hoverable">Remove</a></li>
   <li>
     {{#if status.delete_enabled}}
-      <a href="#" class="delete hoverable">Delete From Library</a>
+      {{#if permissions.admin}}
+        <a href="#" class="delete hoverable">Delete From Library</a>
+      {{else}}
+        <span title="Delete is disabled: insufficient privileges. See Settings.">Delete From Library</span>
+      {{/if}}
     {{else}}
-      <span title="Delete is disabled: insufficient privileges. See Settings.">Delete From Library</span>
+      <span title="Delete is disabled due to invalid server configuration.">Delete From Library</span>
     {{/if}}
   </li>
   <li>

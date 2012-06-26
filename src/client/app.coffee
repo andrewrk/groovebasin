@@ -28,6 +28,7 @@ selection =
     this.cursor = key
 
 server_status = null
+permissions = {}
 socket = null
 mpd = null
 mpd_alive = false
@@ -182,6 +183,7 @@ renderSettings = ->
     auth:
       password: localStorage?.auth_password
       show_edit: not localStorage?.auth_password? or settings_ui.auth.show_edit
+      permissions: permissions
 
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
@@ -968,6 +970,7 @@ setUpUi = ->
       context =
         item: mpd.playlist.item_table[track_id]
         status: server_status
+        permissions: permissions
       $(Handlebars.templates.playlist_menu(context))
         .appendTo(document.body)
       $menu = $("#menu") # get the newly created one
@@ -1086,6 +1089,7 @@ setUpUi = ->
       # adds a new context menu to the document
       context =
         status: server_status
+        permissions: permissions
       if sel_name is 'track'
         context.track = mpd.search_results.track_table[key]
       $(Handlebars.templates.library_menu(context)).appendTo(document.body)
@@ -1424,6 +1428,9 @@ $document.ready ->
     storeMyUserIds()
     if (user_name = localStorage?.user_name)?
       setUserName user_name
+  socket.on 'Permissions', (data) ->
+    permissions = JSON.parse data.toString()
+    renderSettings()
   socket.on 'Status', (data) ->
     server_status = JSON.parse data.toString()
     storeMyUserIds()

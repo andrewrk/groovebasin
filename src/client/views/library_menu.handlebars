@@ -11,6 +11,13 @@
         <span title="Download is disabled due to invalid server configuration.">Download</span>
       {{/if}}
     </li>
+    <li>
+      {{#if status.delete_enabled}}
+        <a href="#" class="delete hoverable">Delete</a>
+      {{else}}
+        <span title="Delete is disabled: insufficient privileges. See Settings.">Delete</span>
+      {{/if}}
+    </li>
   {{/if}}
 </ul>
 

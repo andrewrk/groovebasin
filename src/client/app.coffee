@@ -123,6 +123,7 @@ scrollThingToSelection = ($scroll_area, helpers) ->
 
 selectionToFiles = (random=false) ->
   # render selection into a single object by file to remove duplicates
+  # works for library only
   track_set = {}
   selRenderArtist = (artist) ->
     selRenderAlbum album for album in artist.albums
@@ -431,9 +432,17 @@ toggleExpansion = ($li) ->
   $div.find("div").removeClass(old_class).addClass(new_class)
   return false
 
-handleDeletePressed = ->
-  if selection.isPlaylist()
-    # remove items and select the item next in the list
+handleDeletePressed = (shift) ->
+  if shift and selection.isLibrary()
+    socket.emit 'DeleteFromLibrary', JSON.stringify(selectionToFiles())
+  else if selection.isPlaylist()
+    if shift
+      # delete from library
+      files_list = (mpd.playlist.item_table[id].track.file for id of selection.ids.playlist)
+      socket.emit 'DeleteFromLibrary', JSON.stringify(files_list)
+      # fall through and also remove the items from the playlist
+
+    # remove items from playlist and select the item next in the list
     pos = mpd.playlist.item_table[selection.cursor].pos
     mpd.removeIds (id for id of selection.ids.playlist)
     pos = mpd.playlist.item_list.length - 1 if pos >= mpd.playlist.item_list.length
@@ -620,8 +629,8 @@ keyboard_handlers = do ->
     46: # delete
       ctrl:    no
       alt:     no
-      shift:   no
-      handler: handleDeletePressed
+      shift:   null
+      handler: (event) -> handleDeletePressed(event.shiftKey)
     67: # 'c'
       ctrl:    no
       alt:     no
@@ -802,8 +811,11 @@ settings_ui =
     password: ""
 
 sendAuth = ->
-  if (pass = localStorage?.auth_password)?
-    mpd.authenticate pass
+  if not (pass = localStorage?.auth_password)?
+    return
+
+  mpd.authenticate pass
+  socket.emit 'Password', pass
 
 settingsAuthSave = ->
   settings_ui.auth.show_edit = false
@@ -951,12 +963,16 @@ setUpUi = ->
       # don't close menu when you click on the area next to a button
       $menu.on 'mousedown', -> false
       $menu.on 'click', '.remove', ->
-        handleDeletePressed()
+        handleDeletePressed(false)
         removeContextMenu()
         return false
       $menu.on 'click', '.download', ->
         removeContextMenu()
         return true
+      $menu.on 'click', '.delete', ->
+        handleDeletePressed(true)
+        removeContextMenu()
+        return false
 
   # don't remove selection in playlist click
   $playlist_items.on 'mousedown', -> false
@@ -1084,6 +1100,10 @@ setUpUi = ->
       $menu.on 'click', '.download', ->
         removeContextMenu()
         return true
+      $menu.on 'click', '.delete', ->
+        handleDeletePressed(true)
+        removeContextMenu()
+        return false
 
   $library.on 'mousedown', '.artist', (event) ->
     artist_key = mpd.artistKey($(this).find("span").text())

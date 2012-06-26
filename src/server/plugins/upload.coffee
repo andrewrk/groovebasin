@@ -5,6 +5,7 @@ formidable = require 'formidable'
 util = require 'util'
 mkdirp = require 'mkdirp'
 fs = require 'fs'
+path = require 'path'
 
 
 bad_file_chars = {}
@@ -14,24 +15,21 @@ fileEscape = (filename) ->
   for c in filename
     out += bad_file_chars[c] ? c
   out
-zfill = (n) ->
-  if n < 10 then "0" + n else "" + n
+zfill = (n) -> (if n < 10 then "0" else "") + n
 getSuggestedPath = (track, default_name=mpd.trackNameFromFile(track.file)) ->
-  path = ""
-  path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
-  path += "#{fileEscape track.album_name}/" if track.album_name
-  path += "#{fileEscape zfill track.track} " if track.track
-  ext = getExtension(track.file)
+  _path = ""
+  _path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
+  _path += "#{fileEscape track.album_name}/" if track.album_name
+  _path += "#{fileEscape zfill track.track} " if track.track
+  ext = path.extname(track.file)
   if track.name is mpd.trackNameFromFile(track.file)
-    path += fileEscape default_name
+    _path += fileEscape default_name
   else
-    path += fileEscape track.name
-    path += ext
-  return path
-getExtension = (filename) ->
-  if (pos = filename.lastIndexOf('.')) is -1 then "" else "." + filename.substring(pos+1)
-stripFilename = (path) ->
-  parts = path.split('/')
+    _path += fileEscape track.name
+    _path += ext
+  return _path
+stripFilename = (_path) ->
+  parts = _path.split('/')
   parts[0...parts.length-1].join('/')
 
 exports.Plugin = class Upload extends Plugin
@@ -75,7 +73,7 @@ exports.Plugin = class Upload extends Plugin
 
     form = new formidable.IncomingForm()
     form.parse request, (err, fields, file) =>
-      tmp_with_ext = file.qqfile.path + getExtension(file.qqfile.filename)
+      tmp_with_ext = file.qqfile.path + path.extname(file.qqfile.filename)
       @moveFile file.qqfile.path, tmp_with_ext, =>
         @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
           suggested_path = getSuggestedPath(track, file.qqfile.filename)

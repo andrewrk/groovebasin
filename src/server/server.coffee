@@ -54,14 +54,11 @@ plugins =
     download: null
     chat: null
     stream: null
+    delete: null
   initialize: ->
     for name of this.objects
-      plugin = this.objects[name] = new (require("./plugins/#{name}").Plugin)()
-      plugin.log = log
-      plugin.onStateChanged = saveState
-      plugin.onStatusChanged = ->
-        saveState()
-        sendStatus()
+      {Plugin} = require("./plugins/#{name}")
+      this.objects[name] = new Plugin(log, saveState, saveAndSend)
   call: (fn_name, args...) ->
     plugin[fn_name](args...) for name, plugin of this.objects
   handleRequest: (request, response) ->
@@ -93,12 +90,18 @@ sendStatus = ->
   plugins.call "onSendStatus", state.status
   io.sockets.emit 'Status', JSON.stringify state.status
 
+saveAndSend = ->
+  saveState()
+  sendStatus()
+
 plugins.initialize()
 restoreState()
 
 # read mpd conf
 mpd_conf = null
 root_pass = null
+accounts = null
+default_account = null
 do ->
   mpd_conf_path = process.env.npm_package_config_mpd_conf
   try
@@ -188,7 +191,15 @@ connectBrowserMpd = (socket) ->
 
 io.sockets.on 'connection', (socket) ->
   connectBrowserMpd socket
-  plugins.call "onSocketConnection", socket
+  permissions = default_account
+  plugins.call "onSocketConnection", socket, -> permissions
+  socket.emit 'Permissions', JSON.stringify(permissions)
+  socket.on 'Password', (data) ->
+    pass = data.toString()
+    if success = (ref = accounts[pass])?
+      permissions = ref
+    socket.emit 'Permissions', JSON.stringify(permissions)
+    socket.emit 'PasswordResult', JSON.stringify(success)
 
 # our own mpd connection
 class DirectMpd extends mpd.Mpd

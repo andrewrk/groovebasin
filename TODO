@@ -1,3 +1,5 @@
+* ability to delete songs from library
+  - confirmation dialog
 * status updates screw up the settings UI
 * should send authentication before getting the library info
 * butter ui for authentication in settings
@@ -17,7 +19,6 @@ Version 0.0.8
   state, etc.
   - disable buttons that we lack permission to press
   - upload only available if you have `add` permission
-* ability to delete songs from library
 * ability to edit tags
 * ability to move a file to a better location based on its tags
 

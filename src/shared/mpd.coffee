@@ -751,3 +751,6 @@ _exports.Mpd = class Mpd
 
   authenticate: (password) =>
     @sendCommand "password \"#{qEscape(password)}\""
+
+  scanFiles: (files) =>
+    @sendCommands ("update #{file}" for file in files)

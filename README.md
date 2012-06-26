@@ -30,7 +30,8 @@ Live demo: [groovebasin.com](http://groovebasin.com/)
 ## Get Started
 
 Make sure you have [Node](http://nodejs.org) and [npm](http://npmjs.org)
-installed, then:
+installed and [mpd](http://musicpd.org) version 0.17+ (see below) running,
+then:
 
 ```
 $ npm install groovebasin
@@ -107,6 +108,9 @@ $ npm -g --groovebasin:port 80 start groovebasin
 ```
 
 ## Developing
+
+Install dependencies and run mpd as described in the Get Started section.
+Then, from a clean clone of the source repository:
 
 ```
 $ npm test --groovebasin:development_mode true

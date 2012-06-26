@@ -432,13 +432,27 @@ toggleExpansion = ($li) ->
   $div.find("div").removeClass(old_class).addClass(new_class)
   return false
 
+confirmDelete = (files_list) ->
+  list_text = files_list.slice(0, 7).join("\n  ")
+  if files_list.length > 7
+    list_text += "\n  ..."
+  song_text = if files_list.length is 1 then "song" else "songs"
+  confirm """
+  You are about to delete #{files_list.length} #{song_text} permanently:
+
+    #{list_text}
+  """
+
 handleDeletePressed = (shift) ->
   if shift and selection.isLibrary()
-    socket.emit 'DeleteFromLibrary', JSON.stringify(selectionToFiles())
+    files_list = selectionToFiles()
+    if not confirmDelete(files_list) then return
+    socket.emit 'DeleteFromLibrary', JSON.stringify(files_list)
   else if selection.isPlaylist()
     if shift
       # delete from library
       files_list = (mpd.playlist.item_table[id].track.file for id of selection.ids.playlist)
+      if not confirmDelete(files_list) then return
       socket.emit 'DeleteFromLibrary', JSON.stringify(files_list)
       # fall through and also remove the items from the playlist
 

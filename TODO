@@ -1,5 +1,5 @@
 * ability to delete songs from library
-  - confirmation dialog
+  - pre-emptively remove from library to have a speedy response time
 * status updates screw up the settings UI
 * should send authentication before getting the library info
 * butter ui for authentication in settings

@@ -7,6 +7,9 @@ exports.Plugin = class extends Plugin
   constructor: ->
     super
 
+  saveState: (state) =>
+    state.status.delete_enabled = @is_enabled
+
   onSocketConnection: (socket, getPermissions) =>
     socket.on 'DeleteFromLibrary', (data) =>
       if not getPermissions().admin

@@ -446,7 +446,7 @@ confirmDelete = (files_list) ->
   """
 
 handleDeletePressed = (shift) ->
-  if shift and selection.isLibrary()
+  if selection.isLibrary()
     files_list = selectionToFiles()
     if not confirmDelete(files_list) then return
     socket.emit 'DeleteFromLibrary', JSON.stringify(files_list)

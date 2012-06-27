@@ -40,6 +40,7 @@ abortDrag = ->
 clickTab = null
 trying_to_stream = false
 actually_streaming = false
+streaming_buffering = false
 my_user_id = null
 my_user_ids = {}
 if localStorage?.my_user_ids?
@@ -218,6 +219,22 @@ renderChat = ->
   $chat_tab.find("span").text("Chat#{chat_status_text}")
   resizeChat()
 
+renderStreamButton = ->
+  label = if actually_streaming
+    if streaming_buffering
+      "Stream: Buffering"
+    else
+      "Stream: On"
+  else
+    "Stream: Off"
+
+  # disable stream button if we don't have it set up
+  $stream_btn
+    .button("option", "disabled", not server_status?.stream_httpd_port?)
+    .button("option", "label", label)
+    .prop("checked", trying_to_stream)
+    .button("refresh")
+
 renderPlaylistButtons = ->
   # set the state of dynamic mode button
   $dynamic_mode
@@ -231,11 +248,7 @@ renderPlaylistButtons = ->
     .prop("checked", repeat_state isnt 'Off')
     .button("refresh")
 
-  # disable stream button if we don't have it set up
-  $stream_btn
-    .button("option", "disabled", not server_status?.stream_httpd_port?)
-    .prop("checked", trying_to_stream)
-    .button("refresh")
+  renderStreamButton()
 
   # show/hide upload
   $upload_tab.removeClass("ui-state-disabled")
@@ -467,9 +480,7 @@ handleDeletePressed = (shift) ->
 toggleStreamStatus = ->
   return unless server_status?.stream_httpd_port?
   trying_to_stream = not trying_to_stream
-  $stream_btn
-    .prop("checked", trying_to_stream)
-    .button("refresh")
+  renderStreamButton()
   updateStreamingPlayer()
   return false
 
@@ -484,10 +495,17 @@ updateStreamingPlayer = ->
     sound = soundManager.createSound
       id: 'stream'
       url: stream_url
+      onbufferchange: ->
+        streaming_buffering = sound.isBuffering
+        renderStreamButton()
+
     sound.play()
+    streaming_buffering = sound.isBuffering
   else
     soundManager.destroySound('stream')
+    streaming_buffering = false
   actually_streaming = should_stream
+  renderStreamButton()
 
 togglePlayback = ->
   if mpd.status.state == 'play'

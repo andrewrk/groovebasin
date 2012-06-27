@@ -220,11 +220,14 @@ renderChat = ->
   resizeChat()
 
 renderStreamButton = ->
-  label = if actually_streaming
-    if streaming_buffering
-      "Stream: Buffering"
+  label = if trying_to_stream
+    if actually_streaming
+      if streaming_buffering
+        "Stream: Buffering"
+      else
+        "Stream: On"
     else
-      "Stream: On"
+      "Stream: Paused"
   else
     "Stream: Off"
 

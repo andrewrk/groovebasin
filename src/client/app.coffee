@@ -66,7 +66,6 @@ $chat_user_list = $("#chat-user-list")
 $chat_list = $("#chat-list")
 $chat_user_id_span = $("#user-id")
 $settings = $("#settings")
-$jplayer = $("#jplayer")
 
 haveUserName = -> server_status?.user_names[my_user_id]?
 getUserName = -> userIdToUserName my_user_id
@@ -481,11 +480,13 @@ updateStreamingPlayer = ->
     format = server_status.stream_httpd_format
     port = server_status?.stream_httpd_port
     stream_url = "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
-    (jmedia = {})[format] = stream_url
-    $jplayer.jPlayer 'setMedia', jmedia
-    $jplayer.jPlayer 'play'
+    soundManager.destroySound('stream')
+    sound = soundManager.createSound
+      id: 'stream'
+      url: stream_url
+    sound.play()
   else
-    $jplayer.jPlayer 'stop'
+    soundManager.destroySound('stream')
   actually_streaming = should_stream
 
 togglePlayback = ->
@@ -1391,12 +1392,11 @@ resizeChat = ->
   height_overshoot = $("#chat-tab").height() - $("#upload").height()
   $chat_list.height $chat_list.height() - height_overshoot
 
-initjPlayer = ->
-  $jplayer.jPlayer
-    swfPath: "/vendor/Jplayer.swf"
-    preload: "auto"
-    supplied: server_status.stream_httpd_format ? ""
-    solution: "flash, html"
+initStreaming = ->
+  soundManager.setup
+    url: "/vendor/soundmanager2/"
+    flashVersion: 9
+    debugMode: false
 
 window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
 $document.ready ->
@@ -1438,7 +1438,6 @@ $document.ready ->
     renderChat()
     labelPlaylistItems()
     renderSettings()
-    initjPlayer()
 
     window._debug_server_status = server_status
 
@@ -1466,6 +1465,7 @@ $document.ready ->
 
   setUpUi()
   initHandlebars()
+  initStreaming()
   render()
 
   # do this last so that everything becomes the correct size.

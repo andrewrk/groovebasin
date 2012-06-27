@@ -19,7 +19,7 @@ exports.Plugin = class Stream extends Plugin
         if httpd.quality?
           @log.warn "Use audio_output.bitrate for setting quality when using mp3 streaming in #{conf_path}"
       else if httpd.encoder is 'vorbis'
-        @format = 'oga'
+        @format = 'ogg'
         if httpd.bitrate?
           @log.warn "Use audio_output.quality for setting quality when using vorbis streaming in #{conf_path}"
       else

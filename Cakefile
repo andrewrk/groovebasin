@@ -35,7 +35,6 @@ makeMakefile = (o) ->
   # output
   appjs=public/app.js
   appcss=public/app.css
-  serverjs=server.js
   
   # compilers
   coffee=./node_modules/coffee-script/bin/coffee
@@ -49,8 +48,6 @@ makeMakefile = (o) ->
   \t@: # suppress "Nothing to be done" message.
 
   #{o.server_js_rules}
-  $(serverjs): ./lib/server.js
-  \tln -sf ./lib/server.js $(serverjs)
 
   $(appjs): #{o.view_files} #{o.client_src_files}
   \t$(handlebars) #{o.view_files} >$@.tmp
@@ -64,7 +61,6 @@ makeMakefile = (o) ->
   clean:
   \trm -f ./$(appjs){,.tmp}
   \trm -f ./$(appcss){,.tmp}
-  \trm -f ./$(serverjs){,.tmp}
   \trm -rf ./lib
   \trm -f ./public/library
   \trm -f ./Makefile

@@ -8,28 +8,29 @@
         "url": "https://raw.github.com/superjoe30/groovebasin/master/LICENSE"
     }],
     "engines": {
-        "node": "~>0.6.8"
+        "node": "~0.6.8"
     },
     "repository": {
         "type": "git",
         "url": "git://github.com/superjoe30/groovebasin.git"
     },
     "dependencies": {
-        "socket.io": "~>0.8.7",
-        "node-static": "~>0.5.9",
+        "socket.io": "~0.8.7",
+        "node-static": "~0.5.9",
+        "formidable": "~1.0.8",
+        "lastfm": "~0.8.0",
+        "mkdirp": "~0.3.0",
+        "node.extend": "~1.0.0",
+        "zipstream": "~0.2.1"
+    },
+    "devDependencies": {
         "coffee-script": "~>1.2.0i",
         "handlebars": "~>1.0.4beta",
-        "formidable": "~>1.0.8",
         "stylus": "~>0.24.0",
-        "lastfm": "~>0.8.0",
-        "mkdirp": "~>0.3.0",
-        "node.extend": "~>1.0.0",
-        "node-dev": "~>0.2.3",
-        "zipstream": "~>0.2.1"
+        "node-dev": "~>0.2.3"
     },
     "scripts": {
-        "install": "cake build",
-        "test": "npm install . && ./node_modules/node-dev/node-dev server.js"
+        "dev": "npm install . && cake build && node-dev server.js"
     },
     "config": {
         "user_id": "",

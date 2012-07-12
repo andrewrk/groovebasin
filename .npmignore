@@ -5,8 +5,8 @@ node_modules/
 .build.timestamp
 .state.json
 
-# generated code below here
-public/app.js
-public/app.css
-server.js
-lib/
+# not shared with .gitignore
+Cakefile
+src/
+README.md
+TODO

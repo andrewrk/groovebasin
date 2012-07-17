@@ -118,6 +118,41 @@ $ npm run-script dev --groovebasin:development_mode true
 
 ## Release Notes
 
+
+### 0.1.2
+
+* Andrew Kelley
+  * lock in the major versions of dependencies
+  * more warnings about mpd conf settings
+  * remove "alert" text on no connection
+  * better build system
+  * move dynamic mode configuration to server
+  * server handles permissions in mpd.conf correctly
+  * clients can set a password
+  * ability to delete from library
+  * use soundmanager2 instead of jplayer for streaming
+  * buffering status on stream button
+  * stream button has a paused state
+  * use .npmignore to only deploy generated files
+  * update to work with node 0.8.2
+* Josh Wolfe:
+  * pointing at mpd's own repository in readme. #12
+  * fixing null pointer error for when streaming is disabled
+  * fixing blank search on library update
+  * fixing username on reconnect
+  * backend support for configurable dynamic history and future sizes
+  * ui for configuring dynamic mode history and future sizes
+  * coloring yourself different in chat
+  * scrubbing stale user ids in my_user_ids
+  * better chat name setting ui
+  * scrolling chat window properly
+  * moar chat history
+  * formatting the state file
+  * fixing chat window resize on join/left
+  * validation on dynamic mode settings
+  * clearer wording in Get Started section and louder mpd version dependency
+    documentation
+
 ### 0.0.6
 
 * Josh Wolfe:

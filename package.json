@@ -17,7 +17,7 @@
     "url": "git://github.com/superjoe30/groovebasin.git"
   },
   "dependencies": {
-    "socket.io": "~0.8.7",
+    "socket.io": "~0.9.9",
     "node-static": "~0.6.0",
     "formidable": "~1.0.8",
     "lastfm": "~0.8.0",

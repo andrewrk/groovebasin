@@ -4,7 +4,7 @@
 #depend "jquery-ui-1.8.17.custom.min" bare
 #depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
 #depend "fileuploader/fileuploader" bare
-#depend "socket.io/socket.io.min"
+#depend "socket.io/socket.io.min" bare
 
 selection =
   ids:

@@ -1,6 +1,5 @@
 Plugin = require('../plugin').Plugin
 fs = require 'fs'
-url = require 'url'
 zipstream = require 'zipstream'
 
 exports.Plugin = class Download extends Plugin
@@ -35,17 +34,16 @@ exports.Plugin = class Download extends Plugin
       @log.warn "Unable to access music directory: #{error}. Download disabled."
       return
 
-  handleRequest: (request, response) ->
-    # too bad we don't have startsWith and endsWith
-    request_path = decodeURI url.parse(request.url).pathname
-    if request_path == "/library/"
-      relative_path = ""
-      zip_name = "library.zip"
-    else if (match = request_path.match /^\/library\/(.*)\/$/)?
-      relative_path = "/" + match[1]
-      zip_name = windowsSafePath(match[1].replace(/\//g, " - ")) + ".zip"
-    return false unless relative_path?
+  setUpRoutes: (app) =>
+    app.get '/library/', (req, res) =>
+      @downloadPath "", "library.zip", res
+    app.get /^\/library\/(.*)\/$/, (req, res) =>
+      path = req.params[0]
+      relative_path = "/" + path
+      zip_name = windowsSafePath(path.replace(/\//g, " - ")) + ".zip"
+      @downloadPath relative_path, zip_name, res
 
+  downloadPath: (relative_path, zip_name, response) =>
     @log.debug "request to download a library directory: #{relative_path}"
 
     prefix = "./public/library"
@@ -71,7 +69,6 @@ exports.Plugin = class Download extends Plugin
           zip.finalize ->
             response.end()
       nextFile()
-    return true
 
 # translated from http://stackoverflow.com/a/5827895/367916
 walk = (dir, done) ->

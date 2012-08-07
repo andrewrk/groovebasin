@@ -18,12 +18,12 @@
   },
   "dependencies": {
     "socket.io": "~0.9.9",
-    "node-static": "~0.6.0",
     "formidable": "~1.0.8",
     "lastfm": "~0.8.0",
     "mkdirp": "~0.3.0",
     "node.extend": "~1.0.0",
-    "zipstream": "~0.2.1"
+    "zipstream": "~0.2.1",
+    "express": "~3.0.0rc2"
   },
   "devDependencies": {
     "handlebars": "~1.0.6-2",

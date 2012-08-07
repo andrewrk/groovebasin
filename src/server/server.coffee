@@ -2,24 +2,29 @@ fs = require 'fs'
 http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
-node_static = require 'node-static'
+express = require 'express'
 mpd = require './mpd'
 extend = require 'node.extend'
+path = require 'path'
 
 arrayToObject = (array) ->
   obj = {}
   obj[item] = true for item in array
   obj
 
-fileServer = new (node_static.Server) "./public"
-app = http.createServer((request, response) ->
-  unless plugins.handleRequest(request, response)
-    fileServer.serve request, response
-).listen(process.env.npm_package_config_port)
-io = socketio.listen(app)
+app = express()
+app.configure ->
+  app.use(express.static(path.join(__dirname, '../public')))
+  app.use(express.static(path.join(__dirname, '../src/public')))
+
+app_server = http.createServer(app)
+
+io = socketio.listen(app_server)
 io.set 'log level', process.env.npm_package_config_log_level
 log = io.log
 log.info "Serving at http://0.0.0.0:#{process.env.npm_package_config_port}/"
+
+app_server.listen process.env.npm_package_config_port
 
 # downgrade user permissions
 try
@@ -44,10 +49,6 @@ plugins =
       this.objects[name] = new Plugin(log, saveState, saveAndSend)
   call: (fn_name, args...) ->
     plugin[fn_name](args...) for name, plugin of this.objects
-  handleRequest: (request, response) ->
-    for name, plugin of this.objects
-      return true if plugin.handleRequest(request, response)
-    return false
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin of this.objects)
 
@@ -78,6 +79,8 @@ saveAndSend = ->
   sendStatus()
 
 plugins.initialize()
+plugins.call 'setUpRoutes', app
+
 restoreState()
 
 # read mpd conf

@@ -1,6 +1,5 @@
 Plugin = require('../plugin').Plugin
 mpd = require '../mpd'
-url = require 'url'
 formidable = require 'formidable'
 util = require 'util'
 mkdirp = require 'mkdirp'
@@ -63,33 +62,31 @@ exports.Plugin = class Upload extends Plugin
   setMpd: (@mpd) =>
     @mpd.on 'libraryupdate', @flushWantToQueue
 
-  handleRequest: (request, response) =>
-    parsed_url = url.parse(request.url)
-    return false unless parsed_url.pathname is '/upload' and request.method is 'POST'
-    unless @is_enabled
-      response.writeHead 500, {'content-type': 'text/plain'}
-      response.end JSON.stringify {success: false, reason: "Uploads disabled"}
-      return true
+  setUpRoutes: (app) =>
+    app.post '/upload', (request, response) =>
+      unless @is_enabled
+        response.writeHead 500, {'content-type': 'text/plain'}
+        response.end JSON.stringify {success: false, reason: "Uploads disabled"}
+        return
 
-    form = new formidable.IncomingForm()
-    form.parse request, (err, fields, file) =>
-      tmp_with_ext = file.qqfile.path + path.extname(file.qqfile.filename)
-      @moveFile file.qqfile.path, tmp_with_ext, =>
-        @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
-          suggested_path = getSuggestedPath(track, file.qqfile.filename)
-          dest = @music_lib_path + suggested_path
-          mkdirp stripFilename(dest), (err) =>
-            if err
-              @log.error err
-            else
-              @moveFile tmp_with_ext, dest, =>
-                @want_to_queue.push suggested_path
-                @onStateChanged()
-                @log.info "Track was uploaded: #{dest}"
+      form = new formidable.IncomingForm()
+      form.parse request, (err, fields, file) =>
+        tmp_with_ext = file.qqfile.path + path.extname(file.qqfile.filename)
+        @moveFile file.qqfile.path, tmp_with_ext, =>
+          @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
+            suggested_path = getSuggestedPath(track, file.qqfile.filename)
+            dest = @music_lib_path + suggested_path
+            mkdirp stripFilename(dest), (err) =>
+              if err
+                @log.error err
+              else
+                @moveFile tmp_with_ext, dest, =>
+                  @want_to_queue.push suggested_path
+                  @onStateChanged()
+                  @log.info "Track was uploaded: #{dest}"
 
-    response.writeHead 200, {'content-type': 'text/html'}
-    response.end JSON.stringify {success: true}
-    return true
+      response.writeHead 200, {'content-type': 'text/html'}
+      response.end JSON.stringify {success: true}
 
   onSendStatus: (status) =>
     @random_ids = status?.random_ids

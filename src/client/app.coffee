@@ -1,3 +1,11 @@
+#depend "util"
+#depend "socketmpd"
+#depend "jquery-1.7.1.min" bare
+#depend "jquery-ui-1.8.17.custom.min" bare
+#depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
+#depend "fileuploader/fileuploader" bare
+#depend "socket.io/socket.io.min"
+
 selection =
   ids:
     playlist: {} # key is id, value is some dummy value
@@ -1419,7 +1427,7 @@ initStreaming = ->
     flashVersion: 9
     debugMode: false
 
-window.WEB_SOCKET_SWF_LOCATION = "/public/vendor/socket.io/WebSocketMain.swf"
+window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf"
 $document.ready ->
   socket = io.connect()
 

@@ -1,12 +1,8 @@
-Makefile
-public/library
-node_modules/
-*.tmp
-.build.timestamp
-.state.json
+/node_modules/
+/.state.json
+/public/library
 
 # not shared with .gitignore
-Cakefile
-src/
-README.md
-TODO
+/Cakefile
+/src/
+/TODO

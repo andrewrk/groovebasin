@@ -1,3 +1,5 @@
+#depend "mpd"
+
 window.SocketMpd = class SocketMpd extends window.Mpd
   constructor: (@socket) ->
     super()

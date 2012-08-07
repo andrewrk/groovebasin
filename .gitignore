@@ -1,12 +1,10 @@
-Makefile
-public/library
-node_modules/
-*.tmp
-.build.timestamp
-.state.json
+/node_modules/
+/.state.json
+/public/library
 
 # generated code below here
-public/app.js
-public/app.css
-server.js
-lib/
+/public/app.js
+/public/views.js
+/public/app.css
+/server.js
+/lib/

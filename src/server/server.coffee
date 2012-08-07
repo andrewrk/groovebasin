@@ -5,38 +5,21 @@ socketio = require 'socket.io'
 node_static = require 'node-static'
 mpd = require './mpd'
 extend = require 'node.extend'
-{spawn} = require 'child_process'
 
 arrayToObject = (array) ->
   obj = {}
   obj[item] = true for item in array
   obj
 
-exec = (cmd, args=[], cb=->) ->
-  bin = spawn(cmd, args)
-  bin.stdout.on 'data', (data) ->
-    process.stdout.write data
-  bin.stderr.on 'data', (data) ->
-    process.stderr.write data
-  bin.on 'exit', cb
-
-is_dev_mode = process.env.npm_package_config_development_mode is 'true'
-makeAssetsIfDev = (cb) ->
-  if is_dev_mode
-    exec "cake", ["build"], cb
-  else
-    cb()
-
 fileServer = new (node_static.Server) "./public"
 app = http.createServer((request, response) ->
-  makeAssetsIfDev ->
-    unless plugins.handleRequest(request, response)
-      fileServer.serve request, response
+  unless plugins.handleRequest(request, response)
+    fileServer.serve request, response
 ).listen(process.env.npm_package_config_port)
 io = socketio.listen(app)
 io.set 'log level', process.env.npm_package_config_log_level
 log = io.log
-log.info "Serving at http://localhost:#{process.env.npm_package_config_port}/"
+log.info "Serving at http://0.0.0.0:#{process.env.npm_package_config_port}/"
 
 # downgrade user permissions
 try

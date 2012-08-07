@@ -35,6 +35,7 @@
   },
   "scripts": {
     "start": "node lib/server.js",
+    "build": "npm install . && cake build",
     "dev": "npm install . && cake dev"
   },
   "config": {

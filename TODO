@@ -3,8 +3,6 @@
 * status updates screw up the settings UI
 * should send authentication before getting the library info
 * butter ui for authentication in settings
-
-Version 0.0.7
 * bug: if you select the last track in blink 182 enema of the state and press
   down, it goes to the wrong track next
 * if you move a blue song such that it touches a non-blue song, it should lose
@@ -12,8 +10,6 @@ Version 0.0.7
 * ability to ban from random
   - keyboard shortcut 'B'
 * ability to mark a playlist item as "stop after this track"
-
-Version 0.0.8
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.
@@ -21,8 +17,6 @@ Version 0.0.8
   - upload only available if you have `add` permission
 * ability to edit tags
 * ability to move a file to a better location based on its tags
-
-Backlog
 * streaming button should show buffering percentage
 * when uploading songs into library, make sure not to overwrite existing ones
 * left in library on collapsed element should jump to parent 
@@ -70,8 +64,6 @@ Backlog
 * take mpd's status into account. Make them editable?
   - consume
   - random
-* prepend '!' to a search word to NOT match the word. '\!' to literally match
-  '!'. '\\' to literally match '\'
 * ability to upload zip files
 * ability to upload via a url
 * ability to filter playlist

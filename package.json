@@ -26,7 +26,7 @@
     "zipstream": "~0.2.1"
   },
   "devDependencies": {
-    "handlebars": "~1.0.4beta",
+    "handlebars": "~1.0.6-2",
     "stylus": "~0.28.1",
     "node-dev": "~0.2.3",
     "jspackage": "~0.4.5",

@@ -9,30 +9,15 @@
   its blueness
 * ability to ban from random
   - keyboard shortcut 'B'
-* ability to mark a playlist item as "stop after this track"
 * ability to password protect - make it so that not everybody can kill mpd,
   enable/disable audio outputs, edit tags, upload tracks, change playback
   state, etc.
   - disable buttons that we lack permission to press
   - upload only available if you have `add` permission
-* ability to edit tags
 * ability to move a file to a better location based on its tags
-* streaming button should show buffering percentage
 * when uploading songs into library, make sure not to overwrite existing ones
 * left in library on collapsed element should jump to parent 
 * right in library after expanding element should jump to 1st child
-* online user interaction:
-  - join/left messages
-  - user is typing notices (typically this is not done in a room with > 2 people)
-  - attention grabbers for chat activity
-  - surround chatted urls with <a>
-  - queued tracks should know which user queued them
-    > displayed as colors?
-  - library songs should know which user uploaded them if any
-    > this would require user authentication :-/
-  - server-side chat logs
-* shortcuts window should be scrollable with arrows
-* shortcuts window doesn't close with Escape after a Ctrl+F in Chrome
 * Time column disappears when window is too thin
 * Time column can cut off part of 4-digit times
 * option to not auto-queue uploaded songs
@@ -40,36 +25,11 @@
   a repetitive action quickly, such as turning the volume down incrementally
   or moving a track down one space at a time
 * make the list of uploaded files go away after they're all done.
-* as part of lower casing for artist/album keys, change ñ to n, etc.
-  - like http://lucene.apache.org/core/old_versioned_docs/versions/3_5_0/api/core/org/apache/lucene/analysis/ASCIIFoldingFilter.html
 * shift+down select another item, shift+up unselect it
 * hold ctrl to move cursor without selection
   - use alt for moving tracks up/down
 * dynamic mode populates twice when user clicks Clear
   - (due to mpd 'player' and 'playlist' events both being handled with empty playlist)
-* display any mpd status error message
-* ability to download multiple songs at once. Issue #9.
-* library management
-  - duplicate detection and elimination
-    > if a song is byte for byte the same (check md5's) then ignore the
-      new song
-    > use heuristics to guess if songs are probably the same (using tags). if
-      we are reasonably confident that the songs are the same, delete the one
-      with the lower quality.
-    > if we're not confident enough, there will be an
-      api that lists possible duplicates and actions to resolve them.
-  - when a song is added to the library, automatically replaygain scan it
-    and the album from whence it came. Do this for update as well.
-* take mpd's status into account. Make them editable?
-  - consume
-  - random
 * ability to upload zip files
-* ability to filter playlist
-* playlist management
-  - save
-  - display
-  - grab individual tracks
-  - switch to
-* make dynamic playlist mode options configurable
 * ability to import songs to library from youtube URL
 * file folder inbox to import stuff

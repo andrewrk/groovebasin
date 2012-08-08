@@ -5,6 +5,9 @@ util = require 'util'
 mkdirp = require 'mkdirp'
 fs = require 'fs'
 path = require 'path'
+request = require 'request'
+url = require 'url'
+temp = require 'temp'
 
 
 bad_file_chars = {}
@@ -54,13 +57,45 @@ exports.Plugin = class Upload extends Plugin
       @log.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
     if conf.music_directory?
       @music_lib_path = conf.music_directory
-      @music_lib_path += '/' if @music_lib_path.substring(@music_lib_path.length - 1, 1) isnt '/'
     else
       @is_enabled = false
       @log.warn "music directory not found in #{conf_path}. Uploading disabled."
 
   setMpd: (@mpd) =>
     @mpd.on 'libraryupdate', @flushWantToQueue
+
+  onSocketConnection: (socket) =>
+    socket.on 'ImportTrackUrl', (data) =>
+      url_string = data.toString()
+      parsed_url = url.parse(data.toString())
+      remote_filename = path.basename(parsed_url.pathname) + path.extname(parsed_url.pathname)
+      temp_file = temp.path()
+      cleanUp = =>
+        fs.unlink(temp_file)
+      pipe = request(url_string).pipe(fs.createWriteStream(temp_file))
+      pipe.on 'close', =>
+        @importFile temp_file, remote_filename, (err) =>
+          cleanUp()
+      pipe.on 'error', cleanUp
+
+
+  importFile: (temp_file, remote_filename, cb=->) =>
+    tmp_with_ext = temp_file + path.extname(remote_filename)
+    @moveFile temp_file, tmp_with_ext, (err) =>
+      return cb(err) if err
+      @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
+        suggested_path = getSuggestedPath(track, remote_filename)
+        relative_path = path.join('incoming', suggested_path)
+        dest = path.join(@music_lib_path, relative_path)
+        mkdirp stripFilename(dest), (err) =>
+          if err
+            @log.error err
+            return cb(err)
+          @moveFile tmp_with_ext, dest, (err) =>
+            @want_to_queue.push relative_path
+            @onStateChanged()
+            @log.info "Track was uploaded: #{dest}"
+            cb(err)
 
   setUpRoutes: (app) =>
     app.post '/upload', (request, response) =>
@@ -71,19 +106,7 @@ exports.Plugin = class Upload extends Plugin
 
       form = new formidable.IncomingForm()
       form.parse request, (err, fields, file) =>
-        tmp_with_ext = file.qqfile.path + path.extname(file.qqfile.filename)
-        @moveFile file.qqfile.path, tmp_with_ext, =>
-          @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
-            suggested_path = getSuggestedPath(track, file.qqfile.filename)
-            dest = @music_lib_path + suggested_path
-            mkdirp stripFilename(dest), (err) =>
-              if err
-                @log.error err
-              else
-                @moveFile tmp_with_ext, dest, =>
-                  @want_to_queue.push suggested_path
-                  @onStateChanged()
-                  @log.info "Track was uploaded: #{dest}"
+        @importFile file.qqfile.path, file.qqfile.filename
 
       response.writeHead 200, {'content-type': 'text/html'}
       response.end JSON.stringify {success: true}
@@ -113,6 +136,10 @@ exports.Plugin = class Upload extends Plugin
   moveFile: (source, dest, cb=->) =>
     in_stream = fs.createReadStream(source)
     out_stream = fs.createWriteStream(dest)
-    out_stream.on 'error', (error) => @log.error error
-    util.pump in_stream, out_stream, -> fs.unlink source, cb
+    util.pump in_stream, out_stream, (err) =>
+      if err
+        @log.error error
+        cb(err)
+        return
+      fs.unlink source, cb
 

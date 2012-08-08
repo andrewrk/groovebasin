@@ -2,11 +2,11 @@
 <html>
 <head>
   <title>Groove Basin</title>
-  <link rel="stylesheet" type="text/css" href="vendor/reset.min.css">
-  <link rel="stylesheet" type="text/css" href="vendor/css/dot-luv/jquery-ui-1.8.17.custom.css">
-  <link rel="stylesheet" type="text/css" href="vendor/fileuploader/fileuploader.css">
-  <link rel="stylesheet" type="text/css" href="app.css">
-  <link rel="shortcut icon" href="/favicon.png" type="image/png">
+  <link rel="stylesheet" href="vendor/reset.min.css">
+  <link rel="stylesheet" href="vendor/css/dot-luv/jquery-ui-1.8.17.custom.css">
+  <link rel="stylesheet" href="vendor/fileuploader/fileuploader.css">
+  <link rel="stylesheet" href="app.css">
+  <link rel="shortcut icon" href="/favicon.png">
 </head>
 <body>
   <div id="nowplaying" class="ui-widget-content ui-corner-all">
@@ -59,6 +59,7 @@
     </div>
     <div id="upload-tab" class="ui-widget-content ui-corner-all" style="display: none">
       <div id="upload">
+        <input id="upload-by-url" type="text" placeholder="Paste URL here">
         <div id="upload-widget"></div>
       </div>
     </div>
@@ -66,11 +67,11 @@
       online users:
       <ul id="chat-user-list">
       </ul>
-      <hr/>
+      <hr>
       chatter:
       <div id="chat-list" style="overflow-y: auto;">
       </div>
-      <hr/>
+      <hr>
       <span id="user-id" class="chat-user-self"></span>
       <input type="text" id="chat-name-input" placeholder="your name" style="display: none">
       <input type="text" id="chat-input" placeholder="chat">

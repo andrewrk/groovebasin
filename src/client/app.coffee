@@ -75,6 +75,7 @@ $chat_user_list = $("#chat-user-list")
 $chat_list = $("#chat-list")
 $chat_user_id_span = $("#user-id")
 $settings = $("#settings")
+$upload_by_url = $("#upload-by-url")
 
 haveUserName = -> server_status?.user_names[my_user_id]?
 getUserName = -> userIdToUserName my_user_id
@@ -718,7 +719,9 @@ keyboard_handlers = do ->
       ctrl:    no
       alt:     no
       shift:   no
-      handler: -> clickTab 'upload'
+      handler: ->
+        clickTab 'upload'
+        $upload_by_url.focus().select()
     187: # '=' or '+'
       ctrl:    no
       alt:     no
@@ -1377,6 +1380,15 @@ setUpUi = ->
       settingsAuthCancel()
     else if event.which is 13
       settingsAuthSave()
+
+  $upload_by_url.on 'keydown', (event) ->
+    event.stopPropagation()
+    if event.which is 27
+      $upload_by_url.val("").blur()
+    else if event.which is 13
+      url = $upload_by_url.val()
+      $upload_by_url.val("").blur()
+      socket.emit 'ImportTrackUrl', url
 
 # end setUpUi
 

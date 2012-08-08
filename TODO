@@ -60,12 +60,10 @@
       api that lists possible duplicates and actions to resolve them.
   - when a song is added to the library, automatically replaygain scan it
     and the album from whence it came. Do this for update as well.
-* ability to add song to library by URL
 * take mpd's status into account. Make them editable?
   - consume
   - random
 * ability to upload zip files
-* ability to upload via a url
 * ability to filter playlist
 * playlist management
   - save

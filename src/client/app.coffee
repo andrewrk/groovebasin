@@ -39,7 +39,6 @@ server_status = null
 permissions = {}
 socket = null
 mpd = null
-mpd_alive = false
 base_title = document.title
 user_is_seeking = false
 user_is_volume_sliding = false
@@ -51,10 +50,20 @@ actually_streaming = false
 streaming_buffering = false
 my_user_id = null
 my_user_ids = {}
-if localStorage?.my_user_ids?
-  my_user_ids = JSON.parse localStorage.my_user_ids
 chat_name_input_visible = false
 MARGIN = 10
+
+LoadStatus =
+  Init: 0
+  NoMpd: 1
+  NoServer: 2
+  GoodToGo: 3
+LoadStatusMsg = [
+  'Loading...'
+  'mpd is not running on the server.'
+  'Server is down.'
+]
+load_status = LoadStatus.Init
 
 # cache jQuery objects
 $document = $(document)
@@ -76,6 +85,8 @@ $chat_list = $("#chat-list")
 $chat_user_id_span = $("#user-id")
 $settings = $("#settings")
 $upload_by_url = $("#upload-by-url")
+$main_err_msg = $("#main-err-msg")
+$main_err_msg_text = $("#main-err-msg-text")
 
 haveUserName = -> server_status?.user_names[my_user_id]?
 getUserName = -> userIdToUserName my_user_id
@@ -421,12 +432,14 @@ renderNowPlaying = ->
     $vol_slider.slider 'option', 'disabled', not enabled
 
 render = ->
-  $("#playlist-window").toggle(mpd_alive)
-  $("#left-window").toggle(mpd_alive)
-  $("#nowplaying").toggle(mpd_alive)
-  $("#mpd-error").toggle(not mpd_alive)
-  unless mpd_alive
+  hide_main_err = load_status is LoadStatus.GoodToGo
+  $("#playlist-window").toggle(hide_main_err)
+  $("#left-window").toggle(hide_main_err)
+  $("#nowplaying").toggle(hide_main_err)
+  $main_err_msg.toggle(not hide_main_err)
+  unless hide_main_err
     document.title = base_title
+    $main_err_msg_text.text(LoadStatusMsg[load_status])
     return
 
   renderPlaylist()
@@ -1441,6 +1454,9 @@ initStreaming = ->
 
 window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf"
 $document.ready ->
+  if localStorage?.my_user_ids?
+    my_user_ids = JSON.parse localStorage.my_user_ids
+
   socket = io.connect()
 
   # special case when we get the callback from Last.fm.
@@ -1462,6 +1478,10 @@ $document.ready ->
       alert "Error authenticating: #{params.message}"
       refreshPage()
     return
+
+  socket.on 'connect', ->
+    load_status = LoadStatus.NoMpd
+    render()
 
   socket.on 'Identify', (data) ->
     my_user_id = data.toString()
@@ -1495,13 +1515,13 @@ $document.ready ->
   mpd.on 'chat', renderChat
   mpd.on 'connect', ->
     sendAuth()
-    mpd_alive = true
+    load_status = LoadStatus.GoodToGo
     render()
   socket.on 'disconnect', ->
-    mpd_alive = false
+    load_status = LoadStatus.NoServer
     render()
   socket.on 'MpdDisconnect', ->
-    mpd_alive = false
+    load_status = LoadStatus.NoMpd
     render()
 
   setUpUi()

@@ -9,7 +9,7 @@
   <link rel="shortcut icon" href="/favicon.png">
 </head>
 <body>
-  <div id="nowplaying" class="ui-widget-content ui-corner-all">
+  <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
     <ul class="playback-btns ui-widget ui-helper-clearfix">
       <li class="ui-state-default ui-corner-all hoverable prev">
         <span class="ui-icon ui-icon-seek-prev"></span>
@@ -38,7 +38,7 @@
     <span class="time left"></span>
     <div style="clear: both;"></div>
   </div>
-  <div id="left-window">
+  <div id="left-window" style="display: none">
     <div id="lib-tabs" class="ui-widget ui-corner-all">
       <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
         <li class="ui-state-default ui-corner-top ui-state-active library-tab"><span>Library</span></li>
@@ -81,7 +81,7 @@
       </div>
     </div>
   </div>
-  <div id="playlist-window" class="ui-widget-content ui-corner-all">
+  <div id="playlist-window" class="ui-widget-content ui-corner-all" style="display: none">
     <div class="window-header">
       <button class="jquery-button clear">Clear</button>
       <button class="jquery-button shuffle">Shuffle</button>
@@ -101,10 +101,10 @@
     </div>
   </div>
   <div style="clear: both"></div>
-  <div id="mpd-error" style="display: none" class="ui-state-error ui-corner-all">
+  <div id="main-err-msg" class="ui-state-error ui-corner-all">
     <p>
       <span class="ui-icon ui-icon-alert"></span>
-      You have no connection to mpd.
+      <div id="main-err-msg-text">Loading...</div>
     </p>
   </div>
   <script src="vendor/handlebars.runtime.js"></script>

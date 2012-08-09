@@ -193,7 +193,7 @@ class DirectMpd extends Mpd
     super()
     @mpd_socket.on 'data', => @receive.apply(this, arguments)
 
-  rawSend: (data) =>
+  send: (data) =>
     try @mpd_socket.write data
 
 

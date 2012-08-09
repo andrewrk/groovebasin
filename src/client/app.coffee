@@ -337,7 +337,7 @@ refreshSelection = ->
 renderLibrary = ->
   context =
     artists: mpd.search_results.artists
-    empty_library_message: if mpd.haveFileListCache then "No Results" else "loading..."
+    empty_library_message: if mpd.have_file_list_cache then "No Results" else "loading..."
 
   scroll_top = $library.scrollTop()
   $library.html Handlebars.templates.library(context)

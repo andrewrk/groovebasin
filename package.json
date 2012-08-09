@@ -26,7 +26,7 @@
     "express": "~3.0.0rc2",
     "request": "~2.10.0",
     "temp": "~0.4.0",
-    "mpd": "~0.0.1"
+    "mpd": "~0.2.0"
   },
   "devDependencies": {
     "handlebars": "~1.0.6-2",

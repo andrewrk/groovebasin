@@ -8,5 +8,5 @@ window.SocketMpd = class SocketMpd extends window.Mpd
     @socket.on 'MpdDisconnect', => @resetServerState.apply(this, arguments)
     @socket.on 'disconnect', => @resetServerState.apply(this, arguments)
 
-  rawSend: (msg) =>
+  send: (msg) =>
     @socket.emit 'ToMpd', msg

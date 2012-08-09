@@ -100,7 +100,7 @@ fromMpdVol = (vol) ->
   return vol / 100
 toMpdVol = (vol) -> bound(0, Math.round(parseFloat(vol) * 100), 100)
 
-startsWith = (string, str) -> string.substring(0, str.length) == str
+startsWith = (string, str) -> string.substring(0, str.length) is str
 stripPrefixes = ['the ', 'a ', 'an ']
 sortableTitle = (title) ->
   t = title.toLowerCase()
@@ -134,7 +134,7 @@ qEscape = (str) ->
   str.toString().replace /"/g, '\\"'
 
 pickNRandomProps = (obj, n) ->
-  return [] if n == 0
+  return [] if n is 0
   results = []
   count = 0
   for prop of obj
@@ -192,11 +192,11 @@ _exports.Mpd = class Mpd
 
       msg = @buffer.substring(0, m.index)
       [line, code, str] = m
-      if code == "ACK"
+      if code is "ACK"
         @raiseEvent 'error', str
         # flush the handler
         @handleMessage null
-      else if line.indexOf("OK MPD") == 0
+      else if line.indexOf("OK MPD") is 0
         # new connection
         @raiseEvent 'connect'
       else
@@ -226,7 +226,7 @@ _exports.Mpd = class Mpd
       @anticipatePlayId next_item.id
 
   parseMpdTracks: (msg) =>
-    if msg == ""
+    if msg is ""
       return []
 
     # build list of tracks from msg
@@ -238,8 +238,8 @@ _exports.Mpd = class Mpd
       current_track = {}
     for line in msg.split("\n")
       [key, value] = split_once line, ": "
-      continue if key == 'directory'
-      flush_current_track() if key == 'file'
+      continue if key is 'directory'
+      flush_current_track() if key is 'file'
       current_track[key] = value
     flush_current_track()
     mpd_tracks
@@ -289,7 +289,7 @@ _exports.Mpd = class Mpd
     library.album_table = {}
     for track in tracks
       library.track_table[track.file] = track
-      if track.album_name == ""
+      if track.album_name is ""
         album_key = track.album_artist_name + "\n"
       else
         album_key = track.album_name + "\n"
@@ -317,7 +317,7 @@ _exports.Mpd = class Mpd
       if artist_count > 1
         # multiple artists. we're sure it's a compilation album.
         album_artist_name = VARIOUS_ARTISTS
-      if album_artist_name == VARIOUS_ARTISTS
+      if album_artist_name is VARIOUS_ARTISTS
         # make sure to disambiguate the artist names
         for track in album.tracks
           track.artist_disambiguation = track.artist_name
@@ -332,7 +332,7 @@ _exports.Mpd = class Mpd
       artist.albums.sort albumComparator
       # cache the album indexes
       album.pos = i for album, i in artist.albums
-      if artist.name == VARIOUS_ARTISTS
+      if artist.name is VARIOUS_ARTISTS
         various_artist = artist
       else
         library.artists.push artist
@@ -356,7 +356,7 @@ _exports.Mpd = class Mpd
   handleIdleResultsLoop: (msg) =>
     @handleIdleResults(msg)
     # if we have nothing else to do, idle.
-    if @msgHandlerQueue.length == 0
+    if @msgHandlerQueue.length is 0
       @sendWithCallback "idle", @handleIdleResultsLoop
 
   fixPlaylistPosCache: => item.pos = i for item, i in @playlist.item_list
@@ -439,7 +439,7 @@ _exports.Mpd = class Mpd
     @idling = true # we're always idling after the first command.
 
   sendCommands: (command_list, callback=noop) =>
-    return if command_list.length == 0
+    return if command_list.length is 0
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   updateLibrary: =>
@@ -509,7 +509,7 @@ _exports.Mpd = class Mpd
 
     @sendCommand "currentsong", (msg) =>
       mpd_tracks = @parseMpdTracks msg
-      if mpd_tracks.length == 0
+      if mpd_tracks.length is 0
         # no current song
         @status.current_item = null
         callback()
@@ -523,7 +523,7 @@ _exports.Mpd = class Mpd
 
         @status.current_item = @playlist.item_table[id]
 
-        if @status.current_item? and @status.current_item.pos == pos
+        if @status.current_item? and @status.current_item.pos is pos
           @status.current_item.track = @library.track_table[mpd_track.file]
           # looks good, notify listeners
           @raiseEvent 'statusupdate'
@@ -541,20 +541,20 @@ _exports.Mpd = class Mpd
   # puts the search results in search_results
   search: (query) =>
     query = trim(query)
-    if query.length == 0
+    if query.length is 0
       @search_results = @library
       @raiseEvent 'libraryupdate'
       @last_query = query
       return
     words = query.toLowerCase().split(/\s+/)
     query = words.join(" ")
-    return if query == @last_query
+    return if query is @last_query
     @last_query = query
     result = []
     for k, track of @library.track_table
       is_match = (->
         for word in words
-          if track.search_tags.indexOf(word) == -1
+          if track.search_tags.indexOf(word) is -1
             return false
         return true
       )()
@@ -667,7 +667,7 @@ _exports.Mpd = class Mpd
   # shifts the list of ids by offset, winamp style
   shiftIds: (track_ids, offset) =>
     offset = parseInt(offset)
-    return if offset == 0 or track_ids.length == 0
+    return if offset is 0 or track_ids.length is 0
 
     items = (item for id in track_ids when (item = @playlist.item_table[id])?)
     items.sort (a,b) ->
@@ -692,7 +692,7 @@ _exports.Mpd = class Mpd
     cmds = []
     for track_id in track_ids
       track_id = parseInt(track_id)
-      if @status.current_item?.id == track_id
+      if @status.current_item?.id is track_id
         @anticipateSkip 1
         if @status.state isnt "play"
           @status.state = "stop"

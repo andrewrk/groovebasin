@@ -367,7 +367,7 @@ renderLibrary = ->
 
 # returns how many seconds we are into the track
 getCurrentTrackPosition = ->
-  if mpd.status.track_start_date? and mpd.status.state == "play"
+  if mpd.status.track_start_date? and mpd.status.state is "play"
     (new Date() - mpd.status.track_start_date) / 1000
   else
     mpd.status.elapsed
@@ -396,11 +396,11 @@ renderNowPlaying = ->
       track_display += " - " + track.album_name
     document.title = "#{track_display} - #{base_title}"
     # Easter time!
-    if track.name == "Groove Basin" and track.artist_name == "Rayza"
+    if track.name.indexOf("Groove Basin") is 0
       $("html").addClass('groovebasin')
     else
       $("html").removeClass('groovebasin')
-    if track.name == "Never Gonna Give You Up" and track.artist_name == "Rick Astley"
+    if track.name.indexOf("Never Gonna Give You Up") is 0 and track.artist_name.indexOf("Rick Astley") is 0
       $("html").addClass('nggyu')
     else
       $("html").removeClass('nggyu')
@@ -421,7 +421,7 @@ renderNowPlaying = ->
   $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class)
 
   # hide seeker bar if stopped
-  $track_slider.slider "option", "disabled", state == "stop"
+  $track_slider.slider "option", "disabled", state is "stop"
 
   updateSliderPos()
 
@@ -510,8 +510,8 @@ toggleStreamStatus = ->
   return false
 
 updateStreamingPlayer = ->
-  should_stream = trying_to_stream and mpd.status.state == "play"
-  return if actually_streaming == should_stream
+  should_stream = trying_to_stream and mpd.status.state is "play"
+  return if actually_streaming is should_stream
   if should_stream
     format = server_status.stream_httpd_format
     port = server_status?.stream_httpd_port
@@ -533,7 +533,7 @@ updateStreamingPlayer = ->
   renderStreamButton()
 
 togglePlayback = ->
-  if mpd.status.state == 'play'
+  if mpd.status.state is 'play'
     mpd.pause()
   else
     mpd.play()
@@ -569,7 +569,7 @@ nextRepeatState = ->
 
 keyboard_handlers = do ->
   upDownHandler = (event) ->
-    if event.keyCode == 38 # up
+    if event.keyCode is 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1
     else
@@ -610,7 +610,7 @@ keyboard_handlers = do ->
     scrollLibraryToSelection() if selection.isLibrary()
 
   leftRightHandler = (event) ->
-    dir = if event.keyCode == 37 then -1 else 1
+    dir = if event.keyCode is 37 then -1 else 1
     if selection.isLibrary()
       return unless (helpers = getSelHelpers())
       [ids, table, $getDiv] = helpers[selection.type]
@@ -958,7 +958,7 @@ setUpUi = ->
     return true if started_drag
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
-    if event.button == 0
+    if event.button is 0
       event.preventDefault()
       # selecting / unselecting
       removeContextMenu()
@@ -999,7 +999,7 @@ setUpUi = ->
             # we didn't end up dragging, select the item
             selection.selectOnly 'playlist', track_id
             refreshSelection()
-    else if event.button == 2
+    else if event.button is 2
       return if event.altKey
       event.preventDefault()
 
@@ -1047,9 +1047,9 @@ setUpUi = ->
     refreshSelection()
   $document.on 'keydown', (event) ->
     if (handler = keyboard_handlers[event.keyCode])? and
-        (not handler.ctrl? or handler.ctrl == event.ctrlKey) and
-        (not handler.alt? or handler.alt == event.altKey) and
-        (not handler.shift? or handler.shift == event.shiftKey)
+        (not handler.ctrl? or handler.ctrl is event.ctrlKey) and
+        (not handler.alt? or handler.alt is event.altKey) and
+        (not handler.shift? or handler.shift is event.shiftKey)
       handler.handler event
       return false
     return true
@@ -1068,7 +1068,7 @@ setUpUi = ->
   libraryMouseDown = (event, sel_name, key) ->
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
-    if event.button == 0
+    if event.button is 0
       event.preventDefault()
       removeContextMenu()
       skip_drag = false
@@ -1187,7 +1187,7 @@ setUpUi = ->
     switch event.keyCode
       when 27
         # if the box is blank, remove focus
-        if $(event.target).val().length == 0
+        if $(event.target).val().length is 0
           $(event.target).blur()
         else
           # defer the setting of the text box until after the event loop to
@@ -1238,10 +1238,10 @@ setUpUi = ->
     renderChat()
   $chat_name_input.on 'keydown', (event) ->
     event.stopPropagation()
-    if event.keyCode == 27
+    if event.keyCode is 27
       # cancel
       done = true
-    else if event.keyCode == 13
+    else if event.keyCode is 13
       # accept
       done = true
       setUserName $(event.target).val()
@@ -1255,18 +1255,18 @@ setUpUi = ->
   $chat_input = $("#chat-input")
   $chat_input.on 'keydown', (event) ->
     event.stopPropagation()
-    if event.keyCode == 27
+    if event.keyCode is 27
       $(event.target).blur()
       return false
-    else if event.keyCode == 13
+    else if event.keyCode is 13
       message = $.trim($(event.target).val())
       Util.wait 0, ->
         $(event.target).val("")
-      return false if message == ""
+      return false if message is ""
       unless haveUserName()
         new_user_name = message
       NICK = "/nick "
-      if message.substr(0, NICK.length) == NICK
+      if message.substr(0, NICK.length) is NICK
         new_user_name = message.substr(NICK.length)
       if new_user_name?
         setUserName new_user_name

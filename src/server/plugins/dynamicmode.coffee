@@ -1,9 +1,13 @@
 Plugin = require('../plugin').Plugin
-mpd = require '../mpd'
 
 history_size = parseInt(process.env.npm_package_config_dynamicmode_history_size)
 future_size = parseInt(process.env.npm_package_config_dynamicmode_future_size)
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
+
+split_once = (line, separator) ->
+  # should be line.split(separator, 1), but javascript is stupid
+  index = line.indexOf(separator)
+  [line.substr(0, index), line.substr(index + separator.length)]
 
 exports.Plugin = class DynamicMode extends Plugin
   constructor: ->
@@ -109,11 +113,11 @@ exports.Plugin = class DynamicMode extends Plugin
     @mpd.sendCommand "sticker find song \"/\" \"#{LAST_QUEUED_STICKER}\"", (msg) =>
       current_file = null
       for line in msg.split("\n")
-        [name, value] = mpd.split_once line, ": "
+        [name, value] = split_once line, ": "
         if name == "file"
           current_file = value
         else if name == "sticker"
-          value = mpd.split_once(value, "=")[1]
+          value = split_once(value, "=")[1]
           track = @mpd.library.track_table[current_file]
           if track?
             track.last_queued = new Date(value)

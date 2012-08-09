@@ -289,7 +289,7 @@ renderPlaylist = ->
   $playlist_items.scrollTop(scroll_top)
 
 labelPlaylistItems = ->
-  cur_item = mpd.status?.current_item
+  cur_item = mpd.status.current_item
   # label the old ones
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
   if cur_item? and server_status?.dynamic_mode
@@ -374,7 +374,7 @@ getCurrentTrackPosition = ->
 
 updateSliderPos = ->
   return if user_is_seeking
-  if (time = mpd.status?.time)? and mpd.status?.current_item? and (mpd.status?.state ? "stop") isnt "stop"
+  if (time = mpd.status.time)? and mpd.status.current_item? and (mpd.status.state ? "stop") isnt "stop"
     disabled = false
     elapsed = getCurrentTrackPosition()
     slider_pos = elapsed / time
@@ -427,7 +427,7 @@ renderNowPlaying = ->
 
   # update volume pos
   unless user_is_volume_sliding
-    enabled = (vol = mpd.status?.volume)?
+    enabled = (vol = mpd.status.volume)?
     $vol_slider.slider 'option', 'value', vol if enabled
     $vol_slider.slider 'option', 'disabled', not enabled
 
@@ -1276,9 +1276,9 @@ setUpUi = ->
 
   actions =
     'toggle': togglePlayback
-    'prev': mpd.prev
-    'next': mpd.next
-    'stop': mpd.stop
+    'prev': -> mpd.prev()
+    'next': -> mpd.next()
+    'stop': -> mpd.stop()
 
   $nowplaying = $("#nowplaying")
   for cls, action of actions

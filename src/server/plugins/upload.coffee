@@ -1,5 +1,5 @@
 Plugin = require('../plugin').Plugin
-mpd = require '../mpd'
+Mpd = require('mpd')
 formidable = require 'formidable'
 util = require 'util'
 mkdirp = require 'mkdirp'
@@ -18,13 +18,13 @@ fileEscape = (filename) ->
     out += bad_file_chars[c] ? c
   out
 zfill = (n) -> (if n < 10 then "0" else "") + n
-getSuggestedPath = (track, default_name=mpd.trackNameFromFile(track.file)) ->
+getSuggestedPath = (track, default_name=Mpd.trackNameFromFile(track.file)) ->
   _path = ""
   _path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
   _path += "#{fileEscape track.album_name}/" if track.album_name
   _path += "#{fileEscape zfill track.track} " if track.track
   ext = path.extname(track.file)
-  if track.name is mpd.trackNameFromFile(track.file)
+  if track.name is Mpd.trackNameFromFile(track.file)
     _path += fileEscape default_name
   else
     _path += fileEscape track.name

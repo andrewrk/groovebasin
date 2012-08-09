@@ -3,7 +3,7 @@ http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
 express = require 'express'
-mpd = require './mpd'
+Mpd = require 'mpd'
 extend = require 'node.extend'
 path = require 'path'
 
@@ -188,10 +188,10 @@ io.sockets.on 'connection', (socket) ->
     socket.emit 'PasswordResult', JSON.stringify(success)
 
 # our own mpd connection
-class DirectMpd extends mpd.Mpd
+class DirectMpd extends Mpd
   constructor: (@mpd_socket) ->
     super()
-    @mpd_socket.on 'data', @receive
+    @mpd_socket.on 'data', => @receive.apply(this, arguments)
 
   rawSend: (data) =>
     try @mpd_socket.write data

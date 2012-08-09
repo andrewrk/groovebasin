@@ -21,10 +21,9 @@ build = (watch)->
   mkdirp 'public', ->
     args = if watch then ['-w'] else []
     exec 'coffee', args.concat ['-cbo', 'lib/', 'src/server/']
-    exec 'coffee', args.concat ['-cbo', 'lib/', 'src/shared/']
     exec 'jspackage', args.concat [
-      '-l', 'src/shared/',
       '-l', 'src/public/vendor',
+      '-l', './node_modules/mpd/lib',
       'src/client/app', 'public/app.js'
     ]
     exec 'stylus', args.concat ['-o', 'public/', 'src/client/']

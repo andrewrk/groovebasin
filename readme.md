@@ -104,7 +104,7 @@ Example:
 ```
 $ npm config set groovebasin:mpd_conf ~/.mpd/mpd.conf
 $ npm config set groovebasin:port 80
-$ npm -g --groovebasin:port 80 start groovebasin
+$ npm -g --groovebasin:port=80 start groovebasin
 ```
 
 ## Developing

@@ -4,17 +4,14 @@ history_size = parseInt(process.env.npm_package_config_dynamicmode_history_size)
 future_size = parseInt(process.env.npm_package_config_dynamicmode_future_size)
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
-split_once = (line, separator) ->
-  # should be line.split(separator, 1), but javascript is stupid
-  index = line.indexOf(separator)
-  [line.substr(0, index), line.substr(index + separator.length)]
-
 exports.Plugin = class DynamicMode extends Plugin
   constructor: ->
     super
     @previous_ids = {}
     @is_enabled = false
     @got_stickers = false
+    # our cache of the LAST_QUEUED_STICKER
+    @last_queued = {}
 
   restoreState: (state) =>
     @is_on = state.status.dynamic_mode ? false
@@ -69,9 +66,12 @@ exports.Plugin = class DynamicMode extends Plugin
       all_ids[item.id] = true
       new_files.push item.track.file unless @previous_ids[item.id]?
     # tag any newly queued tracks
-    @mpd.sendCommands ("sticker set song \"#{file}\" \"#{LAST_QUEUED_STICKER}\" #{JSON.stringify new Date()}" for file in new_files)
+    now = new Date()
+    @mpd.setStickers new_files, LAST_QUEUED_STICKER, JSON.stringify(now), (err) =>
+      if err then @log.warn "dynamic mode set stickers error:", err
     # anticipate the changes
-    @mpd.library.track_table[file].last_queued = new Date() for file in new_files
+    @last_queued[file] = now for file in new_files
+
     # if no track is playing, assume the first track is about to be
     if current_index is -1
       current_index = 0
@@ -81,23 +81,18 @@ exports.Plugin = class DynamicMode extends Plugin
         delete @random_ids[item_list[i].id]
 
     if @is_on
-      commands = []
       delete_count = Math.max(current_index - history_size, 0)
       if history_size < 0
         delete_count = 0
-      for i in [0...delete_count]
-        commands.push "deleteid #{item_list[i].id}"
-      add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
 
-      commands = commands.concat ("addid #{JSON.stringify file}" for file in @getRandomSongFiles add_count)
-      @mpd.sendCommands commands, (err, msg) =>
+      @mpd.removeIds (item_list[i].id for i in [0...delete_count])
+      add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
+      @mpd.queueFiles @getRandomSongFiles(add_count), null, (err, items) =>
         throw err if err
         # track which ones are the automatic ones
         changed = false
-        for line in msg.split("\n")
-          [name, value] = line.split(": ")
-          continue if name != "Id"
-          @random_ids[value] = 1
+        for item in items
+          @random_ids[item.id] = true
           changed = true
         @onStatusChanged() if changed
 
@@ -105,40 +100,35 @@ exports.Plugin = class DynamicMode extends Plugin
     new_random_ids = {}
     for id of @random_ids
       if all_ids[id]
-        new_random_ids[id] = 1
+        new_random_ids[id] = true
     @random_ids = new_random_ids
     @previous_ids = all_ids
     @onStatusChanged()
 
   updateStickers: =>
-    @mpd.sendCommand "sticker find song \"/\" \"#{LAST_QUEUED_STICKER}\"", (err, msg) =>
-      throw err if err
-      current_file = null
-      for line in msg.split("\n")
-        [name, value] = split_once line, ": "
-        if name is "file"
-          current_file = value
-        else if name is "sticker"
-          value = split_once(value, "=")[1]
-          track = @mpd.library.track_table[current_file]
-          if track?
-            track.last_queued = new Date(value)
-          else
-            @log.error "#{current_file} has a last-queued sticker of #{value} but we don't have it in our library cache."
+    @mpd.findStickers '/', LAST_QUEUED_STICKER, (err, stickers) =>
+      if err
+        @log.error "dynamicmode findsticker error: #{err}"
+        return
+      for sticker of stickers
+        [file, value] = sticker
+        track = @mpd.library.track_table[file]
+        @last_queued[file] = new Date(value)
       @got_stickers = true
 
   getRandomSongFiles: (count) =>
     return [] if count is 0
     never_queued = []
     sometimes_queued = []
-    for _, track of @mpd.library.track_table
-      if track.last_queued?
+    for file, track of @mpd.library.track_table
+      console.log
+      if @last_queued[file]?
         sometimes_queued.push track
       else
         never_queued.push track
     # backwards by time
     sometimes_queued.sort (a, b) =>
-      b.last_queued.getTime() - a.last_queued.getTime()
+      @last_queued[b.file].getTime() - @last_queued[a.file].getTime()
     # distribution is a triangle for ever queued, and a rectangle for never queued
     #    ___
     #   /| |

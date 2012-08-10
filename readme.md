@@ -113,7 +113,13 @@ Install dependencies and run mpd as described in the Get Started section.
 Then, from a clean clone of the source repository:
 
 ```
-$ npm run-script dev
+$ npm run dev
+```
+
+If you want to work on the `mpd` module:
+
+```
+$ sudo npm link <path_to_mpd_module_src>
 ```
 
 ## Release Notes

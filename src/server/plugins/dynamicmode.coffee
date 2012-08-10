@@ -47,7 +47,7 @@ exports.Plugin = class DynamicMode extends Plugin
       for key, value of args
         switch key
           when "dynamic_mode"
-            continue if @is_on == value
+            continue if @is_on is value
             did_anything = true
             @is_on = value
       if did_anything
@@ -64,7 +64,7 @@ exports.Plugin = class DynamicMode extends Plugin
     all_ids = {}
     new_files = []
     for item, i in item_list
-      if item.id == current_id
+      if item.id is current_id
         current_index = i
       all_ids[item.id] = true
       new_files.push item.track.file unless @previous_ids[item.id]?
@@ -73,7 +73,7 @@ exports.Plugin = class DynamicMode extends Plugin
     # anticipate the changes
     @mpd.library.track_table[file].last_queued = new Date() for file in new_files
     # if no track is playing, assume the first track is about to be
-    if current_index == -1
+    if current_index is -1
       current_index = 0
     else
       # any tracks <= current track don't count as random anymore
@@ -90,7 +90,8 @@ exports.Plugin = class DynamicMode extends Plugin
       add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
 
       commands = commands.concat ("addid #{JSON.stringify file}" for file in @getRandomSongFiles add_count)
-      @mpd.sendCommands commands, (msg) =>
+      @mpd.sendCommands commands, (err, msg) =>
+        throw err if err
         # track which ones are the automatic ones
         changed = false
         for line in msg.split("\n")
@@ -110,13 +111,14 @@ exports.Plugin = class DynamicMode extends Plugin
     @onStatusChanged()
 
   updateStickers: =>
-    @mpd.sendCommand "sticker find song \"/\" \"#{LAST_QUEUED_STICKER}\"", (msg) =>
+    @mpd.sendCommand "sticker find song \"/\" \"#{LAST_QUEUED_STICKER}\"", (err, msg) =>
+      throw err if err
       current_file = null
       for line in msg.split("\n")
         [name, value] = split_once line, ": "
-        if name == "file"
+        if name is "file"
           current_file = value
-        else if name == "sticker"
+        else if name is "sticker"
           value = split_once(value, "=")[1]
           track = @mpd.library.track_table[current_file]
           if track?
@@ -126,7 +128,7 @@ exports.Plugin = class DynamicMode extends Plugin
       @got_stickers = true
 
   getRandomSongFiles: (count) =>
-    return [] if count == 0
+    return [] if count is 0
     never_queued = []
     sometimes_queued = []
     for _, track of @mpd.library.track_table

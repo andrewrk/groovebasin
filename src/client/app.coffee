@@ -197,12 +197,12 @@ renderSettings = ->
   context =
     lastfm:
       auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}//#{location.host}/"
-      username: localStorage?.lastfm_username
-      session_key: localStorage?.lastfm_session_key
-      scrobbling_on: localStorage?.lastfm_scrobbling_on?
+      username: localStorage.lastfm_username
+      session_key: localStorage.lastfm_session_key
+      scrobbling_on: localStorage.lastfm_scrobbling_on?
     auth:
-      password: localStorage?.auth_password
-      show_edit: not localStorage?.auth_password? or settings_ui.auth.show_edit
+      password: localStorage.auth_password
+      show_edit: not localStorage.auth_password? or settings_ui.auth.show_edit
       permissions: permissions
 
   $settings.html Handlebars.templates.settings(context)
@@ -873,16 +873,19 @@ settings_ui =
     password: ""
 
 sendAuth = ->
-  if not (pass = localStorage?.auth_password)?
-    return
-
-  mpd.authenticate pass
+  pass = localStorage.auth_password
+  return unless pass?
+  mpd.authenticate pass, (err) ->
+    if err
+      delete localStorage.auth_password
+    renderSettings()
   socket.emit 'Password', pass
 
 settingsAuthSave = ->
   settings_ui.auth.show_edit = false
   $text_box = $("#auth-password")
-  localStorage?.auth_password = $text_box.val()
+  localStorage.auth_password = $text_box.val()
+  # try to auth
   renderSettings()
   sendAuth()
 
@@ -1377,9 +1380,10 @@ setUpUi = ->
     settings_ui.auth.show_edit = true
     renderSettings()
     $text_box = $("#auth-password")
-    $text_box.focus().val(localStorage?.auth_password ? "").select()
+    $text_box.focus().val(localStorage.auth_password ? "").select()
   $settings.on 'click', '.auth-clear', (event) ->
-    delete localStorage?.auth_password
+    delete localStorage.auth_password
+    settings_ui.auth.password = ""
     renderSettings()
   $settings.on 'click', '.auth-save', (event) ->
     settingsAuthSave()
@@ -1393,6 +1397,8 @@ setUpUi = ->
       settingsAuthCancel()
     else if event.which is 13
       settingsAuthSave()
+  $settings.on 'keyup', '#auth-password', (event) ->
+    settings_ui.auth.password = $(this).val()
 
   $upload_by_url.on 'keydown', (event) ->
     event.stopPropagation()
@@ -1503,9 +1509,7 @@ $document.ready ->
     window._debug_server_status = server_status
 
   mpd = new window.SocketMpd socket
-  mpd.on 'error', (msg) -> alert msg
-  mpd.on 'libraryupdate', ->
-    renderLibrary()
+  mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'statusupdate', ->
     renderNowPlaying()

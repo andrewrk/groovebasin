@@ -72,18 +72,22 @@ exports.Plugin = class Upload extends Plugin
       temp_file = temp.path()
       cleanUp = =>
         fs.unlink(temp_file)
+      cleanAndLogIfErr = (err) =>
+        if err
+          @log.error "Unable to import by URL. Error: #{err}. URL: #{url_string}"
+        cleanUp()
       pipe = request(url_string).pipe(fs.createWriteStream(temp_file))
       pipe.on 'close', =>
-        @importFile temp_file, remote_filename, (err) =>
-          cleanUp()
-      pipe.on 'error', cleanUp
+        @importFile temp_file, remote_filename, cleanAndLogIfErr
+      pipe.on 'error', cleanAndLogIfErr
 
 
   importFile: (temp_file, remote_filename, cb=->) =>
     tmp_with_ext = temp_file + path.extname(remote_filename)
     @moveFile temp_file, tmp_with_ext, (err) =>
       return cb(err) if err
-      @mpd.getFileInfo "file://#{tmp_with_ext}", (track) =>
+      @mpd.getFileInfo "file://#{tmp_with_ext}", (err, track) =>
+        return cb(err) if err
         suggested_path = getSuggestedPath(track, remote_filename)
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
@@ -104,9 +108,13 @@ exports.Plugin = class Upload extends Plugin
         response.end JSON.stringify {success: false, reason: "Uploads disabled"}
         return
 
+      logErr = (err) => @log.error "Unable to import by uploading. Error: #{err}"
+      logIfErr = (err) => if err then logIfErr(err)
+
       form = new formidable.IncomingForm()
       form.parse request, (err, fields, file) =>
-        @importFile file.qqfile.path, file.qqfile.filename
+        return logErr(err) if err
+        @importFile file.qqfile.path, file.qqfile.filename, logIfErr
 
       response.writeHead 200, {'content-type': 'text/html'}
       response.end JSON.stringify {success: true}

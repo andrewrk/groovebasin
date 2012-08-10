@@ -20,13 +20,13 @@ handlebars = ->
 build = (watch)->
   mkdirp 'public', ->
     args = if watch then ['-w'] else []
-    exec 'coffee', args.concat ['-cbo', 'lib/', 'src/server/']
-    exec 'jspackage', args.concat [
+    exec 'coffee', args.concat(['-cbo', 'lib/', 'src/server/'])
+    exec 'jspackage', args.concat([
       '-l', 'src/public/vendor',
       '-l', './node_modules/mpd/lib',
       'src/client/app', 'public/app.js'
-    ]
-    exec 'stylus', args.concat ['-o', 'public/', 'src/client/']
+    ])
+    exec 'stylus', args.concat(['-o', 'public/', 'src/client/'])
 
     # fuck you handlebars
     if watch
@@ -38,9 +38,9 @@ build = (watch)->
 
 watch = -> build('w')
 
-task "watch", watch
+task "watch", -> watch()
 
-task "build", build
+task "build", -> build()
 
 task "clean", ->
   exec "rm", ['-rf', './public', './lib']

@@ -74,7 +74,7 @@ exports.Plugin = class Upload extends Plugin
         fs.unlink(temp_file)
       cleanAndLogIfErr = (err) =>
         if err
-          @log.error "Unable to import by URL. Error: #{err}. URL: #{url_string}"
+          @log.error "Unable to import by URL. Error:", err, "URL:", url_string
         cleanUp()
       pipe = request(url_string).pipe(fs.createWriteStream(temp_file))
       pipe.on 'close', =>

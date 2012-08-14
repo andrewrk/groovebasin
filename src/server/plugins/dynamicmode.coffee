@@ -96,12 +96,13 @@ exports.Plugin = class DynamicMode extends Plugin
           changed = true
         @onStatusChanged() if changed
 
-    # scrub the random_ids
-    new_random_ids = {}
-    for id of @random_ids
-      if all_ids[id]
-        new_random_ids[id] = true
-    @random_ids = new_random_ids
+    # scrub the random_ids (only if we're sure we're not still loading
+    if item_list.length
+      new_random_ids = {}
+      for id of @random_ids
+        if all_ids[id]
+          new_random_ids[id] = true
+      @random_ids = new_random_ids
     @previous_ids = all_ids
     @onStatusChanged()
 

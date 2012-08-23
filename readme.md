@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/superjoe30/groovebasin.png)](http://travis-ci.org/superjoe30/groovebasin)
 # Groove Basin
 
 No-nonsense music client and server for your home or office.

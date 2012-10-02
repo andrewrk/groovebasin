@@ -294,8 +294,8 @@ labelPlaylistItems = ->
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
   if cur_item? and server_status?.dynamic_mode
     for pos in [0...cur_item.pos]
-      id = mpd.playlist.item_list[pos].id
-      $("#playlist-track-#{id}").addClass('old')
+      if (id = mpd.playlist.item_list[pos]?.id)?
+        $("#playlist-track-#{id}").addClass('old')
   # label the random ones
   if server_status?.random_ids?
     for item in mpd.playlist.item_list

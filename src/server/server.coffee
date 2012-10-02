@@ -3,7 +3,7 @@ http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
 express = require 'express'
-Mpd = require 'mpd'
+Mpd = require '../mpd.js/lib/mpd'
 extend = require 'node.extend'
 path = require 'path'
 

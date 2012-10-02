@@ -5,14 +5,11 @@ util = require("util")
 mkdirp = require("mkdirp")
 
 {spawn} = require("child_process")
-exec = (cmd, args=[], cb=->) ->
-  bin = spawn(cmd, args)
-  bin.stdout.on 'data', (data) ->
-    process.stdout.write data
-  bin.stderr.on 'data', (data) ->
-    process.stderr.write data
+exec = (cmd, args=[], options={}, cb=->) ->
+  opts = stdio: 'inherit'
+  opts[k] = v for k, v of options
+  bin = spawn(cmd, args, opts)
   bin.on 'exit', cb
-
 
 handlebars = ->
   exec 'handlebars', ['-f', 'public/views.js', 'src/client/views/']
@@ -35,6 +32,9 @@ build = (watch)->
         util.log "generated public/views.js"
     else
       handlebars()
+
+    npm_args = if watch then ['run', 'dev'] else ['run', 'build']
+    exec 'npm', npm_args, cwd: path.resolve(__dirname, 'mpd.js')
 
 watch = -> build('w')
 

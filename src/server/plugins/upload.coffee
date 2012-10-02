@@ -1,5 +1,5 @@
 Plugin = require('../plugin').Plugin
-Mpd = require('mpd')
+Mpd = require '../../mpd.js/lib/mpd'
 formidable = require 'formidable'
 util = require 'util'
 mkdirp = require 'mkdirp'

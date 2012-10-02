@@ -110,16 +110,12 @@ $ npm -g --groovebasin:port=80 start groovebasin
 ## Developing
 
 Install dependencies and run mpd as described in the Get Started section.
-Then, from a clean clone of the source repository:
+
+Clone the repository using `git clone --recursive` or if you have
+already cloned, do `git submodule update --init --recursive`.
 
 ```
 $ npm run dev
-```
-
-If you want to work on the `mpd` module:
-
-```
-$ sudo npm link <path_to_mpd_module_src>
 ```
 
 ## Release Notes

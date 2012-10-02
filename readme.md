@@ -9,7 +9,7 @@ Depends on [mpd](http://musicpd.org) version 0.17+ for the backend. Some might
 call this project an mpd client. (Note, version 0.17 is only available from
 source as of writing this; see below instructions regarding mpd installation.)
 
-Live demo: [groovebasin.com](http://groovebasin.com/)
+[Live demo](http://superjoe.zapto.org:16242/)
 
 ## Features
 

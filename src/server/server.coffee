@@ -221,7 +221,7 @@ connectServerMpd = ->
     log.info "server to mpd connect"
     connect_success = true
     my_mpd.handleConnectionStart()
-    if root_pass.length > 0
+    if root_pass? and root_pass.length > 0
       my_mpd.authenticate root_pass
 
     # connect socket clients to mpd

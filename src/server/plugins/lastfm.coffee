@@ -5,8 +5,8 @@ exports.Plugin = class LastFm extends Plugin
   constructor: ->
     super
     @lastfm = new LastFmNode
-      api_key: process.env.npm_package_config_lastfm_api_key
-      secret: process.env.npm_package_config_lastfm_secret
+      api_key: process.env.LASTFM_API_KEY
+      secret: process.env.LASTFM_SECRET
     @previous_now_playing_id = null
     @last_playing_item = null
     @playing_start = new Date()
@@ -22,7 +22,7 @@ exports.Plugin = class LastFm extends Plugin
   saveState: (state) =>
     state.lastfm_scrobblers = @scrobblers
     state.scrobbles = @scrobbles
-    state.status.lastfm_api_key = process.env.npm_package_config_lastfm_api_key
+    state.status.lastfm_api_key = process.env.LASTFM_API_KEY
 
   setMpd: (@mpd) =>
     @mpd.on 'statusupdate', =>

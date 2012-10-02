@@ -47,5 +47,6 @@ task "clean", ->
 
 task "dev", ->
   watch()
-  runServer = -> exec "node-dev", ["lib/server.js"]
+  runServer = -> exec "node-dev", ["lib/server.js"],
+    stdio: [process.stdin, process.stdout, process.stderr, 'ipc']
   setTimeout runServer, 1000

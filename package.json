@@ -25,7 +25,8 @@
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc2",
     "request": "~2.10.0",
-    "temp": "~0.4.0"
+    "temp": "~0.4.0",
+    "naught": "~0.2.2"
   },
   "devDependencies": {
     "handlebars": "~1.0.6-2",
@@ -36,20 +37,9 @@
     "coffee-script": "~1.3.3"
   },
   "scripts": {
-    "start": "node lib/server.js",
+    "start": "naught start lib/server.js",
+    "stop": "naught stop",
     "build": "npm install . && cake build",
     "dev": "npm install . && cake dev"
-  },
-  "config": {
-    "user_id": "",
-    "log_level": 2,
-    "port": 16242,
-    "mpd_conf": "/etc/mpd.conf",
-    "state_file": ".state.json",
-    "development_mode": false,
-    "lastfm_api_key": "7d831eff492e6de5be8abb736882c44d",
-    "lastfm_secret": "8713e8e893c5264608e584a232dd10a0",
-    "dynamicmode_history_size": 10,
-    "dynamicmode_future_size": 10
   }
 }

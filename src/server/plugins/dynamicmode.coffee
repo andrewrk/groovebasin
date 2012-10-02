@@ -1,7 +1,7 @@
 Plugin = require('../plugin').Plugin
 
-history_size = parseInt(process.env.npm_package_config_dynamicmode_history_size)
-future_size = parseInt(process.env.npm_package_config_dynamicmode_future_size)
+history_size = 10
+future_size = 10
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
 exports.Plugin = class DynamicMode extends Plugin

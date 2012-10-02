@@ -7,6 +7,16 @@ Mpd = require '../mpd.js/lib/mpd'
 extend = require 'node.extend'
 path = require 'path'
 
+process.env.SETUID ||= ""
+process.env.LOG_LEVEL ||= "2"
+process.env.HOST ||= "0.0.0.0"
+process.env.PORT ||= "16242"
+process.env.MPD_CONF ||= "/etc/mpd.conf"
+process.env.STATE_FILE ||= ".state.json"
+process.env.NODE_ENV ||= "dev"
+process.env.LASTFM_API_KEY ||= "7d831eff492e6de5be8abb736882c44d"
+process.env.LASTFM_SECRET ||= "8713e8e893c5264608e584a232dd10a0"
+
 arrayToObject = (array) ->
   obj = {}
   obj[item] = true for item in array
@@ -20,15 +30,21 @@ app.configure ->
 app_server = http.createServer(app)
 
 io = socketio.listen(app_server)
-io.set 'log level', process.env.npm_package_config_log_level
+io.set 'log level', parseInt(process.env.LOG_LEVEL)
 log = io.log
-log.info "Serving at http://0.0.0.0:#{process.env.npm_package_config_port}/"
+port = parseInt(process.env.PORT, 10)
 
-app_server.listen process.env.npm_package_config_port
+app_server.listen port, process.env.HOST, ->
+  process.send 'online'
+  log.info "Listening at http://#{process.env.HOST}:#{port}"
+
+process.on 'message', (message) ->
+  if message is 'shutdown'
+    process.exit(0)
 
 # downgrade user permissions
 try
-  process.setuid uid if uid = process.env.npm_package_config_user_id
+  process.setuid uid if uid = process.env.SETUID
 catch error
   log.error "error setting uid: #{error}"
 log.info "server running as user #{process.getuid()}"
@@ -59,10 +75,10 @@ state =
 
 saveState = ->
   plugins.call "saveState", state
-  fs.writeFile process.env.npm_package_config_state_file, JSON.stringify(state, null, 4), "utf8"
+  fs.writeFile process.env.STATE_FILE, JSON.stringify(state, null, 4), "utf8"
 
 restoreState = ->
-  try loaded_state = JSON.parse fs.readFileSync process.env.npm_package_config_state_file, "utf8"
+  try loaded_state = JSON.parse fs.readFileSync process.env.STATE_FILE, "utf8"
   if loaded_state?.state_version is state.state_version
     extend true, state, loaded_state
   # have the plugins restore and then save to delete values that should not
@@ -89,7 +105,7 @@ root_pass = null
 accounts = null
 default_account = null
 do ->
-  mpd_conf_path = process.env.npm_package_config_mpd_conf
+  mpd_conf_path = process.env.MPD_CONF
   try
     data = fs.readFileSync(mpd_conf_path)
   catch error

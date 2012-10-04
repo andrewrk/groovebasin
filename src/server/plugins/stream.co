@@ -1,16 +1,16 @@
 Plugin = require('../plugin')
 module.exports = class Stream extends Plugin
-  constructor: ->
-    super
+  ~>
+    super(...)
     @port = null
     @format = null
     @is_enabled = false
 
-  saveState: (state) =>
+  saveState: (state) ->
     state.status.stream_httpd_port = @port
     state.status.stream_httpd_format = @format
 
-  setConf: (conf, conf_path) =>
+  setConf: (conf, conf_path) ->
     @is_enabled = true
     if (httpd = conf.audio_output?.httpd)?
       @port = httpd.port
@@ -24,7 +24,7 @@ module.exports = class Stream extends Plugin
           console.warn "Use audio_output.quality for setting quality when using vorbis streaming in #{conf_path}"
       else
         @format = 'unknown'
-      if httpd.format isnt "44100:16:2"
+      if httpd.format is not "44100:16:2"
         console.warn "Recommended 44100:16:2 for audio_output.format in #{conf_path}"
     else
       @is_enabled = false

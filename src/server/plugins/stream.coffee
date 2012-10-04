@@ -1,5 +1,5 @@
-Plugin = require('../plugin').Plugin
-exports.Plugin = class Stream extends Plugin
+Plugin = require('../plugin')
+module.exports = class Stream extends Plugin
   constructor: ->
     super
     @port = null

@@ -1,10 +1,10 @@
-Plugin = require('../plugin').Plugin
+Plugin = require('../plugin')
 
 history_size = 10
 future_size = 10
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
-exports.Plugin = class DynamicMode extends Plugin
+module.exports = class DynamicMode extends Plugin
   constructor: ->
     super
     @previous_ids = {}
@@ -47,7 +47,7 @@ exports.Plugin = class DynamicMode extends Plugin
             @is_on = value
       if did_anything
         @checkDynamicMode()
-        @onStatusChanged()
+        @emit('status_changed')
 
   checkDynamicMode: =>
     return unless @is_enabled
@@ -92,7 +92,7 @@ exports.Plugin = class DynamicMode extends Plugin
         for item in items
           @random_ids[item.id] = true
           changed = true
-        @onStatusChanged() if changed
+        @emit('status_changed') if changed
 
     # scrub the random_ids (only if we're sure we're not still loading
     if item_list.length
@@ -102,7 +102,7 @@ exports.Plugin = class DynamicMode extends Plugin
           new_random_ids[id] = true
       @random_ids = new_random_ids
     @previous_ids = all_ids
-    @onStatusChanged()
+    @emit('status_changed')
 
   updateStickers: =>
     @mpd.findStickers '/', LAST_QUEUED_STICKER, (err, stickers) =>

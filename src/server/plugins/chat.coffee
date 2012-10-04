@@ -1,5 +1,5 @@
-Plugin = require('../plugin').Plugin
-exports.Plugin = class Chat extends Plugin
+Plugin = require('../plugin')
+module.exports = class Chat extends Plugin
   constructor: ->
     super
     # the online users list is always blank at startup
@@ -31,7 +31,7 @@ exports.Plugin = class Chat extends Plugin
       @chats.push(chat_object)
       chats_limit = 100
       @chats.splice(0, @chats.length - chats_limit) if @chats.length > chats_limit
-      @onStatusChanged()
+      @emit('status_changed')
     socket.on 'SetUserName', (data) =>
       user_name = data.toString().trim().split(/\s+/).join(" ")
       if user_name != ""
@@ -40,11 +40,11 @@ exports.Plugin = class Chat extends Plugin
         @user_names[user_id] = user_name
       else
         delete @user_names[user_id]
-      @onStatusChanged()
+      @emit('status_changed')
     socket.on 'disconnect', =>
       @users = (id for id in @users when id != user_id)
       @scrubStaleUserNames()
-    @onStatusChanged()
+    @emit('status_changed')
 
   scrubStaleUserNames: =>
     keep_user_ids = {}
@@ -54,5 +54,5 @@ exports.Plugin = class Chat extends Plugin
       keep_user_ids[chat_object.user_id] = true
     for user_id of @user_names
       delete @user_names[user_id] unless keep_user_ids[user_id]
-    @onStatusChanged()
+    @emit('status_changed')
 

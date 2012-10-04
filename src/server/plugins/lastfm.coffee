@@ -1,7 +1,7 @@
-Plugin = require('../plugin').Plugin
+Plugin = require('../plugin')
 LastFmNode = require('lastfm').LastFmNode
 
-exports.Plugin = class LastFm extends Plugin
+module.exports = class LastFm extends Plugin
   constructor: ->
     super
     @lastfm = new LastFmNode
@@ -47,13 +47,13 @@ exports.Plugin = class LastFm extends Plugin
       # ignore if scrobbling user already exists. this is a fake request.
       return if @scrobblers[params.username]?
       @scrobblers[params.username] = params.session_key
-      @onStateChanged()
+      @emit('state_changed')
     socket.on 'LastfmScrobblersRemove', (data) =>
       params = JSON.parse(data.toString())
       session_key = @scrobblers[params.username]
       if session_key is params.session_key
         delete @scrobblers[params.username]
-        @onStateChanged()
+        @emit('state_changed')
       else
         console.warn "Invalid session key from user trying to remove scrobbler: #{params.username}"
 
@@ -68,13 +68,13 @@ exports.Plugin = class LastFm extends Plugin
           if not error?.code? or error.code is 11 or error.code is 16
             # retryable - add to queue
             @scrobbles.push params
-            @onStateChanged()
+            @emit('state_changed')
       @lastfm.request 'track.scrobble', params
-    @onStateChanged()
+    @emit('state_changed')
 
   queueScrobble: (params) =>
     @scrobbles.push params
-    @onStateChanged()
+    @emit('state_changed')
 
   checkTrackNumber: (trackNumber) =>
     if parseInt(trackNumber) >= 0 then trackNumber else ""

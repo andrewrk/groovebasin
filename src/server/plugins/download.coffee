@@ -1,8 +1,8 @@
-Plugin = require('../plugin').Plugin
+Plugin = require('../plugin')
 fs = require 'fs'
 zipstream = require 'zipstream'
 
-exports.Plugin = class Download extends Plugin
+module.exports = class Download extends Plugin
   constructor: ->
     super
     @is_enabled = false

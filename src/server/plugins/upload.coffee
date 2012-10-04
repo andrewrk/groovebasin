@@ -1,4 +1,4 @@
-Plugin = require('../plugin').Plugin
+Plugin = require('../plugin')
 Mpd = require '../../mpd.js/lib/mpd'
 formidable = require 'formidable'
 util = require 'util'
@@ -34,7 +34,7 @@ stripFilename = (_path) ->
   parts = _path.split('/')
   parts[0...parts.length-1].join('/')
 
-exports.Plugin = class Upload extends Plugin
+module.exports = class Upload extends Plugin
   constructor: ->
     super
     @is_enabled = false
@@ -101,7 +101,7 @@ exports.Plugin = class Upload extends Plugin
             return cb(err)
           @moveFile tmp_with_ext, dest, (err) =>
             @want_to_queue.push relative_path
-            @onStateChanged()
+            @emit('state_changed')
             console.info "Track was uploaded: #{dest}"
             cb(err)
 
@@ -143,7 +143,7 @@ exports.Plugin = class Upload extends Plugin
       else
         i++
     @mpd.queueFiles files, @queueFilesPos()
-    @onStateChanged() if files.length
+    @emit('state_changed') if files.length
 
   moveFile: (source, dest, cb=->) =>
     in_stream = fs.createReadStream(source)

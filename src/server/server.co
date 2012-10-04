@@ -25,32 +25,23 @@ app_server = http.createServer(app)
 io = socketio.listen(app_server)
 io.set 'log level', 2
 
-port = parseInt(process.env.PORT, 10)
-app_server.listen port, process.env.HOST, !->
-  process.send 'online'
-  console.info "Listening at http://#{process.env.HOST}:#{port}"
-
-process.on 'message', !(message) ->
-  if message is 'shutdown'
-    process.exit(0)
-
 plugins =
-  objects:
-    lastfm: null
-    dynamicmode: null
-    upload: null
-    download: null
-    chat: null
-    stream: null
-    delete: null
-  initialize: !->
-    for name in this.objects
-      {Plugin} = require("./plugins/#{name}")
-      this.objects[name] = new Plugin(saveState, saveAndSendStatus)
+  objects: {}
+  initialize: !(cb) ->
+    const PLUGIN_PATH = path.join(__dirname, "plugins")
+    fs.readdir PLUGIN_PATH, !(err, files) ~>
+      return cb(err) if err
+      for file of files
+        name = path.basename(file, ".js")
+        Plugin = require("./plugins/#name")
+        plugin = @objects[name] = new Plugin()
+        plugin.on \state_changed, saveState
+        plugin.on \status_changed, saveAndSendStatus
+      cb()
   call: !(fn_name, ...args) ->
-    plugin[fn_name](...args) for name, plugin in this.objects
+    plugin[fn_name](...args) for name, plugin in @objects
   featuresList: ->
-    ([name, plugin.is_enabled] for name, plugin in this.objects)
+    ([name, plugin.is_enabled] for name, plugin in @objects)
 
 # state management
 const STATE_VERSION = 2 # increment this when layout of state object changes
@@ -58,35 +49,43 @@ state =
   state_version: STATE_VERSION
   status: {} # this structure is visible to clients
 
-plugins.initialize()
-plugins.call 'setUpRoutes', app
-
-restoreState()
-
-# read mpd conf
 mpd_conf = null
 root_pass = null
 accounts = null
 default_account = null
-readMpdConf()
-
-plugins.call "saveState", state
-
-io.sockets.on 'connection', onSocketIoConnection
-
-for [name, enabled] of plugins.featuresList()
-  if enabled
-    console.info "#{name} is enabled."
-  else
-    console.warn "#{name} is disabled."
-
 my_mpd = null
 my_mpd_socket = null
 connect_success = true
-connectServerMpd()
+
+plugins.initialize !(err) ->
+  assert.ifError(err)
+  plugins.call 'setUpRoutes', app
+
+  restoreState()
+  readMpdConf()
+
+  plugins.call \saveState, state
+
+  io.sockets.on 'connection', onSocketIoConnection
+
+  for [name, enabled] of plugins.featuresList()
+    if enabled
+      console.info "#{name} is enabled."
+    else
+      console.warn "#{name} is disabled."
+
+  connectServerMpd()
+
+  process.on 'message', onProcessMessage
+
+  host = process.env.HOST
+  port = parseInt(process.env.PORT, 10)
+  app_server.listen port, host, !->
+    process.send 'online'
+    console.info "Listening at http://#host:#port"
 
 !function saveState
-  plugins.call "saveState", state
+  plugins.call \saveState, state
   fs.writeFile process.env.STATE_FILE, JSON.stringify(state, null, 4), "utf8"
 
 !function restoreState
@@ -98,7 +97,7 @@ connectServerMpd()
   # have the plugins restore and then save to delete values that should not
   # have been restored.
   plugins.call "restoreState", state
-  plugins.call "saveState", state
+  plugins.call \saveState, state
 
 !function sendStatus
   plugins.call "onSendStatus", state.status
@@ -227,4 +226,8 @@ function arrayToSet (array)
   obj = {}
   obj[item] = true for item of array
   obj
+
+!function onProcessMessage (message)
+  if message is 'shutdown'
+    process.exit(0)
 

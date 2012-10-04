@@ -21,7 +21,6 @@
     "formidable": "~1.0.8",
     "lastfm": "~0.8.0",
     "mkdirp": "~0.3.0",
-    "node.extend": "~1.0.0",
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc2",
     "request": "~2.10.0",

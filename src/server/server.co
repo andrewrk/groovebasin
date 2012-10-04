@@ -91,9 +91,23 @@ async.series [
     console.info "Listening at http://#host:#port"
     cb()
 
-!function saveState
+function oncePerEventLoopFunc (fn)
+  queued = false
+  cbs = []
+  !(cb) ->
+    cbs.push(cb) if cb?
+    return if queued
+    queued := true
+    process.nextTick !->
+      queued := false
+      fn !->
+        cb(...) for cb of cbs
+
+const saveState = oncePerEventLoopFunc !(cb) ->
   plugins.call \saveState, state
-  fs.writeFile process.env.STATE_FILE, JSON.stringify(state, null, 4), "utf8"
+  fs.writeFile process.env.STATE_FILE, JSON.stringify(state, null, 4), "utf8", !(err) ->
+    if err then console.error "Error saving state to disk: #{err.stack}"
+    cb(err)
 
 !function restoreState
   try loaded_state = JSON.parse fs.readFileSync process.env.STATE_FILE, "utf8"

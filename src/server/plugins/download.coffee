@@ -5,9 +5,14 @@ path = require 'path'
 {safePath} = require '../futils'
 
 module.exports = class Download extends Plugin
-  constructor: ->
+  constructor: (bus) ->
     super
     @is_enabled = false
+    @is_ready = false # not until we set up library link
+
+    bus.on 'app', @setUpRoutes
+    bus.on 'save_state', @saveState
+    bus.on 'mpd_conf', @setConf
 
   saveState: (state) =>
     state.status.download_enabled = @is_enabled
@@ -22,19 +27,21 @@ module.exports = class Download extends Plugin
 
     # set up library link
     library_link = "./public/library"
-    try fs.unlinkSync library_link
-    try
-      fs.symlinkSync conf.music_directory, library_link
-    catch error
-      @is_enabled = false
-      console.warn "Unable to link public/library to #{conf.music_directory}: #{error}. Download disabled."
-      return
-    try
-      fs.readdirSync library_link
-    catch error
-      @is_enabled = false
-      console.warn "Unable to access music directory: #{error}. Download disabled."
-      return
+    fs.unlink library_link, (err) =>
+      # ignore this error. we'll pay attention to the link one.
+      fs.symlink conf.music_directory, library_link, (error) =>
+        if error
+          @is_enabled = false
+          console.warn "Unable to link public/library to #{conf.music_directory}: #{error}. Download disabled."
+          @emit 'ready'
+          return
+        fs.readdir library_link, (error) =>
+          if error
+            @is_enabled = false
+            console.warn "Unable to access music directory: #{error}. Download disabled."
+            @emit 'ready'
+            return
+          @emit 'ready'
 
   setUpRoutes: (app) =>
     app.get '/library/', @checkEnabledMiddleware, (req, res) =>

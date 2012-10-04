@@ -1,10 +1,13 @@
 Plugin = require('../plugin')
 module.exports = class Stream extends Plugin
-  ~>
+  (bus) ~>
     super(...)
     @port = null
     @format = null
     @is_enabled = false
+
+    bus.on 'save_state', @~saveState
+    bus.on 'mpd_conf', @~setConf
 
   saveState: !(state) ->
     state.status.stream_httpd_port = @port

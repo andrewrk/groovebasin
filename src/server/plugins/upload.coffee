@@ -24,10 +24,18 @@ getSuggestedPath = (track, default_name=Mpd.trackNameFromFile(track.file)) ->
   return _path
 
 module.exports = class Upload extends Plugin
-  constructor: ->
+  constructor: (bus) ->
     super
     @is_enabled = false
     @random_ids = null
+
+    bus.on 'app', @setUpRoutes
+    bus.on 'mpd_conf', @setConf
+    bus.on 'mpd', @setMpd
+    bus.on 'save_state', @saveState
+    bus.on 'restore_state', @restoreState
+    bus.on 'status_sent', @onSendStatus
+    bus.on 'socket_connect', @onSocketConnection
 
   restoreState: (state) =>
     @want_to_queue = state.want_to_queue ? []

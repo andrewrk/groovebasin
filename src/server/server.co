@@ -8,6 +8,8 @@ const
   assert = require 'assert'
   DirectMpd = require './direct_mpd'
   async = require 'async'
+  parseMpdConf = require('./mpdconf').parse
+  {EventEmitter} = require('events')
 
 process.env.HOST ||= "0.0.0.0"
 process.env.PORT ||= "16242"
@@ -29,6 +31,7 @@ io.set 'log level', 2
 
 plugins =
   objects: {}
+  bus: new EventEmitter()
   initialize: !(cb) ->
     const PLUGIN_PATH = path.join(__dirname, "plugins")
     fs.readdir PLUGIN_PATH, !(err, files) ~>
@@ -36,14 +39,14 @@ plugins =
       for file of files
         name = path.basename(file, ".js")
         Plugin = require("./plugins/#name")
-        plugin = @objects[name] = new Plugin()
+        plugin = @objects[name] = new Plugin(@bus)
         plugin.on \state_changed, saveState
         plugin.on \status_changed, saveAndSendStatus
       cb()
-  call: !(fn_name, ...args) ->
-    plugin[fn_name](...args) for name, plugin in @objects
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin in @objects)
+  cbWhenReady: !(cb) ->
+    async.parallel (plugin~cbWhenReady for name, plugin in @objects), cb
 
 # state management
 const STATE_VERSION = 2 # increment this when layout of state object changes
@@ -62,22 +65,23 @@ connect_success = true
 async.series [
   plugins~initialize
   restoreState
+  readMpdConf
+  !(cb) ->
+    plugins.bus.emit \app, app
+    plugins.bus.emit \save_state, state
+    cb()
+  plugins.cbWhenReady
   theRestOfBootup
 ], assert.ifError
 
 !function theRestOfBootup (cb)
-  readMpdConf()
-
-  plugins.call \setUpRoutes, app
-  plugins.call \saveState, state
-
-  io.sockets.on 'connection', onSocketIoConnection
-
   for [name, enabled] of plugins.featuresList()
     if enabled
       console.info "#{name} is enabled."
     else
       console.warn "#{name} is disabled."
+
+  io.sockets.on 'connection', onSocketIoConnection
 
   connectServerMpd()
 
@@ -103,7 +107,7 @@ function oncePerEventLoopFunc (fn)
         cb(...) for cb of cbs
 
 const saveState = oncePerEventLoopFunc !(cb) ->
-  plugins.call \saveState, state
+  plugins.bus.emit \save_state, state
   fs.writeFile process.env.STATE_FILE, JSON.stringify(state, null, 4), "utf8", !(err) ->
     if err then console.error "Error saving state to disk: #{err.stack}"
     cb(err)
@@ -125,69 +129,69 @@ const saveState = oncePerEventLoopFunc !(cb) ->
 
     # have the plugins restore and then save to delete values that should not
     # have been restored.
-    plugins.call \restoreState, state
-    plugins.call \saveState, state
+    plugins.bus.emit \restore_state, state
+    plugins.bus.emit \save_state, state
 
     cb()
 
 !function sendStatus
-  plugins.call \onSendStatus, state.status
+  plugins.bus.emit \status_sent, state.status
   io.sockets.emit 'Status', JSON.stringify state.status
 
 !function saveAndSendStatus
   saveState()
   sendStatus()
 
-!function readMpdConf
+!function readMpdConf (cb)
   mpd_conf_path = process.env.MPD_CONF
-  try
-    data = fs.readFileSync(mpd_conf_path)
-  catch error
-    console.warn "Unable to read #{mpd_conf_path}: #{error}. Most features disabled."
-    return
-  mpd_conf := require('./mpdconf').parse(data.toString())
+  fs.readFile mpd_conf_path, "utf8", !(error, contents) ->
+    if error
+      console.warn "Unable to read #{mpd_conf_path}: #{error}. Most features disabled."
+      return cb()
 
-  plugins.call \setConf, mpd_conf, mpd_conf_path
+    mpd_conf := parseMpdConf(contents)
 
-  if mpd_conf.auto_update is not "yes"
-    console.warn "recommended to turn auto_update on in #{mpd_conf_path}"
-  if mpd_conf.gapless_mp3_playback is not "yes"
-    console.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
-  if mpd_conf.volume_normalization is not "yes"
-    console.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
-  if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
-    console.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
+    plugins.bus.emit \mpd_conf, mpd_conf, mpd_conf_path
 
+    if mpd_conf.auto_update is not "yes"
+      console.warn "recommended to turn auto_update on in #{mpd_conf_path}"
+    if mpd_conf.gapless_mp3_playback is not "yes"
+      console.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
+    if mpd_conf.volume_normalization is not "yes"
+      console.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
+    if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
+      console.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
 
-  all_permissions = "read,add,control,admin"
-  accountIsRoot = (account) ->
-    for perm of all_permissions.split(',')
-      if not account[perm]
-        return false
-    return true
+    const all_permissions = "read,add,control,admin"
+    function accountIsRoot (account)
+      for perm of all_permissions.split(',')
+        if not account[perm]
+          return false
+      return true
 
-  default_account := arrayToSet((mpd_conf.default_permissions ? all_permissions).split(","))
-  if accountIsRoot(default_account)
-    root_pass := ""
-  accounts := {}
-  for account_str of (mpd_conf.password ? [])
-    [password, perms] = account_str.split("@")
-    accounts[password] = account = arrayToSet(perms.split(","))
-    if not root_pass? and accountIsRoot(account)
-      root_pass := password
+    default_account := arrayToSet((mpd_conf.default_permissions ? all_permissions).split(","))
+    if accountIsRoot(default_account)
+      root_pass := ""
+    accounts := {}
+    for account_str of (mpd_conf.password ? [])
+      [password, perms] = account_str.split("@")
+      accounts[password] = account = arrayToSet(perms.split(","))
+      if not root_pass? and accountIsRoot(account)
+        root_pass := password
 
-  if default_account.admin
-    console.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
-  if not root_pass?
-    rand_pass = Math.floor(Math.random() * 99999999999)
-    console.error """
-      It is required to have at least one password which is granted all the
-      permissions. Recommended to add this line in #{mpd_conf_path}:
+    if default_account.admin
+      console.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
+    if not root_pass?
+      rand_pass = Math.floor(Math.random() * 99999999999)
+      console.error """
+        It is required to have at least one password which is granted all the
+        permissions. Recommended to add this line in #{mpd_conf_path}:
 
-        password "groovebasin-#{rand_pass}@#{all_permissions}"
+          password "groovebasin-#{rand_pass}@#{all_permissions}"
 
-      """
-    process.exit(1)
+        """
+      return cb(new Error("mpd conf is missing root account"))
+    cb()
 
 function createMpdConnection (unix_socket, cb)
   if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
@@ -217,7 +221,7 @@ function createMpdConnection (unix_socket, cb)
 !function onSocketIoConnection (socket)
   connectBrowserMpd socket
   permissions = default_account
-  plugins.call \onSocketConnection, socket, -> permissions
+  plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
   socket.on 'Password', !(data) ->
     pass = data.toString()
@@ -248,7 +252,7 @@ function createMpdConnection (unix_socket, cb)
   my_mpd := DirectMpd(my_mpd_socket)
   my_mpd.on 'error', !(msg) -> console.error msg
 
-  plugins.call \setMpd, my_mpd
+  plugins.bus.emit \mpd, my_mpd
 
 !function tryReconnect
   setTimeout connectServerMpd, 1000

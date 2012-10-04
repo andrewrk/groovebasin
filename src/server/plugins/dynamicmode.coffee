@@ -5,13 +5,19 @@ future_size = 10
 LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
 module.exports = class DynamicMode extends Plugin
-  constructor: ->
+  constructor: (bus) ->
     super
     @previous_ids = {}
     @is_enabled = false
     @got_stickers = false
     # our cache of the LAST_QUEUED_STICKER
     @last_queued = {}
+
+    bus.on 'save_state', @saveState
+    bus.on 'save_state', @restoreState
+    bus.on 'mpd_conf', @setConf
+    bus.on 'mpd', @setMpd
+    bus.on 'socket_connect', @onSocketConnection
 
   restoreState: (state) =>
     @is_on = state.status.dynamic_mode ? false

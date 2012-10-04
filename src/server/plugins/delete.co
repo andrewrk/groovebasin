@@ -4,7 +4,12 @@ Plugin = require('../plugin')
 
 # ability to delete songs from your library
 module.exports = class extends Plugin
-  ~> super(...)
+  (bus) ~>
+    super(...)
+    bus.on 'save_state', @~saveState
+    bus.on 'mpd_conf', @~setConf
+    bus.on 'mpd', @~setMpd
+    bus.on 'socket_connect', @~onSocketConnection
 
   saveState: !(state) ->
     state.status.delete_enabled = @is_enabled

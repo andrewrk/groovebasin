@@ -2,7 +2,7 @@ Plugin = require('../plugin')
 LastFmNode = require('lastfm').LastFmNode
 
 module.exports = class LastFm extends Plugin
-  constructor: ->
+  constructor: (bus) ->
     super
     @lastfm = new LastFmNode
       api_key: process.env.LASTFM_API_KEY
@@ -14,6 +14,11 @@ module.exports = class LastFm extends Plugin
     @previous_play_state = null
 
     setTimeout @flushScrobbleQueue, 120000
+
+    bus.on 'save_state', @saveState
+    bus.on 'restore_state', @restoreState
+    bus.on 'socket_connect', @onSocketConnection
+    bus.on 'mpd', @setMpd
 
   restoreState: (state) =>
     @scrobblers = state.lastfm_scrobblers ? {}

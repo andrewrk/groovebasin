@@ -35,9 +35,9 @@ module.exports = class Download extends Plugin
       return
 
   setUpRoutes: (app) =>
-    app.get '/library/', (req, res) =>
+    app.get '/library/', @checkEnabledMiddleware, (req, res) =>
       @downloadPath "", "library.zip", res
-    app.get /^\/library\/(.*)\/$/, (req, res) =>
+    app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, res) =>
       path = req.params[0]
       relative_path = "/" + path
       zip_name = windowsSafePath(path.replace(/\//g, " - ")) + ".zip"

@@ -1,11 +1,13 @@
-fs = require 'fs'
-http = require 'http'
-net = require 'net'
-socketio = require 'socket.io'
-express = require 'express'
-path = require 'path'
-assert = require 'assert'
-DirectMpd = require './direct_mpd'
+const
+  fs = require 'fs'
+  http = require 'http'
+  net = require 'net'
+  socketio = require 'socket.io'
+  express = require 'express'
+  path = require 'path'
+  assert = require 'assert'
+  DirectMpd = require './direct_mpd'
+  async = require 'async'
 
 process.env.HOST ||= "0.0.0.0"
 process.env.PORT ||= "16242"
@@ -57,9 +59,13 @@ my_mpd = null
 my_mpd_socket = null
 connect_success = true
 
-plugins.initialize !(err) ->
-  assert.ifError(err)
-  plugins.call 'setUpRoutes', app
+async.series [
+  plugins~initialize
+  theRestOfBootup
+], assert.ifError
+
+!function theRestOfBootup (cb)
+  plugins.call \setUpRoutes, app
 
   restoreState()
   readMpdConf()
@@ -83,6 +89,7 @@ plugins.initialize !(err) ->
   app_server.listen port, host, !->
     process.send 'online'
     console.info "Listening at http://#host:#port"
+    cb()
 
 !function saveState
   plugins.call \saveState, state
@@ -96,11 +103,11 @@ plugins.initialize !(err) ->
     state := loaded_state
   # have the plugins restore and then save to delete values that should not
   # have been restored.
-  plugins.call "restoreState", state
+  plugins.call \restoreState, state
   plugins.call \saveState, state
 
 !function sendStatus
-  plugins.call "onSendStatus", state.status
+  plugins.call \onSendStatus, state.status
   io.sockets.emit 'Status', JSON.stringify state.status
 
 !function saveAndSendStatus
@@ -116,7 +123,7 @@ plugins.initialize !(err) ->
     return
   mpd_conf := require('./mpdconf').parse(data.toString())
 
-  plugins.call "setConf", mpd_conf, mpd_conf_path
+  plugins.call \setConf, mpd_conf, mpd_conf_path
 
   if mpd_conf.auto_update is not "yes"
     console.warn "recommended to turn auto_update on in #{mpd_conf_path}"
@@ -186,7 +193,7 @@ function createMpdConnection (unix_socket, cb)
 !function onSocketIoConnection (socket)
   connectBrowserMpd socket
   permissions = default_account
-  plugins.call "onSocketConnection", socket, -> permissions
+  plugins.call \onSocketConnection, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
   socket.on 'Password', !(data) ->
     pass = data.toString()
@@ -217,7 +224,7 @@ function createMpdConnection (unix_socket, cb)
   my_mpd := DirectMpd(my_mpd_socket)
   my_mpd.on 'error', !(msg) -> console.error msg
 
-  plugins.call "setMpd", my_mpd
+  plugins.call \setMpd, my_mpd
 
 !function tryReconnect
   setTimeout connectServerMpd, 1000

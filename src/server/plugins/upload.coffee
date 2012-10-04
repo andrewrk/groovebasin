@@ -106,12 +106,7 @@ module.exports = class Upload extends Plugin
             cb(err)
 
   setUpRoutes: (app) =>
-    app.post '/upload', (request, response) =>
-      unless @is_enabled
-        response.writeHead 500, {'content-type': 'text/plain'}
-        response.end JSON.stringify {success: false, reason: "Uploads disabled"}
-        return
-
+    app.post '/upload', @checkEnabledMiddleware, (request, response) =>
       logErr = (err) => console.error "Unable to import by uploading. Error: #{err}"
       logIfErr = (err) => if err then logErr(err)
 

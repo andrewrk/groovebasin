@@ -88,7 +88,11 @@ exports.Plugin = class Upload extends Plugin
       return cb(err) if err
       @mpd.getFileInfo "file://#{tmp_with_ext}", (err, track) =>
         return cb(err) if err
-        suggested_path = getSuggestedPath(track, remote_filename)
+        if track
+          suggested_path = getSuggestedPath(track, remote_filename)
+        else
+          @log.warn "this version of mpd can't read tags outside the library"
+          suggested_path = remote_filename
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
         mkdirp stripFilename(dest), (err) =>
@@ -109,7 +113,7 @@ exports.Plugin = class Upload extends Plugin
         return
 
       logErr = (err) => @log.error "Unable to import by uploading. Error: #{err}"
-      logIfErr = (err) => if err then logIfErr(err)
+      logIfErr = (err) => if err then logErr(err)
 
       form = new formidable.IncomingForm()
       form.parse request, (err, fields, file) =>

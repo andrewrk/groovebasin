@@ -61,15 +61,14 @@ connect_success = true
 
 async.series [
   plugins~initialize
+  restoreState
   theRestOfBootup
 ], assert.ifError
 
 !function theRestOfBootup (cb)
-  plugins.call \setUpRoutes, app
-
-  restoreState()
   readMpdConf()
 
+  plugins.call \setUpRoutes, app
   plugins.call \saveState, state
 
   io.sockets.on 'connection', onSocketIoConnection
@@ -109,16 +108,27 @@ const saveState = oncePerEventLoopFunc !(cb) ->
     if err then console.error "Error saving state to disk: #{err.stack}"
     cb(err)
 
-!function restoreState
-  try loaded_state = JSON.parse fs.readFileSync process.env.STATE_FILE, "utf8"
-  if loaded_state?
-    assert.strictEqual loaded_state.state_version, state.state_version,
-      "State version is #{loaded_state.state_version} but should be #STATE_VERSION"
+!function restoreState (cb)
+  fs.readFile process.env.STATE_FILE, \utf8, !(err, data) ->
+    if err?code is \ENOENT
+      console.warn "No state file. Creating a new one."
+      cb()
+    return cb(err) if err
+    try
+      loaded_state = JSON.parse(data)
+    catch e
+      return cb(e)
+    if loaded_state.state_version is not STATE_VERSION
+      return cb(new Error("State version is #{loaded_state.state_version} but should be #STATE_VERSION"))
+
     state := loaded_state
-  # have the plugins restore and then save to delete values that should not
-  # have been restored.
-  plugins.call \restoreState, state
-  plugins.call \saveState, state
+
+    # have the plugins restore and then save to delete values that should not
+    # have been restored.
+    plugins.call \restoreState, state
+    plugins.call \saveState, state
+
+    cb()
 
 !function sendStatus
   plugins.call \onSendStatus, state.status

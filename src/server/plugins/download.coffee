@@ -1,6 +1,7 @@
 Plugin = require('../plugin')
 fs = require 'fs'
 zipstream = require 'zipstream'
+path = require 'path'
 {safePath} = require '../futils'
 
 module.exports = class Download extends Plugin
@@ -46,7 +47,7 @@ module.exports = class Download extends Plugin
 
   downloadPath: (relative_path, zip_name, response) =>
     prefix = "./public/library"
-    walk prefix + relative_path, (err, files) ->
+    walk path.join(prefix, relative_path), (err, files) ->
       if err
         response.writeHead 404, {}
         response.end()

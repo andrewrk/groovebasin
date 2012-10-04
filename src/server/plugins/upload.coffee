@@ -1,8 +1,7 @@
 Plugin = require('../plugin')
 Mpd = require '../../mpd.js/lib/mpd'
 formidable = require 'formidable'
-util = require 'util'
-mkdirp = require 'mkdirp'
+fse = require 'fs-extra'
 fs = require 'fs'
 path = require 'path'
 request = require 'request'
@@ -30,9 +29,6 @@ getSuggestedPath = (track, default_name=Mpd.trackNameFromFile(track.file)) ->
     _path += fileEscape track.name
     _path += ext
   return _path
-stripFilename = (_path) ->
-  parts = _path.split('/')
-  parts[0...parts.length-1].join('/')
 
 module.exports = class Upload extends Plugin
   constructor: ->
@@ -84,7 +80,7 @@ module.exports = class Upload extends Plugin
 
   importFile: (temp_file, remote_filename, cb=->) =>
     tmp_with_ext = temp_file + path.extname(remote_filename)
-    @moveFile temp_file, tmp_with_ext, (err) =>
+    fs.rename temp_file, tmp_with_ext, (err) =>
       return cb(err) if err
       @mpd.getFileInfo "file://#{tmp_with_ext}", (err, track) =>
         return cb(err) if err
@@ -95,11 +91,11 @@ module.exports = class Upload extends Plugin
           suggested_path = remote_filename
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
-        mkdirp stripFilename(dest), (err) =>
+        fse.mkdir path.dirname(dest), (err) =>
           if err
             console.error err
             return cb(err)
-          @moveFile tmp_with_ext, dest, (err) =>
+          fs.rename tmp_with_ext, dest, (err) =>
             @want_to_queue.push relative_path
             @emit('state_changed')
             console.info "Track was uploaded: #{dest}"
@@ -139,14 +135,4 @@ module.exports = class Upload extends Plugin
         i++
     @mpd.queueFiles files, @queueFilesPos()
     @emit('state_changed') if files.length
-
-  moveFile: (source, dest, cb=->) =>
-    in_stream = fs.createReadStream(source)
-    out_stream = fs.createWriteStream(dest)
-    util.pump in_stream, out_stream, (err) =>
-      if err
-        console.error error
-        cb(err)
-        return
-      fs.unlink source, cb
 

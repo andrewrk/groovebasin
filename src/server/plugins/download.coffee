@@ -73,15 +73,17 @@ module.exports = class Download extends Plugin
 walk = (dir, done) ->
   results = []
   fs.readdir dir, (err, list) ->
-    return done(err) if err?
+    return done(err) if err
     i = 0
     next = ->
       file = list[i++]
       return done(null, results) unless file?
       file = dir + '/' + file
       fs.stat file, (err, stat) ->
-        if stat?.isDirectory()
+        return done(err) if err
+        if stat.isDirectory()
           walk file, (err, res) ->
+            return done(err) if err
             results = results.concat res
             next()
         else

@@ -16,7 +16,7 @@ process.env.LASTFM_API_KEY ||= "7d831eff492e6de5be8abb736882c44d"
 process.env.LASTFM_SECRET ||= "8713e8e893c5264608e584a232dd10a0"
 
 app = express()
-app.configure ->
+app.configure !->
   app.use(express.static(path.join(__dirname, '../public')))
   app.use(express.static(path.join(__dirname, '../src/public')))
 
@@ -26,11 +26,11 @@ io = socketio.listen(app_server)
 io.set 'log level', 2
 
 port = parseInt(process.env.PORT, 10)
-app_server.listen port, process.env.HOST, ->
+app_server.listen port, process.env.HOST, !->
   process.send 'online'
   console.info "Listening at http://#{process.env.HOST}:#{port}"
 
-process.on 'message', (message) ->
+process.on 'message', !(message) ->
   if message is 'shutdown'
     process.exit(0)
 
@@ -43,11 +43,11 @@ plugins =
     chat: null
     stream: null
     delete: null
-  initialize: ->
+  initialize: !->
     for name in this.objects
       {Plugin} = require("./plugins/#{name}")
       this.objects[name] = new Plugin(saveState, saveAndSendStatus)
-  call: (fn_name, ...args) ->
+  call: !(fn_name, ...args) ->
     plugin[fn_name](...args) for name, plugin in this.objects
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin in this.objects)
@@ -168,20 +168,20 @@ function createMpdConnection (unix_socket, cb)
     net.connect port, host, cb
 
 !function connectBrowserMpd (socket)
-  mpd_socket = createMpdConnection false, ->
+  mpd_socket = createMpdConnection false, !->
     try socket.emit 'MpdConnect'
-  mpd_socket.on 'data', (data) ->
+  mpd_socket.on 'data', !(data) ->
     socket.emit 'FromMpd', data.toString()
-  mpd_socket.on 'end', ->
+  mpd_socket.on 'end', !->
     try socket.emit 'MpdDisconnect'
-  mpd_socket.on 'error', ->
+  mpd_socket.on 'error', !->
     console.warn "browser no mpd daemon found."
 
   socket.removeAllListeners 'ToMpd'
-  socket.on 'ToMpd', (data) ->
+  socket.on 'ToMpd', !(data) ->
     try mpd_socket.write data
   socket.removeAllListeners 'disconnect'
-  socket.on 'disconnect', ->
+  socket.on 'disconnect', !->
     mpd_socket.end()
 
 !function onSocketIoConnection (socket)
@@ -189,7 +189,7 @@ function createMpdConnection (unix_socket, cb)
   permissions = default_account
   plugins.call "onSocketConnection", socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
-  socket.on 'Password', (data) ->
+  socket.on 'Password', !(data) ->
     pass = data.toString()
     if success = (ref = accounts[pass])?
       permissions := ref
@@ -198,7 +198,7 @@ function createMpdConnection (unix_socket, cb)
 
 
 !function connectServerMpd
-  my_mpd_socket := createMpdConnection true, ->
+  my_mpd_socket := createMpdConnection true, !->
     console.info "server to mpd connect"
     connect_success := true
     my_mpd.handleConnectionStart()
@@ -207,16 +207,16 @@ function createMpdConnection (unix_socket, cb)
 
     # connect socket clients to mpd
     io.sockets.clients().forEach connectBrowserMpd
-  my_mpd_socket.on 'end', ->
+  my_mpd_socket.on 'end', !->
     console.warn "server mpd disconnect"
     tryReconnect()
-  my_mpd_socket.on 'error', ->
+  my_mpd_socket.on 'error', !->
     if connect_success
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
   my_mpd := DirectMpd(my_mpd_socket)
-  my_mpd.on 'error', (msg) -> console.error msg
+  my_mpd.on 'error', !(msg) -> console.error msg
 
   plugins.call "setMpd", my_mpd
 

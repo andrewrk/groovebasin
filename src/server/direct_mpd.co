@@ -1,6 +1,6 @@
 const Mpd = require '../mpd.js/lib/mpd'
 
-class DirectMpd extends Mpd
+module.exports = class DirectMpd extends Mpd
   (@mpd_socket) ~>
     super()
     @mpd_socket.on 'data', ~> @receive.apply(this, arguments)

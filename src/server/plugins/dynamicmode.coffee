@@ -27,7 +27,7 @@ exports.Plugin = class DynamicMode extends Plugin
     unless conf.sticker_file?
       @is_enabled = false
       @is_on = false
-      @log.warn "sticker_file not set in #{conf_path}. Dynamic Mode disabled."
+      console.warn "sticker_file not set in #{conf_path}. Dynamic Mode disabled."
 
   setMpd: (@mpd) =>
     @mpd.on 'statusupdate', @checkDynamicMode
@@ -38,8 +38,6 @@ exports.Plugin = class DynamicMode extends Plugin
     socket.on 'DynamicMode', (data) =>
       return unless @is_enabled
       args = JSON.parse data.toString()
-      @log.debug "DynamicMode args:"
-      @log.debug args
       did_anything = false
       for key, value of args
         switch key
@@ -68,7 +66,7 @@ exports.Plugin = class DynamicMode extends Plugin
     # tag any newly queued tracks
     now = new Date()
     @mpd.setStickers new_files, LAST_QUEUED_STICKER, JSON.stringify(now), (err) =>
-      if err then @log.warn "dynamic mode set stickers error:", err
+      if err then console.warn "dynamic mode set stickers error:", err
     # anticipate the changes
     @last_queued[file] = now for file in new_files
 
@@ -109,7 +107,7 @@ exports.Plugin = class DynamicMode extends Plugin
   updateStickers: =>
     @mpd.findStickers '/', LAST_QUEUED_STICKER, (err, stickers) =>
       if err
-        @log.error "dynamicmode findsticker error: #{err}"
+        console.error "dynamicmode findsticker error: #{err}"
         return
       for sticker of stickers
         [file, value] = sticker

@@ -15,7 +15,7 @@ exports.Plugin = class Download extends Plugin
 
     unless conf.music_directory?
       @is_enabled = false
-      @log.warn "music_directory not found in #{conf_path}. Download disabled."
+      console.warn "music_directory not found in #{conf_path}. Download disabled."
       return
 
     # set up library link
@@ -25,13 +25,13 @@ exports.Plugin = class Download extends Plugin
       fs.symlinkSync conf.music_directory, library_link
     catch error
       @is_enabled = false
-      @log.warn "Unable to link public/library to #{conf.music_directory}: #{error}. Download disabled."
+      console.warn "Unable to link public/library to #{conf.music_directory}: #{error}. Download disabled."
       return
     try
       fs.readdirSync library_link
     catch error
       @is_enabled = false
-      @log.warn "Unable to access music directory: #{error}. Download disabled."
+      console.warn "Unable to access music directory: #{error}. Download disabled."
       return
 
   setUpRoutes: (app) =>
@@ -44,8 +44,6 @@ exports.Plugin = class Download extends Plugin
       @downloadPath relative_path, zip_name, res
 
   downloadPath: (relative_path, zip_name, response) =>
-    @log.debug "request to download a library directory: #{relative_path}"
-
     prefix = "./public/library"
     walk prefix + relative_path, (err, files) ->
       if err

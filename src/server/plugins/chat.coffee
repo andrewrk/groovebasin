@@ -52,7 +52,6 @@ exports.Plugin = class Chat extends Plugin
       keep_user_ids[user_id] = true
     for chat_object in @chats
       keep_user_ids[chat_object.user_id] = true
-    @log.debug "keep_ids #{(copy for copy of keep_user_ids)}"
     for user_id of @user_names
       delete @user_names[user_id] unless keep_user_ids[user_id]
     @onStatusChanged()

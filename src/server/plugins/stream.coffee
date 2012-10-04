@@ -17,15 +17,15 @@ exports.Plugin = class Stream extends Plugin
       if httpd.encoder is 'lame'
         @format = 'mp3'
         if httpd.quality?
-          @log.warn "Use audio_output.bitrate for setting quality when using mp3 streaming in #{conf_path}"
+          console.warn "Use audio_output.bitrate for setting quality when using mp3 streaming in #{conf_path}"
       else if httpd.encoder is 'vorbis'
         @format = 'ogg'
         if httpd.bitrate?
-          @log.warn "Use audio_output.quality for setting quality when using vorbis streaming in #{conf_path}"
+          console.warn "Use audio_output.quality for setting quality when using vorbis streaming in #{conf_path}"
       else
         @format = 'unknown'
       if httpd.format isnt "44100:16:2"
-        @log.warn "Recommended 44100:16:2 for audio_output.format in #{conf_path}"
+        console.warn "Recommended 44100:16:2 for audio_output.format in #{conf_path}"
     else
       @is_enabled = false
-      @log.warn "httpd audio_output not enabled in #{conf_path}. Streaming disabled."
+      console.warn "httpd audio_output not enabled in #{conf_path}. Streaming disabled."

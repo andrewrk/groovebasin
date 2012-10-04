@@ -1,5 +1,5 @@
 exports.Plugin = class
-  constructor: (@log, @onStateChanged, @onStatusChanged) ->
+  constructor: (@onStateChanged, @onStatusChanged) ->
     @mpd = null
     @conf = null
     @is_enabled = true

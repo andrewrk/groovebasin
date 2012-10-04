@@ -51,15 +51,15 @@ exports.Plugin = class Upload extends Plugin
     @is_enabled = true
     unless conf.bind_to_address?.unix_socket?
       @is_enabled = false
-      @log.warn "bind_to_address does not have a unix socket enabled in #{conf_path}. Uploading disabled."
+      console.warn "bind_to_address does not have a unix socket enabled in #{conf_path}. Uploading disabled."
     unless conf.bind_to_address?.network == "localhost"
       @is_enabled = false
-      @log.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
+      console.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
     if conf.music_directory?
       @music_lib_path = conf.music_directory
     else
       @is_enabled = false
-      @log.warn "music directory not found in #{conf_path}. Uploading disabled."
+      console.warn "music directory not found in #{conf_path}. Uploading disabled."
 
   setMpd: (@mpd) =>
     @mpd.on 'libraryupdate', @flushWantToQueue
@@ -74,7 +74,7 @@ exports.Plugin = class Upload extends Plugin
         fs.unlink(temp_file)
       cleanAndLogIfErr = (err) =>
         if err
-          @log.error "Unable to import by URL. Error:", err, "URL:", url_string
+          console.error "Unable to import by URL. Error:", err, "URL:", url_string
         cleanUp()
       pipe = request(url_string).pipe(fs.createWriteStream(temp_file))
       pipe.on 'close', =>
@@ -91,18 +91,18 @@ exports.Plugin = class Upload extends Plugin
         if track
           suggested_path = getSuggestedPath(track, remote_filename)
         else
-          @log.warn "this version of mpd can't read tags outside the library"
+          console.warn "this version of mpd can't read tags outside the library"
           suggested_path = remote_filename
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
         mkdirp stripFilename(dest), (err) =>
           if err
-            @log.error err
+            console.error err
             return cb(err)
           @moveFile tmp_with_ext, dest, (err) =>
             @want_to_queue.push relative_path
             @onStateChanged()
-            @log.info "Track was uploaded: #{dest}"
+            console.info "Track was uploaded: #{dest}"
             cb(err)
 
   setUpRoutes: (app) =>
@@ -112,7 +112,7 @@ exports.Plugin = class Upload extends Plugin
         response.end JSON.stringify {success: false, reason: "Uploads disabled"}
         return
 
-      logErr = (err) => @log.error "Unable to import by uploading. Error: #{err}"
+      logErr = (err) => console.error "Unable to import by uploading. Error: #{err}"
       logIfErr = (err) => if err then logErr(err)
 
       form = new formidable.IncomingForm()
@@ -150,7 +150,7 @@ exports.Plugin = class Upload extends Plugin
     out_stream = fs.createWriteStream(dest)
     util.pump in_stream, out_stream, (err) =>
       if err
-        @log.error error
+        console.error error
         cb(err)
         return
       fs.unlink source, cb

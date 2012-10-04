@@ -8,7 +8,6 @@ extend = require 'node.extend'
 path = require 'path'
 
 process.env.SETUID ||= ""
-process.env.LOG_LEVEL ||= "2"
 process.env.HOST ||= "0.0.0.0"
 process.env.PORT ||= "16242"
 process.env.MPD_CONF ||= "/etc/mpd.conf"
@@ -30,13 +29,12 @@ app.configure ->
 app_server = http.createServer(app)
 
 io = socketio.listen(app_server)
-io.set 'log level', parseInt(process.env.LOG_LEVEL)
-log = io.log
+io.set 'log level', 2
 port = parseInt(process.env.PORT, 10)
 
 app_server.listen port, process.env.HOST, ->
   process.send 'online'
-  log.info "Listening at http://#{process.env.HOST}:#{port}"
+  console.info "Listening at http://#{process.env.HOST}:#{port}"
 
 process.on 'message', (message) ->
   if message is 'shutdown'
@@ -46,8 +44,8 @@ process.on 'message', (message) ->
 try
   process.setuid uid if uid = process.env.SETUID
 catch error
-  log.error "error setting uid: #{error}"
-log.info "server running as user #{process.getuid()}"
+  console.error "error setting uid: #{error}"
+console.info "server running as user #{process.getuid()}"
 
 
 plugins =
@@ -62,7 +60,7 @@ plugins =
   initialize: ->
     for name of this.objects
       {Plugin} = require("./plugins/#{name}")
-      this.objects[name] = new Plugin(log, saveState, saveAndSend)
+      this.objects[name] = new Plugin(saveState, saveAndSend)
   call: (fn_name, args...) ->
     plugin[fn_name](args...) for name, plugin of this.objects
   featuresList: ->
@@ -109,20 +107,20 @@ do ->
   try
     data = fs.readFileSync(mpd_conf_path)
   catch error
-    log.warn "Unable to read #{mpd_conf_path}: #{error}. Most features disabled."
+    console.warn "Unable to read #{mpd_conf_path}: #{error}. Most features disabled."
     return
   mpd_conf = require('./mpdconf').parse(data.toString())
 
   plugins.call "setConf", mpd_conf, mpd_conf_path
 
   if mpd_conf.auto_update isnt "yes"
-    log.warn "recommended to turn auto_update on in #{mpd_conf_path}"
+    console.warn "recommended to turn auto_update on in #{mpd_conf_path}"
   if mpd_conf.gapless_mp3_playback isnt "yes"
-    log.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
+    console.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
   if mpd_conf.volume_normalization isnt "yes"
-    log.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
+    console.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
   if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
-    log.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
+    console.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
 
 
   all_permissions = "read,add,control,admin"
@@ -143,10 +141,10 @@ do ->
       root_pass = password
 
   if default_account.admin
-    log.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
+    console.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
   if not root_pass?
     rand_pass = Math.floor(Math.random() * 99999999999)
-    log.error """
+    console.error """
       It is required to have at least one password which is granted all the
       permissions. Recommended to add this line in #{mpd_conf_path}:
 
@@ -159,9 +157,9 @@ plugins.call "saveState", state
 
 for [name, enabled] in plugins.featuresList()
   if enabled
-    log.info "#{name} is enabled."
+    console.info "#{name} is enabled."
   else
-    log.warn "#{name} is disabled."
+    console.warn "#{name} is disabled."
 
 createMpdConnection = (unix_socket, cb) ->
   if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
@@ -173,19 +171,16 @@ createMpdConnection = (unix_socket, cb) ->
 
 connectBrowserMpd = (socket) ->
   mpd_socket = createMpdConnection false, ->
-    log.debug "browser to mpd connect"
     try socket.emit 'MpdConnect'
   mpd_socket.on 'data', (data) ->
     socket.emit 'FromMpd', data.toString()
   mpd_socket.on 'end', ->
-    log.debug "browser mpd disconnect"
     try socket.emit 'MpdDisconnect'
   mpd_socket.on 'error', ->
-    log.debug "browser no mpd daemon found."
+    console.warn "browser no mpd daemon found."
 
   socket.removeAllListeners 'ToMpd'
   socket.on 'ToMpd', (data) ->
-    log.debug "[in] #{data}"
     try mpd_socket.write data
   socket.removeAllListeners 'disconnect'
   socket.on 'disconnect', ->
@@ -218,7 +213,7 @@ my_mpd_socket = null
 connect_success = true
 connectServerMpd = ->
   my_mpd_socket = createMpdConnection true, ->
-    log.info "server to mpd connect"
+    console.info "server to mpd connect"
     connect_success = true
     my_mpd.handleConnectionStart()
     if root_pass? and root_pass.length > 0
@@ -227,15 +222,15 @@ connectServerMpd = ->
     # connect socket clients to mpd
     io.sockets.clients().forEach connectBrowserMpd
   my_mpd_socket.on 'end', ->
-    log.warn "server mpd disconnect"
+    console.warn "server mpd disconnect"
     tryReconnect()
   my_mpd_socket.on 'error', ->
     if connect_success
       connect_success = false
-      log.warn "server no mpd daemon found."
+      console.warn "server no mpd daemon found."
     tryReconnect()
   my_mpd = new DirectMpd(my_mpd_socket)
-  my_mpd.on 'error', (msg) -> log.error msg
+  my_mpd.on 'error', (msg) -> console.error msg
 
   plugins.call "setMpd", my_mpd
 

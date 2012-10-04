@@ -96,10 +96,6 @@ userIdToUserName = (user_id) ->
   return user_name ? user_id
 
 storeMyUserIds = ->
-  # scrub stale ids. TODO: this is broken.
-  #if server_status?
-  #  for user_id of my_user_ids
-  #    delete my_user_ids[user_id] unless server_status.user_names[user_id]?
   localStorage?.my_user_ids = JSON.stringify my_user_ids
 
 setUserName = (new_name) ->

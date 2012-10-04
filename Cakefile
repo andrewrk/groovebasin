@@ -21,6 +21,7 @@ build = (watch)->
     mkdirp 'public', ->
       args = if watch then ['-w'] else []
       exec 'coffee', args.concat(['-cbo', 'lib/', 'src/server/'])
+      exec 'coco', args.concat(['-cbo', 'lib/', 'src/server/'])
       exec 'jspackage', args.concat([
         '-l', 'src/public/vendor',
         '-l', 'mpd.js/lib',

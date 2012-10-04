@@ -18,7 +18,7 @@ process.env.LASTFM_SECRET ||= "8713e8e893c5264608e584a232dd10a0"
 
 arrayToObject = (array) ->
   obj = {}
-  obj[item] = true for item in array
+  obj[item] = true for item of array
   obj
 
 app = express()
@@ -58,13 +58,13 @@ plugins =
     stream: null
     delete: null
   initialize: ->
-    for name of this.objects
+    for name in this.objects
       {Plugin} = require("./plugins/#{name}")
       this.objects[name] = new Plugin(saveState, saveAndSend)
-  call: (fn_name, args...) ->
-    plugin[fn_name](args...) for name, plugin of this.objects
+  call: (fn_name, ...args) ->
+    plugin[fn_name](...args) for name, plugin in this.objects
   featuresList: ->
-    ([name, plugin.is_enabled] for name, plugin of this.objects)
+    ([name, plugin.is_enabled] for name, plugin in this.objects)
 
 # state management
 state =
@@ -109,15 +109,15 @@ do ->
   catch error
     console.warn "Unable to read #{mpd_conf_path}: #{error}. Most features disabled."
     return
-  mpd_conf = require('./mpdconf').parse(data.toString())
+  mpd_conf := require('./mpdconf').parse(data.toString())
 
   plugins.call "setConf", mpd_conf, mpd_conf_path
 
-  if mpd_conf.auto_update isnt "yes"
+  if mpd_conf.auto_update is not "yes"
     console.warn "recommended to turn auto_update on in #{mpd_conf_path}"
-  if mpd_conf.gapless_mp3_playback isnt "yes"
+  if mpd_conf.gapless_mp3_playback is not "yes"
     console.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
-  if mpd_conf.volume_normalization isnt "yes"
+  if mpd_conf.volume_normalization is not "yes"
     console.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
   if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
     console.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
@@ -125,20 +125,20 @@ do ->
 
   all_permissions = "read,add,control,admin"
   accountIsRoot = (account) ->
-    for perm in all_permissions.split(',')
+    for perm of all_permissions.split(',')
       if not account[perm]
         return false
     return true
 
-  default_account = arrayToObject((mpd_conf.default_permissions ? all_permissions).split(","))
+  default_account := arrayToObject((mpd_conf.default_permissions ? all_permissions).split(","))
   if accountIsRoot(default_account)
-    root_pass = ""
-  accounts = {}
-  for account_str in (mpd_conf.password ? [])
+    root_pass := ""
+  accounts := {}
+  for account_str of (mpd_conf.password ? [])
     [password, perms] = account_str.split("@")
     accounts[password] = account = arrayToObject(perms.split(","))
     if not root_pass? and accountIsRoot(account)
-      root_pass = password
+      root_pass := password
 
   if default_account.admin
     console.warn "Anonymous users have admin permissions. Recommended to remove `admin` from `default_permissions` in #{mpd_conf_path}"
@@ -155,7 +155,7 @@ do ->
 
 plugins.call "saveState", state
 
-for [name, enabled] in plugins.featuresList()
+for [name, enabled] of plugins.featuresList()
   if enabled
     console.info "#{name} is enabled."
   else
@@ -194,7 +194,7 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'Password', (data) ->
     pass = data.toString()
     if success = (ref = accounts[pass])?
-      permissions = ref
+      permissions := ref
     socket.emit 'Permissions', JSON.stringify(permissions)
     socket.emit 'PasswordResult', JSON.stringify(success)
 
@@ -202,9 +202,9 @@ io.sockets.on 'connection', (socket) ->
 class DirectMpd extends Mpd
   constructor: (@mpd_socket) ->
     super()
-    @mpd_socket.on 'data', => @receive.apply(this, arguments)
+    @mpd_socket.on 'data', ~> @receive.apply(this, arguments)
 
-  send: (data) =>
+  send: (data) ->
     try @mpd_socket.write data
 
 
@@ -212,9 +212,9 @@ my_mpd = null
 my_mpd_socket = null
 connect_success = true
 connectServerMpd = ->
-  my_mpd_socket = createMpdConnection true, ->
+  my_mpd_socket := createMpdConnection true, ->
     console.info "server to mpd connect"
-    connect_success = true
+    connect_success := true
     my_mpd.handleConnectionStart()
     if root_pass? and root_pass.length > 0
       my_mpd.authenticate root_pass
@@ -226,10 +226,10 @@ connectServerMpd = ->
     tryReconnect()
   my_mpd_socket.on 'error', ->
     if connect_success
-      connect_success = false
+      connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  my_mpd = new DirectMpd(my_mpd_socket)
+  my_mpd := new DirectMpd(my_mpd_socket)
   my_mpd.on 'error', (msg) -> console.error msg
 
   plugins.call "setMpd", my_mpd

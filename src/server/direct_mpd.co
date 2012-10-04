@@ -1,0 +1,10 @@
+const Mpd = require '../mpd.js/lib/mpd'
+
+class DirectMpd extends Mpd
+  (@mpd_socket) ~>
+    super()
+    @mpd_socket.on 'data', ~> @receive.apply(this, arguments)
+
+  send: (data) ->
+    try @mpd_socket.write data
+

@@ -3,9 +3,9 @@ http = require 'http'
 net = require 'net'
 socketio = require 'socket.io'
 express = require 'express'
-Mpd = require '../mpd.js/lib/mpd'
 path = require 'path'
 assert = require 'assert'
+DirectMpd = require './direct_mpd'
 
 process.env.HOST ||= "0.0.0.0"
 process.env.PORT ||= "16242"
@@ -46,7 +46,7 @@ plugins =
   initialize: ->
     for name in this.objects
       {Plugin} = require("./plugins/#{name}")
-      this.objects[name] = new Plugin(saveState, saveAndSend)
+      this.objects[name] = new Plugin(saveState, saveAndSendStatus)
   call: (fn_name, ...args) ->
     plugin[fn_name](...args) for name, plugin in this.objects
   featuresList: ->
@@ -57,6 +57,33 @@ const STATE_VERSION = 2 # increment this when layout of state object changes
 state =
   state_version: STATE_VERSION
   status: {} # this structure is visible to clients
+
+plugins.initialize()
+plugins.call 'setUpRoutes', app
+
+restoreState()
+
+# read mpd conf
+mpd_conf = null
+root_pass = null
+accounts = null
+default_account = null
+readMpdConf()
+
+plugins.call "saveState", state
+
+io.sockets.on 'connection', onSocketIoConnection
+
+for [name, enabled] of plugins.featuresList()
+  if enabled
+    console.info "#{name} is enabled."
+  else
+    console.warn "#{name} is disabled."
+
+my_mpd = null
+my_mpd_socket = null
+connect_success = true
+connectServerMpd()
 
 !function saveState
   plugins.call "saveState", state
@@ -73,25 +100,15 @@ state =
   plugins.call "restoreState", state
   plugins.call "saveState", state
 
-sendStatus = ->
+!function sendStatus
   plugins.call "onSendStatus", state.status
   io.sockets.emit 'Status', JSON.stringify state.status
 
-saveAndSend = ->
+!function saveAndSendStatus
   saveState()
   sendStatus()
 
-plugins.initialize()
-plugins.call 'setUpRoutes', app
-
-restoreState()
-
-# read mpd conf
-mpd_conf = null
-root_pass = null
-accounts = null
-default_account = null
-do ->
+!function readMpdConf
   mpd_conf_path = process.env.MPD_CONF
   try
     data = fs.readFileSync(mpd_conf_path)
@@ -142,15 +159,7 @@ do ->
       """
     process.exit(1)
 
-plugins.call "saveState", state
-
-for [name, enabled] of plugins.featuresList()
-  if enabled
-    console.info "#{name} is enabled."
-  else
-    console.warn "#{name} is disabled."
-
-createMpdConnection = (unix_socket, cb) ->
+function createMpdConnection (unix_socket, cb)
   if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
     net.connect path, cb
   else
@@ -158,7 +167,7 @@ createMpdConnection = (unix_socket, cb) ->
     host = mpd_conf?.bind_to_address?.network ? "localhost"
     net.connect port, host, cb
 
-connectBrowserMpd = (socket) ->
+!function connectBrowserMpd (socket)
   mpd_socket = createMpdConnection false, ->
     try socket.emit 'MpdConnect'
   mpd_socket.on 'data', (data) ->
@@ -175,7 +184,7 @@ connectBrowserMpd = (socket) ->
   socket.on 'disconnect', ->
     mpd_socket.end()
 
-io.sockets.on 'connection', (socket) ->
+!function onSocketIoConnection (socket)
   connectBrowserMpd socket
   permissions = default_account
   plugins.call "onSocketConnection", socket, -> permissions
@@ -187,20 +196,8 @@ io.sockets.on 'connection', (socket) ->
     socket.emit 'Permissions', JSON.stringify(permissions)
     socket.emit 'PasswordResult', JSON.stringify(success)
 
-# our own mpd connection
-class DirectMpd extends Mpd
-  (@mpd_socket) ~>
-    super()
-    @mpd_socket.on 'data', ~> @receive.apply(this, arguments)
 
-  send: (data) ->
-    try @mpd_socket.write data
-
-
-my_mpd = null
-my_mpd_socket = null
-connect_success = true
-connectServerMpd = ->
+!function connectServerMpd
   my_mpd_socket := createMpdConnection true, ->
     console.info "server to mpd connect"
     connect_success := true
@@ -223,10 +220,8 @@ connectServerMpd = ->
 
   plugins.call "setMpd", my_mpd
 
-tryReconnect = ->
+!function tryReconnect
   setTimeout connectServerMpd, 1000
-
-connectServerMpd()
 
 function arrayToSet (array)
   obj = {}

@@ -1,6 +1,7 @@
 Plugin = require('../plugin')
 fs = require 'fs'
 zipstream = require 'zipstream'
+{safePath} = require '../futils'
 
 module.exports = class Download extends Plugin
   constructor: ->
@@ -40,7 +41,7 @@ module.exports = class Download extends Plugin
     app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, res) =>
       path = req.params[0]
       relative_path = "/" + path
-      zip_name = windowsSafePath(path.replace(/\//g, " - ")) + ".zip"
+      zip_name = safePath(path.replace(/\//g, " - ")) + ".zip"
       @downloadPath relative_path, zip_name, res
 
   downloadPath: (relative_path, zip_name, response) =>
@@ -87,8 +88,3 @@ walk = (dir, done) ->
           results.push file
           next()
     next()
-
-windowsSafePath = (string) ->
-  # http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
-  # this is a good start
-  string.replace /<|>|:|"|\/|\\|\||\?|\*/g, "_"

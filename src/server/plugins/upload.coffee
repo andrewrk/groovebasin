@@ -7,26 +7,19 @@ path = require 'path'
 request = require 'request'
 url = require 'url'
 temp = require 'temp'
+{safePath} = require '../futils'
 
-
-bad_file_chars = {}
-bad_file_chars[c] = "_" for c in '/\\?%*:|"<>'
-fileEscape = (filename) ->
-  out = ""
-  for c in filename
-    out += bad_file_chars[c] ? c
-  out
 zfill = (n) -> (if n < 10 then "0" else "") + n
 getSuggestedPath = (track, default_name=Mpd.trackNameFromFile(track.file)) ->
   _path = ""
-  _path += "#{fileEscape track.album_artist_name}/" if track.album_artist_name
-  _path += "#{fileEscape track.album_name}/" if track.album_name
-  _path += "#{fileEscape zfill track.track} " if track.track
+  _path += "#{safePath track.album_artist_name}/" if track.album_artist_name
+  _path += "#{safePath track.album_name}/" if track.album_name
+  _path += "#{safePath zfill track.track} " if track.track
   ext = path.extname(track.file)
   if track.name is Mpd.trackNameFromFile(track.file)
-    _path += fileEscape default_name
+    _path += safePath default_name
   else
-    _path += fileEscape track.name
+    _path += safePath track.name
     _path += ext
   return _path
 

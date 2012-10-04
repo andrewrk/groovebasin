@@ -1,0 +1,4 @@
+# http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+# this is a good start
+export function safePath(string)
+  string.replace(/[<>:"\/\\|?*%]/g, "_")

@@ -122,7 +122,6 @@ exports.Plugin = class DynamicMode extends Plugin
     never_queued = []
     sometimes_queued = []
     for file, track of @mpd.library.track_table
-      console.log
       if @last_queued[file]?
         sometimes_queued.push track
       else
@@ -137,8 +136,11 @@ exports.Plugin = class DynamicMode extends Plugin
     # /__|_|
     max_weight = sometimes_queued.length
     triangle_area = Math.floor(max_weight * max_weight / 2)
+    max_weight = 1 if max_weight is 0
     rectangle_area = max_weight * never_queued.length
     total_size = triangle_area + rectangle_area
+    if total_size is 0
+      return []
     # decode indexes through the distribution shape
     files = []
     for i in [0...count]

@@ -179,6 +179,22 @@ selectionToFiles = (random=false) ->
     track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
     return (track.file for track in track_arr)
 
+playlistSelectionToFiles = ->
+  (mpd.playlist.item_table[key].track.file for key of selection.ids.playlist)
+
+downloadFiles = (files) ->
+  $form = $(document.createElement('form'))
+  $form.attr('action', "/download/custom")
+  $form.attr('method', "post")
+  $form.attr('target', "_blank")
+  for file in files
+    $input = $(document.createElement('input'))
+    $input.attr('type', 'hidden')
+    $input.attr('name', 'file')
+    $input.attr('value', file)
+    $form.append($input)
+  $form.submit()
+
 getDragPosition = (x, y) ->
   # loop over the playlist items and find where it fits
   best =
@@ -1030,9 +1046,12 @@ setUpUi = ->
 
       # adds a new context menu to the document
       context =
-        item: mpd.playlist.item_table[track_id]
         status: server_status
         permissions: permissions
+      if selection.isMulti()
+        context.download_multi = true
+      else
+        context.item = mpd.playlist.item_table[track_id]
       $(Handlebars.templates.playlist_menu(context))
         .appendTo(document.body)
       $menu = $("#menu") # get the newly created one
@@ -1048,6 +1067,10 @@ setUpUi = ->
       $menu.on 'click', '.download', ->
         removeContextMenu()
         return true
+      $menu.on 'click', '.download-multi', ->
+        removeContextMenu()
+        downloadFiles playlistSelectionToFiles()
+        return false
       $menu.on 'click', '.delete', ->
         handleDeletePressed(true)
         removeContextMenu()
@@ -1186,19 +1209,9 @@ setUpUi = ->
       $menu.on 'click', '.download', ->
         removeContextMenu()
         return true
-      $menu.on 'click', '.download-custom', ->
+      $menu.on 'click', '.download-multi', ->
         removeContextMenu()
-        $form = $(document.createElement('form'))
-        $form.attr('action', "/download/custom")
-        $form.attr('method', "post")
-        $form.attr('target', "_blank")
-        for file in selectionToFiles()
-          $input = $(document.createElement('input'))
-          $input.attr('type', 'hidden')
-          $input.attr('name', 'file')
-          $input.attr('value', file)
-          $form.append($input)
-        $form.submit()
+        downloadFiles selectionToFiles()
         return false
       $menu.on 'click', '.delete', ->
         handleDeletePressed(true)

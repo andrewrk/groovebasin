@@ -13,7 +13,12 @@
   </li>
   <li>
   {{#if status.download_enabled}}
-    <a href="library/{{item.track.file}}" class="download hoverable" target="_blank">Download</a>
+    {{#if item}}
+      <a href="library/{{item.track.file}}" class="download hoverable" target="_blank">Download</a>
+    {{/if}}
+    {{#if download_multi}}
+      <a href="#" class="download-multi hoverable">Download</a>
+    {{/if}}
   {{else}}
     <span title="Download is disabled due to invalid server configuration.">Download</span>
   {{/if}}

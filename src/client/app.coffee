@@ -1,7 +1,7 @@
 #depend "util"
 #depend "socketmpd"
-#depend "jquery-1.7.1.min" bare
-#depend "jquery-ui-1.8.17.custom.min" bare
+#depend "jquery-1.8.2.min" bare
+#depend "jquery-ui-1.8.24.custom.min" bare
 #depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
 #depend "fileuploader/fileuploader" bare
 #depend "socket.io/socket.io.min" bare

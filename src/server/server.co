@@ -122,7 +122,7 @@ const saveState = oncePerEventLoopFunc !(cb) ->
     try
       loaded_state = JSON.parse(data)
     catch e
-      return cb(e)
+      return cb(new Error("state file contains invalid JSON: #e"))
     if loaded_state.state_version is not STATE_VERSION
       return cb(new Error("State version is #{loaded_state.state_version} but should be #STATE_VERSION"))
 

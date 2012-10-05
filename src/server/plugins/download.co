@@ -57,10 +57,10 @@ module.exports = class Download extends Plugin
       relative_path = "/#path"
       zip_name = safePath(path.replace(/\//g, " - ")) + ".zip"
       downloadPath relative_path, zip_name, req, resp
-    app.post '/download/custom', [@checkEnabledMiddleware, express.json()], (req, resp) ~>
-      files = (path.join(LIBRARY_PATH, f) for f of req.body.files)
-      zip_name = safePath(req.body.zip_name)
-      sendZipOfFiles zip_name, f, req, resp
+    app.post '/download/custom', [@checkEnabledMiddleware, express.urlencoded()], (req, resp) ~>
+      files = (path.join(LIBRARY_PATH, f) for f of req.body.file)
+      zip_name = "music.zip"
+      sendZipOfFiles zip_name, files, req, resp
     app.get '/download/album/:album', @checkEnabledMiddleware, (req, resp) ~>
       album = @mpd.library.album_table[req.params.album]
       files = (path.join(LIBRARY_PATH, track.file) for track of album.tracks)

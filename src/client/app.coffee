@@ -15,25 +15,42 @@ selection =
   cursor: null # the last touched id
   type: null # 'playlist', 'artist', 'album', or 'track'
   isLibrary: ->
-    return false if not this.type?
-    return this.type isnt 'playlist'
+    return false if not @type?
+    return @type isnt 'playlist'
   isPlaylist: ->
-    return false if not this.type?
-    return this.type is 'playlist'
+    return false if not @type?
+    return @type is 'playlist'
   clear: ->
-    this.ids.artist = {}
-    this.ids.album = {}
-    this.ids.track = {}
-    this.ids.playlist = {}
+    @ids.artist = {}
+    @ids.album = {}
+    @ids.track = {}
+    @ids.playlist = {}
   fullClear: ->
-    this.clear()
-    this.type = null
-    this.cursor = null
+    @clear()
+    @type = null
+    @cursor = null
   selectOnly: (sel_name, key) ->
-    this.clear()
-    this.type = sel_name
-    this.ids[sel_name][key] = true
-    this.cursor = key
+    @clear()
+    @type = sel_name
+    @ids[sel_name][key] = true
+    @cursor = key
+  isMulti: ->
+    if @isLibrary()
+      result = -2
+      for k of @ids.artist
+        return true if not ++result
+      for k of @ids.album
+        return true if not ++result
+      for k of @ids.track
+        return true if not ++result
+      return false
+    else if @isPlaylist()
+      result = -2
+      for k of @ids.playlist
+        return true if not ++result
+      return false
+    else
+      return false
 
 server_status = null
 permissions = {}
@@ -1135,11 +1152,14 @@ setUpUi = ->
       context =
         status: server_status
         permissions: permissions
-      if sel_name is 'track'
-        context.track = mpd.search_results.track_table[key]
+      if selection.isMulti()
+        context.download_multi = true
       else
-        context.download_type = sel_name
-        context.escaped_key = escape(key)
+        if sel_name is 'track'
+          context.track = mpd.search_results.track_table[key]
+        else
+          context.download_type = sel_name
+          context.escaped_key = escape(key)
       $(Handlebars.templates.library_menu(context)).appendTo(document.body)
       $menu = $("#menu") # get the newly created one
       $menu.offset
@@ -1166,6 +1186,20 @@ setUpUi = ->
       $menu.on 'click', '.download', ->
         removeContextMenu()
         return true
+      $menu.on 'click', '.download-custom', ->
+        removeContextMenu()
+        $form = $(document.createElement('form'))
+        $form.attr('action', "/download/custom")
+        $form.attr('method', "post")
+        $form.attr('target', "_blank")
+        for file in selectionToFiles()
+          $input = $(document.createElement('input'))
+          $input.attr('type', 'hidden')
+          $input.attr('name', 'file')
+          $input.attr('value', file)
+          $form.append($input)
+        $form.submit()
+        return false
       $menu.on 'click', '.delete', ->
         handleDeletePressed(true)
         removeContextMenu()

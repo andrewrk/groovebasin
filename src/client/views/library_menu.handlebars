@@ -14,17 +14,20 @@
       <span title="Delete is disabled due to invalid server configuration.">Delete</span>
     {{/if}}
   </li>
-    <li>
-      {{#if status.download_enabled}}
-        {{#if track}}
-          <a href="library/{{track.file}}" class="download hoverable" target="_blank">Download</a>
-        {{/if}}
-        {{#if download_type}}
-          <a href="download/{{download_type}}/{{escaped_key}}" class="download hoverable" target="_blank">Download</a>
-        {{/if}}
-      {{else}}
-        <span title="Download is disabled due to invalid server configuration.">Download</span>
+  <li>
+    {{#if status.download_enabled}}
+      {{#if track}}
+        <a href="library/{{track.file}}" class="download hoverable" target="_blank">Download</a>
       {{/if}}
-    </li>
+      {{#if download_type}}
+        <a href="download/{{download_type}}/{{escaped_key}}" class="download hoverable" target="_blank">Download</a>
+      {{/if}}
+      {{#if download_multi}}
+        <a href="download/custom" class="download-custom hoverable">Download</a>
+      {{/if}}
+    {{else}}
+      <span title="Download is disabled due to invalid server configuration.">Download</span>
+    {{/if}}
+  </li>
 </ul>
 

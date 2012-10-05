@@ -565,7 +565,7 @@ nextRepeatState = ->
 
 keyboard_handlers = do ->
   upDownHandler = (event) ->
-    if event.keyCode is 38 # up
+    if event.which is 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1
     else
@@ -606,7 +606,7 @@ keyboard_handlers = do ->
     scrollLibraryToSelection() if selection.isLibrary()
 
   leftRightHandler = (event) ->
-    dir = if event.keyCode is 37 then -1 else 1
+    dir = if event.which is 37 then -1 else 1
     if selection.isLibrary()
       return unless (helpers = getSelHelpers())
       [ids, table, $getDiv] = helpers[selection.type]
@@ -915,7 +915,7 @@ performDrag = (event, callbacks) ->
     $("#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
   onDragEnd = (event) ->
-    return false unless event.button is 0
+    return false unless event.which is 1
 
     if started_drag
       callbacks.complete getDragPosition(event.pageX, event.pageY), event
@@ -957,7 +957,7 @@ setUpUi = ->
     return true if started_drag
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
-    if event.button is 0
+    if event.which is 1
       event.preventDefault()
       # selecting / unselecting
       removeContextMenu()
@@ -998,7 +998,7 @@ setUpUi = ->
             # we didn't end up dragging, select the item
             selection.selectOnly 'playlist', track_id
             refreshSelection()
-    else if event.button is 2
+    else if event.which is 3
       return if event.altKey
       event.preventDefault()
 
@@ -1045,7 +1045,7 @@ setUpUi = ->
     selection.type = null
     refreshSelection()
   $document.on 'keydown', (event) ->
-    if (handler = keyboard_handlers[event.keyCode])? and
+    if (handler = keyboard_handlers[event.which])? and
         (not handler.ctrl? or handler.ctrl is event.ctrlKey) and
         (not handler.alt? or handler.alt is event.altKey) and
         (not handler.shift? or handler.shift is event.shiftKey)
@@ -1067,7 +1067,7 @@ setUpUi = ->
   libraryMouseDown = (event, sel_name, key) ->
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
-    if event.button is 0
+    if event.which is 1
       event.preventDefault()
       removeContextMenu()
       skip_drag = false
@@ -1121,7 +1121,7 @@ setUpUi = ->
             # we didn't end up dragging, select the item
             selection.selectOnly sel_name, key
             refreshSelection()
-    else if event.button = 2
+    else if event.which = 3
       return if event.altKey
       event.preventDefault()
 
@@ -1186,7 +1186,7 @@ setUpUi = ->
   $lib_filter = $("#lib-filter")
   $lib_filter.on 'keydown', (event) ->
     event.stopPropagation()
-    switch event.keyCode
+    switch event.which
       when 27
         # if the box is blank, remove focus
         if $(event.target).val().length is 0
@@ -1240,10 +1240,10 @@ setUpUi = ->
     renderChat()
   $chat_name_input.on 'keydown', (event) ->
     event.stopPropagation()
-    if event.keyCode is 27
+    if event.which is 27
       # cancel
       done = true
-    else if event.keyCode is 13
+    else if event.which is 13
       # accept
       done = true
       setUserName $(event.target).val()
@@ -1257,10 +1257,10 @@ setUpUi = ->
   $chat_input = $("#chat-input")
   $chat_input.on 'keydown', (event) ->
     event.stopPropagation()
-    if event.keyCode is 27
+    if event.which is 27
       $(event.target).blur()
       return false
-    else if event.keyCode is 13
+    else if event.which is 13
       message = $.trim($(event.target).val())
       Util.wait 0, ->
         $(event.target).val("")

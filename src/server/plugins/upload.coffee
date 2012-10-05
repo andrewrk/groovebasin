@@ -1,5 +1,4 @@
 Plugin = require('../plugin')
-Mpd = require '../../mpd.js/lib/mpd'
 formidable = require 'formidable'
 fse = require 'fs-extra'
 fs = require 'fs'
@@ -7,21 +6,7 @@ path = require 'path'
 request = require 'request'
 url = require 'url'
 temp = require 'temp'
-{safePath} = require '../futils'
-
-zfill = (n) -> (if n < 10 then "0" else "") + n
-getSuggestedPath = (track, default_name=Mpd.trackNameFromFile(track.file)) ->
-  _path = ""
-  _path += "#{safePath track.album_artist_name}/" if track.album_artist_name
-  _path += "#{safePath track.album_name}/" if track.album_name
-  _path += "#{safePath zfill track.track} " if track.track
-  ext = path.extname(track.file)
-  if track.name is Mpd.trackNameFromFile(track.file)
-    _path += safePath default_name
-  else
-    _path += safePath track.name
-    _path += ext
-  return _path
+{getSuggestedPath} = require '../futils'
 
 module.exports = class Upload extends Plugin
   constructor: (bus) ->

@@ -1,0 +1,129 @@
+const
+  Plugin = require('../plugin')
+  fs = require 'fs'
+  zipstream = require 'zipstream'
+  path = require 'path'
+  {safePath} = require '../futils'
+  express = require 'express'
+
+const
+  LIBRARY_PATH = "public/library"
+
+module.exports = class Download extends Plugin
+  (bus) ~>
+    super(...)
+    @is_enabled = false
+    @is_ready = false # not until we set up library link
+
+    bus.on 'app', @~setUpRoutes
+    bus.on 'save_state', @~saveState
+    bus.on 'mpd_conf', @~setConf
+    bus.on 'mpd', !(@mpd) ~>
+
+  saveState: (state) ->
+    state.status.download_enabled = @is_enabled
+
+  setConf: (conf, conf_path) ->
+    @is_enabled = true
+
+    unless conf.music_directory?
+      @is_enabled = false
+      console.warn "music_directory not found in #{conf_path}. Download disabled."
+      return
+
+    # set up library link
+    library_link = "./public/library"
+    fs.unlink library_link, (err) ~>
+      # ignore this error. we'll pay attention to the link one.
+      fs.symlink conf.music_directory, library_link, (error) ~>
+        if error
+          @is_enabled = false
+          console.warn "Unable to link public/library to #{conf.music_directory}: #{error}. Download disabled."
+          @emit 'ready'
+          return
+        fs.readdir library_link, (error) ~>
+          if error
+            @is_enabled = false
+            console.warn "Unable to access music directory: #{error}. Download disabled."
+            @emit 'ready'
+            return
+          @emit 'ready'
+
+  setUpRoutes: (app) ->
+    app.get '/library/', @checkEnabledMiddleware, (req, resp) ~>
+      downloadPath "", "library.zip", req, resp
+    app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, resp) ~>
+      path = req.params[0]
+      relative_path = "/#path"
+      zip_name = safePath(path.replace(/\//g, " - ")) + ".zip"
+      downloadPath relative_path, zip_name, req, resp
+    app.post '/download/custom', [@checkEnabledMiddleware, express.json()], (req, resp) ~>
+      files = (path.join(LIBRARY_PATH, f) for f of req.body.files)
+      zip_name = safePath(req.body.zip_name)
+      sendZipOfFiles zip_name, f, req, resp
+    app.get '/download/album/:album', @checkEnabledMiddleware, (req, resp) ~>
+      album = @mpd.library.album_table[req.params.album]
+      files = (path.join(LIBRARY_PATH, track.file) for track of album.tracks)
+      zip_name = safePath(album.name) + ".zip"
+      sendZipOfFiles zip_name, files, req, resp
+    app.get '/download/artist/:artist', @checkEnabledMiddleware, (req, resp) ~>
+      artist = @mpd.library.artist_table[req.params.artist]
+      zip_name = safePath(artist.name) + ".zip"
+      files = []
+      for album of artist.albums
+        for track of album.tracks
+          files.push(path.join(LIBRARY_PATH, track.file))
+      sendZipOfFiles zip_name, files, req, resp
+
+!function downloadPath (relative_path, zip_name, req, resp)
+  walk path.join(LIBRARY_PATH, relative_path), (err, files) ~>
+    if err
+      resp.writeHead 404, {}
+      resp.end()
+      return
+    sendZipOfFiles zip_name, files, req, resp
+
+!function sendZipOfFiles (zip_name, files, req, resp)
+  cleanup = []
+  req.on \close, !->
+    for fn of cleanup then try fn()
+    resp.end()
+  resp.writeHead 200,
+    "Content-Type": "application/zip"
+    "Content-Disposition": "attachment; filename=#{zip_name}"
+  zip = zipstream.createZip {}
+  cleanup.push !-> zip.destroy()
+  zip.pipe resp
+  !function nextFile
+    file_path = files.shift()
+    if file_path?
+      options =
+        name: path.relative(LIBRARY_PATH, file_path)
+        store: true
+      read_stream = fs.createReadStream(file_path)
+      cleanup.push !-> read_stream.destroy()
+      zip.addFile read_stream, options, nextFile
+    else
+      zip.finalize !-> resp.end()
+  nextFile()
+
+# translated from http://stackoverflow.com/a/5827895/367916
+!function walk (dir, done)
+  results = []
+  fs.readdir dir, !(err, list) ->
+    return done(err) if err
+    !function next
+      file = list.shift()
+      return done(null, results) unless file?
+      file = dir + '/' + file
+      fs.stat file, !(err, stat) ->
+        return done(err) if err
+        if stat.isDirectory()
+          walk file, !(err, res) ->
+            return done(err) if err
+            results .= concat(res)
+            next()
+        else
+          results.push file
+          next()
+    next()

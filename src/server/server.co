@@ -37,6 +37,7 @@ plugins =
     fs.readdir PLUGIN_PATH, !(err, files) ~>
       return cb(err) if err
       for file of files
+        continue unless /\.js$/.test(file)
         name = path.basename(file, ".js")
         Plugin = require("./plugins/#name")
         plugin = @objects[name] = new Plugin(@bus)

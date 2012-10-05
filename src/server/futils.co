@@ -1,4 +1,25 @@
+const
+  path = require('path')
+  Mpd = require '../mpd.js/lib/mpd'
+
 # http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
 # this is a good start
 export function safePath(string)
   string.replace(/[<>:"\/\\|?*%]/g, "_")
+
+export function getSuggestedPath(track, default_name=Mpd.trackNameFromFile(track.file))
+  p = ""
+  p = path.join(p, safePath(track.album_artist_name)) if track.album_artist_name
+  p = path.join(p, safePath(track.album_name)) if track.album_name
+
+  t = ""
+  t += safePath(zfill(track.track)) + " " if track.track?
+  if track.name is Mpd.trackNameFromFile(track.file)
+    t += safePath(default_name)
+  else
+    t += track.name + path.extname(track.file)
+
+  path.join(p, t)
+
+function zfill (n)
+  (if n < 10 then "0" else "") + n

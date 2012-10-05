@@ -1137,6 +1137,9 @@ setUpUi = ->
         permissions: permissions
       if sel_name is 'track'
         context.track = mpd.search_results.track_table[key]
+      else
+        context.download_type = sel_name
+        context.escaped_key = escape(key)
       $(Handlebars.templates.library_menu(context)).appendTo(document.body)
       $menu = $("#menu") # get the newly created one
       $menu.offset

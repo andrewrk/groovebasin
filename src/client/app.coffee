@@ -1363,7 +1363,7 @@ setUpUi = ->
     stop: (event, ui) -> user_is_volume_sliding = false
 
   # move the slider along the path
-  Util.schedule 100, updateSliderPos
+  Util.schedule 0.1, updateSliderPos
 
   $stream_btn.button
     icons:

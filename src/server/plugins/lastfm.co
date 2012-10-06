@@ -1,10 +1,11 @@
-Plugin = require('../plugin')
-LastFmNode = require('lastfm').LastFmNode
+const
+  Plugin = require('../plugin')
+  LastFmNode = require('lastfm').LastFmNode
 
 module.exports = class LastFm extends Plugin
-  constructor: (bus) ->
-    super
-    @lastfm = new LastFmNode
+  (bus) ~>
+    super(...)
+    @lastfm = new LastFmNode do
       api_key: process.env.LASTFM_API_KEY
       secret: process.env.LASTFM_SECRET
     @previous_now_playing_id = null
@@ -13,47 +14,46 @@ module.exports = class LastFm extends Plugin
     @playing_time = 0
     @previous_play_state = null
 
-    setTimeout @flushScrobbleQueue, 120000
+    setTimeout @~flushScrobbleQueue, 120000
 
-    bus.on 'save_state', @saveState
-    bus.on 'restore_state', @restoreState
-    bus.on 'socket_connect', @onSocketConnection
-    bus.on 'mpd', @setMpd
+    bus.on 'save_state', @~saveState
+    bus.on 'restore_state', @~restoreState
+    bus.on 'socket_connect', @~onSocketConnection
+    bus.on 'mpd', @~setMpd
 
-  restoreState: (state) =>
+  restoreState: !(state) ->
     @scrobblers = state.lastfm_scrobblers ? {}
     @scrobbles = state.scrobbles ? []
 
-  saveState: (state) =>
+  saveState: !(state) ->
     state.lastfm_scrobblers = @scrobblers
     state.scrobbles = @scrobbles
     state.status.lastfm_api_key = process.env.LASTFM_API_KEY
 
-  setMpd: (@mpd) =>
-    @mpd.on 'statusupdate', =>
+  setMpd: !(@mpd) ->
+    @mpd.on 'statusupdate', !~>
       @updateNowPlaying()
       @checkScrobble()
 
-  onSocketConnection: (socket) =>
-    socket.on 'LastfmGetSession', (data) =>
+  onSocketConnection: !(socket) ->
+    socket.on 'LastfmGetSession', !(data) ~>
       @lastfm.request "auth.getSession",
         token: data
         handlers:
-          success: (data) =>
+          success: !(data) ~>
             # clear them from the scrobblers
             delete @scrobblers[data?.session?.name]
             socket.emit 'LastfmGetSessionSuccess', JSON.stringify(data)
-          error: (error) =>
+          error: !(error) ~>
             console.error "error from last.fm auth.getSession: #{error.message}"
             socket.emit 'LastfmGetSessionError', JSON.stringify(error)
-    socket.on 'LastfmScrobblersAdd', (data) =>
-      data_str = data
-      params = JSON.parse(data_str)
+    socket.on 'LastfmScrobblersAdd', !(data) ~>
+      params = JSON.parse(data)
       # ignore if scrobbling user already exists. this is a fake request.
       return if @scrobblers[params.username]?
       @scrobblers[params.username] = params.session_key
       @emit('state_changed')
-    socket.on 'LastfmScrobblersRemove', (data) =>
+    socket.on 'LastfmScrobblersRemove', !(data) ~>
       params = JSON.parse(data)
       session_key = @scrobblers[params.username]
       if session_key is params.session_key
@@ -62,13 +62,13 @@ module.exports = class LastFm extends Plugin
       else
         console.warn "Invalid session key from user trying to remove scrobbler: #{params.username}"
 
-  flushScrobbleQueue: =>
-    max_simultaneous = 10
+  flushScrobbleQueue: !->
+    const max_simultaneous = 10
     count = 0
     while (params = @scrobbles.shift())? and count++ < max_simultaneous
       console.info "scrobbling #{params.track} for session #{params.sk}"
       params.handlers =
-        error: (error) =>
+        error: !(error) ~>
           console.error "error from last.fm track.scrobble: #{error.message}"
           if not error?.code? or error.code is 11 or error.code is 16
             # retryable - add to queue
@@ -77,22 +77,23 @@ module.exports = class LastFm extends Plugin
       @lastfm.request 'track.scrobble', params
     @emit('state_changed')
 
-  queueScrobble: (params) =>
+  queueScrobble: !(params) ->
     @scrobbles.push params
     @emit('state_changed')
 
-  checkTrackNumber: (trackNumber) =>
-    if parseInt(trackNumber) >= 0 then trackNumber else ""
-  checkScrobble: =>
+  checkTrackNumber: (trackNumber) ->
+    if parseInt(trackNumber, 10) >= 0 then trackNumber else ""
+
+  checkScrobble: !->
     this_item = @mpd.status.current_item
 
     if @mpd.status.state is 'play'
-      if @previous_play_state isnt 'play'
+      if @previous_play_state is not 'play'
         @playing_start = new Date(new Date().getTime() - @playing_time)
         @previous_play_state = @mpd.status.state
     @playing_time = new Date().getTime() - @playing_start.getTime()
 
-    return unless this_item?.id isnt @last_playing_item?.id
+    return unless this_item?.id is not @last_playing_item?.id
     if (track = @last_playing_item?.track)?
       # then scrobble it
       min_amt = 15 * 1000
@@ -101,7 +102,7 @@ module.exports = class LastFm extends Plugin
       if @playing_time >= min_amt and (@playing_time >= max_amt or @playing_time >= half_amt)
         if track.artist_name
           for username, session_key of @scrobblers
-            @queueScrobble
+            @queueScrobble do
               sk: session_key
               timestamp: Math.round(@playing_start.getTime() / 1000)
               album: track.album?.name or ""
@@ -119,18 +120,18 @@ module.exports = class LastFm extends Plugin
     @playing_start = new Date()
     @playing_time = 0
 
-  updateNowPlaying: =>
+  updateNowPlaying: !->
     return unless @mpd.status.state is 'play'
     return unless (track = @mpd.status.current_item?.track)?
 
-    return unless @previous_now_playing_id isnt @mpd.status.current_item.id
+    return unless @previous_now_playing_id is not @mpd.status.current_item.id
     @previous_now_playing_id = @mpd.status.current_item.id
 
     if not track.artist_name
       console.warn "Not updating last.fm now playing for #{track.name}: missing artist"
       return
 
-    for username, session_key of @scrobblers
+    for username, session_key in @scrobblers
       @lastfm.request "track.updateNowPlaying",
         sk: session_key
         track: track.name or ""
@@ -140,7 +141,7 @@ module.exports = class LastFm extends Plugin
         trackNumber: @checkTrackNumber track.track
         duration: track.time or ""
         handlers:
-          error: (error) =>
+          error: !(error) ~>
             console.error "error from last.fm track.updateNowPlaying: #{error.message}"
 
 

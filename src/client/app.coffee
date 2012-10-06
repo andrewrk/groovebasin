@@ -205,7 +205,7 @@ getDragPosition = (x, y) ->
     $item = $(item)
     pos = $item.offset()
     height = $item.height()
-    track_id = parseInt($item.data('id'))
+    track_id = parseInt($item.data('id'), 10)
     # try the top of this element
     distance = Math.abs(pos.top - y)
     if not best.distance? or distance < best.distance
@@ -1042,7 +1042,7 @@ setUpUi = ->
       # context menu
       removeContextMenu()
 
-      track_id = parseInt($(this).data('id'))
+      track_id = parseInt($(this).data('id'), 10)
 
       if not selection.isPlaylist() or not selection.ids.playlist[track_id]?
         selection.selectOnly 'playlist', track_id

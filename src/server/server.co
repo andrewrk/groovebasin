@@ -161,7 +161,7 @@ const saveState = oncePerEventLoopFunc !(cb) ->
       console.warn "recommended to turn gapless_mp3_playback on in #{mpd_conf_path}"
     if mpd_conf.volume_normalization is not "yes"
       console.warn "recommended to turn volume_normalization on in #{mpd_conf_path}"
-    if isNaN(n = parseInt(mpd_conf.max_command_list_size)) or n < 16384
+    if isNaN(n = parseInt(mpd_conf.max_command_list_size, 10)) or n < 16384
       console.warn "recommended to set max_command_list_size to >= 16384 in #{mpd_conf_path}"
 
     const all_permissions = "read,add,control,admin"

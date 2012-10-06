@@ -1,61 +1,62 @@
-Plugin = require('../plugin')
+const
+  Plugin = require('../plugin')
 
-history_size = 10
-future_size = 10
-LAST_QUEUED_STICKER = "groovebasin.last-queued"
+const
+  history_size = 10
+  future_size = 10
+  LAST_QUEUED_STICKER = "groovebasin.last-queued"
 
 module.exports = class DynamicMode extends Plugin
-  constructor: (bus) ->
-    super
+  (bus) ~>
+    super(...)
     @previous_ids = {}
     @is_enabled = false
     @got_stickers = false
     # our cache of the LAST_QUEUED_STICKER
     @last_queued = {}
 
-    bus.on 'save_state', @saveState
-    bus.on 'save_state', @restoreState
-    bus.on 'mpd_conf', @setConf
-    bus.on 'mpd', @setMpd
-    bus.on 'socket_connect', @onSocketConnection
+    bus.on 'save_state', @~saveState
+    bus.on 'save_state', @~restoreState
+    bus.on 'mpd_conf', @~setConf
+    bus.on 'mpd', @~setMpd
+    bus.on 'socket_connect', @~onSocketConnection
 
-  restoreState: (state) =>
+  restoreState: !(state) ->
     @is_on = state.status.dynamic_mode ? false
     @random_ids = state.status.random_ids ? {}
 
-  saveState: (state) =>
+  saveState: !(state) ->
     state.status.dynamic_mode = @is_on
     state.status.dynamic_mode_enabled = @is_enabled
     state.status.random_ids = @random_ids
 
-  setConf: (conf, conf_path) =>
+  setConf: !(conf, conf_path) ->
     @is_enabled = true
     unless conf.sticker_file?
       @is_enabled = false
       @is_on = false
       console.warn "sticker_file not set in #{conf_path}. Dynamic Mode disabled."
 
-  setMpd: (@mpd) =>
-    @mpd.on 'statusupdate', @checkDynamicMode
-    @mpd.on 'playlistupdate', @checkDynamicMode
-    @mpd.on 'libraryupdate', @updateStickers
+  setMpd: !(@mpd) ->
+    @mpd.on 'statusupdate', @~checkDynamicMode
+    @mpd.on 'playlistupdate', @~checkDynamicMode
+    @mpd.on 'libraryupdate', @~updateStickers
 
-  onSocketConnection: (socket) =>
-    socket.on 'DynamicMode', (data) =>
+  onSocketConnection: !(socket) ->
+    socket.on 'DynamicMode', !(data) ~>
       return unless @is_enabled
       args = JSON.parse data
       did_anything = false
-      for key, value of args
-        switch key
-          when "dynamic_mode"
-            continue if @is_on is value
-            did_anything = true
-            @is_on = value
+      for key, value in args
+        if key is 'dynamic_mode'
+          continue if @is_on is value
+          did_anything = true
+          @is_on = value
       if did_anything
         @checkDynamicMode()
         @emit('status_changed')
 
-  checkDynamicMode: =>
+  checkDynamicMode: !->
     return unless @is_enabled
     return unless @mpd.library.artists.length
     return unless @got_stickers
@@ -64,24 +65,24 @@ module.exports = class DynamicMode extends Plugin
     current_index = -1
     all_ids = {}
     new_files = []
-    for item, i in item_list
+    for item, i of item_list
       if item.id is current_id
         current_index = i
       all_ids[item.id] = true
       new_files.push item.track.file unless @previous_ids[item.id]?
     # tag any newly queued tracks
     now = new Date()
-    @mpd.setStickers new_files, LAST_QUEUED_STICKER, JSON.stringify(now), (err) =>
+    @mpd.setStickers new_files, LAST_QUEUED_STICKER, JSON.stringify(now), !(err) ~>
       if err then console.warn "dynamic mode set stickers error:", err
     # anticipate the changes
-    @last_queued[file] = now for file in new_files
+    @last_queued[file] = now for file of new_files
 
     # if no track is playing, assume the first track is about to be
     if current_index is -1
       current_index = 0
     else
       # any tracks <= current track don't count as random anymore
-      for i in [0..current_index]
+      for i from 0 to current_index
         delete @random_ids[item_list[i].id]
 
     if @is_on
@@ -89,13 +90,13 @@ module.exports = class DynamicMode extends Plugin
       if history_size < 0
         delete_count = 0
 
-      @mpd.removeIds (item_list[i].id for i in [0...delete_count])
+      @mpd.removeIds (item_list[i].id for i from 0 til delete_count)
       add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
-      @mpd.queueFiles @getRandomSongFiles(add_count), null, (err, items) =>
+      @mpd.queueFiles @getRandomSongFiles(add_count), null, !(err, items) ~>
         throw err if err
         # track which ones are the automatic ones
         changed = false
-        for item in items
+        for item of items
           @random_ids[item.id] = true
           changed = true
         @emit('status_changed') if changed
@@ -103,35 +104,35 @@ module.exports = class DynamicMode extends Plugin
     # scrub the random_ids (only if we're sure we're not still loading
     if item_list.length
       new_random_ids = {}
-      for id of @random_ids
+      for id in @random_ids
         if all_ids[id]
           new_random_ids[id] = true
       @random_ids = new_random_ids
     @previous_ids = all_ids
     @emit('status_changed')
 
-  updateStickers: =>
-    @mpd.findStickers '/', LAST_QUEUED_STICKER, (err, stickers) =>
+  updateStickers: !->
+    @mpd.findStickers '/', LAST_QUEUED_STICKER, !(err, stickers) ~>
       if err
         console.error "dynamicmode findsticker error: #{err}"
         return
-      for sticker of stickers
+      for sticker in stickers
         [file, value] = sticker
         track = @mpd.library.track_table[file]
         @last_queued[file] = new Date(value)
       @got_stickers = true
 
-  getRandomSongFiles: (count) =>
+  getRandomSongFiles: (count) ->
     return [] if count is 0
     never_queued = []
     sometimes_queued = []
-    for file, track of @mpd.library.track_table
+    for file, track in @mpd.library.track_table
       if @last_queued[file]?
         sometimes_queued.push track
       else
         never_queued.push track
     # backwards by time
-    sometimes_queued.sort (a, b) =>
+    sometimes_queued.sort (a, b) ~>
       @last_queued[b.file].getTime() - @last_queued[a.file].getTime()
     # distribution is a triangle for ever queued, and a rectangle for never queued
     #    ___
@@ -147,7 +148,7 @@ module.exports = class DynamicMode extends Plugin
       return []
     # decode indexes through the distribution shape
     files = []
-    for i in [0...count]
+    for i from 0 til count
       index = Math.random() * total_size
       if index < triangle_area
         # triangle

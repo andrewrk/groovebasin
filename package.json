@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "handlebars": "~1.0.7",
-    "stylus": "~0.28.1",
+    "stylus": "~0.29.0",
     "node-dev": "~0.2.8",
     "jspackage": "~0.4.9",
     "watch": "~0.5.1",

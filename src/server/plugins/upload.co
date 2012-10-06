@@ -1,40 +1,41 @@
-Plugin = require('../plugin')
-formidable = require 'formidable'
-fse = require 'fs-extra'
-fs = require 'fs'
-path = require 'path'
-request = require 'request'
-url = require 'url'
-temp = require 'temp'
-{getSuggestedPath} = require '../futils'
+const
+  Plugin = require('../plugin')
+  formidable = require 'formidable'
+  fse = require 'fs-extra'
+  fs = require 'fs'
+  path = require 'path'
+  request = require 'request'
+  url = require 'url'
+  temp = require 'temp'
+  {getSuggestedPath} = require '../futils'
 
 module.exports = class Upload extends Plugin
-  constructor: (bus) ->
-    super
+  (bus) ~>
+    super(...)
     @is_enabled = false
     @random_ids = null
 
-    bus.on 'app', @setUpRoutes
-    bus.on 'mpd_conf', @setConf
-    bus.on 'mpd', @setMpd
-    bus.on 'save_state', @saveState
-    bus.on 'restore_state', @restoreState
-    bus.on 'status_sent', @onSendStatus
-    bus.on 'socket_connect', @onSocketConnection
+    bus.on 'app', @~setUpRoutes
+    bus.on 'mpd_conf', @~setConf
+    bus.on 'mpd', @~setMpd
+    bus.on 'save_state', @~saveState
+    bus.on 'restore_state', @~restoreState
+    bus.on 'status_sent', @~onSendStatus
+    bus.on 'socket_connect', @~onSocketConnection
 
-  restoreState: (state) =>
+  restoreState: !(state) ->
     @want_to_queue = state.want_to_queue ? []
 
-  saveState: (state) =>
+  saveState: !(state) ->
     state.want_to_queue = @want_to_queue
     state.status.upload_enabled = @is_enabled
 
-  setConf: (conf, conf_path) =>
+  setConf: !(conf, conf_path) ->
     @is_enabled = true
     unless conf.bind_to_address?.unix_socket?
       @is_enabled = false
       console.warn "bind_to_address does not have a unix socket enabled in #{conf_path}. Uploading disabled."
-    unless conf.bind_to_address?.network == "localhost"
+    unless conf.bind_to_address?.network is "localhost"
       @is_enabled = false
       console.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
     if conf.music_directory?
@@ -43,34 +44,34 @@ module.exports = class Upload extends Plugin
       @is_enabled = false
       console.warn "music directory not found in #{conf_path}. Uploading disabled."
 
-  setMpd: (@mpd) =>
-    @mpd.on 'libraryupdate', @flushWantToQueue
+  setMpd: !(@mpd) ->
+    @mpd.on 'libraryupdate', @~flushWantToQueue
 
-  onSocketConnection: (socket) =>
-    socket.on 'ImportTrackUrl', (url_string) =>
+  onSocketConnection: !(socket) ->
+    socket.on 'ImportTrackUrl', !(url_string) ~>
       parsed_url = url.parse(url_string)
       remote_filename = path.basename(parsed_url.pathname) + path.extname(parsed_url.pathname)
       temp_file = temp.path()
-      cleanUp = =>
+      cleanUp = !~>
         fs.unlink(temp_file)
-      cleanAndLogIfErr = (err) =>
+      cleanAndLogIfErr = !(err) ~>
         if err
-          console.error "Unable to import by URL. Error:", err.stack, "URL:", url_string
+          console.error "Unable to import by URL.", err.stack, "URL:", url_string
         cleanUp()
       req = request(url_string)
       ws = fs.createWriteStream(temp_file)
       req.pipe(ws)
-      ws.on 'close', =>
+      ws.on 'close', !~>
         @importFile temp_file, remote_filename, cleanAndLogIfErr
       ws.on 'error', cleanAndLogIfErr
       req.on 'error', cleanAndLogIfErr
 
 
-  importFile: (temp_file, remote_filename, cb=->) =>
+  importFile: !(temp_file, remote_filename, cb=->) ->
     tmp_with_ext = temp_file + path.extname(remote_filename)
-    fs.rename temp_file, tmp_with_ext, (err) =>
+    moveFile temp_file, tmp_with_ext, !(err) ~>
       return cb(err) if err
-      @mpd.getFileInfo "file://#{tmp_with_ext}", (err, track) =>
+      @mpd.getFileInfo "file://#{tmp_with_ext}", !(err, track) ~>
         return cb(err) if err
         if track
           suggested_path = getSuggestedPath(track, remote_filename)
@@ -79,39 +80,39 @@ module.exports = class Upload extends Plugin
           suggested_path = remote_filename
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
-        fse.mkdir path.dirname(dest), (err) =>
+        fse.mkdir path.dirname(dest), !(err) ~>
           if err
             console.error err
             return cb(err)
-          fs.rename tmp_with_ext, dest, (err) =>
+          moveFile tmp_with_ext, dest, !(err) ~>
             @want_to_queue.push relative_path
             @emit('state_changed')
             console.info "Track was uploaded: #{dest}"
             cb(err)
 
-  setUpRoutes: (app) =>
-    app.post '/upload', @checkEnabledMiddleware, (request, response) =>
-      logErr = (err) => console.error "Unable to import by uploading. Error: #{err}"
-      logIfErr = (err) => if err then logErr(err)
+  setUpRoutes: !(app) ->
+    app.post '/upload', @checkEnabledMiddleware, !(request, response) ~>
+      logErr = !(err) ~> console.error "Unable to import by uploading. Error: #{err}"
+      logIfErr = !(err) ~> if err then logErr(err)
 
       form = new formidable.IncomingForm()
-      form.parse request, (err, fields, file) =>
+      form.parse request, !(err, fields, file) ~>
         return logErr(err) if err
         @importFile file.qqfile.path, file.qqfile.filename, logIfErr
 
       response.writeHead 200, {'content-type': 'text/html'}
       response.end JSON.stringify {success: true}
 
-  onSendStatus: (status) =>
+  onSendStatus: !(status) ->
     @random_ids = status?.random_ids
 
-  queueFilesPos: =>
+  queueFilesPos: ->
     pos = @mpd.playlist.item_list.length
     return pos unless @random_ids?
-    for item, i in @mpd.playlist.item_list
+    for item, i of @mpd.playlist.item_list
       return i if @random_ids[item.id]?
 
-  flushWantToQueue: =>
+  flushWantToQueue: !->
     i = 0
     files = []
     while i < @want_to_queue.length
@@ -124,3 +125,21 @@ module.exports = class Upload extends Plugin
     @mpd.queueFiles files, @queueFilesPos()
     @emit('state_changed') if files.length
 
+!function moveFile (source, dest, cb)
+  fs.rename source, dest, !(err) ->
+    return cb() if not err
+    return cb(err) if err.code is not \EXDEV
+    ins = fs.createReadStream(source)
+    outs = fs.createWriteStream(dest)
+    had_error = false
+    ins.on \error, !(err) ->
+      had_error := true
+      outs.destroy()
+      cb(err)
+    outs.on \error, !(err) ->
+      had_error := true
+      ins.destroy()
+      cb(err)
+    outs.on \close, !->
+      cb() if not had_error
+    ins.pipe(outs)

@@ -21,7 +21,7 @@
     "formidable": "~1.0.11",
     "lastfm": "~0.8.1",
     "zipstream": "~0.2.1",
-    "express": "~3.0.0rc2",
+    "express": "~3.0.0rc5",
     "request": "~2.11.4",
     "temp": "~0.4.0",
     "naught": "~0.2.2",

@@ -55,12 +55,15 @@ module.exports = class Upload extends Plugin
         fs.unlink(temp_file)
       cleanAndLogIfErr = (err) =>
         if err
-          console.error "Unable to import by URL. Error:", err, "URL:", url_string
+          console.error "Unable to import by URL. Error:", err.stack, "URL:", url_string
         cleanUp()
-      pipe = request(url_string).pipe(fs.createWriteStream(temp_file))
-      pipe.on 'close', =>
+      req = request(url_string)
+      ws = fs.createWriteStream(temp_file)
+      req.pipe(ws)
+      ws.on 'close', =>
         @importFile temp_file, remote_filename, cleanAndLogIfErr
-      pipe.on 'error', cleanAndLogIfErr
+      ws.on 'error', cleanAndLogIfErr
+      req.on 'error', cleanAndLogIfErr
 
 
   importFile: (temp_file, remote_filename, cb=->) =>

@@ -17,12 +17,12 @@
     "url": "git://github.com/superjoe30/groovebasin.git"
   },
   "dependencies": {
-    "socket.io": "~0.9.9",
-    "formidable": "~1.0.8",
-    "lastfm": "~0.8.0",
+    "socket.io": "~0.9.10",
+    "formidable": "~1.0.11",
+    "lastfm": "~0.8.1",
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc2",
-    "request": "~2.10.0",
+    "request": "~2.11.4",
     "temp": "~0.4.0",
     "naught": "~0.2.2",
     "async": "~0.1.22",
@@ -32,7 +32,7 @@
     "handlebars": "~1.0.6-2",
     "stylus": "~0.28.1",
     "node-dev": "~0.2.8",
-    "jspackage": "~0.4.5",
+    "jspackage": "~0.4.9",
     "watch": "~0.5.1",
     "coffee-script": "~1.3.3",
     "coco": "~0.8.2"
@@ -41,7 +41,7 @@
     "start": "naught start lib/server.js",
     "stop": "naught stop",
     "reload": "naught deploy",
-    "build": "npm install . && cake build",
-    "dev": "npm install . && cake dev"
+    "build": "npm install && cake build",
+    "dev": "npm install && cake dev"
   }
 }

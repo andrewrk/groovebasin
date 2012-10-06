@@ -233,6 +233,8 @@ renderSettings = ->
       password: localStorage.auth_password
       show_edit: not localStorage.auth_password? or settings_ui.auth.show_edit
       permissions: permissions
+    misc:
+      stream_url: getStreamUrl()
 
   $settings.html Handlebars.templates.settings(context)
   $settings.find(".signout").button()
@@ -538,17 +540,19 @@ toggleStreamStatus = ->
   updateStreamingPlayer()
   return false
 
+getStreamUrl = ->
+  port = server_status?.stream_httpd_port
+  format = server_status.stream_httpd_format
+  "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
+
 updateStreamingPlayer = ->
   should_stream = trying_to_stream and mpd.status.state is "play"
   return if actually_streaming is should_stream
   if should_stream
-    format = server_status.stream_httpd_format
-    port = server_status?.stream_httpd_port
-    stream_url = "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
     soundManager.destroySound('stream')
     sound = soundManager.createSound
       id: 'stream'
-      url: stream_url
+      url: getStreamUrl()
       onbufferchange: ->
         streaming_buffering = sound.isBuffering
         renderStreamButton()

@@ -26,8 +26,9 @@ _exports.formatTime = (seconds) ->
 
 
 # converts any string into an HTML id, guaranteed to be unique
-function toHtmlId (string)
-  string.replace /[^a-zA-Z0-9\-]/g, (c) -> "_#{c.charCodeAt(0)}_"
+bad_char_re = new RegExp('[^a-zA-Z0-9\-]', 'gm')
+_exports.toHtmlId = (string) ->
+  string.replace bad_char_re, (c) -> "_#{c.charCodeAt(0)}_"
 
 # compares 2 arrays with positive integers, returning > 0, 0, or < 0
 _exports.compareArrays = (arr1, arr2) ->

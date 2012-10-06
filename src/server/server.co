@@ -196,17 +196,19 @@ const saveState = oncePerEventLoopFunc !(cb) ->
 
 function createMpdConnection (unix_socket, cb)
   if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
-    net.connect path, cb
+    connection = net.connect path, cb
   else
     port = mpd_conf?.port ? 6600
     host = mpd_conf?.bind_to_address?.network ? "localhost"
-    net.connect port, host, cb
+    connection = net.connect port, host, cb
+  connection.setEncoding('utf8')
+  connection
 
 !function connectBrowserMpd (socket)
   mpd_socket = createMpdConnection false, !->
     try socket.emit 'MpdConnect'
   mpd_socket.on 'data', !(data) ->
-    socket.emit 'FromMpd', data.toString()
+    socket.emit 'FromMpd', data
   mpd_socket.on 'end', !->
     try socket.emit 'MpdDisconnect'
   mpd_socket.on 'error', !->
@@ -224,8 +226,7 @@ function createMpdConnection (unix_socket, cb)
   permissions = default_account
   plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
-  socket.on 'Password', !(data) ->
-    pass = data.toString()
+  socket.on 'Password', !(pass) ->
     if success = (ref = accounts[pass])?
       permissions := ref
     socket.emit 'Permissions', JSON.stringify(permissions)

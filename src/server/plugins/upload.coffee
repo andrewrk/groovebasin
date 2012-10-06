@@ -47,9 +47,8 @@ module.exports = class Upload extends Plugin
     @mpd.on 'libraryupdate', @flushWantToQueue
 
   onSocketConnection: (socket) =>
-    socket.on 'ImportTrackUrl', (data) =>
-      url_string = data.toString()
-      parsed_url = url.parse(data.toString())
+    socket.on 'ImportTrackUrl', (url_string) =>
+      parsed_url = url.parse(url_string)
       remote_filename = path.basename(parsed_url.pathname) + path.extname(parsed_url.pathname)
       temp_file = temp.path()
       cleanUp = =>

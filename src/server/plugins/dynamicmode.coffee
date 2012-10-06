@@ -43,7 +43,7 @@ module.exports = class DynamicMode extends Plugin
   onSocketConnection: (socket) =>
     socket.on 'DynamicMode', (data) =>
       return unless @is_enabled
-      args = JSON.parse data.toString()
+      args = JSON.parse data
       did_anything = false
       for key, value of args
         switch key

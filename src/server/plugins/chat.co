@@ -34,8 +34,7 @@ module.exports = class Chat extends Plugin
     @next_user_id += 1
     @users.push user_id
     socket.emit 'Identify', user_id
-    socket.on 'Chat', !(data) ~>
-      msg = data.toString()
+    socket.on 'Chat', !(msg) ~>
       chat_object =
         user_id: user_id
         message: msg
@@ -44,7 +43,7 @@ module.exports = class Chat extends Plugin
       @chats.splice(0, @chats.length - CHATS_LIMIT) if @chats.length > CHATS_LIMIT
       @emit('status_changed')
     socket.on 'SetUserName', !(data) ~>
-      user_name = data.toString().trim().replace(/\s+/g, " ")
+      user_name = data.trim().replace(/\s+/g, " ")
       if user_name is not ""
         user_name = user_name.substr(0, USER_NAME_LIMIT)
         @user_names[user_id] = user_name

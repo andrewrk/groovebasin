@@ -19,11 +19,11 @@ module.exports = class extends Plugin
       if not getPermissions().admin
         console.warn "User without admin permission trying to delete songs"
         return
-      files = JSON.parse data.toString()
+      files = JSON.parse data
       file = null
       !~function next (err)
         if err
-          console.error "deleting #{file}: #{err.toString()}"
+          console.error "deleting #{file}: #{err.stack}"
         else if file?
           console.info "deleted #{file}"
         if (file = files.shift())!?

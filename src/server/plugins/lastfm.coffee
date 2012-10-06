@@ -37,7 +37,7 @@ module.exports = class LastFm extends Plugin
   onSocketConnection: (socket) =>
     socket.on 'LastfmGetSession', (data) =>
       @lastfm.request "auth.getSession",
-        token: data.toString()
+        token: data
         handlers:
           success: (data) =>
             # clear them from the scrobblers
@@ -47,14 +47,14 @@ module.exports = class LastFm extends Plugin
             console.error "error from last.fm auth.getSession: #{error.message}"
             socket.emit 'LastfmGetSessionError', JSON.stringify(error)
     socket.on 'LastfmScrobblersAdd', (data) =>
-      data_str = data.toString()
+      data_str = data
       params = JSON.parse(data_str)
       # ignore if scrobbling user already exists. this is a fake request.
       return if @scrobblers[params.username]?
       @scrobblers[params.username] = params.session_key
       @emit('state_changed')
     socket.on 'LastfmScrobblersRemove', (data) =>
-      params = JSON.parse(data.toString())
+      params = JSON.parse(data)
       session_key = @scrobblers[params.username]
       if session_key is params.session_key
         delete @scrobblers[params.username]

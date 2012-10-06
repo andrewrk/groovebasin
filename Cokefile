@@ -1,23 +1,24 @@
-fs = require("fs")
-path = require("path")
-watcher = require("watch")
-util = require("util")
-fse = require("fs-extra")
+const
+  fs = require("fs")
+  path = require("path")
+  watcher = require("watch")
+  util = require("util")
+  fse = require("fs-extra")
+  {spawn} = require("child_process")
 
-{spawn} = require("child_process")
-exec = (cmd, args=[], options={}, cb=->) ->
+!function exec (cmd, args=[], options={}, cb=->)
   opts = stdio: 'inherit'
-  opts[k] = v for k, v of options
+  opts[k] = v for k, v in options
   bin = spawn(cmd, args, opts)
   bin.on 'exit', cb
 
-handlebars = ->
+!function handlebars
   exec 'handlebars', ['-f', 'public/views.js', 'src/client/views/']
 
-build = (watch)->
+!function build (watch)
   npm_args = if watch then ['run', 'dev'] else ['run', 'build']
   exec 'npm', npm_args, cwd: path.resolve(__dirname, 'mpd.js')
-  fse.mkdir 'public', ->
+  fse.mkdir 'public', !->
     args = if watch then ['-w'] else []
     exec 'coffee', args.concat(['-cbo', 'lib/', 'src/server/'])
     exec 'coco', args.concat(['-cbo', 'lib/', 'src/server/'])
@@ -30,25 +31,26 @@ build = (watch)->
 
     # fuck you handlebars
     if watch
-      watcher.watchTree 'src/client/views', ignoreDotFiles: true, ->
+      watcher.watchTree 'src/client/views', ignoreDotFiles: true, !->
         handlebars()
         util.log "generated public/views.js"
     else
       handlebars()
 
-watch = -> build('w')
+!function watch
+  build('w')
 
-task "watch", -> watch()
+task "watch", !-> watch()
 
-task "build", -> build()
+task "build", !-> build()
 
-task "clean", ->
+task "clean", !->
   exec "rm", ['-rf', './public', './lib']
 
-task "dev", ->
+task "dev", !->
   # avoid a race condition when running from clean
-  fse.mkdir "lib", ->
-    exec 'touch', ["lib/server.js", "mpd.js/lib/mpd.js"], null, ->
+  fse.mkdir "lib", !->
+    exec 'touch', ["lib/server.js", "mpd.js/lib/mpd.js"], null, !->
       watch()
       exec "node-dev", ["lib/server.js"],
         stdio: [process.stdin, process.stdout, process.stderr, 'ipc']

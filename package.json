@@ -41,7 +41,7 @@
     "start": "naught start lib/server.js",
     "stop": "naught stop",
     "reload": "naught deploy",
-    "build": "npm install && cake build",
-    "dev": "npm install && cake dev"
+    "build": "npm install && coke build",
+    "dev": "npm install && coke dev"
   }
 }

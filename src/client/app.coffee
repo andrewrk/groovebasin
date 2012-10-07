@@ -1,5 +1,5 @@
 #depend "util"
-#depend "socketmpd"
+#depend "mpd" bare
 #depend "jquery-1.8.2.min" bare
 #depend "jquery-ui-1.8.24.custom.min" bare
 #depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
@@ -205,7 +205,7 @@ getDragPosition = (x, y) ->
     $item = $(item)
     pos = $item.offset()
     height = $item.height()
-    track_id = parseInt($item.data('id'), 10)
+    track_id = parseInt($item.attr('data-id'), 10)
     # try the top of this element
     distance = Math.abs(pos.top - y)
     if not best.distance? or distance < best.distance
@@ -490,7 +490,7 @@ toggleExpansion = ($li) ->
     if not $li.data('cached')
       $li.data 'cached', true
       $ul.html Handlebars.templates.albums
-        albums: mpd.getArtistAlbums($div.find("span").text())
+        albums: mpd.search_results.artist_table[$div.attr('data-key')].albums
       $ul.toggle()
       refreshSelection()
 
@@ -633,7 +633,7 @@ keyboard_handlers = do ->
           selection.cursor = next_pos.album.key
         else
           selection.type = 'artist'
-          selection.cursor = mpd.artistKey(next_pos.artist.name)
+          selection.cursor = next_pos.artist.key
         selection.ids[selection.type][selection.cursor] = true
       else
         selection.selectOnly 'playlist', mpd.playlist.item_list[default_index].id
@@ -808,7 +808,7 @@ keyboard_handlers = do ->
 removeContextMenu = -> $("#menu").remove()
 
 isArtistExpanded = (artist) ->
-  $li = $("#lib-artist-#{Util.toHtmlId(mpd.artistKey(artist.name))}").closest("li")
+  $li = $("#lib-artist-#{Util.toHtmlId(artist.key)}").closest("li")
   return false unless $li.data('cached')
   return $li.find("> ul").is(":visible")
 
@@ -884,7 +884,7 @@ selectLibraryPosition = (lib_pos) ->
   else if lib_pos.album?
     selection.ids.album[lib_pos.album.key] = true
   else if lib_pos.artist?
-    selection.ids.artist[mpd.artistKey(lib_pos.artist.name)] = true
+    selection.ids.artist[lib_pos.artist.key] = true
 
 queueFilesPos = ->
   pos = mpd.playlist.item_list.length
@@ -986,7 +986,7 @@ setUpUi = ->
     return false
 
   $playlist_items.on 'dblclick', '.pl-item', (event) ->
-    track_id = $(this).data('id')
+    track_id = $(this).attr('data-id')
     mpd.playId track_id
 
   $playlist_items.on 'contextmenu', (event) -> return event.altKey
@@ -998,7 +998,7 @@ setUpUi = ->
       event.preventDefault()
       # selecting / unselecting
       removeContextMenu()
-      track_id = $(this).data('id')
+      track_id = $(this).attr('data-id')
       skip_drag = false
       if not selection.isPlaylist()
         selection.selectOnly 'playlist', track_id
@@ -1042,7 +1042,7 @@ setUpUi = ->
       # context menu
       removeContextMenu()
 
-      track_id = parseInt($(this).data('id'), 10)
+      track_id = parseInt($(this).attr('data-id'), 10)
 
       if not selection.isPlaylist() or not selection.ids.playlist[track_id]?
         selection.selectOnly 'playlist', track_id
@@ -1223,14 +1223,13 @@ setUpUi = ->
         return false
 
   $library.on 'mousedown', '.artist', (event) ->
-    artist_key = mpd.artistKey($(this).find("span").text())
-    libraryMouseDown event, 'artist', artist_key
+    libraryMouseDown event, 'artist', $(this).attr('data-key')
 
   $library.on 'mousedown', '.album', (event) ->
-    libraryMouseDown event, 'album', $(this).data('key')
+    libraryMouseDown event, 'album', $(this).attr('data-key')
 
   $library.on 'mousedown', '.track', (event) ->
-    libraryMouseDown event, 'track', $(this).data('file')
+    libraryMouseDown event, 'track', $(this).attr('data-file')
 
   $library.on 'mousedown', -> false
 
@@ -1270,13 +1269,13 @@ setUpUi = ->
         return false
       when 40 # down
         # select the first item in the library
-        selection.selectOnly 'artist', mpd.artistKey(mpd.search_results.artists[0].name)
+        selection.selectOnly 'artist', mpd.search_results.artists[0].key
         refreshSelection()
         $lib_filter.blur()
         return false
       when 38 # up
         # select the last item in the library
-        selection.selectOnly 'artist', mpd.artistKey(mpd.search_results.artists[mpd.search_results.artists.length - 1].name)
+        selection.selectOnly 'artist', mpd.search_results.artists[mpd.search_results.artists.length - 1].key
         refreshSelection()
         $lib_filter.blur()
         return false
@@ -1463,7 +1462,7 @@ setUpUi = ->
 
 initHandlebars = ->
   Handlebars.registerHelper 'time', Util.formatTime
-  Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(mpd.artistKey(s))}"
+  Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
 
@@ -1558,7 +1557,12 @@ $document.ready ->
 
     window._debug_server_status = server_status
 
-  mpd = new window.SocketMpd socket
+  mpd = Mpd()
+  socket.on 'FromMpd', (data) -> mpd.receive(data)
+  socket.on 'MpdConnect', -> mpd.handleConnectionStart()
+  socket.on 'MpdDisconnect', -> mpd.resetServerState()
+  socket.on 'disconnect', -> mpd.resetServerState()
+  mpd.on 'data', (data) -> socket.emit('ToMpd', data)
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'statusupdate', ->

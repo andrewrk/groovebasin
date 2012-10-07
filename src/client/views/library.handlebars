@@ -2,9 +2,9 @@
   <ul>
     {{#artists}}
       <li>
-        <div class="artist expandable" id="{{artistid name}}">
+        <div class="artist expandable" id="{{artistid key}}" data-key="{{key}}">
           <div class="ui-icon ui-icon-triangle-1-e"></div>
-          <span>{{#if name}}{{name}}{{else}}[Unknown Artist]{{/if}}</span>
+          <span>{{name}}</span>
         </div>
         <ul></ul>
       </li>

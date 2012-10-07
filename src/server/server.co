@@ -6,7 +6,7 @@ const
   express = require 'express'
   path = require 'path'
   assert = require 'assert'
-  DirectMpd = require './direct_mpd'
+  Mpd = require '../mpd.js/lib/mpd'
   async = require 'async'
   parseMpdConf = require('./mpdconf').parse
   {EventEmitter} = require('events')
@@ -195,18 +195,19 @@ const saveState = oncePerEventLoopFunc !(cb) ->
       return cb(new Error("mpd conf is missing root account"))
     cb()
 
-function createMpdConnection (unix_socket, cb)
+function createMpdConnection (unix_socket)
   if unix_socket and (path = mpd_conf?.bind_to_address?.unix_socket)?
-    connection = net.connect path, cb
+    connection = net.connect {path}
   else
     port = mpd_conf?.port ? 6600
     host = mpd_conf?.bind_to_address?.network ? "localhost"
-    connection = net.connect port, host, cb
+    connection = net.connect {port, host}
   connection.setEncoding('utf8')
   connection
 
 !function connectBrowserMpd (socket)
-  mpd_socket = createMpdConnection false, !->
+  mpd_socket = createMpdConnection false
+  mpd_socket.on \connect, !->
     try socket.emit 'MpdConnect'
   mpd_socket.on 'data', !(data) ->
     socket.emit 'FromMpd', data
@@ -235,15 +236,7 @@ function createMpdConnection (unix_socket, cb)
 
 
 !function connectServerMpd
-  my_mpd_socket := createMpdConnection true, !->
-    console.info "server to mpd connect"
-    connect_success := true
-    my_mpd.handleConnectionStart()
-    if root_pass? and root_pass.length > 0
-      my_mpd.authenticate root_pass
-
-    # connect socket clients to mpd
-    io.sockets.clients().forEach connectBrowserMpd
+  my_mpd_socket := createMpdConnection true
   my_mpd_socket.on 'end', !->
     console.warn "server mpd disconnect"
     tryReconnect()
@@ -252,8 +245,20 @@ function createMpdConnection (unix_socket, cb)
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  my_mpd := DirectMpd(my_mpd_socket)
+  my_mpd := Mpd()
+  my_mpd.on \data, !(data) -> my_mpd_socket.write(data)
   my_mpd.on 'error', !(msg) -> console.error msg
+
+  my_mpd_socket.on \connect, !->
+    console.info "server to mpd connect"
+    connect_success := true
+    my_mpd.handleConnectionStart()
+    if root_pass? and root_pass.length > 0
+      my_mpd.authenticate root_pass
+
+    # connect socket clients to mpd
+    io.sockets.clients().forEach connectBrowserMpd
+  my_mpd_socket.on \data, !(data) -> my_mpd.receive(data)
 
   plugins.bus.emit \mpd, my_mpd
 

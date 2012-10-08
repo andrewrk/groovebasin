@@ -63,11 +63,19 @@ module.exports = class Download extends Plugin
       sendZipOfFiles zip_name, files, req, resp
     app.get '/download/album/:album', @checkEnabledMiddleware, (req, resp) ~>
       album = @mpd.library.album_table[req.params.album]
+      if album!?
+        resp.statusCode = 404
+        resp.end()
+        return
       files = (path.join(LIBRARY_PATH, track.file) for track of album.tracks)
       zip_name = safePath(album.name) + ".zip"
       sendZipOfFiles zip_name, files, req, resp
     app.get '/download/artist/:artist', @checkEnabledMiddleware, (req, resp) ~>
       artist = @mpd.library.artist_table[req.params.artist]
+      if artist!?
+        resp.statusCode = 404
+        resp.end()
+        return
       zip_name = safePath(artist.name) + ".zip"
       files = []
       for album of artist.albums
@@ -78,7 +86,7 @@ module.exports = class Download extends Plugin
 !function downloadPath (relative_path, zip_name, req, resp)
   walk path.join(LIBRARY_PATH, relative_path), (err, files) ~>
     if err
-      resp.writeHead 404, {}
+      resp.statusCode = 404
       resp.end()
       return
     sendZipOfFiles zip_name, files, req, resp
@@ -88,9 +96,8 @@ module.exports = class Download extends Plugin
   req.on \close, !->
     for fn of cleanup then try fn()
     resp.end()
-  resp.writeHead 200,
-    "Content-Type": "application/zip"
-    "Content-Disposition": "attachment; filename=#{zip_name}"
+  resp.setHeader "Content-Type", "application/zip"
+  resp.setHeader "Content-Disposition", "attachment; filename=#{zip_name}"
   zip = zipstream.createZip {}
   cleanup.push !-> zip.destroy()
   zip.pipe resp

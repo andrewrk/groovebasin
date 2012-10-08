@@ -34,7 +34,6 @@
     "node-dev": "~0.2.8",
     "jspackage": "~0.4.9",
     "watch": "~0.5.1",
-    "coffee-script": "~1.3.3",
     "coco": "~0.8.2"
   },
   "scripts": {

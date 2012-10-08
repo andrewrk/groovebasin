@@ -20,16 +20,16 @@ selection =
   isPlaylist: ->
     return false if not @type?
     return @type is 'playlist'
-  clear: ->
+  clear: !->
     @ids.artist = {}
     @ids.album = {}
     @ids.track = {}
     @ids.playlist = {}
-  fullClear: ->
+  fullClear: !->
     @clear()
     @type = null
     @cursor = null
-  selectOnly: (sel_name, key) ->
+  selectOnly: !(sel_name, key) ->
     @clear()
     @type = sel_name
     @ids[sel_name][key] = true
@@ -52,15 +52,17 @@ selection =
     else
       return false
 
+const BASE_TITLE = document.title
+const MARGIN = 10
+
 server_status = null
 permissions = {}
 socket = null
 mpd = null
-const base_title = document.title
 user_is_seeking = false
 user_is_volume_sliding = false
 started_drag = false
-abortDrag = ->
+abortDrag = !->
 clickTab = null
 trying_to_stream = false
 actually_streaming = false
@@ -68,7 +70,6 @@ streaming_buffering = false
 my_user_id = null
 my_user_ids = {}
 chat_name_input_visible = false
-MARGIN = 10
 
 LoadStatus =
   Init: 0
@@ -81,6 +82,11 @@ LoadStatusMsg = [
   'Server is down.'
 ]
 load_status = LoadStatus.Init
+
+settings_ui =
+  auth:
+    show_edit: false
+    password: ""
 
 # cache jQuery objects
 $document = $(document)
@@ -112,21 +118,21 @@ userIdToUserName = (user_id) ->
   user_name = server_status.user_names[user_id]
   return user_name ? user_id
 
-storeMyUserIds = ->
+storeMyUserIds = !->
   localStorage?.my_user_ids = JSON.stringify my_user_ids
 
-setUserName = (new_name) ->
+setUserName = !(new_name) ->
   new_name = $.trim new_name
   localStorage?.user_name = new_name
   socket.emit 'SetUserName', new_name
 
-scrollLibraryToSelection = ->
+scrollLibraryToSelection = !->
   return unless (helpers = getSelHelpers())?
 
   delete helpers.playlist
   scrollThingToSelection $library, helpers
 
-scrollPlaylistToSelection = ->
+scrollPlaylistToSelection = !->
   return unless (helpers = getSelHelpers())?
 
   delete helpers.track
@@ -134,7 +140,7 @@ scrollPlaylistToSelection = ->
   delete helpers.album
   scrollThingToSelection $playlist_items, helpers
 
-scrollThingToSelection = ($scroll_area, helpers) ->
+scrollThingToSelection = !($scroll_area, helpers) ->
   top_pos = null
   bottom_pos = null
   for sel_name, [ids, table, $getDiv] in helpers
@@ -159,11 +165,11 @@ selectionToFiles = (random=false) ->
   # render selection into a single object by file to remove duplicates
   # works for library only
   track_set = {}
-  selRenderArtist = (artist) ->
+  selRenderArtist = !(artist) ->
     selRenderAlbum album for album of artist.albums
-  selRenderAlbum = (album) ->
+  selRenderAlbum = !(album) ->
     selRenderTrack track for track of album.tracks
-  selRenderTrack = (track) ->
+  selRenderTrack = !(track) ->
     track_set[track.file] = libPosToArr(getTrackSelPos(track))
 
   selRenderArtist(mpd.search_results.artist_table[key]) for key in selection.ids.artist
@@ -182,7 +188,7 @@ selectionToFiles = (random=false) ->
 playlistSelectionToFiles = ->
   (mpd.playlist.item_table[key].track.file for key in selection.ids.playlist)
 
-downloadFiles = (files) ->
+downloadFiles = !(files) ->
   $form = $(document.createElement('form'))
   $form.attr('action', "/download/custom")
   $form.attr('method', "post")
@@ -221,7 +227,7 @@ getDragPosition = (x, y) ->
 
   return best
 
-renderSettings = ->
+renderSettings = !->
   return unless (api_key = server_status?.lastfm_api_key)?
   context =
     lastfm:
@@ -245,11 +251,11 @@ renderSettings = ->
   $settings.find('.auth-clear').button()
   $settings.find('#auth-password').val(settings_ui.auth.password)
 
-scrollChatWindowToBottom = ->
+scrollChatWindowToBottom = !->
   # for some reason, Infinity goes to the top :/
   $chat_list.scrollTop 1000000
 
-renderChat = ->
+renderChat = !->
   chat_status_text = ""
   if (users = server_status?.users)?
     chat_status_text = " (#{users.length})" if users.length > 1
@@ -270,7 +276,7 @@ renderChat = ->
   $chat_tab.find("span").text("Chat#{chat_status_text}")
   resizeChat()
 
-renderStreamButton = ->
+renderStreamButton = !->
   label = if trying_to_stream
     if actually_streaming
       if streaming_buffering
@@ -289,7 +295,7 @@ renderStreamButton = ->
     .prop("checked", trying_to_stream)
     .button("refresh")
 
-renderPlaylistButtons = ->
+renderPlaylistButtons = !->
   # set the state of dynamic mode button
   $dynamic_mode
     .prop("checked", if server_status?.dynamic_mode then true else false)
@@ -309,7 +315,7 @@ renderPlaylistButtons = ->
   $upload_tab.addClass("ui-state-disabled") if not server_status?.upload_enabled
 
 
-renderPlaylist = ->
+renderPlaylist = !->
   context =
     playlist: mpd.playlist.item_list
     server_status: server_status
@@ -319,7 +325,11 @@ renderPlaylist = ->
   labelPlaylistItems()
   $playlist_items.scrollTop(scroll_top)
 
-labelPlaylistItems = ->
+renderStoredPlaylists = !->
+  context = {}
+
+
+labelPlaylistItems = !->
   cur_item = mpd.status.current_item
   # label the old ones
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
@@ -338,13 +348,13 @@ labelPlaylistItems = ->
 getSelHelpers = ->
   return null unless mpd?.playlist?.item_table?
   return null unless mpd?.search_results?.artist_table?
-  return {} =
+  return do
     playlist: [selection.ids.playlist, mpd.playlist.item_table, (id) -> $("\#playlist-track-#{id}")]
     artist: [selection.ids.artist, mpd.search_results.artist_table, (id) -> $("\#lib-artist-#{Util.toHtmlId(id)}")]
     album: [selection.ids.album, mpd.search_results.album_table, (id) -> $("\#lib-album-#{Util.toHtmlId(id)}")]
     track: [selection.ids.track, mpd.search_results.track_table, (id) -> $("\#lib-track-#{Util.toHtmlId(id)}")]
 
-refreshSelection = ->
+refreshSelection = !->
   return unless (helpers = getSelHelpers())?
 
   # clear all selection
@@ -365,7 +375,7 @@ refreshSelection = ->
     if selection.cursor? and sel_name is selection.type
       $getDiv(selection.cursor).addClass('cursor')
 
-renderLibrary = ->
+renderLibrary = !->
   context =
     artists: mpd.search_results.artists
     empty_library_message: if mpd.have_file_list_cache then "No Results" else "loading..."
@@ -376,7 +386,7 @@ renderLibrary = ->
   $artists = $library.children("ul").children("li")
   node_count = $artists.length
   const node_count_limit = 20
-  expand_stuff = ($li_set) ->
+  expandStuff = !($li_set) ->
     for li of $li_set
       $li = $(li)
       return if node_count >= node_count_limit
@@ -390,8 +400,8 @@ renderLibrary = ->
         $ul = $li.children("ul")
         $sub_li_set = $ul.children("li")
         node_count := proposed_node_count
-        expand_stuff $sub_li_set
-  expand_stuff $artists
+        expandStuff $sub_li_set
+  expandStuff $artists
 
   $library.scrollTop(scroll_top)
   refreshSelection()
@@ -403,7 +413,7 @@ getCurrentTrackPosition = ->
   else
     mpd.status.elapsed
 
-updateSliderPos = ->
+updateSliderPos = !->
   return if user_is_seeking
   if (time = mpd.status.time)? and mpd.status.current_item? and (mpd.status.state ? "stop") is not "stop"
     disabled = false
@@ -419,13 +429,13 @@ updateSliderPos = ->
   $nowplaying_elapsed.html Util.formatTime(elapsed)
   $nowplaying_left.html Util.formatTime(time)
 
-renderNowPlaying = ->
+renderNowPlaying = !->
   # set window title
   if (track = mpd.status.current_item?.track)?
     track_display = "#{track.name} - #{track.artist_name}"
     if track.album_name.length
       track_display += " - " + track.album_name
-    document.title = "#{track_display} - #{base_title}"
+    document.title = "#{track_display} - #{BASE_TITLE}"
     # Easter time!
     if track.name.indexOf("Groove Basin") is 0
       $("html").addClass('groovebasin')
@@ -437,7 +447,7 @@ renderNowPlaying = ->
       $("html").removeClass('nggyu')
   else
     track_display = "&nbsp;"
-    document.title = base_title
+    document.title = BASE_TITLE
 
   # set song title
   $('#track-display').html(track_display)
@@ -462,14 +472,14 @@ renderNowPlaying = ->
     $vol_slider.slider 'option', 'value', vol if enabled
     $vol_slider.slider 'option', 'disabled', not enabled
 
-render = ->
+render = !->
   hide_main_err = load_status is LoadStatus.GoodToGo
   $('#playlist-window').toggle(hide_main_err)
   $('#left-window').toggle(hide_main_err)
   $('#nowplaying').toggle(hide_main_err)
   $main_err_msg.toggle(not hide_main_err)
   unless hide_main_err
-    document.title = base_title
+    document.title = BASE_TITLE
     $main_err_msg_text.text(LoadStatusMsg[load_status])
     return
 
@@ -513,7 +523,7 @@ confirmDelete = (files_list) ->
     #{list_text}
   """
 
-handleDeletePressed = (shift) ->
+handleDeletePressed = !(shift) ->
   if selection.isLibrary()
     files_list = selectionToFiles()
     if not confirmDelete(files_list) then return
@@ -545,7 +555,7 @@ getStreamUrl = ->
   format = server_status.stream_httpd_format
   "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
 
-updateStreamingPlayer = ->
+updateStreamingPlayer = !->
   should_stream = trying_to_stream and mpd.status.state is "play"
   return if actually_streaming is should_stream
   if should_stream
@@ -553,7 +563,7 @@ updateStreamingPlayer = ->
     sound = soundManager.createSound do
       id: 'stream'
       url: getStreamUrl()
-      onbufferchange: ->
+      onbufferchange: !->
         streaming_buffering := sound.isBuffering
         renderStreamButton()
 
@@ -565,18 +575,18 @@ updateStreamingPlayer = ->
   actually_streaming := should_stream
   renderStreamButton()
 
-togglePlayback = ->
+togglePlayback = !->
   if mpd.status.state is 'play'
     mpd.pause()
   else
     mpd.play()
 
-setDynamicMode = (value) ->
+setDynamicMode = !(value) ->
   args =
     dynamic_mode: value
   socket.emit 'DynamicMode', JSON.stringify(args)
 
-toggleDynamicMode = -> setDynamicMode not server_status.dynamic_mode
+toggleDynamicMode = !-> setDynamicMode not server_status.dynamic_mode
 
 getRepeatStateName = ->
   if not mpd.status.repeat
@@ -586,7 +596,7 @@ getRepeatStateName = ->
   else
     "One"
 
-nextRepeatState = ->
+nextRepeatState = !->
   if not mpd.status.repeat
     mpd.changeStatus do
       repeat: true
@@ -601,7 +611,7 @@ nextRepeatState = ->
       single: false
 
 keyboard_handlers = do ->
-  upDownHandler = (event) ->
+  upDownHandler = !(event) ->
     if event.which is 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1
@@ -642,7 +652,7 @@ keyboard_handlers = do ->
     scrollPlaylistToSelection() if selection.isPlaylist()
     scrollLibraryToSelection() if selection.isLibrary()
 
-  leftRightHandler = (event) ->
+  leftRightHandler = !(event) ->
     dir = if event.which is 37 then -1 else 1
     if selection.isLibrary()
       return unless (helpers = getSelHelpers())
@@ -674,7 +684,7 @@ keyboard_handlers = do ->
       ctrl:    false
       alt:     null
       shift:   null
-      handler: (event) ->
+      handler: !(event) ->
         if selection.isPlaylist()
           mpd.playId selection.cursor
         else if selection.isLibrary()
@@ -683,7 +693,7 @@ keyboard_handlers = do ->
       ctrl:    false
       alt:     false
       shift:   false
-      handler: ->
+      handler: !->
         # if the user is dragging, abort the drag
         if started_drag
           abortDrag()
@@ -723,12 +733,12 @@ keyboard_handlers = do ->
       ctrl:    false
       alt:     false
       shift:   null
-      handler: (event) -> handleDeletePressed(event.shiftKey)
+      handler: !(event) -> handleDeletePressed(event.shiftKey)
     67: # 'c'
       ctrl:    false
       alt:     false
       shift:   true
-      handler: -> mpd.clear()
+      handler: !-> mpd.clear()
     68: # 'd'
       ctrl:    false
       alt:     false
@@ -738,12 +748,12 @@ keyboard_handlers = do ->
       ctrl:    false
       alt:     false
       shift:   true
-      handler: -> mpd.shuffle()
+      handler: !-> mpd.shuffle()
     76: # 'l'
       ctrl:    false
       alt:     false
       shift:   false
-      handler: -> clickTab 'library'
+      handler: !-> clickTab 'library'
     82: # 'r'
       ctrl:    false
       alt:     false
@@ -758,41 +768,41 @@ keyboard_handlers = do ->
       ctrl:    false
       alt:     false
       shift:   false
-      handler: ->
+      handler: !->
         clickTab 'chat'
         $('#chat-input').focus().select()
     85: # 'u'
       ctrl:    false
       alt:     false
       shift:   false
-      handler: ->
+      handler: !->
         clickTab 'upload'
         $upload_by_url.focus().select()
     187: # '=' or '+'
       ctrl:    false
       alt:     false
       shift:   null
-      handler: -> mpd.setVolume mpd.status.volume + 0.10
+      handler: !-> mpd.setVolume mpd.status.volume + 0.10
     188: # ',' or '<'
       ctrl:    false
       alt:     false
       shift:   null
-      handler: -> mpd.prev()
+      handler: !-> mpd.prev()
     189: # '-' or '_'
       ctrl:    false
       alt:     false
       shift:   null
-      handler: -> mpd.setVolume mpd.status.volume - 0.10
+      handler: !-> mpd.setVolume mpd.status.volume - 0.10
     190: # '.' or '>'
       ctrl:    false
       alt:     false
       shift:   null
-      handler: -> mpd.next()
+      handler: !-> mpd.next()
     191: # '/' or '?'
       ctrl:    false
       alt:     false
       shift:   null
-      handler: (event) ->
+      handler: !(event) ->
         if event.shiftKey
           $(Handlebars.templates.shortcuts()).appendTo(document.body)
           $('#shortcuts').dialog do
@@ -800,12 +810,12 @@ keyboard_handlers = do ->
             title: "Keyboard Shortcuts"
             minWidth: 600
             height: $document.height() - 40
-            close: -> $('#shortcuts').remove()
+            close: !-> $('#shortcuts').remove()
         else
           clickTab 'library'
           $('#lib-filter').focus().select()
 
-removeContextMenu = -> $('#menu').remove()
+removeContextMenu = !-> $('#menu').remove()
 
 isArtistExpanded = (artist) ->
   $li = $("\#lib-artist-#{Util.toHtmlId(artist.key)}").closest("li")
@@ -844,7 +854,7 @@ getLibSelPos = (type, key) ->
 libPosToArr = (lib_pos) -> [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
 
 # modifies in place
-prevLibPos = (lib_pos) ->
+prevLibPos = !(lib_pos) ->
   if lib_pos.track?
     lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos - 1]
   else if lib_pos.album?
@@ -859,7 +869,7 @@ prevLibPos = (lib_pos) ->
         lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
 
 # modifies in place
-nextLibPos = (lib_pos) ->
+nextLibPos = !(lib_pos) ->
   if lib_pos.track?
     lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
     if not lib_pos.track?
@@ -878,7 +888,7 @@ nextLibPos = (lib_pos) ->
     else
       lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
 
-selectLibraryPosition = (lib_pos) ->
+selectLibraryPosition = !(lib_pos) ->
   if lib_pos.track?
     selection.ids.track[lib_pos.track.file] = true
   else if lib_pos.album?
@@ -900,21 +910,16 @@ queueLibSelection = (event) ->
     mpd.queueFiles files, queueFilesPos()
   return false
 
-settings_ui =
-  auth:
-    show_edit: false
-    password: ""
-
-sendAuth = ->
+sendAuth = !->
   pass = localStorage.auth_password
   return unless pass?
-  mpd.authenticate pass, (err) ->
+  mpd.authenticate pass, !(err) ->
     if err
       delete localStorage.auth_password
     renderSettings()
   socket.emit 'Password', pass
 
-settingsAuthSave = ->
+settingsAuthSave = !->
   settings_ui.auth.show_edit = false
   $text_box = $('#auth-password')
   localStorage.auth_password = $text_box.val()
@@ -922,16 +927,16 @@ settingsAuthSave = ->
   renderSettings()
   sendAuth()
 
-settingsAuthCancel = ->
+settingsAuthCancel = !->
   settings_ui.auth.show_edit = false
   renderSettings()
 
-performDrag = (event, callbacks) ->
+performDrag = !(event, callbacks) ->
   abortDrag()
   start_drag_x = event.pageX
   start_drag_y = event.pageY
 
-  abortDrag := ->
+  abortDrag := !->
     $document
       .off('mousemove', onDragMove)
       .off('mouseup', onDragEnd)
@@ -940,9 +945,9 @@ performDrag = (event, callbacks) ->
       $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
       started_drag := false
 
-    abortDrag := ->
+    abortDrag := !->
 
-  onDragMove = (event) ->
+  onDragMove = !(event) ->
     if not started_drag
       dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
       started_drag := true if dist > 64
@@ -951,7 +956,7 @@ performDrag = (event, callbacks) ->
     $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
     $("\#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
-  onDragEnd = (event) ->
+  onDragEnd = !(event) ->
     return false unless event.which is 1
 
     if started_drag
@@ -966,30 +971,30 @@ performDrag = (event, callbacks) ->
 
   onDragMove event
 
-setUpUi = ->
-  $document.on 'mouseover', '.hoverable', (event) ->
+setUpUi = !->
+  $document.on 'mouseover', '.hoverable', !(event) ->
     $(this).addClass "ui-state-hover"
-  $document.on 'mouseout', '.hoverable', (event) ->
+  $document.on 'mouseout', '.hoverable', !(event) ->
     $(this).removeClass "ui-state-hover"
   $(".jquery-button").button()
 
   $pl_window = $('#playlist-window')
-  $pl_window.on 'click', 'button.clear', ->
+  $pl_window.on 'click', 'button.clear', !->
     mpd.clear()
-  $pl_window.on 'click', 'button.shuffle', ->
+  $pl_window.on 'click', 'button.shuffle', !->
     mpd.shuffle()
-  $pl_btn_repeat.on 'click', ->
+  $pl_btn_repeat.on 'click', !->
     nextRepeatState()
   $dynamic_mode.on 'click', ->
     value = $(this).prop("checked")
     setDynamicMode(value)
     return false
 
-  $playlist_items.on 'dblclick', '.pl-item', (event) ->
+  $playlist_items.on 'dblclick', '.pl-item', !(event) ->
     track_id = $(this).attr('data-id')
     mpd.playId track_id
 
-  $playlist_items.on 'contextmenu', (event) -> return event.altKey
+  $playlist_items.on 'contextmenu', (event) -> event.altKey
   $playlist_items.on 'mousedown', '.pl-item', (event) ->
     return true if started_drag
     # if any text box has focus, unfocus it
@@ -1025,13 +1030,13 @@ setUpUi = ->
       # dragging
       if not skip_drag
         performDrag event,
-          complete: (result, event) ->
+          complete: !(result, event) ->
             delta =
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             mpd.moveIds (id for id in selection.ids.playlist), new_pos
-          cancel: ->
+          cancel: !->
             # we didn't end up dragging, select the item
             selection.selectOnly 'playlist', track_id
             refreshSelection()
@@ -1084,7 +1089,7 @@ setUpUi = ->
   $playlist_items.on 'mousedown', -> false
 
   # delete context menu
-  $document.on 'mousedown', ->
+  $document.on 'mousedown', !->
     removeContextMenu()
     selection.type = null
     refreshSelection()
@@ -1106,9 +1111,9 @@ setUpUi = ->
 
   $library.on 'dblclick', 'div.artist, div.album, div.track', queueLibSelection
 
-  $library.on 'contextmenu', (event) -> return event.altKey
+  $library.on 'contextmenu', (event) -> event.altKey
 
-  libraryMouseDown = (event, sel_name, key) ->
+  libraryMouseDown = !(event, sel_name, key) ->
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
     if event.which is 1
@@ -1154,14 +1159,14 @@ setUpUi = ->
       # dragging
       if not skip_drag
         performDrag event,
-          complete: (result, event) ->
+          complete: !(result, event) ->
             delta =
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
             files = selectionToFiles(event.altKey)
             mpd.queueFiles files, new_pos
-          cancel: ->
+          cancel: !->
             # we didn't end up dragging, select the item
             selection.selectOnly sel_name, key
             refreshSelection()
@@ -1222,13 +1227,13 @@ setUpUi = ->
         removeContextMenu()
         return false
 
-  $library.on 'mousedown', '.artist', (event) ->
+  $library.on 'mousedown', '.artist', !(event) ->
     libraryMouseDown event, 'artist', $(this).attr('data-key')
 
-  $library.on 'mousedown', '.album', (event) ->
+  $library.on 'mousedown', '.album', !(event) ->
     libraryMouseDown event, 'album', $(this).attr('data-key')
 
-  $library.on 'mousedown', '.track', (event) ->
+  $library.on 'mousedown', '.track', !(event) ->
     libraryMouseDown event, 'track', $(this).attr('data-file')
 
   $library.on 'mousedown', -> false
@@ -1244,7 +1249,7 @@ setUpUi = ->
         else
           # defer the setting of the text box until after the event loop to
           # work around a firefox bug
-          Util.wait 0, ->
+          Util.wait 0, !->
             $(event.target).val("")
             mpd.search ""
         return false
@@ -1279,11 +1284,11 @@ setUpUi = ->
         refreshSelection()
         $lib_filter.blur()
         return false
-  $lib_filter.on 'keyup', (event) ->
+  $lib_filter.on 'keyup', !(event) ->
     mpd.search $(event.target).val()
 
   $chat_name_input = $('#chat-name-input')
-  $chat_user_id_span.on 'click', (event) ->
+  $chat_user_id_span.on 'click', !(event) ->
     $chat_input.attr "disabled", "disabled"
     chat_name_input_visible := true
     $chat_name_input.show().val("").focus().select()
@@ -1312,7 +1317,7 @@ setUpUi = ->
       return false
     else if event.which is 13
       message = $.trim($(event.target).val())
-      Util.wait 0, ->
+      Util.wait 0, !->
         $(event.target).val("")
       return false if message is ""
       unless haveUserName()
@@ -1328,9 +1333,9 @@ setUpUi = ->
 
   actions =
     'toggle': togglePlayback
-    'prev': -> mpd.prev()
-    'next': -> mpd.next()
-    'stop': -> mpd.stop()
+    'prev': !-> mpd.prev()
+    'next': !-> mpd.next()
+    'stop': !-> mpd.stop()
 
   for cls, action in actions
     let cls, action
@@ -1342,14 +1347,14 @@ setUpUi = ->
     step: 0.0001
     min: 0
     max: 1
-    change: (event, ui) ->
+    change: !(event, ui) ->
       return if not event.originalEvent?
       mpd.seek ui.value * mpd.status.time
-    slide: (event, ui) ->
+    slide: !(event, ui) ->
       $nowplaying_elapsed.html Util.formatTime(ui.value * mpd.status.time)
-    start: (event, ui) -> user_is_seeking := true
-    stop: (event, ui) -> user_is_seeking := false
-  setVol = (event, ui) ->
+    start: !(event, ui) -> user_is_seeking := true
+    stop: !(event, ui) -> user_is_seeking := false
+  setVol = !(event, ui) ->
     return if not event.originalEvent?
     mpd.setVolume ui.value
   $vol_slider.slider do
@@ -1357,8 +1362,8 @@ setUpUi = ->
     min: 0
     max: 1
     change: setVol
-    start: (event, ui) -> user_is_volume_sliding := true
-    stop: (event, ui) -> user_is_volume_sliding := false
+    start: !(event, ui) -> user_is_volume_sliding := true
+    stop: !(event, ui) -> user_is_volume_sliding := false
 
   # move the slider along the path
   Util.schedule 0.1, updateSliderPos
@@ -1368,9 +1373,9 @@ setUpUi = ->
       primary: "ui-icon-signal-diag"
   $stream_btn.on 'click', toggleStreamStatus
 
-  $lib_tabs.on 'mouseover', 'li', (event) ->
+  $lib_tabs.on 'mouseover', 'li', !(event) ->
     $(this).addClass 'ui-state-hover'
-  $lib_tabs.on 'mouseout', 'li', (event) ->
+  $lib_tabs.on 'mouseout', 'li', !(event) ->
     $(this).removeClass 'ui-state-hover'
 
   tabs = [
@@ -1380,12 +1385,12 @@ setUpUi = ->
     'settings'
   ]
 
-  unselectTabs = ->
+  unselectTabs = !->
     $lib_tabs.find('li').removeClass 'ui-state-active'
     for tab of tabs
       $("\##{tab}-tab").hide()
 
-  clickTab := (name) ->
+  clickTab := !(name) ->
     return if name is 'upload' and not server_status?.upload_enabled
     unselectTabs()
     $lib_tabs.find("li.#{name}-tab").addClass 'ui-state-active'
@@ -1395,7 +1400,7 @@ setUpUi = ->
 
   for tab of tabs
     let tab
-      $lib_tabs.on 'click', "li.#{tab}-tab", (event) ->
+      $lib_tabs.on 'click', "li.#{tab}-tab", !(event) ->
         clickTab tab
 
   uploader = new qq.FileUploader do
@@ -1403,7 +1408,7 @@ setUpUi = ->
     action: '/upload'
     encoding: 'multipart'
 
-  $settings.on 'click', '.signout', (event) ->
+  $settings.on 'click', '.signout', !(event) ->
     delete localStorage?.lastfm_username
     delete localStorage?.lastfm_session_key
     delete localStorage?.lastfm_scrobbling_on
@@ -1424,20 +1429,20 @@ setUpUi = ->
     socket.emit msg, JSON.stringify(params)
     renderSettings()
     return false
-  $settings.on 'click', '.auth-edit', (event) ->
+  $settings.on 'click', '.auth-edit', !(event) ->
     settings_ui.auth.show_edit = true
     renderSettings()
     $text_box = $('#auth-password')
     $text_box.focus().val(localStorage.auth_password ? "").select()
-  $settings.on 'click', '.auth-clear', (event) ->
+  $settings.on 'click', '.auth-clear', !(event) ->
     delete localStorage.auth_password
     settings_ui.auth.password = ""
     renderSettings()
-  $settings.on 'click', '.auth-save', (event) ->
+  $settings.on 'click', '.auth-save', !(event) ->
     settingsAuthSave()
-  $settings.on 'click', '.auth-cancel', (event) ->
+  $settings.on 'click', '.auth-cancel', !(event) ->
     settingsAuthCancel()
-  $settings.on 'keydown', '#auth-password', (event) ->
+  $settings.on 'keydown', '#auth-password', !(event) ->
     $text_box = $(this)
     event.stopPropagation()
     settings_ui.auth.password = $text_box.val()
@@ -1445,10 +1450,10 @@ setUpUi = ->
       settingsAuthCancel()
     else if event.which is 13
       settingsAuthSave()
-  $settings.on 'keyup', '#auth-password', (event) ->
+  $settings.on 'keyup', '#auth-password', !(event) ->
     settings_ui.auth.password = $(this).val()
 
-  $upload_by_url.on 'keydown', (event) ->
+  $upload_by_url.on 'keydown', !(event) ->
     event.stopPropagation()
     if event.which is 27
       $upload_by_url.val("").blur()
@@ -1459,13 +1464,13 @@ setUpUi = ->
 
 # end setUpUi
 
-initHandlebars = ->
+initHandlebars = !->
   Handlebars.registerHelper 'time', Util.formatTime
   Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
 
-handleResize = ->
+handleResize = !->
   $left_window = $('#left-window')
   $pl_window = $('#playlist-window')
 
@@ -1495,18 +1500,18 @@ handleResize = ->
   resizeChat()
   $pl_header = $pl_window.find('#playlist .header')
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
-resizeChat = ->
+resizeChat = !->
   height_overshoot = $('#chat-tab').height() - $('#upload').height()
   $chat_list.height $chat_list.height() - height_overshoot
 
-initStreaming = ->
+initStreaming = !->
   soundManager.setup do
     url: "/vendor/soundmanager2/"
     flashVersion: 9
     debugMode: false
 
 window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf"
-$document.ready ->
+$document.ready !->
   if localStorage?.my_user_ids?
     my_user_ids := JSON.parse localStorage.my_user_ids
 
@@ -1518,34 +1523,34 @@ $document.ready ->
   if (token = Util.parseQuery(location.search.substring(1))?.token)?
     socket.emit 'LastfmGetSession', token
 
-    refreshPage = ->
+    refreshPage = !->
       location.href = "#{location.protocol}//#{location.host}/"
-    socket.on 'LastfmGetSessionSuccess', (data) ->
+    socket.on 'LastfmGetSessionSuccess', !(data) ->
       params = JSON.parse(data)
       localStorage?.lastfm_username = params.session.name
       localStorage?.lastfm_session_key = params.session.key
       delete localStorage?.lastfm_scrobbling_on
       refreshPage()
-    socket.on 'LastfmGetSessionError', (data) ->
+    socket.on 'LastfmGetSessionError', !(data) ->
       params = JSON.parse(data)
       alert "Error authenticating: #{params.message}"
       refreshPage()
     return
 
-  socket.on 'connect', ->
+  socket.on 'connect', !->
     load_status := LoadStatus.NoMpd
     render()
 
-  socket.on 'Identify', (data) ->
+  socket.on 'Identify', !(data) ->
     my_user_id := data.toString()
     my_user_ids[my_user_id] = 1
     storeMyUserIds()
     if (user_name = localStorage?.user_name)?
       setUserName user_name
-  socket.on 'Permissions', (data) ->
+  socket.on 'Permissions', !(data) ->
     permissions := JSON.parse data.toString()
     renderSettings()
-  socket.on 'Status', (data) ->
+  socket.on 'Status', !(data) ->
     server_status := JSON.parse data.toString()
     storeMyUserIds()
     renderPlaylistButtons()
@@ -1556,27 +1561,27 @@ $document.ready ->
     window._debug_server_status = server_status
 
   mpd := Mpd()
-  socket.on 'FromMpd', (data) -> mpd.receive(data)
-  socket.on 'MpdConnect', -> mpd.handleConnectionStart()
-  socket.on 'MpdDisconnect', -> mpd.resetServerState()
-  socket.on 'disconnect', -> mpd.resetServerState()
-  mpd.on 'data', (data) -> socket.emit('ToMpd', data)
+  socket.on 'FromMpd', !(data) -> mpd.receive(data)
+  socket.on 'MpdConnect', !-> mpd.handleConnectionStart()
+  socket.on 'MpdDisconnect', !-> mpd.resetServerState()
+  socket.on 'disconnect', !-> mpd.resetServerState()
+  mpd.on 'data', !(data) -> socket.emit('ToMpd', data)
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
-  mpd.on 'statusupdate', ->
+  mpd.on 'statusupdate', !->
     renderNowPlaying()
     renderPlaylistButtons()
     labelPlaylistItems()
     updateStreamingPlayer()
   mpd.on 'chat', renderChat
-  mpd.on 'connect', ->
+  mpd.on 'connect', !->
     sendAuth()
     load_status := LoadStatus.GoodToGo
     render()
-  socket.on 'disconnect', ->
+  socket.on 'disconnect', !->
     load_status := LoadStatus.NoServer
     render()
-  socket.on 'MpdDisconnect', ->
+  socket.on 'MpdDisconnect', !->
     load_status := LoadStatus.NoMpd
     render()
 

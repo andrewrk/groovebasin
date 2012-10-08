@@ -26,7 +26,12 @@ const
       '-l', 'mpd.js/lib',
       'src/client/app', 'public/app.js'
     ])
-    exec 'stylus', args.concat(['-o', 'public/', 'src/client/'])
+    exec 'stylus', args.concat([
+      '-o', 'public/',
+      '-c',
+      '--include-css',
+      'src/client/styles'
+    ])
 
     # fuck you handlebars
     if watch

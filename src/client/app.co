@@ -111,28 +111,32 @@ $upload_by_url = $('#upload-by-url')
 $main_err_msg = $('#main-err-msg')
 $main_err_msg_text = $('#main-err-msg-text')
 
-haveUserName = -> server_status?.user_names[my_user_id]?
-getUserName = -> userIdToUserName my_user_id
-userIdToUserName = (user_id) ->
+function haveUserName
+  server_status?.user_names[my_user_id]?
+
+function getUserName
+  userIdToUserName my_user_id
+
+function userIdToUserName (user_id)
   return user_id unless server_status?
   user_name = server_status.user_names[user_id]
   return user_name ? user_id
 
-storeMyUserIds = !->
+!function storeMyUserIds
   localStorage?.my_user_ids = JSON.stringify my_user_ids
 
-setUserName = !(new_name) ->
+!function setUserName (new_name)
   new_name = $.trim new_name
   localStorage?.user_name = new_name
   socket.emit 'SetUserName', new_name
 
-scrollLibraryToSelection = !->
+!function scrollLibraryToSelection
   return unless (helpers = getSelHelpers())?
 
   delete helpers.playlist
   scrollThingToSelection $library, helpers
 
-scrollPlaylistToSelection = !->
+!function scrollPlaylistToSelection
   return unless (helpers = getSelHelpers())?
 
   delete helpers.track
@@ -140,7 +144,7 @@ scrollPlaylistToSelection = !->
   delete helpers.album
   scrollThingToSelection $playlist_items, helpers
 
-scrollThingToSelection = !($scroll_area, helpers) ->
+function scrollThingToSelection ($scroll_area, helpers)
   top_pos = null
   bottom_pos = null
   for sel_name, [ids, table, $getDiv] in helpers
@@ -161,15 +165,15 @@ scrollThingToSelection = !($scroll_area, helpers) ->
     else if selection_bottom > 0
       $scroll_area.scrollTop scroll_amt + selection_bottom
 
-selectionToFiles = (random=false) ->
+function selectionToFiles (random=false)
   # render selection into a single object by file to remove duplicates
   # works for library only
   track_set = {}
-  selRenderArtist = !(artist) ->
+  !function selRenderArtist (artist)
     selRenderAlbum album for album of artist.albums
-  selRenderAlbum = !(album) ->
+  !function selRenderAlbum (album)
     selRenderTrack track for track of album.tracks
-  selRenderTrack = !(track) ->
+  !function selRenderTrack (track)
     track_set[track.file] = libPosToArr(getTrackSelPos(track))
 
   selRenderArtist(mpd.search_results.artist_table[key]) for key in selection.ids.artist
@@ -185,10 +189,10 @@ selectionToFiles = (random=false) ->
     track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
     return (track.file for track of track_arr)
 
-playlistSelectionToFiles = ->
+function playlistSelectionToFiles
   (mpd.playlist.item_table[key].track.file for key in selection.ids.playlist)
 
-downloadFiles = !(files) ->
+!function downloadFiles (files)
   $form = $(document.createElement('form'))
   $form.attr('action', "/download/custom")
   $form.attr('method', "post")
@@ -201,7 +205,7 @@ downloadFiles = !(files) ->
     $form.append($input)
   $form.submit()
 
-getDragPosition = (x, y) ->
+function getDragPosition (x, y)
   # loop over the playlist items and find where it fits
   best =
     track_id: null
@@ -227,7 +231,7 @@ getDragPosition = (x, y) ->
 
   return best
 
-renderSettings = !->
+!function renderSettings
   return unless (api_key = server_status?.lastfm_api_key)?
   context =
     lastfm:
@@ -251,11 +255,11 @@ renderSettings = !->
   $settings.find('.auth-clear').button()
   $settings.find('#auth-password').val(settings_ui.auth.password)
 
-scrollChatWindowToBottom = !->
+!function scrollChatWindowToBottom
   # for some reason, Infinity goes to the top :/
   $chat_list.scrollTop 1000000
 
-renderChat = !->
+!function renderChat
   chat_status_text = ""
   if (users = server_status?.users)?
     chat_status_text = " (#{users.length})" if users.length > 1
@@ -276,7 +280,7 @@ renderChat = !->
   $chat_tab.find("span").text("Chat#{chat_status_text}")
   resizeChat()
 
-renderStreamButton = !->
+!function renderStreamButton
   label = if trying_to_stream
     if actually_streaming
       if streaming_buffering
@@ -295,7 +299,7 @@ renderStreamButton = !->
     .prop("checked", trying_to_stream)
     .button("refresh")
 
-renderPlaylistButtons = !->
+!function renderPlaylistButtons
   # set the state of dynamic mode button
   $dynamic_mode
     .prop("checked", if server_status?.dynamic_mode then true else false)
@@ -315,7 +319,7 @@ renderPlaylistButtons = !->
   $upload_tab.addClass("ui-state-disabled") if not server_status?.upload_enabled
 
 
-renderPlaylist = !->
+!function renderPlaylist
   context =
     playlist: mpd.playlist.item_list
     server_status: server_status
@@ -325,11 +329,11 @@ renderPlaylist = !->
   labelPlaylistItems()
   $playlist_items.scrollTop(scroll_top)
 
-renderStoredPlaylists = !->
+!function renderStoredPlaylists
   context = {}
 
 
-labelPlaylistItems = !->
+!function labelPlaylistItems
   cur_item = mpd.status.current_item
   # label the old ones
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old')
@@ -345,7 +349,7 @@ labelPlaylistItems = !->
   # label the current one
   $("\#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
 
-getSelHelpers = ->
+function getSelHelpers
   return null unless mpd?.playlist?.item_table?
   return null unless mpd?.search_results?.artist_table?
   return do
@@ -354,7 +358,7 @@ getSelHelpers = ->
     album: [selection.ids.album, mpd.search_results.album_table, (id) -> $("\#lib-album-#{Util.toHtmlId(id)}")]
     track: [selection.ids.track, mpd.search_results.track_table, (id) -> $("\#lib-track-#{Util.toHtmlId(id)}")]
 
-refreshSelection = !->
+!function refreshSelection
   return unless (helpers = getSelHelpers())?
 
   # clear all selection
@@ -375,7 +379,7 @@ refreshSelection = !->
     if selection.cursor? and sel_name is selection.type
       $getDiv(selection.cursor).addClass('cursor')
 
-renderLibrary = !->
+!function renderLibrary
   context =
     artists: mpd.search_results.artists
     empty_library_message: if mpd.have_file_list_cache then "No Results" else "loading..."
@@ -386,7 +390,7 @@ renderLibrary = !->
   $artists = $library.children("ul").children("li")
   node_count = $artists.length
   const node_count_limit = 20
-  expandStuff = !($li_set) ->
+  !function expandStuff ($li_set)
     for li of $li_set
       $li = $(li)
       return if node_count >= node_count_limit
@@ -407,13 +411,13 @@ renderLibrary = !->
   refreshSelection()
 
 # returns how many seconds we are into the track
-getCurrentTrackPosition = ->
+function getCurrentTrackPosition
   if mpd.status.track_start_date? and mpd.status.state is "play"
     (new Date() - mpd.status.track_start_date) / 1000
   else
     mpd.status.elapsed
 
-updateSliderPos = !->
+!function updateSliderPos
   return if user_is_seeking
   if (time = mpd.status.time)? and mpd.status.current_item? and (mpd.status.state ? "stop") is not "stop"
     disabled = false
@@ -429,7 +433,7 @@ updateSliderPos = !->
   $nowplaying_elapsed.html Util.formatTime(elapsed)
   $nowplaying_left.html Util.formatTime(time)
 
-renderNowPlaying = !->
+!function renderNowPlaying
   # set window title
   if (track = mpd.status.current_item?.track)?
     track_display = "#{track.name} - #{track.artist_name}"
@@ -472,7 +476,7 @@ renderNowPlaying = !->
     $vol_slider.slider 'option', 'value', vol if enabled
     $vol_slider.slider 'option', 'disabled', not enabled
 
-render = !->
+!function render
   hide_main_err = load_status is LoadStatus.GoodToGo
   $('#playlist-window').toggle(hide_main_err)
   $('#left-window').toggle(hide_main_err)
@@ -493,7 +497,7 @@ render = !->
   handleResize()
 
 
-toggleExpansion = ($li) ->
+function toggleExpansion ($li)
   $div = $li.find("> div")
   $ul = $li.find("> ul")
   if $div.hasClass('artist')
@@ -512,7 +516,7 @@ toggleExpansion = ($li) ->
   $div.find("div").removeClass(old_class).addClass(new_class)
   return false
 
-confirmDelete = (files_list) ->
+function confirmDelete (files_list)
   list_text = files_list.slice(0, 7).join("\n  ")
   if files_list.length > 7
     list_text += "\n  ..."
@@ -523,7 +527,7 @@ confirmDelete = (files_list) ->
     #{list_text}
   """
 
-handleDeletePressed = !(shift) ->
+!function handleDeletePressed (shift)
   if selection.isLibrary()
     files_list = selectionToFiles()
     if not confirmDelete(files_list) then return
@@ -543,19 +547,19 @@ handleDeletePressed = !(shift) ->
     selection.selectOnly 'playlist', mpd.playlist.item_list[pos].id if pos > -1
     refreshSelection()
 
-toggleStreamStatus = ->
+function toggleStreamStatus
   return unless server_status?.stream_httpd_port?
   trying_to_stream := not trying_to_stream
   renderStreamButton()
   updateStreamingPlayer()
   return false
 
-getStreamUrl = ->
+function getStreamUrl
   port = server_status?.stream_httpd_port
   format = server_status.stream_httpd_format
   "#{location.protocol}//#{location.hostname}:#{port}/stream.#{format}"
 
-updateStreamingPlayer = !->
+!function updateStreamingPlayer
   should_stream = trying_to_stream and mpd.status.state is "play"
   return if actually_streaming is should_stream
   if should_stream
@@ -575,20 +579,21 @@ updateStreamingPlayer = !->
   actually_streaming := should_stream
   renderStreamButton()
 
-togglePlayback = !->
+!function togglePlayback
   if mpd.status.state is 'play'
     mpd.pause()
   else
     mpd.play()
 
-setDynamicMode = !(value) ->
+!function setDynamicMode (value)
   args =
     dynamic_mode: value
   socket.emit 'DynamicMode', JSON.stringify(args)
 
-toggleDynamicMode = !-> setDynamicMode not server_status.dynamic_mode
+!function toggleDynamicMode
+  setDynamicMode not server_status.dynamic_mode
 
-getRepeatStateName = ->
+function getRepeatStateName
   if not mpd.status.repeat
     "Off"
   else if mpd.status.repeat and not mpd.status.single
@@ -596,7 +601,7 @@ getRepeatStateName = ->
   else
     "One"
 
-nextRepeatState = !->
+!function nextRepeatState
   if not mpd.status.repeat
     mpd.changeStatus do
       repeat: true
@@ -611,7 +616,7 @@ nextRepeatState = !->
       single: false
 
 keyboard_handlers = do ->
-  upDownHandler = !(event) ->
+  !function upDownHandler (event)
     if event.which is 38 # up
       default_index = mpd.playlist.item_list.length - 1
       dir = -1
@@ -652,7 +657,7 @@ keyboard_handlers = do ->
     scrollPlaylistToSelection() if selection.isPlaylist()
     scrollLibraryToSelection() if selection.isLibrary()
 
-  leftRightHandler = !(event) ->
+  !function leftRightHandler (event)
     dir = if event.which is 37 then -1 else 1
     if selection.isLibrary()
       return unless (helpers = getSelHelpers())
@@ -815,23 +820,24 @@ keyboard_handlers = do ->
           clickTab 'library'
           $('#lib-filter').focus().select()
 
-removeContextMenu = !-> $('#menu').remove()
+!function removeContextMenu
+  $('#menu').remove()
 
-isArtistExpanded = (artist) ->
+function isArtistExpanded (artist)
   $li = $("\#lib-artist-#{Util.toHtmlId(artist.key)}").closest("li")
   return false unless $li.data('cached')
   return $li.find("> ul").is(":visible")
 
-isAlbumExpanded = (album) ->
+function isAlbumExpanded (album)
   $li = $("\#lib-album-#{Util.toHtmlId(album.key)}").closest("li")
   return $li.find("> ul").is(":visible")
 
-getTrackSelPos = (track) ->
+function getTrackSelPos (track)
   artist: track.album.artist
   album: track.album
   track: track
 
-getLibSelPos = (type, key) ->
+function getLibSelPos (type, key)
   val =
     artist: null
     album: null
@@ -851,10 +857,11 @@ getLibSelPos = (type, key) ->
     val.artist = mpd.search_results.artists[0]
   return val
 
-libPosToArr = (lib_pos) -> [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
+function libPosToArr (lib_pos)
+  [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
 
 # modifies in place
-prevLibPos = !(lib_pos) ->
+!function prevLibPos (lib_pos)
   if lib_pos.track?
     lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos - 1]
   else if lib_pos.album?
@@ -869,7 +876,7 @@ prevLibPos = !(lib_pos) ->
         lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
 
 # modifies in place
-nextLibPos = !(lib_pos) ->
+!function nextLibPos (lib_pos)
   if lib_pos.track?
     lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
     if not lib_pos.track?
@@ -888,7 +895,7 @@ nextLibPos = !(lib_pos) ->
     else
       lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
 
-selectLibraryPosition = !(lib_pos) ->
+!function selectLibraryPosition (lib_pos)
   if lib_pos.track?
     selection.ids.track[lib_pos.track.file] = true
   else if lib_pos.album?
@@ -896,13 +903,13 @@ selectLibraryPosition = !(lib_pos) ->
   else if lib_pos.artist?
     selection.ids.artist[lib_pos.artist.key] = true
 
-queueFilesPos = ->
+function queueFilesPos
   pos = mpd.playlist.item_list.length
   return pos unless server_status?
   for item, i of mpd.playlist.item_list
     return i if server_status.random_ids[item.id]?
 
-queueLibSelection = (event) ->
+function queueLibSelection (event)
   files = selectionToFiles(event.altKey)
   if event.shiftKey
     mpd.queueFilesNext files
@@ -910,7 +917,7 @@ queueLibSelection = (event) ->
     mpd.queueFiles files, queueFilesPos()
   return false
 
-sendAuth = !->
+!function sendAuth
   pass = localStorage.auth_password
   return unless pass?
   mpd.authenticate pass, !(err) ->
@@ -919,7 +926,7 @@ sendAuth = !->
     renderSettings()
   socket.emit 'Password', pass
 
-settingsAuthSave = !->
+!function settingsAuthSave
   settings_ui.auth.show_edit = false
   $text_box = $('#auth-password')
   localStorage.auth_password = $text_box.val()
@@ -927,11 +934,11 @@ settingsAuthSave = !->
   renderSettings()
   sendAuth()
 
-settingsAuthCancel = !->
+!function settingsAuthCancel
   settings_ui.auth.show_edit = false
   renderSettings()
 
-performDrag = !(event, callbacks) ->
+!function performDrag (event, callbacks)
   abortDrag()
   start_drag_x = event.pageX
   start_drag_y = event.pageY
@@ -947,7 +954,7 @@ performDrag = !(event, callbacks) ->
 
     abortDrag := !->
 
-  onDragMove = !(event) ->
+  !function onDragMove (event)
     if not started_drag
       dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2)
       started_drag := true if dist > 64
@@ -956,7 +963,7 @@ performDrag = !(event, callbacks) ->
     $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
     $("\#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
 
-  onDragEnd = !(event) ->
+  !function onDragEnd (event)
     return false unless event.which is 1
 
     if started_drag
@@ -971,7 +978,7 @@ performDrag = !(event, callbacks) ->
 
   onDragMove event
 
-setUpUi = !->
+!function setUpUi
   $document.on 'mouseover', '.hoverable', !(event) ->
     $(this).addClass "ui-state-hover"
   $document.on 'mouseout', '.hoverable', !(event) ->
@@ -1113,7 +1120,7 @@ setUpUi = !->
 
   $library.on 'contextmenu', (event) -> event.altKey
 
-  libraryMouseDown = !(event, sel_name, key) ->
+  !function libraryMouseDown (event, sel_name, key)
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
     if event.which is 1
@@ -1135,7 +1142,7 @@ setUpUi = !->
           old_arr = libPosToArr(old_pos)
           [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
 
-          libraryPositionEqual = (old_pos, new_pos) ->
+          function libraryPositionEqual (old_pos, new_pos)
             old_arr = libPosToArr(old_pos)
             new_arr = libPosToArr(new_pos)
             return Util.compareArrays(old_arr, new_arr) is 0
@@ -1354,7 +1361,7 @@ setUpUi = !->
       $nowplaying_elapsed.html Util.formatTime(ui.value * mpd.status.time)
     start: !(event, ui) -> user_is_seeking := true
     stop: !(event, ui) -> user_is_seeking := false
-  setVol = !(event, ui) ->
+  !function setVol (event, ui)
     return if not event.originalEvent?
     mpd.setVolume ui.value
   $vol_slider.slider do
@@ -1385,7 +1392,7 @@ setUpUi = !->
     'settings'
   ]
 
-  unselectTabs = !->
+  !function unselectTabs
     $lib_tabs.find('li').removeClass 'ui-state-active'
     for tab of tabs
       $("\##{tab}-tab").hide()
@@ -1464,13 +1471,13 @@ setUpUi = !->
 
 # end setUpUi
 
-initHandlebars = !->
+!function initHandlebars
   Handlebars.registerHelper 'time', Util.formatTime
   Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
 
-handleResize = !->
+!function handleResize
   $left_window = $('#left-window')
   $pl_window = $('#playlist-window')
 
@@ -1500,11 +1507,12 @@ handleResize = !->
   resizeChat()
   $pl_header = $pl_window.find('#playlist .header')
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
-resizeChat = !->
+
+!function resizeChat
   height_overshoot = $('#chat-tab').height() - $('#upload').height()
   $chat_list.height $chat_list.height() - height_overshoot
 
-initStreaming = !->
+!function initStreaming
   soundManager.setup do
     url: "/vendor/soundmanager2/"
     flashVersion: 9
@@ -1523,7 +1531,7 @@ $document.ready !->
   if (token = Util.parseQuery(location.search.substring(1))?.token)?
     socket.emit 'LastfmGetSession', token
 
-    refreshPage = !->
+    !function refreshPage
       location.href = "#{location.protocol}//#{location.host}/"
     socket.on 'LastfmGetSessionSuccess', !(data) ->
       params = JSON.parse(data)

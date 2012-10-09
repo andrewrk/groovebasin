@@ -1525,7 +1525,7 @@ function queueLibSelection (event)
 
 !function setUpStoredPlaylistsUi
   genericTreeUi $stored_playlists,
-    toggleExpansion: !($elem) -> # TODO
+    toggleExpansion: togglePlaylistExpansion
     dblclick: !(event) -> # TODO
     leftMouseDown: !(event, type, key) -> # TODO
     rightMouseDown: !(event, type, key) -> # TODO

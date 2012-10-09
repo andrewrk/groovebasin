@@ -2,9 +2,8 @@
   {{#track}}
     <li>
       <div class="clickable" id="{{storedplaylisttrackid file}}" data-key="{{file}}" data-type="track">
-        <div class="ui-icon ui-icon-triangle-1-e"></div>
         <span>
-          {{#if track}}{{track}}. {{/if}}{{artist.name}} - {{name}}
+          {{#if track}}{{track}}. {{/if}}{{#if artist.name}}{{artist.name}} - {{/if}}{{name}}
         </span>
       </div>
     </li>

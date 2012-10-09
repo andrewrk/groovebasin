@@ -73,10 +73,10 @@ module.exports = class Upload extends Plugin
       return cb(err) if err
       @mpd.getFileInfo "file://#{tmp_with_ext}", !(err, track) ~>
         if err
-          suggested_path = getSuggestedPath(track, remote_filename)
-        else
           console.warn "Unable to read tags to get a suggested upload path: #{err.stack}"
           suggested_path = remote_filename
+        else
+          suggested_path = getSuggestedPath(track, remote_filename)
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
         fse.mkdir path.dirname(dest), !(err) ~>

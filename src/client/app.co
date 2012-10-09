@@ -102,29 +102,32 @@ local_state =
   auth_password: null
 
 # cache jQuery objects
-$document = $(document)
-$playlist_items = $('#playlist-items')
-$dynamic_mode = $('#dynamic-mode')
-$pl_btn_repeat = $('#pl-btn-repeat')
-$stream_btn = $('#stream-btn')
-$lib_tabs = $('#lib-tabs')
-$upload_tab = $('#lib-tabs .upload-tab')
-$chat_tab = $('#lib-tabs .chat-tab')
-$library = $('#library')
-$track_slider = $('#track-slider')
-$nowplaying = $('#nowplaying')
-$nowplaying_elapsed = $nowplaying.find('.elapsed')
-$nowplaying_left = $nowplaying.find('.left')
-$vol_slider = $('#vol-slider')
-$chat_user_list = $('#chat-user-list')
-$chat_list = $('#chat-list')
-$chat_user_id_span = $('#user-id')
-$settings = $('#settings')
-$upload_by_url = $('#upload-by-url')
-$main_err_msg = $('#main-err-msg')
-$main_err_msg_text = $('#main-err-msg-text')
-$stored_playlists = $('#stored-playlists')
-$upload = $('#upload')
+const
+  $document = $(document)
+  $pl_window = $('#playlist-window')
+  $left_window = $('#left-window')
+  $playlist_items = $('#playlist-items')
+  $dynamic_mode = $('#dynamic-mode')
+  $pl_btn_repeat = $('#pl-btn-repeat')
+  $stream_btn = $('#stream-btn')
+  $lib_tabs = $('#lib-tabs')
+  $upload_tab = $('#lib-tabs .upload-tab')
+  $chat_tab = $('#lib-tabs .chat-tab')
+  $library = $('#library')
+  $track_slider = $('#track-slider')
+  $nowplaying = $('#nowplaying')
+  $nowplaying_elapsed = $nowplaying.find('.elapsed')
+  $nowplaying_left = $nowplaying.find('.left')
+  $vol_slider = $('#vol-slider')
+  $chat_user_list = $('#chat-user-list')
+  $chat_list = $('#chat-list')
+  $chat_user_id_span = $('#user-id')
+  $settings = $('#settings')
+  $upload_by_url = $('#upload-by-url')
+  $main_err_msg = $('#main-err-msg')
+  $main_err_msg_text = $('#main-err-msg-text')
+  $stored_playlists = $('#stored-playlists')
+  $upload = $('#upload')
 
 !function saveLocalState
   localStorage.state = JSON.stringify(local_state)
@@ -1010,14 +1013,29 @@ function queueLibSelection (event)
 
   onDragMove event
 
-!function setUpUi
+!function setUpGenericUi
   $document.on 'mouseover', '.hoverable', !(event) ->
     $(this).addClass "ui-state-hover"
   $document.on 'mouseout', '.hoverable', !(event) ->
     $(this).removeClass "ui-state-hover"
   $(".jquery-button").button()
 
-  $pl_window = $('#playlist-window')
+  # delete context menu
+  $document.on 'mousedown', !->
+    removeContextMenu()
+    selection.type = null
+    refreshSelection()
+
+  $document.on 'keydown', (event) ->
+    if (handler = keyboard_handlers[event.which])? and
+        (not handler.ctrl? or handler.ctrl is event.ctrlKey) and
+        (not handler.alt? or handler.alt is event.altKey) and
+        (not handler.shift? or handler.shift is event.shiftKey)
+      handler.handler event
+      return false
+    return true
+
+!function setUpPlaylistUi
   $pl_window.on 'click', 'button.clear', !->
     mpd.clear()
   $pl_window.on 'click', 'button.shuffle', !->
@@ -1127,20 +1145,7 @@ function queueLibSelection (event)
   # don't remove selection in playlist click
   $playlist_items.on 'mousedown', -> false
 
-  # delete context menu
-  $document.on 'mousedown', !->
-    removeContextMenu()
-    selection.type = null
-    refreshSelection()
-  $document.on 'keydown', (event) ->
-    if (handler = keyboard_handlers[event.which])? and
-        (not handler.ctrl? or handler.ctrl is event.ctrlKey) and
-        (not handler.alt? or handler.alt is event.altKey) and
-        (not handler.shift? or handler.shift is event.shiftKey)
-      handler.handler event
-      return false
-    return true
-
+!function setUpLibraryUi
   $library.on 'mousedown', 'div.expandable > div.ui-icon', (event) ->
     toggleExpansion $(this).closest("li")
     return false
@@ -1327,6 +1332,7 @@ function queueLibSelection (event)
   $lib_filter.on 'keyup', !(event) ->
     mpd.search $(event.target).val()
 
+!function setUpChatUi
   $chat_name_input = $('#chat-name-input')
   $chat_user_id_span.on 'click', !(event) ->
     $chat_input.attr "disabled", "disabled"
@@ -1371,11 +1377,12 @@ function queueLibSelection (event)
       socket.emit 'Chat', message
       return false
 
+!function setUpNowPlayingUi
   actions =
-    'toggle': togglePlayback
-    'prev': !-> mpd.prev()
-    'next': !-> mpd.next()
-    'stop': !-> mpd.stop()
+    toggle: togglePlayback
+    prev: !-> mpd.prev()
+    next: !-> mpd.next()
+    stop: !-> mpd.stop()
 
   for cls, action in actions
     let cls, action
@@ -1413,6 +1420,7 @@ function queueLibSelection (event)
       primary: "ui-icon-signal-diag"
   $stream_btn.on 'click', toggleStreamStatus
 
+!function setUpTabsUi
   $lib_tabs.on 'mouseover', 'li', !(event) ->
     $(this).addClass 'ui-state-hover'
   $lib_tabs.on 'mouseout', 'li', !(event) ->
@@ -1444,11 +1452,21 @@ function queueLibSelection (event)
       $lib_tabs.on 'click', "li.#{tab}-tab", !(event) ->
         clickTab tab
 
+!function setUpUploadUi
   uploader = new qq.FileUploader do
     element: document.getElementById("upload-widget")
     action: '/upload'
     encoding: 'multipart'
+  $upload_by_url.on 'keydown', !(event) ->
+    event.stopPropagation()
+    if event.which is 27
+      $upload_by_url.val("").blur()
+    else if event.which is 13
+      url = $upload_by_url.val()
+      $upload_by_url.val("").blur()
+      socket.emit 'ImportTrackUrl', url
 
+!function setUpSettingsUi
   $settings.on 'click', '.signout', !(event) ->
     local_state.lastfm.username = null
     local_state.lastfm.session_key = null
@@ -1497,16 +1515,15 @@ function queueLibSelection (event)
   $settings.on 'keyup', '#auth-password', !(event) ->
     settings_ui.auth.password = $(this).val()
 
-  $upload_by_url.on 'keydown', !(event) ->
-    event.stopPropagation()
-    if event.which is 27
-      $upload_by_url.val("").blur()
-    else if event.which is 13
-      url = $upload_by_url.val()
-      $upload_by_url.val("").blur()
-      socket.emit 'ImportTrackUrl', url
-
-# end setUpUi
+!function setUpUi
+  setUpGenericUi()
+  setUpPlaylistUi()
+  setUpLibraryUi()
+  setUpChatUi()
+  setUpNowPlayingUi()
+  setUpTabsUi()
+  setUpUploadUi()
+  setUpSettingsUi()
 
 !function initHandlebars
   Handlebars.registerHelper 'time', Util.formatTime
@@ -1517,9 +1534,6 @@ function queueLibSelection (event)
   Handlebars.registerHelper 'storedplaylisttrackid', (s) -> "stored-pl-track-#{Util.toHtmlId(s)}"
 
 !function handleResize
-  $left_window = $('#left-window')
-  $pl_window = $('#playlist-window')
-
   # go really small to make the window as small as possible
   $nowplaying.width MARGIN
   $pl_window.height MARGIN

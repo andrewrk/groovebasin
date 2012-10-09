@@ -1,0 +1,14 @@
+{{#if stored_playlists}}
+  <ul>
+    {{#stored_playlists}}
+      <li>
+        {{name}}
+      </li>
+    {{/stored_playlists}}
+  </ul>
+{{else}}
+  <p class="ui-state-highlight ui-corner-all">
+    <span class="ui-icon ui-icon-info"></span>
+    <strong>No Playlists</strong>
+  </p>
+{{/if}}

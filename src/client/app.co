@@ -1,3 +1,5 @@
+#depend "handlebars.runtime" bare
+#depend "views" bare
 #depend "util"
 #depend "mpd" bare
 #depend "jquery-1.8.2.min" bare
@@ -52,8 +54,10 @@ selection =
     else
       return false
 
-const BASE_TITLE = document.title
-const MARGIN = 10
+const
+  BASE_TITLE = document.title
+  MARGIN = 10
+  AUTO_EXPAND_LIMIT = 20
 
 server_status = null
 permissions = {}
@@ -119,6 +123,8 @@ $settings = $('#settings')
 $upload_by_url = $('#upload-by-url')
 $main_err_msg = $('#main-err-msg')
 $main_err_msg_text = $('#main-err-msg-text')
+$stored_playlists = $('#stored-playlists')
+$upload = $('#upload')
 
 !function saveLocalState
   localStorage.state = JSON.stringify(local_state)
@@ -345,6 +351,13 @@ function getDragPosition (x, y)
   labelPlaylistItems()
   $playlist_items.scrollTop(scroll_top)
 
+!function renderStoredPlaylists
+  context =
+    stored_playlists: mpd.stored_playlists
+  scroll_top = $stored_playlists.scrollTop()
+  $stored_playlists.html Handlebars.templates.stored_playlists(context)
+  $stored_playlists.scrollTop(scroll_top)
+  refreshSelection()
 
 !function labelPlaylistItems
   cur_item = mpd.status.current_item
@@ -402,15 +415,14 @@ function getSelHelpers
   # auto expand small datasets
   $artists = $library.children("ul").children("li")
   node_count = $artists.length
-  const node_count_limit = 20
   !function expandStuff ($li_set)
     for li of $li_set
       $li = $(li)
-      return if node_count >= node_count_limit
+      return if node_count >= AUTO_EXPAND_LIMIT
       $ul = $li.children("ul")
       $sub_li_set = $ul.children("li")
       proposed_node_count = node_count + $sub_li_set.length
-      if proposed_node_count <= node_count_limit
+      if proposed_node_count <= AUTO_EXPAND_LIMIT
         toggleExpansion $li
         # get these vars again because they might have been dynamically added
         # by toggleExpansion
@@ -873,6 +885,11 @@ function getLibSelPos (type, key)
 function libPosToArr (lib_pos)
   [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
 
+function libraryPositionEqual (old_pos, new_pos)
+  old_arr = libPosToArr(old_pos)
+  new_arr = libPosToArr(new_pos)
+  Util.compareArrays(old_arr, new_arr) is 0
+
 # modifies in place
 !function prevLibPos (lib_pos)
   if lib_pos.track?
@@ -1135,119 +1152,120 @@ function queueLibSelection (event)
 
   $library.on 'contextmenu', (event) -> event.altKey
 
+  !function libraryLeftMouseDown (event, sel_name, key)
+    event.preventDefault()
+    removeContextMenu()
+    skip_drag = false
+    if not selection.isLibrary()
+      selection.selectOnly sel_name, key
+    else if event.ctrlKey or event.shiftKey
+      skip_drag = true
+      if event.shiftKey and not event.ctrlKey
+        selection.clear()
+      if event.shiftKey
+        old_pos = getLibSelPos(selection.type, selection.cursor)
+        new_pos = getLibSelPos(sel_name, key)
+
+        # swap if positions are out of order
+        new_arr = libPosToArr(new_pos)
+        old_arr = libPosToArr(old_pos)
+        [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
+
+        while old_pos.artist?
+          selectLibraryPosition old_pos
+          break if libraryPositionEqual(old_pos, new_pos)
+          nextLibPos old_pos
+      else if event.ctrlKey
+        if selection.ids[sel_name][key]?
+          delete selection.ids[sel_name][key]
+        else
+          selection.ids[sel_name][key] = true
+        selection.cursor = key
+        selection.type = sel_name
+    else if not selection.ids[sel_name][key]?
+      selection.selectOnly sel_name, key
+
+    refreshSelection()
+
+    # dragging
+    if not skip_drag
+      performDrag event,
+        complete: !(result, event) ->
+          delta =
+            top: 0
+            bottom: 1
+          new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+          files = selectionToFiles(event.altKey)
+          mpd.queueFiles files, new_pos
+        cancel: !->
+          # we didn't end up dragging, select the item
+          selection.selectOnly sel_name, key
+          refreshSelection()
+
+  !function libraryRightMouseDown (event, sel_name, key)
+    return if event.altKey
+    event.preventDefault()
+
+    removeContextMenu()
+
+    if not selection.isLibrary() or not selection.ids[sel_name][key]?
+      selection.selectOnly sel_name, key
+      refreshSelection()
+
+    # adds a new context menu to the document
+    context =
+      status: server_status
+      permissions: permissions
+    if selection.isMulti()
+      context.download_multi = true
+    else
+      if sel_name is 'track'
+        context.track = mpd.search_results.track_table[key]
+      else
+        context.download_type = sel_name
+        context.escaped_key = escape(key)
+    $(Handlebars.templates.library_menu(context)).appendTo(document.body)
+    $menu = $('#menu') # get the newly created one
+    $menu.offset do
+      left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
+      top: event.pageY+1
+    # don't close menu when you click on the area next to a button
+    $menu.on 'mousedown', -> false
+    $menu.on 'click', '.queue', ->
+      mpd.queueFiles selectionToFiles()
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-next', ->
+      mpd.queueFilesNext selectionToFiles()
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-random', ->
+      mpd.queueFiles selectionToFiles(true)
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-next-random', ->
+      mpd.queueFilesNext selectionToFiles(true)
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.download', ->
+      removeContextMenu()
+      return true
+    $menu.on 'click', '.download-multi', ->
+      removeContextMenu()
+      downloadFiles selectionToFiles()
+      return false
+    $menu.on 'click', '.delete', ->
+      handleDeletePressed(true)
+      removeContextMenu()
+      return false
+
   !function libraryMouseDown (event, sel_name, key)
     # if any text box has focus, unfocus it
     $(document.activeElement).blur()
     if event.which is 1
-      event.preventDefault()
-      removeContextMenu()
-      skip_drag = false
-      if not selection.isLibrary()
-        selection.selectOnly sel_name, key
-      else if event.ctrlKey or event.shiftKey
-        skip_drag = true
-        if event.shiftKey and not event.ctrlKey
-          selection.clear()
-        if event.shiftKey
-          old_pos = getLibSelPos(selection.type, selection.cursor)
-          new_pos = getLibSelPos(sel_name, key)
-
-          # swap if positions are out of order
-          new_arr = libPosToArr(new_pos)
-          old_arr = libPosToArr(old_pos)
-          [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
-
-          function libraryPositionEqual (old_pos, new_pos)
-            old_arr = libPosToArr(old_pos)
-            new_arr = libPosToArr(new_pos)
-            return Util.compareArrays(old_arr, new_arr) is 0
-
-          while old_pos.artist?
-            selectLibraryPosition old_pos
-            break if libraryPositionEqual(old_pos, new_pos)
-            nextLibPos old_pos
-        else if event.ctrlKey
-          if selection.ids[sel_name][key]?
-            delete selection.ids[sel_name][key]
-          else
-            selection.ids[sel_name][key] = true
-          selection.cursor = key
-          selection.type = sel_name
-      else if not selection.ids[sel_name][key]?
-        selection.selectOnly sel_name, key
-
-      refreshSelection()
-
-      # dragging
-      if not skip_drag
-        performDrag event,
-          complete: !(result, event) ->
-            delta =
-              top: 0
-              bottom: 1
-            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-            files = selectionToFiles(event.altKey)
-            mpd.queueFiles files, new_pos
-          cancel: !->
-            # we didn't end up dragging, select the item
-            selection.selectOnly sel_name, key
-            refreshSelection()
+      libraryLeftMouseDown(event, sel_name, key)
     else if event.which = 3
-      return if event.altKey
-      event.preventDefault()
-
-      removeContextMenu()
-
-      if not selection.isLibrary() or not selection.ids[sel_name][key]?
-        selection.selectOnly sel_name, key
-        refreshSelection()
-
-      # adds a new context menu to the document
-      context =
-        status: server_status
-        permissions: permissions
-      if selection.isMulti()
-        context.download_multi = true
-      else
-        if sel_name is 'track'
-          context.track = mpd.search_results.track_table[key]
-        else
-          context.download_type = sel_name
-          context.escaped_key = escape(key)
-      $(Handlebars.templates.library_menu(context)).appendTo(document.body)
-      $menu = $('#menu') # get the newly created one
-      $menu.offset do
-        left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
-        top: event.pageY+1
-      # don't close menu when you click on the area next to a button
-      $menu.on 'mousedown', -> false
-      $menu.on 'click', '.queue', ->
-        mpd.queueFiles selectionToFiles()
-        removeContextMenu()
-        return false
-      $menu.on 'click', '.queue-next', ->
-        mpd.queueFilesNext selectionToFiles()
-        removeContextMenu()
-        return false
-      $menu.on 'click', '.queue-random', ->
-        mpd.queueFiles selectionToFiles(true)
-        removeContextMenu()
-        return false
-      $menu.on 'click', '.queue-next-random', ->
-        mpd.queueFilesNext selectionToFiles(true)
-        removeContextMenu()
-        return false
-      $menu.on 'click', '.download', ->
-        removeContextMenu()
-        return true
-      $menu.on 'click', '.download-multi', ->
-        removeContextMenu()
-        downloadFiles selectionToFiles()
-        return false
-      $menu.on 'click', '.delete', ->
-        handleDeletePressed(true)
-        removeContextMenu()
-        return false
+      libraryRightMouseDown(event, sel_name, key)
 
   $library.on 'mousedown', '.artist', !(event) ->
     libraryMouseDown event, 'artist', $(this).attr('data-key')
@@ -1402,6 +1420,7 @@ function queueLibSelection (event)
 
   tabs = [
     'library'
+    'stored-playlists'
     'upload'
     'chat'
     'settings'
@@ -1521,13 +1540,14 @@ function queueLibSelection (event)
   $lib_header = $('#library-tab .window-header')
   $library.height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
   tab_contents_height = $left_window.height() - $lib_tabs.height() - MARGIN
-  $('#upload').height tab_contents_height
+  $upload.height tab_contents_height
+  $stored_playlists.height tab_contents_height
   resizeChat()
   $pl_header = $pl_window.find('#playlist .header')
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
 
 !function resizeChat
-  height_overshoot = $('#chat-tab').height() - $('#upload').height()
+  height_overshoot = $('#chat-tab').height() - $upload.height()
   $chat_list.height $chat_list.height() - height_overshoot
 
 !function initStreaming
@@ -1535,6 +1555,9 @@ function queueLibSelection (event)
     url: "/vendor/soundmanager2/"
     flashVersion: 9
     debugMode: false
+
+!function refreshPage
+  location.href = "#{location.protocol}//#{location.host}/"
 
 window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf"
 $document.ready !->
@@ -1548,8 +1571,6 @@ $document.ready !->
   if (token = Util.parseQuery(location.search.substring(1))?.token)?
     socket.emit 'LastfmGetSession', token
 
-    !function refreshPage
-      location.href = "#{location.protocol}//#{location.host}/"
     socket.on 'LastfmGetSessionSuccess', !(data) ->
       params = JSON.parse(data)
       local_state.lastfm.username = params.session.name
@@ -1578,7 +1599,6 @@ $document.ready !->
     renderSettings()
   socket.on 'Status', !(data) ->
     server_status := JSON.parse data.toString()
-    storeMyUserIds()
     renderPlaylistButtons()
     renderChat()
     labelPlaylistItems()
@@ -1594,6 +1614,7 @@ $document.ready !->
   mpd.on 'data', !(data) -> socket.emit('ToMpd', data)
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
+  mpd.on 'storedplaylistupdate', renderStoredPlaylists
   mpd.on 'statusupdate', !->
     renderNowPlaying()
     renderPlaylistButtons()

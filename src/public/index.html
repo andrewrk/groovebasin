@@ -39,6 +39,7 @@
     <div id="lib-tabs" class="ui-widget ui-corner-all">
       <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
         <li class="ui-state-default ui-corner-top ui-state-active library-tab"><span>Library</span></li>
+        <li class="ui-state-default ui-corner-top stored-playlists-tab"><span>Playlists</span></li>
         <li class="ui-state-default ui-corner-top upload-tab"><span>Upload</span></li>
         <li class="ui-state-default ui-corner-top chat-tab"><span>Chat</span></li>
         <li class="ui-state-default ui-corner-top settings-tab"><span>Settings</span></li>
@@ -52,6 +53,10 @@
         </select>
       </div>
       <div id="library">
+      </div>
+    </div>
+    <div id="stored-playlists-tab" class="ui-widget-content ui-corner-all" style="display: none">
+      <div id="stored-playlists">
       </div>
     </div>
     <div id="upload-tab" class="ui-widget-content ui-corner-all" style="display: none">
@@ -104,8 +109,6 @@
       <div id="main-err-msg-text">Loading...</div>
     </p>
   </div>
-  <script src="vendor/handlebars.runtime.js"></script>
-  <script src="views.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

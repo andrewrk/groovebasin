@@ -47,8 +47,6 @@ plugins =
       cb()
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin in @objects)
-  cbWhenReady: !(cb) ->
-    async.parallel (plugin~cbWhenReady for name, plugin in @objects), cb
 
 # state management
 const STATE_VERSION = 2 # increment this when layout of state object changes
@@ -68,15 +66,12 @@ async.series [
   plugins~initialize
   restoreState
   readMpdConf
-  !(cb) ->
-    plugins.bus.emit \app, app
-    plugins.bus.emit \save_state, state
-    cb()
-  plugins.cbWhenReady
-  theRestOfBootup
-], assert.ifError
+], !(err) ->
+  assert.ifError(err)
 
-!function theRestOfBootup (cb)
+  plugins.bus.emit \app, app
+  plugins.bus.emit \save_state, state
+
   for [name, enabled] of plugins.featuresList()
     if enabled
       console.info "#{name} is enabled."
@@ -94,7 +89,6 @@ async.series [
   app_server.listen port, host, !->
     process.send 'online'
     console.info "Listening at http://#host:#port"
-    cb()
 
 function oncePerEventLoopFunc (fn)
   queued = false

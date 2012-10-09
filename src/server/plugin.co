@@ -6,21 +6,9 @@ module.exports = class extends EventEmitter
     @mpd = null
     @conf = null
     @is_enabled = true
-    @is_ready = true
     @checkEnabledMiddleware = !(req, resp, next) ~>
       if @is_enabled
         next()
       else
         resp.writeHead 500, {'content-type': 'text/json'}
         resp.end JSON.stringify {success: false, reason: "DisabledEndpoint"}
-    @once \ready, !->
-      @is_ready = true
-      if @ready_callbacks?
-        cb() for cb of @ready_callbacks
-
-  cbWhenReady: !(cb) ->
-    if @is_ready
-      cb()
-    else
-      (@ready_callbacks ||= []).push(cb)
-    

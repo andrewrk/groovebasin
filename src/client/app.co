@@ -114,6 +114,7 @@ const
   $upload_tab = $('#lib-tabs .upload-tab')
   $chat_tab = $('#lib-tabs .chat-tab')
   $library = $('#library')
+  $lib_filter = $('#lib-filter')
   $track_slider = $('#track-slider')
   $nowplaying = $('#nowplaying')
   $nowplaying_elapsed = $nowplaying.find('.elapsed')
@@ -392,9 +393,7 @@ function getSelHelpers
 
   # clear all selection
   $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor')
-  $library.find(".artist").removeClass('selected').removeClass('cursor')
-  $library.find(".album").removeClass('selected').removeClass('cursor')
-  $library.find(".track").removeClass('selected').removeClass('cursor')
+  $library.find(".clickable").removeClass('selected').removeClass('cursor')
 
   return unless selection.type?
 
@@ -528,7 +527,7 @@ function getCurrentTrackPosition
 function toggleExpansion ($li)
   $div = $li.find("> div")
   $ul = $li.find("> ul")
-  if $div.hasClass('artist')
+  if $div.attr('data-type') is 'artist'
     if not $li.data('cached')
       $li.data 'cached', true
       $ul.html Handlebars.templates.albums do
@@ -1145,193 +1144,6 @@ function queueLibSelection (event)
   # don't remove selection in playlist click
   $playlist_items.on 'mousedown', -> false
 
-!function setUpLibraryUi
-  $library.on 'mousedown', 'div.expandable > div.ui-icon', (event) ->
-    toggleExpansion $(this).closest("li")
-    return false
-
-  # suppress double click on the icon
-  $library.on 'dblclick', 'div.expandable > div.ui-icon', -> false
-
-  $library.on 'dblclick', 'div.artist, div.album, div.track', queueLibSelection
-
-  $library.on 'contextmenu', (event) -> event.altKey
-
-  !function libraryLeftMouseDown (event, sel_name, key)
-    event.preventDefault()
-    removeContextMenu()
-    skip_drag = false
-    if not selection.isLibrary()
-      selection.selectOnly sel_name, key
-    else if event.ctrlKey or event.shiftKey
-      skip_drag = true
-      if event.shiftKey and not event.ctrlKey
-        selection.clear()
-      if event.shiftKey
-        old_pos = getLibSelPos(selection.type, selection.cursor)
-        new_pos = getLibSelPos(sel_name, key)
-
-        # swap if positions are out of order
-        new_arr = libPosToArr(new_pos)
-        old_arr = libPosToArr(old_pos)
-        [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
-
-        while old_pos.artist?
-          selectLibraryPosition old_pos
-          break if libraryPositionEqual(old_pos, new_pos)
-          nextLibPos old_pos
-      else if event.ctrlKey
-        if selection.ids[sel_name][key]?
-          delete selection.ids[sel_name][key]
-        else
-          selection.ids[sel_name][key] = true
-        selection.cursor = key
-        selection.type = sel_name
-    else if not selection.ids[sel_name][key]?
-      selection.selectOnly sel_name, key
-
-    refreshSelection()
-
-    # dragging
-    if not skip_drag
-      performDrag event,
-        complete: !(result, event) ->
-          delta =
-            top: 0
-            bottom: 1
-          new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-          files = selectionToFiles(event.altKey)
-          mpd.queueFiles files, new_pos
-        cancel: !->
-          # we didn't end up dragging, select the item
-          selection.selectOnly sel_name, key
-          refreshSelection()
-
-  !function libraryRightMouseDown (event, sel_name, key)
-    return if event.altKey
-    event.preventDefault()
-
-    removeContextMenu()
-
-    if not selection.isLibrary() or not selection.ids[sel_name][key]?
-      selection.selectOnly sel_name, key
-      refreshSelection()
-
-    # adds a new context menu to the document
-    context =
-      status: server_status
-      permissions: permissions
-    if selection.isMulti()
-      context.download_multi = true
-    else
-      if sel_name is 'track'
-        context.track = mpd.search_results.track_table[key]
-      else
-        context.download_type = sel_name
-        context.escaped_key = escape(key)
-    $(Handlebars.templates.library_menu(context)).appendTo(document.body)
-    $menu = $('#menu') # get the newly created one
-    $menu.offset do
-      left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
-      top: event.pageY+1
-    # don't close menu when you click on the area next to a button
-    $menu.on 'mousedown', -> false
-    $menu.on 'click', '.queue', ->
-      mpd.queueFiles selectionToFiles()
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-next', ->
-      mpd.queueFilesNext selectionToFiles()
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-random', ->
-      mpd.queueFiles selectionToFiles(true)
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-next-random', ->
-      mpd.queueFilesNext selectionToFiles(true)
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.download', ->
-      removeContextMenu()
-      return true
-    $menu.on 'click', '.download-multi', ->
-      removeContextMenu()
-      downloadFiles selectionToFiles()
-      return false
-    $menu.on 'click', '.delete', ->
-      handleDeletePressed(true)
-      removeContextMenu()
-      return false
-
-  !function libraryMouseDown (event, sel_name, key)
-    # if any text box has focus, unfocus it
-    $(document.activeElement).blur()
-    if event.which is 1
-      libraryLeftMouseDown(event, sel_name, key)
-    else if event.which = 3
-      libraryRightMouseDown(event, sel_name, key)
-
-  $library.on 'mousedown', '.artist', !(event) ->
-    libraryMouseDown event, 'artist', $(this).attr('data-key')
-
-  $library.on 'mousedown', '.album', !(event) ->
-    libraryMouseDown event, 'album', $(this).attr('data-key')
-
-  $library.on 'mousedown', '.track', !(event) ->
-    libraryMouseDown event, 'track', $(this).attr('data-file')
-
-  $library.on 'mousedown', -> false
-
-  $lib_filter = $('#lib-filter')
-  $lib_filter.on 'keydown', (event) ->
-    event.stopPropagation()
-    switch event.which
-      case 27
-        # if the box is blank, remove focus
-        if $(event.target).val().length is 0
-          $(event.target).blur()
-        else
-          # defer the setting of the text box until after the event loop to
-          # work around a firefox bug
-          Util.wait 0, !->
-            $(event.target).val("")
-            mpd.search ""
-        return false
-      case 13
-        # queue all the search results
-        files = []
-        for artist of mpd.search_results.artists
-          for album of artist.albums
-            for track of album.tracks
-              files.push track.file
-
-        if event.altKey
-          Util.shuffle(files)
-
-        if files.length > 2000
-          return false unless confirm("You are about to queue #{files.length} songs.")
-
-        if event.shiftKey
-          mpd.queueFilesNext files
-        else
-          mpd.queueFiles files, queueFilesPos()
-        return false
-      case 40 # down
-        # select the first item in the library
-        selection.selectOnly 'artist', mpd.search_results.artists[0].key
-        refreshSelection()
-        $lib_filter.blur()
-        return false
-      case 38 # up
-        # select the last item in the library
-        selection.selectOnly 'artist', mpd.search_results.artists[mpd.search_results.artists.length - 1].key
-        refreshSelection()
-        $lib_filter.blur()
-        return false
-  $lib_filter.on 'keyup', !(event) ->
-    mpd.search $(event.target).val()
-
 !function setUpChatUi
   $chat_name_input = $('#chat-name-input')
   $chat_user_id_span.on 'click', !(event) ->
@@ -1515,10 +1327,200 @@ function queueLibSelection (event)
   $settings.on 'keyup', '#auth-password', !(event) ->
     settings_ui.auth.password = $(this).val()
 
+!function setUpLibraryUi
+  $lib_filter.on 'keydown', (event) ->
+    event.stopPropagation()
+    switch event.which
+      case 27
+        # if the box is blank, remove focus
+        if $(event.target).val().length is 0
+          $(event.target).blur()
+        else
+          # defer the setting of the text box until after the event loop to
+          # work around a firefox bug
+          Util.wait 0, !->
+            $(event.target).val("")
+            mpd.search ""
+        return false
+      case 13
+        # queue all the search results
+        files = []
+        for artist of mpd.search_results.artists
+          for album of artist.albums
+            for track of album.tracks
+              files.push track.file
+
+        if event.altKey
+          Util.shuffle(files)
+
+        if files.length > 2000
+          return false unless confirm("You are about to queue #{files.length} songs.")
+
+        if event.shiftKey
+          mpd.queueFilesNext files
+        else
+          mpd.queueFiles files, queueFilesPos()
+        return false
+      case 40 # down
+        # select the first item in the library
+        selection.selectOnly 'artist', mpd.search_results.artists[0].key
+        refreshSelection()
+        $lib_filter.blur()
+        return false
+      case 38 # up
+        # select the last item in the library
+        selection.selectOnly 'artist', mpd.search_results.artists[mpd.search_results.artists.length - 1].key
+        refreshSelection()
+        $lib_filter.blur()
+        return false
+
+  $lib_filter.on 'keyup', !(event) ->
+    mpd.search $(event.target).val()
+
+  !function libraryLeftMouseDown (event, sel_name, key)
+    event.preventDefault()
+    removeContextMenu()
+    skip_drag = false
+    if not selection.isLibrary()
+      selection.selectOnly sel_name, key
+    else if event.ctrlKey or event.shiftKey
+      skip_drag = true
+      if event.shiftKey and not event.ctrlKey
+        selection.clear()
+      if event.shiftKey
+        old_pos = getLibSelPos(selection.type, selection.cursor)
+        new_pos = getLibSelPos(sel_name, key)
+
+        # swap if positions are out of order
+        new_arr = libPosToArr(new_pos)
+        old_arr = libPosToArr(old_pos)
+        [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
+
+        while old_pos.artist?
+          selectLibraryPosition old_pos
+          break if libraryPositionEqual(old_pos, new_pos)
+          nextLibPos old_pos
+      else if event.ctrlKey
+        if selection.ids[sel_name][key]?
+          delete selection.ids[sel_name][key]
+        else
+          selection.ids[sel_name][key] = true
+        selection.cursor = key
+        selection.type = sel_name
+    else if not selection.ids[sel_name][key]?
+      selection.selectOnly sel_name, key
+
+    refreshSelection()
+
+    # dragging
+    if not skip_drag
+      performDrag event,
+        complete: !(result, event) ->
+          delta =
+            top: 0
+            bottom: 1
+          new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+          files = selectionToFiles(event.altKey)
+          mpd.queueFiles files, new_pos
+        cancel: !->
+          # we didn't end up dragging, select the item
+          selection.selectOnly sel_name, key
+          refreshSelection()
+
+  !function libraryRightMouseDown (event, sel_name, key)
+    return if event.altKey
+    event.preventDefault()
+
+    removeContextMenu()
+
+    if not selection.isLibrary() or not selection.ids[sel_name][key]?
+      selection.selectOnly sel_name, key
+      refreshSelection()
+
+    # adds a new context menu to the document
+    context =
+      status: server_status
+      permissions: permissions
+    if selection.isMulti()
+      context.download_multi = true
+    else
+      if sel_name is 'track'
+        context.track = mpd.search_results.track_table[key]
+      else
+        context.download_type = sel_name
+        context.escaped_key = escape(key)
+    $(Handlebars.templates.library_menu(context)).appendTo(document.body)
+    $menu = $('#menu') # get the newly created one
+    $menu.offset do
+      left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
+      top: event.pageY+1
+    # don't close menu when you click on the area next to a button
+    $menu.on 'mousedown', -> false
+    $menu.on 'click', '.queue', ->
+      mpd.queueFiles selectionToFiles()
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-next', ->
+      mpd.queueFilesNext selectionToFiles()
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-random', ->
+      mpd.queueFiles selectionToFiles(true)
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.queue-next-random', ->
+      mpd.queueFilesNext selectionToFiles(true)
+      removeContextMenu()
+      return false
+    $menu.on 'click', '.download', ->
+      removeContextMenu()
+      return true
+    $menu.on 'click', '.download-multi', ->
+      removeContextMenu()
+      downloadFiles selectionToFiles()
+      return false
+    $menu.on 'click', '.delete', ->
+      handleDeletePressed(true)
+      removeContextMenu()
+      return false
+
+  genericTreeUi $library,
+    toggleExpansion: toggleExpansion
+    dblclick: queueLibSelection
+    leftMouseDown: libraryLeftMouseDown
+    rightMouseDown: libraryRightMouseDown
+
+!function genericTreeUi ($elem, options)
+  $elem.on 'mousedown', 'div.expandable > div.ui-icon', (event) ->
+    options.toggleExpansion $(this).closest('li')
+    return false
+
+  # suppress double click on the icon
+  $elem.on 'dblclick', 'div.expandable > div.ui-icon', -> false
+  $elem.on 'dblclick', 'div.clickable', options.dblclick
+  $elem.on 'contextmenu', (event) -> event.altKey
+
+  $elem.on 'mousedown', '.clickable', !(event) ->
+    # if any text box has focus, unfocus it
+    $(document.activeElement).blur()
+    $this = $(this)
+    type = $this.attr('data-type')
+    key = $this.attr('data-key')
+    if event.which is 1
+      options.leftMouseDown event, type, key
+    else if event.which is 3
+      options.rightMouseDown event, type, key
+
+  $elem.on 'mousedown', -> false
+
+!function setUpStoredPlaylistsUi
+  ...
+
 !function setUpUi
   setUpGenericUi()
   setUpPlaylistUi()
   setUpLibraryUi()
+  #setUpStoredPlaylistsUi()
   setUpChatUi()
   setUpNowPlayingUi()
   setUpTabsUi()

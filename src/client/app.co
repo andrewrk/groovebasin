@@ -58,6 +58,8 @@ const
   BASE_TITLE = document.title
   MARGIN = 10
   AUTO_EXPAND_LIMIT = 20
+  ICON_COLLAPSED = 'ui-icon-triangle-1-e'
+  ICON_EXPANDED = 'ui-icon-triangle-1-se'
 
 server_status = null
 permissions = {}
@@ -425,9 +427,9 @@ function getSelHelpers
       $sub_li_set = $ul.children("li")
       proposed_node_count = node_count + $sub_li_set.length
       if proposed_node_count <= AUTO_EXPAND_LIMIT
-        toggleExpansion $li
+        toggleLibraryExpansion $li
         # get these vars again because they might have been dynamically added
-        # by toggleExpansion
+        # by toggleLibraryExpansion
         $ul = $li.children("ul")
         $sub_li_set = $ul.children("li")
         node_count := proposed_node_count
@@ -523,25 +525,33 @@ function getCurrentTrackPosition
 
   handleResize()
 
-
-function toggleExpansion ($li)
+!function genericToggleExpansion ($li, options)
   $div = $li.find("> div")
   $ul = $li.find("> ul")
-  if $div.attr('data-type') is 'artist'
+  if $div.attr('data-type') is options.top_level_type
     if not $li.data('cached')
       $li.data 'cached', true
-      $ul.html Handlebars.templates.albums do
-        albums: mpd.search_results.artist_table[$div.attr('data-key')].albums
+      $ul.html options.template(options.context($div.attr('data-key')))
       $ul.toggle()
       refreshSelection()
-
   $ul.toggle()
 
-  old_class = 'ui-icon-triangle-1-se'
-  new_class = 'ui-icon-triangle-1-e'
+  old_class = ICON_EXPANDED
+  new_class = ICON_COLLAPSED
   [new_class, old_class] = [old_class, new_class] if $ul.is(":visible")
   $div.find("div").removeClass(old_class).addClass(new_class)
-  return false
+
+!function togglePlaylistExpansion ($li)
+  genericToggleExpansion $li,
+    top_level_type: 'playlist'
+    template: Handlebars.templates.playlist_items
+    context: (key) -> item_list: mpd.stored_playlist_table[key].item_list
+
+function toggleLibraryExpansion ($li)
+  genericToggleExpansion $li,
+    top_level_type: 'artist'
+    template: Handlebars.templates.albums
+    context: (key) -> albums: mpd.search_results.artist_table[key].albums
 
 function confirmDelete (files_list)
   list_text = files_list.slice(0, 7).join("\n  ")
@@ -699,10 +709,10 @@ keyboard_handlers = do ->
       cursor_pos = getLibSelPos(selection.type, selection.cursor)
       if dir > 0
         # expand and jump to child
-        toggleExpansion $li unless is_expanded
+        toggleLibraryExpansion $li unless is_expanded
       else
         # collapse; if already collapsed, jump to parent
-        toggleExpansion $li if is_expanded
+        toggleLibraryExpansion $li if is_expanded
     else
       if event.ctrlKey
         if dir > 0 then mpd.next() else mpd.prev()
@@ -1485,7 +1495,7 @@ function queueLibSelection (event)
       return false
 
   genericTreeUi $library,
-    toggleExpansion: toggleExpansion
+    toggleExpansion: toggleLibraryExpansion
     dblclick: queueLibSelection
     leftMouseDown: libraryLeftMouseDown
     rightMouseDown: libraryRightMouseDown
@@ -1514,13 +1524,17 @@ function queueLibSelection (event)
   $elem.on 'mousedown', -> false
 
 !function setUpStoredPlaylistsUi
-  ...
+  genericTreeUi $stored_playlists,
+    toggleExpansion: !($elem) -> # TODO
+    dblclick: !(event) -> # TODO
+    leftMouseDown: !(event, type, key) -> # TODO
+    rightMouseDown: !(event, type, key) -> # TODO
 
 !function setUpUi
   setUpGenericUi()
   setUpPlaylistUi()
   setUpLibraryUi()
-  #setUpStoredPlaylistsUi()
+  setUpStoredPlaylistsUi()
   setUpChatUi()
   setUpNowPlayingUi()
   setUpTabsUi()

@@ -1,0 +1,12 @@
+{{#item_list}}
+  {{#track}}
+    <li>
+      <div class="clickable" id="{{storedplaylisttrackid file}}" data-key="{{file}}" data-type="track">
+        <div class="ui-icon ui-icon-triangle-1-e"></div>
+        <span>
+          {{#if track}}{{track}}. {{/if}}{{artist.name}} - {{name}}
+        </span>
+      </div>
+    </li>
+  {{/track}}
+{{/item_list}}

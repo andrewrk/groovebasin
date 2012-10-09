@@ -68,7 +68,6 @@ trying_to_stream = false
 actually_streaming = false
 streaming_buffering = false
 my_user_id = null
-my_user_ids = {}
 chat_name_input_visible = false
 
 LoadStatus =
@@ -87,6 +86,16 @@ settings_ui =
   auth:
     show_edit: false
     password: ""
+
+# defaults
+local_state =
+  my_user_ids: {}
+  user_name: null
+  lastfm:
+    username: null
+    session_key: null
+    scrobbling_on: false
+  auth_password: null
 
 # cache jQuery objects
 $document = $(document)
@@ -111,6 +120,13 @@ $upload_by_url = $('#upload-by-url')
 $main_err_msg = $('#main-err-msg')
 $main_err_msg_text = $('#main-err-msg-text')
 
+!function saveLocalState
+  localStorage.state = JSON.stringify(local_state)
+
+!function loadLocalState
+  if (state_string = localStorage.state)?
+    local_state := JSON.parse(state_string)
+
 function haveUserName
   server_status?.user_names[my_user_id]?
 
@@ -122,12 +138,12 @@ function userIdToUserName (user_id)
   user_name = server_status.user_names[user_id]
   return user_name ? user_id
 
-!function storeMyUserIds
-  localStorage?.my_user_ids = JSON.stringify my_user_ids
-
 !function setUserName (new_name)
   new_name = $.trim new_name
-  localStorage?.user_name = new_name
+
+  local_state.user_name = new_name
+  saveLocalState()
+
   socket.emit 'SetUserName', new_name
 
 !function scrollLibraryToSelection
@@ -236,12 +252,12 @@ function getDragPosition (x, y)
   context =
     lastfm:
       auth_url: "http://www.last.fm/api/auth/?api_key=#{escape(api_key)}&cb=#{location.protocol}//#{location.host}/"
-      username: localStorage.lastfm_username
-      session_key: localStorage.lastfm_session_key
-      scrobbling_on: localStorage.lastfm_scrobbling_on?
+      username: local_state.lastfm.username
+      session_key: local_state.lastfm.session_key
+      scrobbling_on: local_state.lastfm.scrobbling_on
     auth:
-      password: localStorage.auth_password
-      show_edit: not localStorage.auth_password? or settings_ui.auth.show_edit
+      password: local_state.auth_password
+      show_edit: not local_state.auth_password? or settings_ui.auth.show_edit
       permissions: permissions
     misc:
       stream_url: getStreamUrl()
@@ -269,7 +285,7 @@ function getDragPosition (x, y)
     } for user_id of users)
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
     for chat_object of server_status.chats
-      chat_object["class"] = if my_user_ids[chat_object.user_id]? then "chat-user-self" else "chat-user"
+      chat_object["class"] = if local_state.my_user_ids[chat_object.user_id]? then "chat-user-self" else "chat-user"
       chat_object.user_name = userIdToUserName chat_object.user_id
     $chat_user_list.html Handlebars.templates.chat_user_list do
       users: user_objects
@@ -328,9 +344,6 @@ function getDragPosition (x, y)
   refreshSelection()
   labelPlaylistItems()
   $playlist_items.scrollTop(scroll_top)
-
-!function renderStoredPlaylists
-  context = {}
 
 
 !function labelPlaylistItems
@@ -918,18 +931,20 @@ function queueLibSelection (event)
   return false
 
 !function sendAuth
-  pass = localStorage.auth_password
+  pass = local_state.auth_password
   return unless pass?
   mpd.authenticate pass, !(err) ->
     if err
-      delete localStorage.auth_password
+      local_state.auth_password = null
+      saveLocalState()
     renderSettings()
   socket.emit 'Password', pass
 
 !function settingsAuthSave
   settings_ui.auth.show_edit = false
   $text_box = $('#auth-password')
-  localStorage.auth_password = $text_box.val()
+  local_state.auth_password = $text_box.val()
+  saveLocalState()
   # try to auth
   renderSettings()
   sendAuth()
@@ -1416,23 +1431,25 @@ function queueLibSelection (event)
     encoding: 'multipart'
 
   $settings.on 'click', '.signout', !(event) ->
-    delete localStorage?.lastfm_username
-    delete localStorage?.lastfm_session_key
-    delete localStorage?.lastfm_scrobbling_on
+    local_state.lastfm.username = null
+    local_state.lastfm.session_key = null
+    local_state.lastfm.scrobbling_on = false
+    saveLocalState()
     renderSettings()
     return false
   $settings.on 'click', '#toggle-scrobble', (event) ->
     value = $(this).prop("checked")
     if value
       msg = 'LastfmScrobblersAdd'
-      localStorage?.lastfm_scrobbling_on = true
+      local_state.lastfm.scrobbling_on = true
     else
       msg = 'LastfmScrobblersRemove'
-      delete localStorage?.lastfm_scrobbling_on
+      local_state.lastfm.scrobbling_on = false
+    saveLocalState()
 
     params =
-      username: localStorage?.lastfm_username
-      session_key: localStorage?.lastfm_session_key
+      username: local_state.lastfm.username
+      session_key: local_state.lastfm.session_key
     socket.emit msg, JSON.stringify(params)
     renderSettings()
     return false
@@ -1440,9 +1457,10 @@ function queueLibSelection (event)
     settings_ui.auth.show_edit = true
     renderSettings()
     $text_box = $('#auth-password')
-    $text_box.focus().val(localStorage.auth_password ? "").select()
+    $text_box.focus().val(local_state.auth_password ? "").select()
   $settings.on 'click', '.auth-clear', !(event) ->
-    delete localStorage.auth_password
+    local_state.auth_password = null
+    saveLocalState()
     settings_ui.auth.password = ""
     renderSettings()
   $settings.on 'click', '.auth-save', !(event) ->
@@ -1520,8 +1538,7 @@ function queueLibSelection (event)
 
 window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf"
 $document.ready !->
-  if localStorage?.my_user_ids?
-    my_user_ids := JSON.parse localStorage.my_user_ids
+  loadLocalState()
 
   socket := io.connect()
 
@@ -1535,9 +1552,10 @@ $document.ready !->
       location.href = "#{location.protocol}//#{location.host}/"
     socket.on 'LastfmGetSessionSuccess', !(data) ->
       params = JSON.parse(data)
-      localStorage?.lastfm_username = params.session.name
-      localStorage?.lastfm_session_key = params.session.key
-      delete localStorage?.lastfm_scrobbling_on
+      local_state.lastfm.username = params.session.name
+      local_state.lastfm.session_key = params.session.key
+      local_state.lastfm.scrobbling_on = false
+      saveLocalState()
       refreshPage()
     socket.on 'LastfmGetSessionError', !(data) ->
       params = JSON.parse(data)
@@ -1551,9 +1569,9 @@ $document.ready !->
 
   socket.on 'Identify', !(data) ->
     my_user_id := data.toString()
-    my_user_ids[my_user_id] = 1
-    storeMyUserIds()
-    if (user_name = localStorage?.user_name)?
+    local_state.my_user_ids[my_user_id] = 1
+    saveLocalState()
+    if (user_name = local_state.user_name)?
       setUserName user_name
   socket.on 'Permissions', !(data) ->
     permissions := JSON.parse data.toString()

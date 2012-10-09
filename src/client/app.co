@@ -14,19 +14,26 @@ selection =
     artist: {}
     album: {}
     track: {}
+    stored_playlist: {}
+    stored_playlist_item: {}
   cursor: null # the last touched id
-  type: null # 'playlist', 'artist', 'album', or 'track'
+  type: null # one of the children of ids
   isLibrary: ->
     return false if not @type?
-    return @type is not 'playlist'
+    return @type of <[artist album track]>
   isPlaylist: ->
     return false if not @type?
     return @type is 'playlist'
+  isStoredPlaylist: ->
+    return false if not @type?
+    return @type of <[stored_playlist stored_playlist_item]>
   clear: !->
     @ids.artist = {}
     @ids.album = {}
     @ids.track = {}
     @ids.playlist = {}
+    @ids.stored_playlist = {}
+    @ids.stored_playlist_item = {}
   fullClear: !->
     @clear()
     @type = null
@@ -49,6 +56,13 @@ selection =
     else if @isPlaylist()
       result = -2
       for k in @ids.playlist
+        return true if not ++result
+      return false
+    else if @isStoredPlaylist()
+      result = -2
+      for k in @ids.stored_playlist
+        return true if not ++result
+      for k in @ids.stored_playlist_item
         return true if not ++result
       return false
     else
@@ -1388,8 +1402,6 @@ function queueLibSelection (event)
     mpd.search $(event.target).val()
 
   !function libraryLeftMouseDown (event, sel_name, key)
-    event.preventDefault()
-    removeContextMenu()
     skip_drag = false
     if not selection.isLibrary()
       selection.selectOnly sel_name, key
@@ -1438,11 +1450,6 @@ function queueLibSelection (event)
           refreshSelection()
 
   !function libraryRightMouseDown (event, sel_name, key)
-    return if event.altKey
-    event.preventDefault()
-
-    removeContextMenu()
-
     if not selection.isLibrary() or not selection.ids[sel_name][key]?
       selection.selectOnly sel_name, key
       refreshSelection()
@@ -1517,17 +1524,35 @@ function queueLibSelection (event)
     type = $this.attr('data-type')
     key = $this.attr('data-key')
     if event.which is 1
+      event.preventDefault()
+      removeContextMenu()
       options.leftMouseDown event, type, key
     else if event.which is 3
+      return if event.altKey
+      event.preventDefault()
+      removeContextMenu()
       options.rightMouseDown event, type, key
 
   $elem.on 'mousedown', -> false
 
 !function setUpStoredPlaylistsUi
+  !function leftMouseDown (event, sel_name, key)
+    skip_drag = false
+    if not selection.isStoredPlaylist()
+      selection.selectOnly(sel_name, key)
+    else if event.ctrlKey or event.shiftKey
+      skip_drag = true
+      if event.shiftKey and not event.ctrlKey
+        selection.clear()
+      if event.shiftKey
+        old_pos = getStoredPlaylistSelPos(selection.type, selection.cursor)
+        new_pos = getStoredPlaylistSelPos(sel_name, key)
+
+        # swap if positions are out of order
   genericTreeUi $stored_playlists,
     toggleExpansion: togglePlaylistExpansion
     dblclick: !(event) -> # TODO
-    leftMouseDown: !(event, type, key) -> # TODO
+    leftMouseDown: leftMouseDown
     rightMouseDown: !(event, type, key) -> # TODO
 
 !function setUpUi

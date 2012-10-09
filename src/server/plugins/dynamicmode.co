@@ -16,7 +16,7 @@ module.exports = class DynamicMode extends Plugin
     @last_queued = {}
 
     bus.on 'save_state', @~saveState
-    bus.on 'save_state', @~restoreState
+    bus.on 'restore_state', @~restoreState
     bus.on 'mpd_conf', @~setConf
     bus.on 'mpd', @~setMpd
     bus.on 'socket_connect', @~onSocketConnection

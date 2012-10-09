@@ -1513,6 +1513,8 @@ function queueLibSelection (event)
   Handlebars.registerHelper 'artistid', (s) -> "lib-artist-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
+  Handlebars.registerHelper 'storedplaylistid', (s) -> "stored-pl-pl-#{Util.toHtmlId(s)}"
+  Handlebars.registerHelper 'storedplaylisttrackid', (s) -> "stored-pl-track-#{Util.toHtmlId(s)}"
 
 !function handleResize
   $left_window = $('#left-window')

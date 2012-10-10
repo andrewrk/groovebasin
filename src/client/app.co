@@ -67,6 +67,178 @@ selection =
       return false
     else
       return false
+  getPos: (type=@type, key=@cursor) ->
+    if @isLibrary()
+      val =
+        type: 'library'
+        artist: null
+        album: null
+        track: null
+      if key?
+        switch type
+          case 'track'
+            val.track = mpd.search_results.track_table[key]
+            val.album = val.track.album
+            val.artist = val.album.artist
+          case 'album'
+            val.album = mpd.search_results.album_table[key]
+            val.artist = val.album.artist
+          case 'artist'
+            val.artist = mpd.search_results.artist_table[key]
+      else
+        val.artist = mpd.search_results.artists[0]
+      val
+    else if @isStoredPlaylist()
+      val =
+        type: 'stored_playlist'
+        stored_playlist: null
+        stored_playlist_item: null
+      if key?
+        switch type
+          case 'stored_playlist_item'
+            val.stored_playlist_item = mpd.stored_playlist_item_table[key]
+            val.stored_playlist = val.stored_playlist_item.playlist
+          case 'stored_playlist'
+            val.stored_playlist = mpd.stored_playlist_table[key]
+      else
+        val.stored_playlist = mpd.stored_playlists[0]
+      val
+    else
+      throw new Error("NothingSelected")
+  posToArr: (pos) ->
+    if pos.type is 'library'
+      [pos.artist?.pos, pos.album?.pos, pos.track?.pos]
+    else if pos.type is 'stored_playlist'
+      [pos.stored_playlist?.pos, pos.stored_playlist_item?.pos]
+    else
+      throw new Error("NothingSelected")
+  posEqual: (pos1, pos2) ->
+    arr1 = @posToArr(pos1)
+    arr2 = @posToArr(pos2)
+    Util.compareArrays(arr1, arr2) is 0
+  posInBounds: (pos) ->
+    if pos.type is 'library'
+      pos.artist?
+    else if pos.type is 'stored_playlist'
+      pos.stored_playlist?
+    else
+      throw new Error("NothingSelected")
+  selectPos: !(pos) ->
+    if pos.type is 'library'
+      if pos.track?
+        selection.ids.track[pos.track.file] = true
+      else if pos.album?
+        selection.ids.album[pos.album.key] = true
+      else if pos.artist?
+        selection.ids.artist[pos.artist.key] = true
+    else if pos.type is 'stored_playlist'
+      if pos.stored_playlist_item?
+        selection.ids.stored_playlist_item[pos.stored_playlist_item] = true
+      else if pos.stored_playlist?
+        selection.ids.stored_playlist[pos.stored_playlist] = true
+    else
+      throw new Error("NothingSelected")
+  incrementPos: !(pos) ->
+    # modifies in place
+    if pos.type is 'library'
+      if pos.track?
+        pos.track = pos.track.album.tracks[pos.track.pos + 1]
+        if not pos.track?
+          pos.album = pos.artist.albums[pos.album.pos + 1]
+          if not pos.album?
+            pos.artist = mpd.search_results.artists[pos.artist.pos + 1]
+      else if pos.album?
+        if isAlbumExpanded(pos.album)
+          pos.track = pos.album.tracks[0]
+        else
+          pos.artist = mpd.search_results.artists[pos.artist.pos + 1]
+          pos.album = null
+      else if pos.artist?
+        if isArtistExpanded(pos.artist)
+          pos.album = pos.artist.albums[0]
+        else
+          pos.artist = mpd.search_results.artists[pos.artist.pos + 1]
+    else if pos.type is 'stored_playlist'
+      if pos.stored_playlist_item?
+        pos.stored_playlist_item = pos.stored_playlist_item.playlist.item_list[pos.stored_playlist_item.pos + 1]
+        if pos.stored_playlist_item!?
+          pos.stored_playlist = mpd.stored_playlists[pos.stored_playlist.pos + 1]
+      else if pos.stored_playlist?
+        if isStoredPlaylistExpanded(pos.stored_playlist)
+          pos.stored_playlist_item = pos.stored_playlist.item_list[0]
+          if pos.stored_playlist_item!?
+            pos.stored_playlist = mpd.stored_playlists[pos.stored_playlist.pos + 1]
+        else
+          pos.stored_playlist = mpd.stored_playlists[pos.stored_playlist.pos + 1]
+    else
+      throw new Error("NothingSelected")
+  decrementPos: !(pos) ->
+  toFiles: (random=false) ->
+    # render selection into a single object by file to remove duplicates
+    if @isLibrary()
+      return libraryToFiles()
+    else if @isPlaylist()
+      return playlistToFiles()
+    else if @isStoredPlaylist()
+      return storedPlaylistToFiles()
+    else
+      throw new Error("NothingSelected")
+
+    ~function libraryToFiles()
+      track_set = {}
+
+      !~function selRenderArtist (artist)
+        selRenderAlbum album for album of artist.albums
+      !~function selRenderAlbum (album)
+        selRenderTrack track for track of album.tracks
+      !~function selRenderTrack (track)
+        track_set[track.file] = @posToArr(getTrackSelPos(track))
+      ~function getTrackSelPos(track)
+        type: 'library'
+        artist: track.album.artist
+        album: track.album
+        track: track
+
+      selRenderArtist(mpd.search_results.artist_table[key]) for key in selection.ids.artist
+      selRenderAlbum(mpd.search_results.album_table[key]) for key in selection.ids.album
+      selRenderTrack(mpd.search_results.track_table[file]) for file in selection.ids.track
+
+      return trackSetToFiles(track_set)
+
+    ~function playlistToFiles()
+      files = (mpd.playlist.item_table[key].track.file for key in selection.ids.playlist)
+      Util.shuffle(files) if random
+      return files
+
+    ~function storedPlaylistToFiles()
+      track_set = {}
+
+      !~function renderPlaylist (playlist)
+        renderPlaylistItem(item) for item of playlist.item_list
+      !~function renderPlaylistItem (item)
+        track_set[item.track.file] = @posToArr(getItemSelPos(item))
+      ~function getItemSelPos(item)
+        type: 'stored_playlist'
+        stored_playlist: item.playlist
+        stored_playlist_item: item
+
+      for key in selection.ids.stored_playlist
+        selRenderPlaylist(mpd.stored_playlist_table[key])
+      for key in selection.ids.stored_playlist_item
+        renderPlaylistItem(mpd.stored_playlist_item_table[key])
+
+      return trackSetToFiles(track_set)
+
+    ~function trackSetToFiles (track_set)
+      if random
+        files = (file for file in track_set)
+        Util.shuffle files
+        files
+      else
+        track_arr = ({file: file, pos: pos} for file, pos in track_set)
+        track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
+        (track.file for track of track_arr)
+
 
 const
   BASE_TITLE = document.title
@@ -207,32 +379,6 @@ function scrollThingToSelection ($scroll_area, helpers)
     else if selection_bottom > 0
       $scroll_area.scrollTop scroll_amt + selection_bottom
 
-function selectionToFiles (random=false)
-  # render selection into a single object by file to remove duplicates
-  # works for library only
-  track_set = {}
-  !function selRenderArtist (artist)
-    selRenderAlbum album for album of artist.albums
-  !function selRenderAlbum (album)
-    selRenderTrack track for track of album.tracks
-  !function selRenderTrack (track)
-    track_set[track.file] = libPosToArr(getTrackSelPos(track))
-
-  selRenderArtist(mpd.search_results.artist_table[key]) for key in selection.ids.artist
-  selRenderAlbum(mpd.search_results.album_table[key]) for key in selection.ids.album
-  selRenderTrack(mpd.search_results.track_table[file]) for file in selection.ids.track
-
-  if random
-    files = (file for file in track_set)
-    Util.shuffle files
-    return files
-  else
-    track_arr = ({file: file, pos: pos} for file, pos in track_set)
-    track_arr.sort (a, b) -> Util.compareArrays(a.pos, b.pos)
-    return (track.file for track of track_arr)
-
-function playlistSelectionToFiles
-  (mpd.playlist.item_table[key].track.file for key in selection.ids.playlist)
 
 !function downloadFiles (files)
   $form = $(document.createElement('form'))
@@ -580,7 +726,7 @@ function confirmDelete (files_list)
 
 !function handleDeletePressed (shift)
   if selection.isLibrary()
-    files_list = selectionToFiles()
+    files_list = selection.toFiles()
     if not confirmDelete(files_list) then return
     socket.emit 'DeleteFromLibrary', JSON.stringify(files_list)
   else if selection.isPlaylist()
@@ -687,8 +833,8 @@ keyboard_handlers = do ->
         selection.clear() unless event.shiftKey
         selection.ids.playlist[selection.cursor] = true
       else if selection.isLibrary()
-        next_pos = getLibSelPos(selection.type, selection.cursor)
-        if dir > 0 then nextLibPos(next_pos) else prevLibPos(next_pos)
+        next_pos = selection.getPos()
+        if dir > 0 then selection.incrementPos(next_pos) else prevLibPos(next_pos)
         return if not next_pos.artist?
         selection.clear() unless event.shiftKey
         if next_pos.track?
@@ -720,7 +866,7 @@ keyboard_handlers = do ->
         track: -> true
       is_expanded = is_expanded_funcs[selection.type](selected_item)
       $li = $getDiv(selection.cursor).closest("li")
-      cursor_pos = getLibSelPos(selection.type, selection.cursor)
+      cursor_pos = selection.getPos()
       if dir > 0
         # expand and jump to child
         toggleLibraryExpansion $li unless is_expanded
@@ -744,7 +890,8 @@ keyboard_handlers = do ->
         if selection.isPlaylist()
           mpd.playId selection.cursor
         else if selection.isLibrary()
-          queueLibSelection event
+          queueSelection(event)
+        return false
     27: # escape
       ctrl:    false
       alt:     false
@@ -883,38 +1030,9 @@ function isAlbumExpanded (album)
   $li = $("\#lib-album-#{Util.toHtmlId(album.key)}").closest("li")
   return $li.find("> ul").is(":visible")
 
-function getTrackSelPos (track)
-  artist: track.album.artist
-  album: track.album
-  track: track
-
-function getLibSelPos (type, key)
-  val =
-    artist: null
-    album: null
-    track: null
-  if key?
-    switch type
-      case 'track'
-        val.track = mpd.search_results.track_table[key]
-        val.album = val.track.album
-        val.artist = val.album.artist
-      case 'album'
-        val.album = mpd.search_results.album_table[key]
-        val.artist = val.album.artist
-      case 'artist'
-        val.artist = mpd.search_results.artist_table[key]
-  else
-    val.artist = mpd.search_results.artists[0]
-  return val
-
-function libPosToArr (lib_pos)
-  [lib_pos.artist?.pos, lib_pos.album?.pos, lib_pos.track?.pos]
-
-function libraryPositionEqual (old_pos, new_pos)
-  old_arr = libPosToArr(old_pos)
-  new_arr = libPosToArr(new_pos)
-  Util.compareArrays(old_arr, new_arr) is 0
+function isStoredPlaylistExpanded (stored_playlist)
+  $li = $("\#stored-pl-pl-#{Util.toHtmlId(stored_playlist.name)}").closest("li")
+  return $li.find("> ul").is(":visible")
 
 # modifies in place
 !function prevLibPos (lib_pos)
@@ -931,42 +1049,14 @@ function libraryPositionEqual (old_pos, new_pos)
       if lib_pos.album? and isAlbumExpanded(lib_pos.album)
         lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
 
-# modifies in place
-!function nextLibPos (lib_pos)
-  if lib_pos.track?
-    lib_pos.track = lib_pos.track.album.tracks[lib_pos.track.pos + 1]
-    if not lib_pos.track?
-      lib_pos.album = lib_pos.artist.albums[lib_pos.album.pos + 1]
-      if not lib_pos.album?
-        lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
-  else if lib_pos.album?
-    if isAlbumExpanded(lib_pos.album)
-      lib_pos.track = lib_pos.album.tracks[0]
-    else
-      lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
-      lib_pos.album = null
-  else if lib_pos.artist?
-    if isArtistExpanded(lib_pos.artist)
-      lib_pos.album = lib_pos.artist.albums[0]
-    else
-      lib_pos.artist = mpd.search_results.artists[lib_pos.artist.pos + 1]
-
-!function selectLibraryPosition (lib_pos)
-  if lib_pos.track?
-    selection.ids.track[lib_pos.track.file] = true
-  else if lib_pos.album?
-    selection.ids.album[lib_pos.album.key] = true
-  else if lib_pos.artist?
-    selection.ids.artist[lib_pos.artist.key] = true
-
 function queueFilesPos
   pos = mpd.playlist.item_list.length
   return pos unless server_status?
   for item, i of mpd.playlist.item_list
     return i if server_status.random_ids[item.id]?
 
-function queueLibSelection (event)
-  files = selectionToFiles(event.altKey)
+function queueSelection (event)
+  files = selection.toFiles(event.altKey)
   if event.shiftKey
     mpd.queueFilesNext files
   else
@@ -1158,7 +1248,7 @@ function queueLibSelection (event)
         return true
       $menu.on 'click', '.download-multi', ->
         removeContextMenu()
-        downloadFiles playlistSelectionToFiles()
+        downloadFiles selection.toFiles()
         return false
       $menu.on 'click', '.delete', ->
         handleDeletePressed(true)
@@ -1401,111 +1491,14 @@ function queueLibSelection (event)
   $lib_filter.on 'keyup', !(event) ->
     mpd.search $(event.target).val()
 
-  !function libraryLeftMouseDown (event, sel_name, key)
-    skip_drag = false
-    if not selection.isLibrary()
-      selection.selectOnly sel_name, key
-    else if event.ctrlKey or event.shiftKey
-      skip_drag = true
-      if event.shiftKey and not event.ctrlKey
-        selection.clear()
-      if event.shiftKey
-        old_pos = getLibSelPos(selection.type, selection.cursor)
-        new_pos = getLibSelPos(sel_name, key)
-
-        # swap if positions are out of order
-        new_arr = libPosToArr(new_pos)
-        old_arr = libPosToArr(old_pos)
-        [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
-
-        while old_pos.artist?
-          selectLibraryPosition old_pos
-          break if libraryPositionEqual(old_pos, new_pos)
-          nextLibPos old_pos
-      else if event.ctrlKey
-        if selection.ids[sel_name][key]?
-          delete selection.ids[sel_name][key]
-        else
-          selection.ids[sel_name][key] = true
-        selection.cursor = key
-        selection.type = sel_name
-    else if not selection.ids[sel_name][key]?
-      selection.selectOnly sel_name, key
-
-    refreshSelection()
-
-    # dragging
-    if not skip_drag
-      performDrag event,
-        complete: !(result, event) ->
-          delta =
-            top: 0
-            bottom: 1
-          new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-          files = selectionToFiles(event.altKey)
-          mpd.queueFiles files, new_pos
-        cancel: !->
-          # we didn't end up dragging, select the item
-          selection.selectOnly sel_name, key
-          refreshSelection()
-
-  !function libraryRightMouseDown (event, sel_name, key)
-    if not selection.isLibrary() or not selection.ids[sel_name][key]?
-      selection.selectOnly sel_name, key
-      refreshSelection()
-
-    # adds a new context menu to the document
-    context =
-      status: server_status
-      permissions: permissions
-    if selection.isMulti()
-      context.download_multi = true
-    else
-      if sel_name is 'track'
-        context.track = mpd.search_results.track_table[key]
-      else
-        context.download_type = sel_name
-        context.escaped_key = escape(key)
-    $(Handlebars.templates.library_menu(context)).appendTo(document.body)
-    $menu = $('#menu') # get the newly created one
-    $menu.offset do
-      left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
-      top: event.pageY+1
-    # don't close menu when you click on the area next to a button
-    $menu.on 'mousedown', -> false
-    $menu.on 'click', '.queue', ->
-      mpd.queueFiles selectionToFiles()
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-next', ->
-      mpd.queueFilesNext selectionToFiles()
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-random', ->
-      mpd.queueFiles selectionToFiles(true)
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.queue-next-random', ->
-      mpd.queueFilesNext selectionToFiles(true)
-      removeContextMenu()
-      return false
-    $menu.on 'click', '.download', ->
-      removeContextMenu()
-      return true
-    $menu.on 'click', '.download-multi', ->
-      removeContextMenu()
-      downloadFiles selectionToFiles()
-      return false
-    $menu.on 'click', '.delete', ->
-      handleDeletePressed(true)
-      removeContextMenu()
-      return false
-
   genericTreeUi $library,
     toggleExpansion: toggleLibraryExpansion
-    dblclick: queueLibSelection
-    leftMouseDown: libraryLeftMouseDown
-    rightMouseDown: libraryRightMouseDown
+    isSelectionOwner: -> selection.isLibrary()
+
+!function setUpStoredPlaylistsUi
+  genericTreeUi $stored_playlists,
+    toggleExpansion: togglePlaylistExpansion
+    isSelectionOwner: -> selection.isStoredPlaylist()
 
 !function genericTreeUi ($elem, options)
   $elem.on 'mousedown', 'div.expandable > div.ui-icon', (event) ->
@@ -1514,7 +1507,7 @@ function queueLibSelection (event)
 
   # suppress double click on the icon
   $elem.on 'dblclick', 'div.expandable > div.ui-icon', -> false
-  $elem.on 'dblclick', 'div.clickable', options.dblclick
+  $elem.on 'dblclick', 'div.clickable', queueSelection
   $elem.on 'contextmenu', (event) -> event.altKey
 
   $elem.on 'mousedown', '.clickable', !(event) ->
@@ -1523,37 +1516,121 @@ function queueLibSelection (event)
     $this = $(this)
     type = $this.attr('data-type')
     key = $this.attr('data-key')
+
     if event.which is 1
-      event.preventDefault()
-      removeContextMenu()
-      options.leftMouseDown event, type, key
+      leftMouseDown(event)
     else if event.which is 3
       return if event.altKey
+      rightMouseDown(event)
+
+    !function leftMouseDown (event)
       event.preventDefault()
       removeContextMenu()
-      options.rightMouseDown event, type, key
+      skip_drag = false
+      if not options.isSelectionOwner()
+        selection.selectOnly(type, key)
+      else if event.ctrlKey or event.shiftKey
+        skip_drag = true
+        if event.shiftKey and not event.ctrlKey
+          selection.clear()
+        if event.shiftKey
+          old_pos = selection.getPos(selection.type, selection.cursor)
+          new_pos = selection.getPos(type, key)
+
+          # swap if positions are out of order
+          new_arr = selection.posToArr(new_pos)
+          old_arr = selection.posToArr(old_pos)
+          [old_pos, new_pos] = [new_pos, old_pos] if Util.compareArrays(old_arr, new_arr) > 0
+
+          while selection.posInBounds(old_pos)
+            selection.selectPos(old_pos)
+            break if selection.posEqual(old_pos, new_pos)
+            selection.incrementPos(old_pos)
+        else if event.ctrlKey
+          if selection.ids[type][key]?
+            delete selection.ids[type][key]
+          else
+            selection.ids[type][key] = true
+          selection.cursor = key
+          selection.type = type
+      else if not selection.ids[type][key]?
+        selection.selectOnly(type, key)
+
+      refreshSelection()
+
+      # dragging
+      if not skip_drag
+        performDrag event,
+          complete: !(result, event) ->
+            delta =
+              top: 0
+              bottom: 1
+            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+            files = selection.toFiles(event.altKey)
+            mpd.queueFiles(files, new_pos)
+          cancel: !->
+            # we didn't end up dragging, select the item
+            selection.selectOnly(type, key)
+            refreshSelection()
+
+    !function rightMouseDown (event)
+      event.preventDefault()
+      removeContextMenu()
+
+      if not options.isSelectionOwner() or not selection.ids[type][key]?
+        selection.selectOnly(type, key)
+        refreshSelection()
+
+      # adds a new context menu to the document
+      context =
+        status: server_status
+        permissions: permissions
+      if selection.isMulti()
+        context.download_multi = true
+      else
+        if type is 'track'
+          context.track = mpd.search_results.track_table[key]
+        else if type is 'stored_playlist_item'
+          context.track = mpd.stored_playlist_item_table[key].track
+        else
+          context.download_type = type
+          context.escaped_key = escape(key)
+      $(Handlebars.templates.library_menu(context)).appendTo(document.body)
+      $menu = $('#menu') # get the newly created one
+      $menu.offset do
+        left: event.pageX+1 # +1 so we don't immediately close the menu by clicking it
+        top: event.pageY+1
+      # don't close menu when you click on the area next to a button
+      $menu.on 'mousedown', -> false
+      $menu.on 'click', '.queue', ->
+        mpd.queueFiles selection.toFiles()
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-next', ->
+        mpd.queueFilesNext selection.toFiles()
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-random', ->
+        mpd.queueFiles selection.toFiles(true)
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.queue-next-random', ->
+        mpd.queueFilesNext selection.toFiles(true)
+        removeContextMenu()
+        return false
+      $menu.on 'click', '.download', ->
+        removeContextMenu()
+        return true
+      $menu.on 'click', '.download-multi', ->
+        removeContextMenu()
+        downloadFiles selection.toFiles()
+        return false
+      $menu.on 'click', '.delete', ->
+        handleDeletePressed(true)
+        removeContextMenu()
+        return false
 
   $elem.on 'mousedown', -> false
-
-!function setUpStoredPlaylistsUi
-  !function leftMouseDown (event, sel_name, key)
-    skip_drag = false
-    if not selection.isStoredPlaylist()
-      selection.selectOnly(sel_name, key)
-    else if event.ctrlKey or event.shiftKey
-      skip_drag = true
-      if event.shiftKey and not event.ctrlKey
-        selection.clear()
-      if event.shiftKey
-        old_pos = getStoredPlaylistSelPos(selection.type, selection.cursor)
-        new_pos = getStoredPlaylistSelPos(sel_name, key)
-
-        # swap if positions are out of order
-  genericTreeUi $stored_playlists,
-    toggleExpansion: togglePlaylistExpansion
-    dblclick: !(event) -> # TODO
-    leftMouseDown: leftMouseDown
-    rightMouseDown: !(event, type, key) -> # TODO
 
 !function setUpUi
   setUpGenericUi()

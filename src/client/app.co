@@ -223,7 +223,7 @@ selection =
         stored_playlist_item: item
 
       for key in selection.ids.stored_playlist
-        selRenderPlaylist(mpd.stored_playlist_table[key])
+        renderPlaylist(mpd.stored_playlist_table[key])
       for key in selection.ids.stored_playlist_item
         renderPlaylistItem(mpd.stored_playlist_item_table[key])
 
@@ -549,6 +549,16 @@ function getSelHelpers
     artist: [selection.ids.artist, mpd.search_results.artist_table, (id) -> $("\#lib-artist-#{Util.toHtmlId(id)}")]
     album: [selection.ids.album, mpd.search_results.album_table, (id) -> $("\#lib-album-#{Util.toHtmlId(id)}")]
     track: [selection.ids.track, mpd.search_results.track_table, (id) -> $("\#lib-track-#{Util.toHtmlId(id)}")]
+    stored_playlist: [
+      selection.ids.stored_playlist
+      mpd.stored_playlist_table
+      (id) -> $("\#stored-pl-pl-#{Util.toHtmlId(id)}")
+    ]
+    stored_playlist_item: [
+      selection.ids.stored_playlist_item
+      mpd.stored_playlist_item_table
+      (id) -> $("\#stored-pl-item-#{Util.toHtmlId(id)}")
+    ]
 
 !function refreshSelection
   return unless (helpers = getSelHelpers())?
@@ -556,6 +566,7 @@ function getSelHelpers
   # clear all selection
   $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor')
   $library.find(".clickable").removeClass('selected').removeClass('cursor')
+  $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor')
 
   return unless selection.type?
 
@@ -703,7 +714,7 @@ function getCurrentTrackPosition
 
 !function togglePlaylistExpansion ($li)
   genericToggleExpansion $li,
-    top_level_type: 'playlist'
+    top_level_type: 'stored_playlist'
     template: Handlebars.templates.playlist_items
     context: (key) -> item_list: mpd.stored_playlist_table[key].item_list
 
@@ -1649,7 +1660,7 @@ function queueSelection (event)
   Handlebars.registerHelper 'albumid', (s) -> "lib-album-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'trackid', (s) -> "lib-track-#{Util.toHtmlId(s)}"
   Handlebars.registerHelper 'storedplaylistid', (s) -> "stored-pl-pl-#{Util.toHtmlId(s)}"
-  Handlebars.registerHelper 'storedplaylisttrackid', (s) -> "stored-pl-track-#{Util.toHtmlId(s)}"
+  Handlebars.registerHelper 'storedplaylistitemid', (s) -> "stored-pl-item-#{Util.toHtmlId(s)}"
 
 !function handleResize
   # go really small to make the window as small as possible

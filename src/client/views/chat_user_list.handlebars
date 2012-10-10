@@ -1,5 +1,11 @@
-{{#each users}}
-  <li>
-    <span class="{{class}}">{{user_name}}</span>
-  </li>
-{{/each}}
+{{#if users}}
+  <ul>
+    {{#each users}}
+      <li>
+        <span class="{{class}}">{{user_name}}</span>
+      </li>
+    {{/each}}
+  </ul>
+{{else}}
+  
+{{/if}}

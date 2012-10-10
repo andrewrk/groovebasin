@@ -292,6 +292,7 @@ local_state =
 # cache jQuery objects
 const
   $document = $(document)
+  $window = $(window)
   $pl_window = $('#playlist-window')
   $left_window = $('#left-window')
   $playlist_items = $('#playlist-items')
@@ -320,7 +321,7 @@ const
   $track_display = $('#track-display')
   $chat_input = $('#chat-input')
   $chat_name_input = $('#chat-name-input')
-  $chat_pane = $('#chat-pane')
+  $chat_input_pane = $('#chat-input-pane')
   $lib_header = $('#library-pane .window-header')
   $pl_header = $pl_window.find('#playlist .header')
 
@@ -472,7 +473,6 @@ function getDragPosition (x, y)
     scrollChatWindowToBottom()
     $chat_user_id_span.text if chat_name_input_visible then "" else getUserName() + ": "
   $chat_tab.find("span").text("Chat#{chat_status_text}")
-  resizeChat()
 
 !function renderStreamButton
   label = if trying_to_stream
@@ -1394,7 +1394,6 @@ function queueSelection (event)
     $tab(name).addClass 'ui-state-active'
     $pane(name).show()
     handleResize()
-    renderChat() if name is 'chat'
 
   for tab of tabs
     let tab
@@ -1680,6 +1679,12 @@ function queueSelection (event)
   $pl_window.height MARGIN
   $left_window.height MARGIN
 
+  $library.height MARGIN
+  $upload.height MARGIN
+  $stored_playlists.height MARGIN
+  $chat_list.height MARGIN
+  $playlist_items.height MARGIN
+
   # then fit back up to the window
   $nowplaying.width $document.width() - MARGIN * 2
   second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN
@@ -1689,21 +1694,17 @@ function queueSelection (event)
   $pl_window.offset do
     left: $left_window.offset().left + $left_window.width() + MARGIN
     top: second_layer_top
-  $pl_window.width $(window).width() - $pl_window.offset().left - MARGIN
-  $left_window.height $(window).height() - $left_window.offset().top
+  $pl_window.width $window.width() - $pl_window.offset().left - MARGIN
+  $left_window.height $window.height() - $left_window.offset().top
   $pl_window.height $left_window.height() - MARGIN
 
   # make the inside containers fit
-  $library.height $left_window.height() - $lib_header.position().top - $lib_header.height() - MARGIN
   tab_contents_height = $left_window.height() - $tabs.height() - MARGIN
+  $library.height tab_contents_height - $lib_header.height()
   $upload.height tab_contents_height
   $stored_playlists.height tab_contents_height
-  resizeChat()
+  $chat_list.height tab_contents_height - $chat_user_list.height() - $chat_input_pane.height()
   $playlist_items.height $pl_window.height() - $pl_header.position().top - $pl_header.height()
-
-!function resizeChat
-  height_overshoot = $chat_pane.height() - $upload.height()
-  $chat_list.height $chat_list.height() - height_overshoot
 
 !function initStreaming
   soundManager.setup do
@@ -1793,6 +1794,6 @@ $document.ready !->
   render()
 
   # do this last so that everything becomes the correct size.
-  $(window).resize handleResize
+  $window.resize(handleResize)
 
   window._debug_mpd = mpd

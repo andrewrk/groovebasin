@@ -4,7 +4,7 @@ const
   fse = require 'fs-extra'
   fs = require 'fs'
   path = require 'path'
-  request = require 'request'
+  request = require 'superagent'
   url = require 'url'
   temp = require 'temp'
   {getSuggestedPath} = require '../futils'
@@ -58,7 +58,7 @@ module.exports = class Upload extends Plugin
         if err
           console.error "Unable to import by URL.", err.stack, "URL:", url_string
         cleanUp()
-      req = request(url_string)
+      req = request.get(url_string)
       ws = fs.createWriteStream(temp_file)
       req.pipe(ws)
       ws.on 'close', !~>

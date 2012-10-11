@@ -22,11 +22,11 @@
     "lastfm": "~0.8.1",
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc5",
-    "request": "~2.11.4",
     "temp": "~0.4.0",
     "naught": "~0.2.2",
     "async": "~0.1.22",
-    "fs-extra": "~0.2.1"
+    "fs-extra": "~0.2.1",
+    "superagent": "~0.9.5"
   },
   "devDependencies": {
     "handlebars": "~1.0.7",

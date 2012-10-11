@@ -1,0 +1,55 @@
+fs      = require 'fs'
+path    = require 'path'
+mutagen = require 'mutagen'
+Plugin  = require '../plugin'
+
+const MAX_SIMULTANEOUS_REQUESTS = 20
+
+module.exports = class extends Plugin
+  (bus) ~>
+    super(...)
+    bus.on 'mpd_conf', @~setConf
+    @performance_count = 0
+    @open_requests = 0
+    @waiting_requests = []
+
+  setConf: !(conf, conf_path) ->
+    if conf.music_directory?
+      @music_lib_path = conf.music_directory
+      @startScan!
+    else
+      @is_enabled = false
+      console.warn "Tag reading disabled - music directory not found in #{conf_path}"
+
+  readFile: (file_path) ->
+    if @open_requests < MAX_SIMULTANEOUS_REQUESTS
+      @open_requests++
+      mutagen.read file_path, (err, tags) ~>
+        return console.log err.stderr if err
+
+        @performance_count++
+        if @performance_count % 100 == 0
+          console.log @performance_count
+
+        @open_requests--
+        if @waiting_requests.length is not 0
+          @waiting_requests.shift!!
+
+    else
+      # wait before doing this one
+      @waiting_requests.push ~> @readFile file_path
+
+  startScan: ->
+    console.info 'starting scan'
+    walk = (dir) ~>
+      fs.readdir dir, (err, files) ~>
+        return console.log err if err
+        for file of files
+          let file_path = path.join dir, file
+            fs.stat file_path, (err, stats) ~>
+              return console.log err if err
+              if stats.isFile!
+                @readFile file_path
+              else if stats.isDirectory!
+                walk file_path
+    walk @music_lib_path

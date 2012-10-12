@@ -7,6 +7,7 @@ const
   request = require 'superagent'
   url = require 'url'
   temp = require 'temp'
+  mv = require 'mv'
   {getSuggestedPath} = require '../futils'
 
 module.exports = class Upload extends Plugin
@@ -69,7 +70,7 @@ module.exports = class Upload extends Plugin
 
   importFile: !(temp_file, remote_filename, cb=->) ->
     tmp_with_ext = temp_file + path.extname(remote_filename)
-    moveFile temp_file, tmp_with_ext, !(err) ~>
+    mv temp_file, tmp_with_ext, !(err) ~>
       return cb(err) if err
       @mpd.getFileInfo "file://#{tmp_with_ext}", !(err, track) ~>
         if err
@@ -83,7 +84,7 @@ module.exports = class Upload extends Plugin
           if err
             console.error err
             return cb(err)
-          moveFile tmp_with_ext, dest, !(err) ~>
+          mv tmp_with_ext, dest, !(err) ~>
             @want_to_queue.push relative_path
             @emit('state_changed')
             console.info "Track was uploaded: #{dest}"
@@ -124,22 +125,3 @@ module.exports = class Upload extends Plugin
     @mpd.queueFiles files, @queueFilesPos()
     @mpd.queueFilesInStoredPlaylist(files, "Incoming")
     @emit('state_changed') if files.length
-
-!function moveFile (source, dest, cb)
-  fs.rename source, dest, !(err) ->
-    return cb() if not err
-    return cb(err) if err.code is not \EXDEV
-    ins = fs.createReadStream(source)
-    outs = fs.createWriteStream(dest)
-    had_error = false
-    ins.on \error, !(err) ->
-      had_error := true
-      outs.destroy()
-      cb(err)
-    outs.on \error, !(err) ->
-      had_error := true
-      ins.destroy()
-      cb(err)
-    outs.on \close, !->
-      cb() if not had_error
-    ins.pipe(outs)

@@ -3,7 +3,7 @@ const
   path = require("path")
   watcher = require("watch")
   util = require("util")
-  fse = require("fs-extra")
+  mkdirp = require("mkdirp")
   {spawn} = require("child_process")
 
 !function exec (cmd, args=[], options={}, cb=->)
@@ -18,7 +18,7 @@ const
 !function build (watch)
   npm_args = if watch then ['run', 'dev'] else ['run', 'build']
   exec 'npm', npm_args, cwd: path.resolve(__dirname, 'mpd.js')
-  fse.mkdir 'public', !->
+  mkdirp 'public', !->
     args = if watch then ['-w'] else []
     exec 'coco', args.concat(['-cbo', 'lib/', 'src/server/'])
     exec 'jspackage', args.concat([
@@ -54,7 +54,7 @@ task "clean", !->
 
 task "dev", !->
   # avoid a race condition when running from clean
-  fse.mkdir "lib", !->
+  mkdirp "lib", !->
     exec 'touch', ["lib/server.js", "mpd.js/lib/mpd.js"], null, !->
       watch()
       exec "node-dev", ["lib/server.js"],

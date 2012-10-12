@@ -25,8 +25,8 @@
     "temp": "~0.4.0",
     "naught": "~0.2.2",
     "async": "~0.1.22",
-    "fs-extra": "~0.2.1",
-    "superagent": "~0.9.5"
+    "superagent": "~0.9.5",
+    "mkdirp": "~0.3.4"
   },
   "devDependencies": {
     "handlebars": "~1.0.7",

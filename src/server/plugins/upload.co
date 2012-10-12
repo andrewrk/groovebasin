@@ -1,7 +1,7 @@
 const
   Plugin = require('../plugin')
   formidable = require 'formidable'
-  fse = require 'fs-extra'
+  mkdirp = require 'mkdirp'
   fs = require 'fs'
   path = require 'path'
   request = require 'superagent'
@@ -79,7 +79,7 @@ module.exports = class Upload extends Plugin
           suggested_path = getSuggestedPath(track, remote_filename)
         relative_path = path.join('incoming', suggested_path)
         dest = path.join(@music_lib_path, relative_path)
-        fse.mkdir path.dirname(dest), !(err) ~>
+        mkdirp path.dirname(dest), !(err) ~>
           if err
             console.error err
             return cb(err)

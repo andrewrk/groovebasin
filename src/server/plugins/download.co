@@ -5,9 +5,7 @@ const
   path = require 'path'
   {safePath} = require '../futils'
   express = require 'express'
-
-const
-  LIBRARY_PATH = "public/library"
+  findit = require 'findit'
 
 module.exports = class Download extends Plugin
   (bus) ~>
@@ -30,25 +28,25 @@ module.exports = class Download extends Plugin
       # so you can download songs
       app.use('/library', express.static(@music_directory))
       app.get '/library/', @checkEnabledMiddleware, (req, resp) ~>
-        downloadPath "", "library.zip", req, resp
+        @downloadPath @music_directory, "library.zip", req, resp
       app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, resp) ~>
-        path = req.params[0]
-        relative_path = "/#path"
-        zip_name = safePath(path.replace(/\//g, " - ")) + ".zip"
-        downloadPath relative_path, zip_name, req, resp
+        req_dir = req.params[0]
+        zip_name = safePath(req_dir.replace(/\//g, " - ")) + ".zip"
+        dl_path = path.join(@music_directory, req_dir)
+        @downloadPath dl_path, zip_name, req, resp
       app.post '/download/custom', [@checkEnabledMiddleware, express.urlencoded()], (req, resp) ~>
-        files = (path.join(LIBRARY_PATH, f) for f of req.body.file)
+        files = (path.join(@music_directory, f) for f of req.body.file)
         zip_name = "music.zip"
-        sendZipOfFiles zip_name, files, req, resp
+        @sendZipOfFiles zip_name, files, req, resp
       app.get '/download/album/:album', @checkEnabledMiddleware, (req, resp) ~>
         album = @mpd.library.album_table[req.params.album]
         if album!?
           resp.statusCode = 404
           resp.end()
           return
-        files = (path.join(LIBRARY_PATH, track.file) for track of album.tracks)
+        files = (path.join(@music_directory, track.file) for track of album.tracks)
         zip_name = safePath(album.name) + ".zip"
-        sendZipOfFiles zip_name, files, req, resp
+        @sendZipOfFiles zip_name, files, req, resp
       app.get '/download/artist/:artist', @checkEnabledMiddleware, (req, resp) ~>
         artist = @mpd.library.artist_table[req.params.artist]
         if artist!?
@@ -59,61 +57,44 @@ module.exports = class Download extends Plugin
         files = []
         for album of artist.albums
           for track of album.tracks
-            files.push(path.join(LIBRARY_PATH, track.file))
-        sendZipOfFiles zip_name, files, req, resp
+            files.push(path.join(@music_directory, track.file))
+        @sendZipOfFiles zip_name, files, req, resp
 
 
     bus.on 'mpd', !(@mpd) ~>
 
 
-!function downloadPath (relative_path, zip_name, req, resp)
-  walk path.join(LIBRARY_PATH, relative_path), (err, files) ~>
-    if err
+  downloadPath: !(dl_path, zip_name, req, resp) ->
+    finder = findit.find dl_path
+    files = []
+    finder.on \file, !(file) ~> files.push(file)
+    finder.on \error, !(err) ~>
+      finder.removeAllListeners \end
+      console.error "Error when downloading zip of", relative_path, err.stack
       resp.statusCode = 404
       resp.end()
-      return
-    sendZipOfFiles zip_name, files, req, resp
+    finder.on \end, !~>
+      @sendZipOfFiles zip_name, files, req, resp
 
-!function sendZipOfFiles (zip_name, files, req, resp)
-  cleanup = []
-  req.on \close, !->
-    for fn of cleanup then try fn()
-    resp.end()
-  resp.setHeader "Content-Type", "application/zip"
-  resp.setHeader "Content-Disposition", "attachment; filename=#{zip_name}"
-  zip = zipstream.createZip {}
-  cleanup.push !-> zip.destroy()
-  zip.pipe resp
-  !function nextFile
-    file_path = files.shift()
-    if file_path?
-      options =
-        name: path.relative(LIBRARY_PATH, file_path)
-        store: true
-      read_stream = fs.createReadStream(file_path)
-      cleanup.push !-> read_stream.destroy()
-      zip.addFile read_stream, options, nextFile
-    else
-      zip.finalize !-> resp.end()
-  nextFile()
-
-# translated from http://stackoverflow.com/a/5827895/367916
-!function walk (dir, done)
-  results = []
-  fs.readdir dir, !(err, list) ->
-    return done(err) if err
-    !function next
-      file = list.shift()
-      return done(null, results) unless file?
-      file = dir + '/' + file
-      fs.stat file, !(err, stat) ->
-        return done(err) if err
-        if stat.isDirectory()
-          walk file, !(err, res) ->
-            return done(err) if err
-            results .= concat(res)
-            next()
-        else
-          results.push file
-          next()
-    next()
+  sendZipOfFiles: !(zip_name, files, req, resp) ->
+    cleanup = []
+    req.on \close, !~>
+      for fn of cleanup then try fn()
+      resp.end()
+    resp.setHeader "Content-Type", "application/zip"
+    resp.setHeader "Content-Disposition", "attachment; filename=#{zip_name}"
+    zip = zipstream.createZip {}
+    cleanup.push !~> zip.destroy()
+    zip.pipe resp
+    !~function nextFile
+      file_path = files.shift()
+      if file_path?
+        options =
+          name: path.relative(@music_directory, file_path)
+          store: true
+        read_stream = fs.createReadStream(file_path)
+        cleanup.push !~> read_stream.destroy()
+        zip.addFile read_stream, options, nextFile
+      else
+        zip.finalize !~> resp.end()
+    nextFile()

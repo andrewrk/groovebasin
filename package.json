@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "socket.io": "~0.9.10",
-    "formidable": "~1.0.11",
     "lastfm": "~0.8.1",
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc5",

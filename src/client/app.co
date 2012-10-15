@@ -1318,6 +1318,10 @@ function queueSelection (event)
       socket.emit 'Chat', message
       return false
 
+!function updateSliderUi (value)
+  percent = value * 100
+  $track_slider.css('background-size', "#percent% 100%")
+
 !function setUpNowPlayingUi
   actions =
     toggle: togglePlayback
@@ -1336,9 +1340,11 @@ function queueSelection (event)
     min: 0
     max: 1
     change: !(event, ui) ->
+      updateSliderUi(ui.value)
       return if not event.originalEvent?
       mpd.seek ui.value * mpd.status.time
     slide: !(event, ui) ->
+      updateSliderUi(ui.value)
       $nowplaying_elapsed.html Util.formatTime(ui.value * mpd.status.time)
     start: !(event, ui) -> user_is_seeking := true
     stop: !(event, ui) -> user_is_seeking := false

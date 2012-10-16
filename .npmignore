@@ -4,5 +4,6 @@
 
 # not shared with .gitignore
 /Cakefile
-/src/
+/src/client
+/src/server
 /TODO

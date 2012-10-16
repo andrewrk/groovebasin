@@ -29,12 +29,11 @@ source as of writing this; see below instructions regarding mpd installation.)
 
 ## Get Started
 
-Make sure you have [Node](http://nodejs.org) and [npm](http://npmjs.org)
-installed and [mpd](http://musicpd.org) version 0.17+ (see below) running,
-then:
+Make sure you have [Node](http://nodejs.org) >=0.8.0 installed and
+[mpd](http://musicpd.org) version >=0.17.0 (see below) running, then:
 
 ```
-$ npm install groovebasin
+$ npm install --production groovebasin
 $ npm start groovebasin
 ```
 

@@ -112,16 +112,17 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   fs.readFile process.env.STATE_FILE, \utf8, !(err, data) ->
     if err?code is \ENOENT
       console.warn "No state file. Creating a new one."
-      cb()
-    return cb(err) if err
-    try
-      loaded_state = JSON.parse(data)
-    catch e
-      return cb(new Error("state file contains invalid JSON: #e"))
-    if loaded_state.state_version is not STATE_VERSION
-      return cb(new Error("State version is #{loaded_state.state_version} but should be #STATE_VERSION"))
+    else if err
+      return cb(err)
+    else
+      try
+        loaded_state = JSON.parse(data)
+      catch e
+        return cb(new Error("state file contains invalid JSON: #e"))
+      if loaded_state.state_version is not STATE_VERSION
+        return cb(new Error("State version is #{loaded_state.state_version} but should be #STATE_VERSION"))
 
-    state := loaded_state
+      state := loaded_state
 
     # have the plugins restore and then save to delete values that should not
     # have been restored.

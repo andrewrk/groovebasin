@@ -93,18 +93,16 @@ and follow mpd's instructions from there.
 
 ## Configuring Groove Basin
 
-See http://npmjs.org/doc/config.html#Per-Package-Config-Settings
+Groove Basin is configured using environment variables. Available options
+and their defaults:
 
-See the "config" section of `package.json` for configuration options and
-defaults.
-
-Example:
-
-```
-$ npm config set groovebasin:mpd_conf ~/.mpd/mpd.conf
-$ npm config set groovebasin:port 80
-$ npm -g --groovebasin:port=80 start groovebasin
-```
+    HOST="0.0.0.0"
+    PORT="16242"
+    MPD_CONF="/etc/mpd.conf"
+    STATE_FILE=".state.json"
+    NODE_ENV="dev"
+    LASTFM_API_KEY=<not shown>
+    LASTFM_SECRET=<not shown>
 
 ## Developing
 

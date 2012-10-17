@@ -1,42 +1,128 @@
-# parses an mpd conf file, returning an object with all the values
-export function parse (file_contents)
-  obj = {}
-  stack = []
-  audio_outputs = []
-  for line of file_contents.split("\n")
-    line = line.trim()
-    continue if line.length is 0
-    continue if line.substring(0, 1) is "#"
+const
+  path = require('path')
+  osenv = require('osenv')
 
-    if line.substring(0, 1) is "}"
-      obj = stack.pop()
-    else
-      parts = line.match(/([^\s]*)\s+([^#]*)/)
-      key = parts[1]
-      val = parts[2]
-      if val is "{"
-        stack.push obj
-        if key is 'audio_output'
-          audio_outputs.push new_obj = {}
-        else
-          obj[key] = new_obj = {}
-        obj = new_obj
-      else
-        val = JSON.parse(val)
-        if key is 'bind_to_address'
-          obj[key] ?= {}
-          if val[0] is '/'
-            obj[key].unix_socket = val
-          else
-            obj[key].network = val
-        else if key is 'password'
-          (obj[key] ||= []).push val
-        else
-          obj[key] = val
+  ALL_PERMISSIONS =
+    read: true
+    add: true
+    control: true
+    admin: true
 
-  # arrange audio_outputs by type
-  obj.audio_output = {}
-  for audio_output of audio_outputs
-    obj.audio_output[audio_output.type] = audio_output
+  DEFAULT_PERMISSIONS =
+    read: true
+    add: true
+    control: true
 
-  return obj
+function permsToList (perms)
+  Object.keys(perms).join(',')
+
+module.exports = class MpdConf
+
+  (@state) ~>
+    if @state!? then @setDefaultState()
+
+  setDefaultState: !->
+    @state = {}
+    @state.admin_password = Math.floor(Math.random() * 99999999999)
+    @state.permissions = "#{@state.admin_password}": ALL_PERMISSIONS
+
+    @state.audio_httpd =
+      format: \ogg
+      quality: 6
+      port: 16243
+    @state.audio_pulse = null
+    @state.audio_alsa = null
+    @state.audio_oss = null
+
+    @state.run_dir = null
+    @state.music_directory = path.join(osenv.home(), 'music')
+    @state.port = 16244
+    @state.default_permissions = DEFAULT_PERMISSIONS
+
+  accountHasPerm: (passwd, perm) -> !!@state.permissions[passwd][perm]
+
+  playlistDirectory: -> path.join(@state.run_dir, "playlists")
+
+  setRunDir: !-> @state.run_dir = path.resolve(it)
+
+  toMpdConf: ->
+    accounts = ""
+    for password, perms in @state.permissions
+      accounts += "password \"#{password}@#{permsToList(perms)}\"\n"
+
+    audio_outputs = ""
+    if @state.audio_httpd?
+      if @state.audio_httpd.format is \ogg
+        quality = "quality \"#{@state.audio_httpd.quality}\""
+        bitrate = ""
+        encoder_value = "vorbis"
+      else if @state.audio_httpd.format is \mp3
+        quality = ""
+        bitrate = "bitrate \"#{@state.audio_httpd.bitrate}\""
+        encoder_value = "lame"
+      audio_outputs += """
+        audio_output {
+          type            "httpd"
+          name            "Groove Basin"
+          encoder         "#encoder_value"
+          port            "#{@state.audio_httpd.port}"
+          bind_to_address "0.0.0.0"
+          #quality
+          #bitrate
+          format          "44100:16:2"
+          max_clients     "0"
+        }
+      """
+    if @state.audio_pulse?
+      audio_outputs += """
+        audio_output {
+          type  "pulse"
+          name  "Groove Basin"
+        }
+      """
+    if @state.audio_alsa?
+      audio_outputs += """
+        audio_output {
+          type        "alsa"
+          name        "Groove Basin"
+        }
+      """
+    if @state.audio_oss?
+      audio_outputs += """
+        audio_output {
+          type        "oss"
+          name        "Groove Basin"
+        }
+      """
+    # mpd requires a null output if none other
+    audio_outputs ||= """
+      audio_output {
+        type "null"
+        name "Groove Basin"
+      }
+    """
+
+    """
+    music_directory         "#{@state.music_directory}"
+    playlist_directory      "#{@playlistDirectory()}"
+    db_file                 "#{path.join(@state.run_dir, "mpd.music.db")}"
+    log_file                "#{path.join(@state.run_dir, "mpd.log")}"
+    pid_file                "#{path.join(@state.run_dir, "mpd.pid")}"
+    state_file              "#{path.join(@state.run_dir, "mpd.state")}"
+    sticker_file            "#{path.join(@state.run_dir, "mpd.sticker.db")}"
+    bind_to_address         "localhost"
+    bind_to_address         "#{path.join(@state.run_dir, "mpd.socket")}"
+    port                    "#{@state.port}"
+    gapless_mp3_playback    "yes"
+    auto_update             "yes"
+    default_permissions     "#{permsToList(@state.default_permissions)}"
+    replaygain              "album"
+    volume_normalization    "yes"
+    max_command_list_size   "16384"
+    max_connections         "10"
+    max_output_buffer_size  "16384"
+    id3v1_encoding          "UTF-8"
+    #accounts
+    #audio_outputs
+    """
+

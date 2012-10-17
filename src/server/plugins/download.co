@@ -16,17 +16,19 @@ module.exports = class Download extends Plugin
     bus.on 'save_state', (state) ~>
       state.status.download_enabled = @is_enabled
 
-    bus.on 'mpd_conf', (conf, conf_path) ~>
+    bus.on 'restore_state', (state) ~>
       @is_enabled = true
 
-      unless (@music_directory = conf.music_directory)?
+      unless (@music_directory = state.mpd_conf.music_directory)?
         @is_enabled = false
-        console.warn "music_directory not found in #{conf_path}. Download disabled."
+        console.warn "No music directory set. Download plugin disabled."
         return
 
     bus.on 'app', (app) ~>
       # so you can download songs
-      app.use('/library', express.static(@music_directory))
+      if @is_enabled
+        # TODO this needs to be re-mounted when download becomes enabled.
+        app.use('/library', express.static(@music_directory))
       app.get '/library/', @checkEnabledMiddleware, (req, resp) ~>
         @downloadPath @music_directory, "library.zip", req, resp
       app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, resp) ~>

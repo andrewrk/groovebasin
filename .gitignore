@@ -1,8 +1,8 @@
 /node_modules/
 /.state.json
-/public/library
+/run
 
-# generated code below here
+# not shared with .npmignore
 /public/app.js
 /public/views.js
 /public/app.css

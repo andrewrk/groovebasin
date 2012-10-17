@@ -4,7 +4,6 @@ const {EventEmitter} = require('events')
 module.exports = class extends EventEmitter
   ~>
     @mpd = null
-    @conf = null
     @is_enabled = true
     @checkEnabledMiddleware = !(req, resp, next) ~>
       if @is_enabled

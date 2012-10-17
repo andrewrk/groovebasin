@@ -5,9 +5,6 @@ const
 module.exports = class LastFm extends Plugin
   (bus) ~>
     super(...)
-    @lastfm = new LastFmNode do
-      api_key: process.env.LASTFM_API_KEY
-      secret: process.env.LASTFM_SECRET
     @previous_now_playing_id = null
     @last_playing_item = null
     @playing_start = new Date()
@@ -24,11 +21,17 @@ module.exports = class LastFm extends Plugin
   restoreState: !(state) ->
     @scrobblers = state.lastfm_scrobblers ? {}
     @scrobbles = state.scrobbles ? []
+    @api_key = state.lastfm_api_key ? "7d831eff492e6de5be8abb736882c44d"
+    @api_secret = state.lastfm_secret ? "8713e8e893c5264608e584a232dd10a0"
+    @lastfm = new LastFmNode do
+      api_key: @api_key
+      secret: @api_secret
 
   saveState: !(state) ->
     state.lastfm_scrobblers = @scrobblers
     state.scrobbles = @scrobbles
-    state.status.lastfm_api_key = process.env.LASTFM_API_KEY
+    state.status.lastfm_api_key = @api_key
+    state.lastfm_secret = @api_secret
 
   setMpd: !(@mpd) ->
     @mpd.on 'statusupdate', !~>

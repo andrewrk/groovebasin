@@ -1,6 +1,6 @@
 /node_modules/
 /.state.json
-/public/library
+/run
 
 # not shared with .gitignore
 /Cakefile

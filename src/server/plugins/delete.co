@@ -7,9 +7,14 @@ module.exports = class extends Plugin
   (bus) ~>
     super(...)
     bus.on 'save_state', @~saveState
-    bus.on 'mpd_conf', @~setConf
     bus.on 'mpd', @~setMpd
     bus.on 'socket_connect', @~onSocketConnection
+
+    bus.on 'restore_state', !(state) ~>
+      unless (@music_directory = state.mpd_conf.music_directory)?
+        @is_enabled = false
+        console.warn "No music directory set. Delete disabled."
+        return
 
   saveState: !(state) ->
     state.status.delete_enabled = @is_enabled
@@ -29,14 +34,8 @@ module.exports = class extends Plugin
         if (file = files.shift())!?
           @mpd.scanFiles files
         else # tail call recursion, bitch
-          fs.unlink path.join(@music_lib_path, file), next
+          fs.unlink path.join(@music_directory, file), next
       next()
 
   setMpd: !(@mpd) ->
 
-  setConf: !(conf, conf_path) ->
-    if conf.music_directory?
-      @music_lib_path = conf.music_directory
-    else
-      @is_enabled = false
-      console.warn "Delete disabled - music directory not found in #{conf_path}"

@@ -19,7 +19,6 @@ module.exports = class Upload extends Plugin
     @random_ids = null
 
     bus.on 'app', @~setUpRoutes
-    bus.on 'mpd_conf', @~setConf
     bus.on 'mpd', @~setMpd
     bus.on 'save_state', @~saveState
     bus.on 'restore_state', @~restoreState
@@ -29,23 +28,16 @@ module.exports = class Upload extends Plugin
   restoreState: !(state) ->
     @want_to_queue = state.want_to_queue ? []
 
+    @is_enabled = true
+    unless (@music_directory = state.mpd_conf.music_directory)?
+      @is_enabled = false
+      console.warn "No music directory set. Upload disabled."
+      return
+
+
   saveState: !(state) ->
     state.want_to_queue = @want_to_queue
     state.status.upload_enabled = @is_enabled
-
-  setConf: !(conf, conf_path) ->
-    @is_enabled = true
-    unless conf.bind_to_address?.unix_socket?
-      @is_enabled = false
-      console.warn "bind_to_address does not have a unix socket enabled in #{conf_path}. Uploading disabled."
-    unless conf.bind_to_address?.network is "localhost"
-      @is_enabled = false
-      console.warn "bind_to_address does not have a definition that is 'localhost' in #{conf_path}. Uploading disabled."
-    if conf.music_directory?
-      @music_lib_path = conf.music_directory
-    else
-      @is_enabled = false
-      console.warn "music directory not found in #{conf_path}. Uploading disabled."
 
   setMpd: !(@mpd) ->
     @mpd.on 'libraryupdate', @~flushWantToQueue
@@ -81,7 +73,7 @@ module.exports = class Upload extends Plugin
         else
           suggested_path = getSuggestedPath(track, remote_filename)
         relative_path = path.join('incoming', suggested_path)
-        dest = path.join(@music_lib_path, relative_path)
+        dest = path.join(@music_directory, relative_path)
         mkdirp path.dirname(dest), !(err) ~>
           if err
             console.error err

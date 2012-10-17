@@ -10,14 +10,12 @@ module.exports = class DynamicMode extends Plugin
   (bus) ~>
     super(...)
     @previous_ids = {}
-    @is_enabled = false
     @got_stickers = false
     # our cache of the LAST_QUEUED_STICKER
     @last_queued = {}
 
     bus.on 'save_state', @~saveState
     bus.on 'restore_state', @~restoreState
-    bus.on 'mpd_conf', @~setConf
     bus.on 'mpd', @~setMpd
     bus.on 'socket_connect', @~onSocketConnection
 
@@ -30,12 +28,6 @@ module.exports = class DynamicMode extends Plugin
     state.status.dynamic_mode_enabled = @is_enabled
     state.status.random_ids = @random_ids
 
-  setConf: !(conf, conf_path) ->
-    @is_enabled = true
-    unless conf.sticker_file?
-      @is_enabled = false
-      @is_on = false
-      console.warn "sticker_file not set in #{conf_path}. Dynamic Mode disabled."
 
   setMpd: !(@mpd) ->
     @mpd.on 'statusupdate', @~checkDynamicMode

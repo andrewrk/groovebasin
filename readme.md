@@ -117,7 +117,7 @@ $ npm run dev
 
 ## Release Notes
 
-### 0.2.0
+### 0.2.0 (Oct 16 2012)
 
 * Andrew Kelley:
   * ability to import songs by pasting a URL
@@ -155,7 +155,7 @@ $ npm run dev
   * uploading with mpd <0.17 falls back to upload name
 
 
-### 0.1.2
+### 0.1.2 (Jul 12 2012)
 
 * Andrew Kelley:
   * lock in the major versions of dependencies
@@ -189,7 +189,7 @@ $ npm run dev
   * clearer wording in Get Started section and louder mpd version dependency
     documentation
 
-### 0.0.6
+### 0.0.6 (Apr 27 2012)
 
 * Josh Wolfe:
   * fixing not queuing before random when pressing enter in the search box
@@ -213,7 +213,7 @@ $ npm run dev
   * Removed extra constructor. Changed tabs to 2spaces
 
 
-### 0.0.5
+### 0.0.5 (Mar 11 2012)
 
 * Note: Requires you to pull from latest mpd git code and recompile.
 * Andrew Kelley:
@@ -230,7 +230,7 @@ $ npm run dev
 * Josh Wolfe:
   * do not show ugly "user_n" text after usernames in chat.
 
-### 0.0.4
+### 0.0.4 (Mar 6 2012)
 
 * Andrew Kelley:
   * update keyboard shortcuts dialog
@@ -243,7 +243,7 @@ $ npm run dev
   * easter eggs
   * daemon uses a state file
 
-### 0.0.3
+### 0.0.3 (Mar 4 2012)
 
 * Andrew Kelley:
   * ability to select artists, albums, tracks in library
@@ -272,7 +272,7 @@ $ npm run dev
   * supporting /nick renames in chat box
   * hotkey to focus chat box
 
-### 0.0.2
+### 0.0.2 (Mar 1 2012)
 
 * Andrew Kelley:
   * learn mpd host and port in mpd conf
@@ -284,4 +284,3 @@ $ npm run dev
   * move chat stuff to another tab
 * Josh Wolfe:
   * tracking who is online
-

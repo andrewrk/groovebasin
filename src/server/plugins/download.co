@@ -26,9 +26,7 @@ module.exports = class Download extends Plugin
 
     bus.on 'app', (app) ~>
       # so you can download songs
-      if @is_enabled
-        # TODO this needs to be re-mounted when download becomes enabled.
-        app.use('/library', express.static(@music_directory))
+      app.use('/library', @whenEnabled(express.static(@music_directory)))
       app.get '/library/', @checkEnabledMiddleware, (req, resp) ~>
         @downloadPath @music_directory, "library.zip", req, resp
       app.get /^\/library\/(.*)\/$/, @checkEnabledMiddleware, (req, resp) ~>

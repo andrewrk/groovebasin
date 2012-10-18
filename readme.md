@@ -117,10 +117,47 @@ $ npm run dev
 
 ## Release Notes
 
+### 0.2.0
+
+* Andrew Kelley:
+  * ability to import songs by pasting a URL
+  * improve build and development setup
+  * update style to not resize on selection. closes #23
+  * better connection error messages. closes #21
+  * separate [mpd.js](https://github.com/superjoe30/mpd.js) into an open source module. closes #25
+  * fix dynamicmode; use higher level sticker api. closes #22
+  * search uses ascii folding so that 'jonsi' matches 'Jónsi'. closes #29
+  * server restarts if it crashes
+  * server runs as daemon
+  * server logs to rotating log files
+  * remove setuid feature. use authbind if you want to run as port 80
+  * ability to download albums and artists as zip. see #9
+  * ability to download arbitrary selection as zip. closes #9
+  * fix track 08 and 09 displaying as 0. closes #65
+  * fix right click for IE
+  * better error reporting when state json file is corrupted
+  * log chats
+  * fix edge case with unicode characters. closes #67
+  * fix next and previous while stopped behavior. closes #19
+  * handle uploading errors. fixes #59
+  * put link to stream URL in settings. closes #69
+  * loads faster and renders faster
+  * send a 404 when downloading can't find artist or album. closes #70
+  * read-only stored playlist support
+  * fix playlist display when empty
+  * add uploaded songs to "Incoming" playlist. closes #80
+  * fix resize weirdness when you click library tab. closes #75
+  * don't bold menu option text
+  * add color to the first part of the track slider. closes #15
+* Josh Wolfe:
+  * fix dynamic mode glitch
+  * fix dynamic mode with no library or no tags file
+  * uploading with mpd <0.17 falls back to upload name
+
 
 ### 0.1.2
 
-* Andrew Kelley
+* Andrew Kelley:
   * lock in the major versions of dependencies
   * more warnings about mpd conf settings
   * remove "alert" text on no connection

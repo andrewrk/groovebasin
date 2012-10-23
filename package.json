@@ -2,7 +2,7 @@
   "name": "groovebasin",
   "description": "No-nonsense music client and daemon based on mpd",
   "author": "Andrew Kelley <superjoe30@gmail.com>",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "licenses": [
     {
       "type": "MIT",

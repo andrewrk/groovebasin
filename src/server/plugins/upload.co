@@ -7,7 +7,7 @@ const
   url = require 'url'
   temp = require 'temp'
   mv = require 'mv'
-  {getSuggestedPath} = require '../futils'
+  {getSuggestedPath, safePath} = require '../futils'
   express = require 'express'
 
 multipart = express.multipart(keepExtensions: true)
@@ -45,7 +45,7 @@ module.exports = class Upload extends Plugin
   onSocketConnection: !(socket) ->
     socket.on 'ImportTrackUrl', !(url_string) ~>
       parsed_url = url.parse(url_string)
-      remote_filename = path.basename(parsed_url.pathname) + path.extname(parsed_url.pathname)
+      remote_filename = path.basename(parsed_url.pathname)
       temp_file = temp.path()
       cleanUp = !~>
         fs.unlink(temp_file)
@@ -63,26 +63,23 @@ module.exports = class Upload extends Plugin
 
 
   importFile: !(temp_file, remote_filename, cb=->) ->
-    tmp_with_ext = temp_file + path.extname(remote_filename)
-    mv temp_file, tmp_with_ext, !(err) ~>
-      return cb(err) if err
-      @mpd.getFileInfo "file://#{tmp_with_ext}", !(err, track) ~>
+    @mpd.getFileInfo "file://#{temp_file}", !(err, track) ~>
+      if err
+        console.warn "Unable to read tags to get a suggested upload path: #{err.stack}"
+        suggested_path = safePath(remote_filename)
+      else
+        suggested_path = getSuggestedPath(track, remote_filename)
+      relative_path = path.join('incoming', suggested_path)
+      dest = path.join(@music_directory, relative_path)
+      mkdirp path.dirname(dest), !(err) ~>
         if err
-          console.warn "Unable to read tags to get a suggested upload path: #{err.stack}"
-          suggested_path = remote_filename
-        else
-          suggested_path = getSuggestedPath(track, remote_filename)
-        relative_path = path.join('incoming', suggested_path)
-        dest = path.join(@music_directory, relative_path)
-        mkdirp path.dirname(dest), !(err) ~>
-          if err
-            console.error err
-            return cb(err)
-          mv tmp_with_ext, dest, !(err) ~>
-            @want_to_queue.push relative_path
-            @emit('state_changed')
-            console.info "Track was uploaded: #{dest}"
-            cb(err)
+          console.error err
+          return cb(err)
+        mv temp_file, dest, !(err) ~>
+          @want_to_queue.push relative_path
+          @emit('state_changed')
+          console.info "Track was uploaded: #{dest}"
+          cb(err)
 
   setUpRoutes: !(app) ->
     app.post '/upload', [@checkEnabledMiddleware, multipart], !(request, response) ~>

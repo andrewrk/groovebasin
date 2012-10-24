@@ -260,8 +260,13 @@ function createMpdConnection (unix_socket)
 
   plugins.bus.emit \mpd, my_mpd
 
+connect_server_timeout = null
 !function tryReconnect
-  setTimeout connectServerMpd, 1000
+  if connect_server_timeout!?
+    connect_server_timeout := setTimeout((!->
+      connect_server_timeout := null
+      connectServerMpd()
+    ), 1000)
 
 function arrayToSet (array)
   obj = {}

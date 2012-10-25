@@ -41,8 +41,8 @@
   },
   "scripts": {
     "start": "naught start --ipc-file run/naught.ipc --log run/naught.log --stdout run/stdout.log --stderr run/stderr.log lib/server.js",
-    "stop": "naught stop",
-    "reload": "naught deploy",
+    "stop": "naught stop run/naught.ipc",
+    "reload": "naught deploy run/naught.ipc",
     "build": "npm install && coke build",
     "dev": "npm install && coke dev"
   }

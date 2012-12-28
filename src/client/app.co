@@ -1,7 +1,7 @@
 #depend "handlebars.runtime" bare
 #depend "views" bare
 #depend "util"
-#depend "library" bare
+#depend "player" bare
 #depend "jquery-1.8.2.min" bare
 #depend "jquery-ui-1.8.24.custom.min" bare
 #depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
@@ -1768,7 +1768,7 @@ $document.ready !->
 
     window._debug_server_status = server_status
 
-  mpd := Library()
+  mpd := Player()
   socket.on 'FromMpd', !(data) -> mpd.handleMessage JSON.parse data
   socket.on 'MpdConnect', !-> mpd.handleConnectionStart()
   socket.on 'MpdDisconnect', !-> mpd.resetServerState()

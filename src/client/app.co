@@ -1769,7 +1769,7 @@ $document.ready !->
     window._debug_server_status = server_status
 
   mpd := Library()
-  socket.on 'FromMpd', !(data) -> mpd.receive(data)
+  socket.on 'FromMpd', !(data) -> mpd.handleMessage JSON.parse data
   socket.on 'MpdConnect', !-> mpd.handleConnectionStart()
   socket.on 'MpdDisconnect', !-> mpd.resetServerState()
   socket.on 'disconnect', !-> mpd.resetServerState()
@@ -1783,7 +1783,7 @@ $document.ready !->
     labelPlaylistItems()
     updateStreamingPlayer()
   mpd.on 'chat', renderChat
-  mpd.on 'connect', !->
+  socket.on 'MpdLifeSigns', !->
     sendAuth()
     load_status := LoadStatus.GoodToGo
     render()

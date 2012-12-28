@@ -722,29 +722,10 @@ class Library extends EventEmitter
   send: !(data) ->
     @emit \data, data
 
-  handleMessage: !(err, msg) ->
+  handleMessage: !(arg) ->
+    {err, msg} = arg
     handler = @msg_handler_queue.shift()
     handler(err, msg)
-
-  receive: !(data) ->
-    @buffer += data
-
-    for ever
-      m = @buffer.match(MPD_SENTINEL)
-      return if not m?
-
-      msg = @buffer.substring(0, m.index)
-      [line, code, str] = m
-      if code is "ACK"
-        @emit 'error', str
-        err = new Error(str)
-        @handleMessage(err)
-      else if line.indexOf("OK MPD") is 0
-        # new connection
-        @emit 'connect'
-      else
-        @handleMessage null, msg
-      @buffer = @buffer.substring(msg.length+line.length+1)
 
   handleIdleResults: !(msg) ->
     for system of trim(msg).split("\n")

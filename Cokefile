@@ -56,7 +56,7 @@ task "clean", !->
 task "dev", !->
   # avoid a race condition when running from clean
   mkdirp "lib", !->
-    exec 'touch', ["lib/server.js", "mpd.js/lib/mpd.js"], null, !->
+    exec 'touch', ["lib/server.js", "mpd.js/lib/mpdparser.js"], null, !->
       watch()
       exec "node-dev", ["lib/server.js"],
         stdio: [process.stdin, process.stdout, process.stderr, 'ipc']

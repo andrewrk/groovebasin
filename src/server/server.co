@@ -8,6 +8,7 @@ const
   assert = require 'assert'
   mkdirp = require 'mkdirp'
   Library = require './library'
+  MpdParser = require '../mpd.js/lib/mpdparser'
   async = require 'async'
   which = require 'which'
   MpdConf = require('./mpdconf')
@@ -176,23 +177,20 @@ function createMpdConnection (unix_socket)
   connection.setEncoding('utf8')
   connection
 
-!function connectBrowserMpd (socket)
+!function connectBrowserMpd (client_socket)
   mpd_socket = createMpdConnection false
-  mpd_socket.on \connect, !->
-    try socket.emit 'MpdConnect'
-  mpd_socket.on 'data', !(data) ->
-    socket.emit 'FromMpd', data
-  mpd_socket.on 'end', !->
-    try socket.emit 'MpdDisconnect'
-  mpd_socket.on 'error', !->
-    console.warn "browser no mpd daemon found."
+  parser = MpdParser!
+  mpd_socket.on \data, !(data) -> parser.receive data
+  parser.on \message,   !(arg) -> client_socket.emit 'FromMpd', JSON.stringify arg
+  parser.on \lifesigns,       !-> try client_socket.emit 'MpdLifeSigns'
+  mpd_socket.on \connect,     !-> try client_socket.emit 'MpdConnect'
+  mpd_socket.on \end,         !-> try client_socket.emit 'MpdDisconnect'
+  mpd_socket.on \error,       !-> console.warn "browser no mpd daemon found."
 
-  socket.removeAllListeners 'ToMpd'
-  socket.on 'ToMpd', !(data) ->
-    try mpd_socket.write data
-  socket.removeAllListeners 'disconnect'
-  socket.on 'disconnect', !->
-    mpd_socket.end()
+  client_socket.removeAllListeners 'ToMpd'
+  client_socket.on 'ToMpd', !(data) -> try mpd_socket.write data
+  client_socket.removeAllListeners 'disconnect'
+  client_socket.on 'disconnect', !-> mpd_socket.end()
 
 !function onSocketIoConnection (socket)
   connectBrowserMpd socket
@@ -245,8 +243,9 @@ function createMpdConnection (unix_socket)
       console.warn "server no mpd daemon found."
     tryReconnect()
   my_mpd := Library()
+  parser = MpdParser!
   my_mpd.on \data, !(data) -> my_mpd_socket.write(data)
-  my_mpd.on 'error', !(msg) -> console.error msg
+  parser.on 'error', !(msg) -> console.error msg
 
   my_mpd_socket.on \connect, !->
     console.info "server to mpd connect"
@@ -256,7 +255,9 @@ function createMpdConnection (unix_socket)
 
     # connect socket clients to mpd
     io.sockets.clients().forEach connectBrowserMpd
-  my_mpd_socket.on \data, !(data) -> my_mpd.receive(data)
+
+  my_mpd_socket.on \data, !(data) -> parser.receive(data)
+  parser.on \message, !(arg) -> my_mpd.handleMessage(arg)
 
   plugins.bus.emit \mpd, my_mpd
 

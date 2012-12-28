@@ -7,7 +7,7 @@ const
   path = require 'path'
   assert = require 'assert'
   mkdirp = require 'mkdirp'
-  Mpd = require './mpd'
+  Library = require './library'
   async = require 'async'
   which = require 'which'
   MpdConf = require('./mpdconf')
@@ -244,7 +244,7 @@ function createMpdConnection (unix_socket)
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  my_mpd := Mpd()
+  my_mpd := Library()
   my_mpd.on \data, !(data) -> my_mpd_socket.write(data)
   my_mpd.on 'error', !(msg) -> console.error msg
 

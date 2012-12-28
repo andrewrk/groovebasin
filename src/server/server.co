@@ -178,20 +178,19 @@ function createMpdConnection (unix_socket)
   connection
 
 !function connectBrowserMpd (client_socket)
-  mpd_socket = createMpdConnection false
-  parser = MpdParser!
-  parser.on     \command, !(data) -> try mpd_socket.write data
-  parser.on     \response, !(arg) -> try client_socket.emit \MpdResponse, JSON.stringify arg
-  parser.on     \status,   !(arg) -> try client_socket.emit 'MpdStatus', JSON.stringify arg
-  parser.on     \lifesigns,      !-> try client_socket.emit 'MpdLifeSigns'
-  mpd_socket.on \connect,        !-> try client_socket.emit 'MpdConnect'
-  mpd_socket.on \data,    !(data) -> parser.receive data
-  mpd_socket.on \end,            !-> try client_socket.emit 'MpdDisconnect'
-  mpd_socket.on \error,          !-> console.warn "browser no mpd daemon found."
-
   client_socket.removeAllListeners \request
-  client_socket.on \request, !(command) -> parser.sendRequest JSON.parse(command)
   client_socket.removeAllListeners \disconnect
+
+  mpd_socket = createMpdConnection false
+  parser = MpdParser mpd_socket
+  client_socket.on \request, !(command) -> parser.sendRequest JSON.parse(command)
+  parser.on        \response,    !(arg) -> try client_socket.emit \MpdResponse, JSON.stringify arg
+  parser.on        \status,      !(arg) -> try client_socket.emit 'MpdStatus', JSON.stringify arg
+  parser.on        \lifesigns,         !-> try client_socket.emit 'MpdLifeSigns'
+  mpd_socket.on    \connect,           !-> try client_socket.emit 'MpdConnect'
+  mpd_socket.on    \end,               !-> try client_socket.emit 'MpdDisconnect'
+  mpd_socket.on    \error,             !-> console.warn "browser no mpd daemon found."
+
   client_socket.on \disconnect, !-> mpd_socket.end()
 
 !function onSocketIoConnection (socket)
@@ -244,11 +243,9 @@ function createMpdConnection (unix_socket)
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  parser = MpdParser!
+  parser = MpdParser my_mpd_socket
   my_player := Player()
   my_player.on     \request, !(command) -> parser.sendRequest command
-  parser.on        \command,    !(data) -> my_mpd_socket.write data
-  my_mpd_socket.on \data,       !(data) -> parser.receive data
   parser.on        \response,    !(arg) -> my_player.handleResponse arg
   parser.on        \status,      !(arg) -> my_player.handleStatus arg
   parser.on        \error,       !(msg) -> console.error msg

@@ -7,14 +7,14 @@ const
   path = require 'path'
   assert = require 'assert'
   mkdirp = require 'mkdirp'
-  Mpd = require '../mpd.js/lib/mpd'
+  Mpd = require './mpd'
   async = require 'async'
   which = require 'which'
   MpdConf = require('./mpdconf')
   Killer = require('./killer')
   spawn = require('child_process').spawn
   {EventEmitter} = require('events')
-  
+
 process.env.NODE_ENV ||= "dev"
 
 const

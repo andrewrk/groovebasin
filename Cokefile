@@ -20,11 +20,12 @@ const
   exec 'npm', npm_args, cwd: path.resolve(__dirname, 'mpd.js')
   mkdirp 'public', !->
     args = if watch then ['-w'] else []
+    exec 'coco', args.concat(['-cbo', 'lib/', 'src/shared/'])
     exec 'coco', args.concat(['-cbo', 'lib/', 'src/server/'])
     exec 'jspackage', args.concat([
       '-l', 'src/public/vendor',
       '-l', 'public',
-      '-l', 'mpd.js/lib',
+      '-l', 'src/shared',
       'src/client/app', 'public/app.js'
     ])
     exec 'stylus', args.concat([

@@ -1769,11 +1769,12 @@ $document.ready !->
     window._debug_server_status = server_status
 
   mpd := Player()
-  socket.on 'FromMpd', !(data) -> mpd.handleMessage JSON.parse data
+  socket.on 'MpdResponse', !(data) -> mpd.handleResponse JSON.parse data
+  socket.on 'MpdStatus',   !(data) -> mpd.handleStatus JSON.parse data
   socket.on 'MpdConnect', !-> mpd.handleConnectionStart()
   socket.on 'MpdDisconnect', !-> mpd.resetServerState()
   socket.on 'disconnect', !-> mpd.resetServerState()
-  mpd.on 'data', !(data) -> socket.emit('ToMpd', data)
+  mpd.on \request, !(command) -> socket.emit \request, JSON.stringify command
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'storedplaylistupdate', renderStoredPlaylists

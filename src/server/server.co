@@ -30,7 +30,7 @@ const
 
 mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
-my_mpd = null
+my_player = null
 my_mpd_socket = null
 connect_success = true
 state = null
@@ -180,17 +180,19 @@ function createMpdConnection (unix_socket)
 !function connectBrowserMpd (client_socket)
   mpd_socket = createMpdConnection false
   parser = MpdParser!
-  mpd_socket.on \data, !(data) -> parser.receive data
-  parser.on \message,   !(arg) -> client_socket.emit 'FromMpd', JSON.stringify arg
-  parser.on \lifesigns,       !-> try client_socket.emit 'MpdLifeSigns'
-  mpd_socket.on \connect,     !-> try client_socket.emit 'MpdConnect'
-  mpd_socket.on \end,         !-> try client_socket.emit 'MpdDisconnect'
-  mpd_socket.on \error,       !-> console.warn "browser no mpd daemon found."
+  parser.on     \command, !(data) -> try mpd_socket.write data
+  parser.on     \response, !(arg) -> try client_socket.emit \MpdResponse, JSON.stringify arg
+  parser.on     \status,   !(arg) -> try client_socket.emit 'MpdStatus', JSON.stringify arg
+  parser.on     \lifesigns,      !-> try client_socket.emit 'MpdLifeSigns'
+  mpd_socket.on \connect,        !-> try client_socket.emit 'MpdConnect'
+  mpd_socket.on \data,    !(data) -> parser.receive data
+  mpd_socket.on \end,            !-> try client_socket.emit 'MpdDisconnect'
+  mpd_socket.on \error,          !-> console.warn "browser no mpd daemon found."
 
-  client_socket.removeAllListeners 'ToMpd'
-  client_socket.on 'ToMpd', !(data) -> try mpd_socket.write data
-  client_socket.removeAllListeners 'disconnect'
-  client_socket.on 'disconnect', !-> mpd_socket.end()
+  client_socket.removeAllListeners \request
+  client_socket.on \request, !(command) -> parser.sendRequest JSON.parse(command)
+  client_socket.removeAllListeners \disconnect
+  client_socket.on \disconnect, !-> mpd_socket.end()
 
 !function onSocketIoConnection (socket)
   connectBrowserMpd socket
@@ -242,24 +244,26 @@ function createMpdConnection (unix_socket)
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  my_mpd := Player()
   parser = MpdParser!
-  my_mpd.on \data, !(data) -> my_mpd_socket.write(data)
-  parser.on 'error', !(msg) -> console.error msg
+  my_player := Player()
+  my_player.on     \request, !(command) -> parser.sendRequest command
+  parser.on        \command,    !(data) -> my_mpd_socket.write data
+  my_mpd_socket.on \data,       !(data) -> parser.receive data
+  parser.on        \response,    !(arg) -> my_player.handleResponse arg
+  parser.on        \status,      !(arg) -> my_player.handleStatus arg
+  parser.on        \error,       !(msg) -> console.error msg
 
   my_mpd_socket.on \connect, !->
     console.info "server to mpd connect"
     connect_success := true
-    my_mpd.handleConnectionStart()
-    my_mpd.authenticate state.mpd_conf.admin_password
+    my_player.handleConnectionStart()
+    my_player.authenticate state.mpd_conf.admin_password
 
     # connect socket clients to mpd
     io.sockets.clients().forEach connectBrowserMpd
 
-  my_mpd_socket.on \data, !(data) -> parser.receive(data)
-  parser.on \message, !(arg) -> my_mpd.handleMessage(arg)
 
-  plugins.bus.emit \mpd, my_mpd
+  plugins.bus.emit \mpd, my_player
 
 connect_server_timeout = null
 !function tryReconnect

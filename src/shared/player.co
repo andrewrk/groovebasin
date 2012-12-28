@@ -275,12 +275,6 @@ class Player extends EventEmitter
     @updatePlaylist()
     @updateStoredPlaylists()
 
-  sendCommand: !(command, callback=noop) ->
-    @send "noidle\n" if @idling
-    @sendWithCallback command, callback
-    @sendWithCallback "idle", @~handleIdleResultsLoop
-    @idling = true # we're always idling after the first command.
-
   sendCommands: !(command_list, callback=noop) ->
     return if command_list.length is 0
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
@@ -612,7 +606,7 @@ class Player extends EventEmitter
   removeId: !(track_id, callback=noop) ->
     @removeIds [track_id], callback
 
-  close: !-> @send "close\n" # bypass message queue
+  close: !-> # TODO
 
   # in seconds
   seek: !(pos) ->
@@ -719,19 +713,19 @@ class Player extends EventEmitter
       return callback(err) if err
       callback()
 
-  send: !(data) ->
-    @emit \data, data
+  sendCommand: !(cmd, cb=noop) ->
+    @msg_handler_queue.push cb
+    @emit \request, cmd
 
-  handleMessage: !(arg) ->
+  handleResponse: !(arg) ->
     {err, msg} = arg
     handler = @msg_handler_queue.shift()
     handler(err, msg)
 
-  handleIdleResults: !(msg) ->
-    for system of trim(msg).split("\n")
-      if system.length > 0
-        updateFunc = @updateFuncs[system.substring(9)] ? noop
-        updateFunc()
+  handleStatus: !(systems) ->
+    for system of systems
+      updateFunc = @updateFuncs[system] ? noop
+      updateFunc()
 
   clearPlaylist: !->
     @playlist =
@@ -819,26 +813,12 @@ class Player extends EventEmitter
 
     library.artist_table = artist_table
 
-  sendWithCallback: !(cmd, cb=noop) ->
-    @msg_handler_queue.push cb
-    @send "#cmd\n"
-
-  handleIdleResultsLoop: !(err, msg) ->
-    if err then throw err
-    @handleIdleResults(msg)
-    # if we have nothing else to do, idle.
-    if @msg_handler_queue.length is 0
-      @sendWithCallback "idle", @~handleIdleResultsLoop
-
   fixPlaylistPosCache: !-> item.pos = i for item, i of @playlist.item_list
 
   # clear state so we can start over with new mpd connection
   resetServerState: !->
     @buffer = ""
     @msg_handler_queue = []
-
-    # whether we've sent the idle command to mpd
-    @idling = false
 
     @have_file_list_cache = false
 

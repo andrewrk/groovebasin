@@ -115,14 +115,6 @@ function splitOnce (line, separator)
   index = line.indexOf(separator)
   [line.substr(0, index), line.substr(index + separator.length)]
 
-function parseMpdObject (msg)
-  # no dict comprehensions :(
-  # https://github.com/satyr/coco/issues/102
-  o = {}
-  for [key, val] of (splitOnce(line, ": ") for line of msg.split("\n"))
-    o[key] = val
-  o
-
 function parseWithSepField (msg, sep_field, skip_fields, flush)
   if msg is ""
     return []
@@ -223,8 +215,9 @@ class Player extends EventEmitter
     len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
     filetitle.substr 0, len
 
-  ..addSearchTags = !(track) ->
-    track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
+  ..addSearchTags = !(tracks) ->
+    for track of tracks
+      track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
 
   # this key is unique because it has capital letters
   ..VARIOUS_ARTISTS_KEY = "VariousArtists"
@@ -267,7 +260,7 @@ class Player extends EventEmitter
   updateLibrary: !(callback=noop) ->
     @sendCommand 'listallinfo', !(err, tracks) ~>
       return callback(err) if err
-      ..addSearchTags track for track of tracks
+      ..addSearchTags tracks
       @buildArtistAlbumTree tracks, @library
       @have_file_list_cache = true
       # in case the user has a search open, we'll apply their search again.
@@ -278,14 +271,13 @@ class Player extends EventEmitter
       callback()
 
   updatePlaylist: !(callback=noop) ->
-    @sendCommand "playlistinfo", !(err, msg) ~>
+    @sendCommand "playlistinfo", !(err, tracks) ~>
       return callback(err) if err
       @clearPlaylist()
-      parseMpdTracks msg, !(mpd_track) ~>
-        id = parseInt(mpd_track.Id, 10)
+      for {id, file} of tracks
         obj =
           id: id
-          track: @library.track_table[mpd_track.file]
+          track: @library.track_table[file]
           pos: @playlist.item_list.length
           playlist: @playlist
         @playlist.item_list.push obj
@@ -355,9 +347,8 @@ class Player extends EventEmitter
           callback()
 
   updateStatus: !(callback=noop) ->
-    @sendCommand "status", !(err, msg) ~>
+    @sendCommand "status", !(err, o) ~>
       return callback(err) if err
-      o = parseMpdObject(msg)
       @status <<<
         volume: fromMpdVol(o.volume)
         repeat: !!parseInt(o.repeat, 2)

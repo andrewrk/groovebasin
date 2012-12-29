@@ -245,10 +245,10 @@ function createMpdConnection (unix_socket)
     tryReconnect()
   parser = MpdParser my_mpd_socket
   my_player := Player()
-  my_player.on     \request, !(command) -> parser.sendRequest command
-  parser.on        \response,    !(arg) -> my_player.handleResponse arg
-  parser.on        \status,      !(arg) -> my_player.handleStatus arg
-  parser.on        \error,       !(msg) -> console.error msg
+  my_player.on \request, !(command) -> parser.sendRequest command
+  parser.on    \response,    !(arg) -> my_player.handleResponse arg
+  parser.on    \status,      !(arg) -> my_player.handleStatus arg
+  parser.on    \error,       !(msg) -> console.error msg
 
   my_mpd_socket.on \connect, !->
     console.info "server to mpd connect"

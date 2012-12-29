@@ -1,6 +1,6 @@
 const
-  path = require('path')
-  Mpd = require '../mpd.js/lib/mpd'
+  path = require 'path'
+  Player = require './player'
 
 # http://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
 # this is a good start
@@ -14,7 +14,7 @@ export function getSuggestedPath(track, default_name=Mpd.trackNameFromFile(track
 
   t = ""
   t += safePath(zfill(track.track)) + " " if track.track?
-  if track.name is Mpd.trackNameFromFile(track.file)
+  if track.name is Player.trackNameFromFile(track.file)
     t += safePath(default_name)
   else
     t += track.name + path.extname(track.file)

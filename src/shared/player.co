@@ -131,9 +131,6 @@ function parseWithSepField (msg, sep_field, skip_fields, flush)
     current_obj[key] = value
   flushCurrentObj()
 
-function parseMpdTracks (msg, flush)
-  parseWithSepField(msg, 'file', 'directory': true, flush)
-
 function getOrCreate (key, table, initObjFunc)
   result = table[key]
   if result!?
@@ -369,43 +366,28 @@ class Player extends EventEmitter
         # add a field for the start date of the current track
         @status.track_start_date = elapsedToDate(@status.elapsed)
 
-    @sendCommand "currentsong", !(err, msg) ~>
+    @sendCommand "currentsong", !(err, track) ~>
       return callback(err) if err
-
-      count = 0
-      parseMpdTracks(msg, updateWithMpdTrack)
-
-      if count is 0
-        # no current song
-        @status.current_item = null
-        callback()
-        @emit 'statusupdate'
-        return
-      else if count > 1
-        throw new Error()
-
-      !~function updateWithMpdTrack(mpd_track)
-        count += 1
-        id = parseInt(mpd_track.Id, 10)
-        pos = parseInt(mpd_track.Pos, 10)
-
+      if track?
+        {id, pos, file} = track
         @status.current_item = @playlist.item_table[id]
-
         if @status.current_item? and @status.current_item.pos is pos
-          @status.current_item.track = @library.track_table[mpd_track.file]
+          @status.current_item.track = @library.track_table[file]
           # looks good, notify listeners
           @emit 'statusupdate'
           callback()
         else
           # missing or inconsistent playlist data, need to get playlist update
-          @status.current_item =
-            id: id
-            pos: pos
-            track: @library.track_table[mpd_track.file]
+          @status.current_item = {id, pos, track: @library.track_table[file]}
           @updatePlaylist !(err) ~>
             return callback(err) if err
             @emit 'statusupdate'
             callback()
+      else
+        # no current song
+        @status.current_item = null
+        callback()
+        @emit 'statusupdate'
 
   # puts the search results in search_results
   search: !(query) ->

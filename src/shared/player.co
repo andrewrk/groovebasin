@@ -116,8 +116,7 @@ function splitOnce (line, separator)
   [line.substr(0, index), line.substr(index + separator.length)]
 
 function parseWithSepField (msg, sep_field, skip_fields, flush)
-  if msg is ""
-    return []
+  return [] if msg is ""
 
   current_obj = null
   !function flushCurrentObj
@@ -564,8 +563,6 @@ class Player extends EventEmitter
   removeId: !(track_id, callback=noop) ->
     @removeIds [track_id], callback
 
-  close: !-> # TODO
-
   # in seconds
   seek: !(pos) ->
     pos = parseFloat(pos, 10)
@@ -652,7 +649,7 @@ class Player extends EventEmitter
       # this playlist doesn't exist yet.
       for file of files
         cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-    @sendCommands cmds, !(err, msg) ->
+    @sendCommands cmds, !(err) ->
       return callback(err) if err
       callback()
 
@@ -666,7 +663,7 @@ class Player extends EventEmitter
       "playlistadd \"#esc_name\" \"#{qEscape(any_file)}\""
       "playlistclear \"#esc_name\""
     ]
-    @sendCommands cmds, !(err, msg) ->
+    @sendCommands cmds, !(err) ->
       return callback(err) if err
       callback()
 

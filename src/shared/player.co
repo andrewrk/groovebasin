@@ -223,24 +223,6 @@ class Player extends EventEmitter
     len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
     filetitle.substr 0, len
 
-  ..parseMsgToTrackObjects = (msg) ->
-    tracks = []
-    parseMpdTracks msg, !(mpd_track) ->
-      artist_name = trim(mpd_track.Artist ? "")
-      track =
-        file: mpd_track.file
-        name: mpd_track.Title or ..trackNameFromFile(mpd_track.file)
-        artist_name: artist_name
-        artist_disambiguation: ""
-        album_artist_name: mpd_track.AlbumArtist or artist_name
-        album_name: trim(mpd_track.Album ? "")
-        track: parseMaybeUndefNumber(mpd_track.Track)
-        time: parseInt(mpd_track.Time, 10)
-        year: parseMaybeUndefNumber(mpd_track.Date)
-      track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
-      tracks.push track
-    tracks
-
   # this key is unique because it has capital letters
   ..VARIOUS_ARTISTS_KEY = "VariousArtists"
 
@@ -280,9 +262,8 @@ class Player extends EventEmitter
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   updateLibrary: !(callback=noop) ->
-    @sendCommand 'listallinfo', !(err, msg) ~>
+    @sendCommand 'listallinfo', !(err, tracks) ~>
       return callback(err) if err
-      tracks = msg
       @buildArtistAlbumTree tracks, @library
       @have_file_list_cache = true
       # in case the user has a search open, we'll apply their search again.
@@ -643,9 +624,8 @@ class Player extends EventEmitter
     @emit 'statusupdate'
 
   getFileInfo: !(file, callback=noop) ->
-    @sendCommand "lsinfo \"#{qEscape(file)}\"", !(err, msg) ~>
+    @sendCommand "lsinfo \"#{qEscape(file)}\"", !(err, track) ~>
       return callback(err) if err
-      [track] = ..parseMsgToTrackObjects msg
       callback(null, track)
 
   authenticate: !(password, callback=noop) ->

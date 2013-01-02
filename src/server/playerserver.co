@@ -1,0 +1,16 @@
+{EventEmitter} = require 'events'
+
+module.exports = class PlayerServer extends EventEmitter
+  (@parser) ~>
+    @parser.on \response, @~onResponse
+    @parser.on \status, @~onStatus
+    @parser.on \lifesigns, !~> @emit \lifesigns
+
+  request: !(request) ->
+    @parser.sendRequest request
+
+  onResponse: !(arg) ->
+    @emit \response, arg
+
+  onStatus: !(arg) ->
+    @emit \status, arg

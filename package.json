@@ -29,7 +29,8 @@
     "mv": "~0.0.3",
     "findit": "~0.1.2",
     "which": "~1.0.5",
-    "osenv": "0.0.3"
+    "osenv": "0.0.3",
+    "mutagen": "~0.0.4"
   },
   "devDependencies": {
     "handlebars": "~1.0.7",

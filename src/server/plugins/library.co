@@ -1,0 +1,65 @@
+fs      = require 'fs'
+path    = require 'path'
+mutagen = require 'mutagen'
+Plugin  = require '../plugin'
+
+const MAX_SIMULTANEOUS_REQUESTS = 20
+
+later = !(f) -> setTimeout f, 0
+
+module.exports = class extends Plugin
+  (bus) ~>
+    super(...)
+    bus.on 'save_state', @~onSaveState
+    @performance_count = 0
+    @open_requests = 0
+    @waiting_requests = []
+    @cache = {}
+
+  onSaveState: !(state) ->
+    @music_lib_path = state.mpd_conf.music_directory
+    @startScan!
+
+  readFile: !(file_path) ->
+    if @open_requests >= MAX_SIMULTANEOUS_REQUESTS
+      # wait before doing this one
+      @waiting_requests.push ~> @readFile file_path
+      return
+
+    next = !~>
+      # avoid call stack overflow
+      later !~>
+        if @waiting_requests.length is not 0
+          @waiting_requests.shift!!
+
+    return next! if @cache[file_path]?
+    @cache[file_path] = {}
+
+    @open_requests++
+    mutagen.read file_path, !(err, tags) ~>
+      if err
+        console.log 'error for file: ' + file_path
+        console.log err.stderr if err
+        return
+      @cache[file_path] = tags
+
+      @performance_count++
+      if @performance_count % 100 == 0
+        console.log @performance_count
+
+      @open_requests--
+      next!
+
+  startScan: !->
+    walk = !(dir) ~>
+      fs.readdir dir, !(err, files) ~>
+        return console.log err if err
+        for file of files
+          let file_path = path.join dir, file
+            fs.stat file_path, !(err, stats) ~>
+              return console.log err if err
+              if stats.isFile!
+                @readFile file_path
+              else if stats.isDirectory!
+                walk file_path
+    walk @music_lib_path

@@ -8,7 +8,7 @@ const
   assert = require 'assert'
   mkdirp = require 'mkdirp'
   Player = require './player'
-  MpdParser = require '../mpd.js/lib/mpdparser'
+  MpdParser = require './mpdparser'
   PlayerServer = require './playerserver'
   async = require 'async'
   which = require 'which'

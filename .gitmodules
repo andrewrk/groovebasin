@@ -1,3 +1,0 @@
-[submodule "mpd.js"]
-	path = mpd.js
-	url = git://github.com/superjoe30/mpd.js.git

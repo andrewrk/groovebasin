@@ -12,10 +12,11 @@ const
   PlayerServer = require './playerserver'
   async = require 'async'
   which = require 'which'
-  MpdConf = require('./mpdconf')
-  Killer = require('./killer')
+  Library = require './library'
+  MpdConf = require './mpdconf'
+  Killer = require './killer'
   spawn = require('child_process').spawn
-  {EventEmitter} = require('events')
+  {EventEmitter} = require 'events'
 
 process.env.NODE_ENV ||= "dev"
 
@@ -55,6 +56,9 @@ plugins =
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin in @objects)
 
+library = Library plugins.bus
+player_servers = {}
+next_player_server_id = 0
 
 !function makeRunDir (cb)
   mkdirp(RUN_DIR, cb)
@@ -178,24 +182,22 @@ function createMpdConnection (unix_socket)
   connection.setEncoding('utf8')
   connection
 
-!function connectBrowserMpd (client_socket)
-  client_socket.removeAllListeners \request
-  client_socket.removeAllListeners \disconnect
-
+!function onSocketIoConnection (socket)
   mpd_socket = createMpdConnection false
   server = PlayerServer MpdParser mpd_socket
-  client_socket.on \request, !(command) -> server.request JSON.parse command
-  server.on        \response,    !(arg) -> try client_socket.emit \MpdResponse, JSON.stringify arg
-  server.on        \status,      !(arg) -> try client_socket.emit \MpdStatus, JSON.stringify arg
-  server.on        \lifesigns,         !-> try client_socket.emit \MpdLifeSigns
-  mpd_socket.on    \connect,           !-> try client_socket.emit \MpdConnect
-  mpd_socket.on    \end,               !-> try client_socket.emit \MpdDisconnect
-  mpd_socket.on    \error,             !-> console.warn "browser no mpd daemon found."
+  player_servers[id = next_player_server_id++] = server
+  socket.on     \request, !(command) -> server.request JSON.parse command
+  server.on     \response,    !(arg) -> try socket.emit \MpdResponse, JSON.stringify arg
+  server.on     \status,      !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
+  server.on     \lifesigns,         !-> try socket.emit \MpdLifeSigns
+  mpd_socket.on \connect,           !-> try socket.emit \MpdConnect
+  mpd_socket.on \end,               !-> try socket.emit \MpdDisconnect
+  mpd_socket.on \error,             !-> console.warn "browser no mpd daemon found."
 
-  client_socket.on \disconnect, !-> mpd_socket.end()
+  socket.on \disconnect, !->
+    mpd_socket.end()
+    delete player_servers[id]
 
-!function onSocketIoConnection (socket)
-  connectBrowserMpd socket
   permissions = state.mpd_conf.default_permissions
   plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
@@ -256,9 +258,6 @@ function createMpdConnection (unix_socket)
     connect_success := true
     my_player.handleConnectionStart()
     my_player.authenticate state.mpd_conf.admin_password
-
-    # connect socket clients to mpd
-    io.sockets.clients().forEach connectBrowserMpd
 
 
   plugins.bus.emit \mpd, my_player

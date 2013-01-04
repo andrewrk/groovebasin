@@ -1,23 +1,19 @@
 path    = require 'path'
 mutagen = require 'mutagen'
-Plugin  = require '../plugin'
 walk    = require 'walk'
+{EventEmitter} = require 'events'
 
-module.exports = class extends Plugin
-  (bus) ~>
-    super(...)
-    bus.on 'save_state', @~onSaveState
-    @performance_count = 0
-    @open_requests = 0
-    @waiting_requests = []
+module.exports = class Library extends EventEmitter
+  (@bus) ~>
+    @bus.on 'save_state', @~onSaveState
 
   onSaveState: !(state) ->
     @music_lib_path = state.mpd_conf.music_directory
     @startScan!
 
   startScan: !->
-    return if @cache?
-    @cache = {}
+    return if @library?
+    @library = {}
     paths = []
     walker = walk.walk @music_lib_path, followLinks: false
     walker.on \file, !(root, fileStats, next) ~>
@@ -31,7 +27,6 @@ module.exports = class extends Plugin
           console.log err.stderr
           return
         for path, i of paths
-          @cache[path] = tagses[i]
-        console.log "library scan complete. #{Math.round new Date!.getTime! - start_time}ms. here's an example tags:"
-        console.log @cache[path]
-
+          @library[path] = tagses[i]
+        console.log "library scan complete. #{Math.round new Date!.getTime! - start_time}ms."
+        @emit \library, @library

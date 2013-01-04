@@ -47,7 +47,7 @@ module.exports = class Library extends EventEmitter
             album_artist_name: tags.artist?.0?.trim! or "" # TODO
             album_name: tags.album?.0?.trim! or ""
             track: ..parseMaybeUndefNumber(tags.tracknumber?.0)
-            time: parseInt(tags.time?.0, 10)
+            time: parseInt(tags['info/length'], 10)
             year: ..parseMaybeUndefNumber(tags.date?.0)
         console.log "library scan complete. #{Math.round new Date!.getTime! - start_time}ms."
         @emit \library, @library

@@ -184,10 +184,9 @@ function createMpdConnection (unix_socket)
 
 !function onSocketIoConnection (socket)
   mpd_socket = createMpdConnection false
-  server = PlayerServer MpdParser mpd_socket
+  server = PlayerServer library, MpdParser mpd_socket
   player_servers[id = next_player_server_id++] = server
-  socket.on     \request, !(command) -> server.request JSON.parse command
-  server.on     \response,    !(arg) -> try socket.emit \MpdResponse, JSON.stringify arg
+  socket.on     \request, !(command) -> server.request JSON.parse(command), !(arg) -> try socket.emit \MpdResponse, JSON.stringify arg
   server.on     \status,      !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
   server.on     \lifesigns,         !-> try socket.emit \MpdLifeSigns
   mpd_socket.on \connect,           !-> try socket.emit \MpdConnect
@@ -246,10 +245,9 @@ function createMpdConnection (unix_socket)
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  server = PlayerServer MpdParser my_mpd_socket
+  server = PlayerServer library, MpdParser my_mpd_socket
   my_player := Player()
-  my_player.on \request, !(command) -> server.request command
-  server.on    \response,    !(arg) -> my_player.handleResponse arg
+  my_player.on \request, !(command) -> server.request command, !(arg) -> my_player.handleResponse arg
   server.on    \status,      !(arg) -> my_player.handleStatus arg
   server.on    \error,       !(msg) -> console.error msg
 

@@ -1,16 +1,16 @@
 {EventEmitter} = require 'events'
 
 module.exports = class PlayerServer extends EventEmitter
-  (@parser) ~>
-    @parser.on \response, @~onResponse
+  (@library, @parser) ~>
     @parser.on \status, @~onStatus
     @parser.on \lifesigns, !~> @emit \lifesigns
+    @parser.on \error, !(...) ~> @emit \error, ...
 
-  request: !(request) ->
-    @parser.sendRequest request
-
-  onResponse: !(arg) ->
-    @emit \response, arg
+  request: !(request, cb=->) ->
+    [name] = request.split ' '
+    switch name
+      case \listallinfo then cb {msg: @library.library ? {}}
+      default @parser.sendRequest request, cb
 
   onStatus: !(arg) ->
     @emit \status, arg

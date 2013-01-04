@@ -254,8 +254,9 @@ class Player extends EventEmitter
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   updateLibrary: !(callback=noop) ->
-    @sendCommand 'listallinfo', !(err, tracks) ~>
+    @sendCommand 'listallinfo', !(err, track_table) ~>
       return callback(err) if err
+      tracks = (track for _, track in track_table)
       ..addSearchTags tracks
       @buildArtistAlbumTree tracks, @library
       @have_file_list_cache = true

@@ -11,22 +11,43 @@ module.exports = class Library extends EventEmitter
     @music_lib_path = state.mpd_conf.music_directory
     @startScan!
 
+  ..trackNameFromFile = (file) ->
+    filetitle = file.substr(file.lastIndexOf('/') + 1)
+    len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
+    filetitle.substr 0, len
+
+  ..parseMaybeUndefNumber = (n) ->
+    n = parseInt(n, 10)
+    n = null if isNaN(n)
+    n
+
   startScan: !->
     return if @library?
     @library = {}
-    paths = []
+    files = []
     walker = walk.walk @music_lib_path, followLinks: false
     walker.on \file, !(root, fileStats, next) ~>
-      paths.push path.join root, fileStats.name
+      files.push path.join root, fileStats.name
       next!
     console.log 'starting library scan'
     start_time = new Date!.getTime!
     walker.on \end, !~>
-      mutagen.read paths, !(err, tagses) ~>
+      mutagen.read files, !(err, tagses) ~>
         if err
           console.log err.stderr
           return
-        for path, i of paths
-          @library[path] = tagses[i]
+        for file, i of files
+          local_file = file.substr @music_lib_path.length+1
+          tags = tagses[i]
+          @library[local_file] =
+            file: local_file
+            name: tags.title?.0?.trim! or ..trackNameFromFile file
+            artist_name: tags.artist?.0?.trim! or ""
+            artist_disambiguation: ""
+            album_artist_name: tags.artist?.0?.trim! or "" # TODO
+            album_name: tags.album?.0?.trim! or ""
+            track: ..parseMaybeUndefNumber(tags.tracknumber?.0)
+            time: parseInt(tags.time?.0, 10)
+            year: ..parseMaybeUndefNumber(tags.date?.0)
         console.log "library scan complete. #{Math.round new Date!.getTime! - start_time}ms."
         @emit \library, @library

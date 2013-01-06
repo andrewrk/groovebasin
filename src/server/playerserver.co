@@ -4,7 +4,7 @@ module.exports = class PlayerServer extends EventEmitter
   (@library, @parser) ~>
     @parser.on \status, @~onStatus
     @parser.on \lifesigns, !~> @emit \lifesigns
-    @parser.on \error, !(...) ~> @emit \error, ...
+    @parser.on \error, !(msg) ~> @emit \error, msg
 
   request: !(request, cb=->) ->
     [name] = request.split ' '

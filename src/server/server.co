@@ -33,7 +33,6 @@ const
 mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
 my_player = null
-my_mpd_socket = null
 connect_success = true
 state = null
 io = null
@@ -179,7 +178,7 @@ function createMpdConnection (unix_socket)
     port = state.mpd_conf.port
     host = 'localhost'
     connection = net.connect {port, host}
-  connection.setEncoding('utf8')
+  connection.setEncoding 'utf8'
   connection
 
 !function onSocketIoConnection (socket)
@@ -236,7 +235,7 @@ function createMpdConnection (unix_socket)
   cb()
 
 !function connectServerMpd
-  my_mpd_socket := createMpdConnection true
+  my_mpd_socket = createMpdConnection true
   my_mpd_socket.on 'close', !->
     console.warn "server mpd disconnect"
     tryReconnect()
@@ -254,8 +253,8 @@ function createMpdConnection (unix_socket)
   my_mpd_socket.on \connect, !->
     console.info "server to mpd connect"
     connect_success := true
-    my_player.handleConnectionStart()
     my_player.authenticate state.mpd_conf.admin_password
+    my_player.handleConnectionStart()
 
 
   plugins.bus.emit \mpd, my_player

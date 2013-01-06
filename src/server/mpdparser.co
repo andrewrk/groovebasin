@@ -217,7 +217,7 @@ if (EventEmitter = require?('events')?EventEmitter)!?
       for id, h in @event_handlers@[event_name]
         h(...args)
 
-class MpdParser extends EventEmitter
+module.exports = class MpdParser extends EventEmitter
   ..trackNameFromFile = (filename) ->
     filetitle = filename.substr(filename.lastIndexOf('/') + 1)
     len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
@@ -896,5 +896,3 @@ class MpdParser extends EventEmitter
     @stored_playlist_item_table = {}
     @stored_playlists = []
 
-module?.exports = MpdParser
-window?.MpdParser = MpdParser

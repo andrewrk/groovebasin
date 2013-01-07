@@ -244,7 +244,7 @@ class Player extends EventEmitter
       message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
 
   handleConnectionStart: !->
-    @updateLibrary()
+    <~! @updateLibrary
     @updateStatus()
     @updatePlaylist()
     @updateStoredPlaylists()
@@ -669,13 +669,15 @@ class Player extends EventEmitter
       callback()
 
   sendCommand: !(cmd, cb=noop) ->
-    @msg_handler_queue.push cb
-    @emit \request, cmd
+    callback_id = @next_response_handler_id++
+    @response_handlers[callback_id] = cb
+    @emit \request, {cmd, callback_id}
 
   handleResponse: !(arg) ->
-    {err, msg} = arg
-    handler = @msg_handler_queue.shift()
-    handler(err, msg)
+    {err, msg, callback_id} = arg
+    handler = @response_handlers[callback_id]
+    delete @response_handlers[callback_id]
+    handler err, msg
 
   handleStatus: !(systems) ->
     for system of systems
@@ -773,7 +775,8 @@ class Player extends EventEmitter
   # clear state so we can start over with new mpd connection
   resetServerState: !->
     @buffer = ""
-    @msg_handler_queue = []
+    @response_handlers = {}
+    @next_response_handler_id = 0
 
     @have_file_list_cache = false
 

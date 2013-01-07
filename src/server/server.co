@@ -185,12 +185,16 @@ function createMpdConnection (unix_socket)
   mpd_socket = createMpdConnection false
   server = PlayerServer library, MpdParser mpd_socket
   player_servers[id = next_player_server_id++] = server
-  socket.on     \request, !(command) -> server.request JSON.parse(command), !(arg) -> try socket.emit \MpdResponse, JSON.stringify arg
-  server.on     \status,      !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
-  server.on     \lifesigns,         !-> try socket.emit \MpdLifeSigns
-  mpd_socket.on \connect,           !-> try socket.emit \MpdConnect
-  mpd_socket.on \end,               !-> try socket.emit \MpdDisconnect
-  mpd_socket.on \error,             !-> console.warn "browser no mpd daemon found."
+  socket.on \request, !(request) ->
+    request = JSON.parse request
+    server.request request.cmd, !(arg) ->
+      response = JSON.stringify {callback_id: request.callback_id} <<< arg
+      socket.emit \MpdResponse, response
+  server.on     \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
+  server.on     \lifesigns,    !-> try socket.emit \MpdLifeSigns
+  mpd_socket.on \connect,      !-> try socket.emit \MpdConnect
+  mpd_socket.on \end,          !-> try socket.emit \MpdDisconnect
+  mpd_socket.on \error,        !-> console.warn "browser no mpd daemon found."
 
   socket.on \disconnect, !->
     mpd_socket.end()
@@ -246,16 +250,19 @@ function createMpdConnection (unix_socket)
     tryReconnect()
   server = PlayerServer library, MpdParser my_mpd_socket
   my_player := Player()
-  my_player.on \request, !(command) -> server.request command, !(arg) -> my_player.handleResponse arg
-  server.on    \status,      !(arg) -> my_player.handleStatus arg
-  server.on    \error,       !(msg) -> console.error msg
+  my_player.on \request, !(request) ->
+    server.request request.cmd, !(arg) ->
+      # deep clone by jsonization
+      arg = JSON.parse JSON.stringify arg
+      my_player.handleResponse {callback_id: request.callback_id} <<< arg
+  server.on \status, !(arg) -> my_player.handleStatus arg
+  server.on \error,  !(msg) -> console.error msg
 
   my_mpd_socket.on \connect, !->
     console.info "server to mpd connect"
     connect_success := true
     my_player.authenticate state.mpd_conf.admin_password
     my_player.handleConnectionStart()
-
 
   plugins.bus.emit \mpd, my_player
 

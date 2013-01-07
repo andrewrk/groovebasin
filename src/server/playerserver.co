@@ -9,7 +9,7 @@ module.exports = class PlayerServer extends EventEmitter
   request: !(request, cb=->) ->
     [name] = request.split ' '
     switch name
-      case \listallinfo then cb {msg: @library.library ? {}}
+      case \listallinfo then @library.get_library (library) -> cb {msg: library}
       default @parser.sendRequest request, cb
 
   onStatus: !(arg) ->

@@ -457,17 +457,21 @@ function getDragPosition (x, y)
 !function renderChat
   chat_status_text = ""
   if (users = server_status?.users)?
-    chat_status_text = " (#{users.length})" if users.length > 1
-    user_objects = ({
-      "class": if user_id is my_user_id then "chat-user-self" else "chat-user"
-      user_name: userIdToUserName user_id
-    } for user_id of users)
+    user_objects = []
+    for user_id of users
+      user_name = userIdToUserName user_id
+      # don't list the server as a user
+      continue if user_name is '[server]'
+      class_ = if user_id is my_user_id then "chat-user-self" else "chat-user"
+      user_objects.push {user_name, "class": class_}
+    chat_status_text = " (#{user_objects.length})" if user_objects.length > 1
+    $chat_user_list.html Handlebars.templates.chat_user_list do
+      users: user_objects
+
     # write everyone's name in the chat objects (too bad handlebars can't do this in the template)
     for chat_object of server_status.chats
       chat_object["class"] = if local_state.my_user_ids[chat_object.user_id]? then "chat-user-self" else "chat-user"
       chat_object.user_name = userIdToUserName chat_object.user_id
-    $chat_user_list.html Handlebars.templates.chat_user_list do
-      users: user_objects
     $chat_list.html Handlebars.templates.chat_list do
       chats: server_status.chats
     scrollChatWindowToBottom()
@@ -1768,13 +1772,7 @@ $document.ready !->
 
     window._debug_server_status = server_status
 
-  mpd := Player()
-  socket.on 'MpdResponse', !(data) -> mpd.handleResponse JSON.parse data
-  socket.on 'MpdStatus',   !(data) -> mpd.handleStatus JSON.parse data
-  socket.on 'MpdConnect', !-> mpd.handleConnectionStart()
-  socket.on 'MpdDisconnect', !-> mpd.resetServerState()
-  socket.on 'disconnect', !-> mpd.resetServerState()
-  mpd.on \request, !(command) -> socket.emit \request, JSON.stringify command
+  mpd := Player socket
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'storedplaylistupdate', renderStoredPlaylists

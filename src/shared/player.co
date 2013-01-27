@@ -218,8 +218,14 @@ class Player extends EventEmitter
   # this key is unique because it has capital letters
   ..VARIOUS_ARTISTS_KEY = "VariousArtists"
 
-  ~>
+  (@socket) ~>
     super()
+
+    @socket.on 'MpdResponse', !(data) ~> @handleResponse JSON.parse data
+    @socket.on 'MpdStatus',   !(data) ~> @handleStatus JSON.parse data
+    @socket.on 'MpdConnect',         !~> @handleConnectionStart()
+    @socket.on 'MpdDisconnect',      !~> @resetServerState()
+    @socket.on 'disconnect',         !~> @resetServerState()
 
     # options the user can toggle
     @various_artists_name = "Various Artists"
@@ -671,7 +677,7 @@ class Player extends EventEmitter
   sendCommand: !(cmd, cb=noop) ->
     callback_id = @next_response_handler_id++
     @response_handlers[callback_id] = cb
-    @emit \request, {cmd, callback_id}
+    @socket.emit \request, JSON.stringify {cmd, callback_id}
 
   handleResponse: !(arg) ->
     {err, msg, callback_id} = arg

@@ -58,6 +58,9 @@ module.exports = class DynamicMode extends Plugin
     all_ids = {}
     new_files = []
     for item, i of item_list
+      unless item.track?
+        # some race condition or something's up. TODO better fix for this
+        return
       if item.id is current_id
         current_index = i
       all_ids[item.id] = true

@@ -3,6 +3,7 @@ const
   http = require 'http'
   net = require 'net'
   socketio = require 'socket.io'
+  socketio_client = require 'socket.io-client'
   express = require 'express'
   path = require 'path'
   assert = require 'assert'
@@ -192,6 +193,7 @@ function createMpdConnection (unix_socket)
       socket.emit \MpdResponse, response
   server.on     \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
   server.on     \lifesigns,    !-> try socket.emit \MpdLifeSigns
+  server.on     \error   !(msg) -> try socket.emit \MpdError, msg
   mpd_socket.on \connect,      !-> try socket.emit \MpdConnect
   mpd_socket.on \end,          !-> try socket.emit \MpdDisconnect
   mpd_socket.on \error,        !-> console.warn "browser no mpd daemon found."
@@ -239,28 +241,22 @@ function createMpdConnection (unix_socket)
   cb()
 
 !function connectServerMpd
-  my_mpd_socket = createMpdConnection true
-  my_mpd_socket.on 'close', !->
+  socket = socketio_client.connect("http://localhost:#PORT")
+  my_player := Player socket
+  socket.on 'close', !->
     console.warn "server mpd disconnect"
     tryReconnect()
-  my_mpd_socket.on 'error', !->
+  socket.on 'error', !->
     if connect_success
       connect_success := false
       console.warn "server no mpd daemon found."
     tryReconnect()
-  server = PlayerServer library, MpdParser my_mpd_socket
-  my_player := Player()
-  my_player.on \request, !(request) ->
-    server.request request.cmd, !(arg) ->
-      # deep clone by jsonization
-      arg = JSON.parse JSON.stringify arg
-      my_player.handleResponse {callback_id: request.callback_id} <<< arg
-  server.on \status, !(arg) -> my_player.handleStatus arg
-  server.on \error,  !(msg) -> console.error msg
+  my_player.on \MpdError, !(msg) -> console.error msg
 
-  my_mpd_socket.on \connect, !->
+  socket.on \connect, !->
     console.info "server to mpd connect"
     connect_success := true
+    socket.emit \SetUserName, '[server]'
     my_player.authenticate state.mpd_conf.admin_password
     my_player.handleConnectionStart()
 

@@ -549,8 +549,8 @@ class Player extends EventEmitter
 
     @emit 'playlistupdate'
 
-  removeIds: !(track_ids, callback=noop) ->
-    return callback() if track_ids.length is 0
+  removeIds: !(track_ids) ->
+    return if track_ids.length is 0
     cmds = []
     for track_id of track_ids
       track_id = parseInt(track_id, 10)
@@ -564,11 +564,8 @@ class Player extends EventEmitter
       @playlist.item_list.splice(item.pos, 1)
       @fixPlaylistPosCache()
 
-    @sendCommands cmds, (err) ~> callback(err)
+    @sendCommands cmds
     @emit 'playlistupdate'
-
-  removeId: !(track_id, callback=noop) ->
-    @removeIds [track_id], callback
 
   # in seconds
   seek: !(pos) ->
@@ -635,11 +632,8 @@ class Player extends EventEmitter
       "sticker set song \"#{qEscape(file)}\" \"#{qEscape(name)}\" \"#{qEscape(value)}\""
     @sendCommands cmds, (err) ~> cb(err)
 
-  setSticker: !(file, name, value, cb=noop) ->
-    @setStickers [file], name, value, cb
-
-  queueFilesInStoredPlaylist: !(files, stored_playlist_name, pos, callback=noop) ->
-    return callback(null, []) unless files.length
+  queueFilesInStoredPlaylist: !(files, stored_playlist_name, pos) ->
+    return unless files.length
 
     esc_name = qEscape(stored_playlist_name)
     stored_playlist = @stored_playlist_table[stored_playlist_name]
@@ -656,23 +650,7 @@ class Player extends EventEmitter
       # this playlist doesn't exist yet.
       for file of files
         cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-    @sendCommands cmds, !(err) ->
-      return callback(err) if err
-      callback()
-
-  queueFileInStoredPlaylist: !(file, stored_playlist_name, pos, callback) ->
-    @queueFilesInStoredPlaylist([file], stored_playlist_name, pos, callback)
-
-  createStoredPlaylist: !(name, callback=noop) ->
-    any_file = firstKey(@library.track_table)
-    esc_name = qEscape(name)
-    cmds = [
-      "playlistadd \"#esc_name\" \"#{qEscape(any_file)}\""
-      "playlistclear \"#esc_name\""
-    ]
-    @sendCommands cmds, !(err) ->
-      return callback(err) if err
-      callback()
+    @sendCommands cmds
 
   sendCommand: !(cmd, cb=noop) ->
     callback_id = @next_response_handler_id++

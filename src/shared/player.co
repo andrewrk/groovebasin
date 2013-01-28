@@ -255,10 +255,6 @@ class Player extends EventEmitter
     @updatePlaylist()
     @updateStoredPlaylists()
 
-  sendCommands: !(command_list, callback=noop) ->
-    return if command_list.length is 0
-    @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
-
   updateLibrary: !(callback=noop) ->
     @sendCommand 'listallinfo', !(err, track_table) ~>
       return callback(err) if err
@@ -583,22 +579,13 @@ class Player extends EventEmitter
     @status.volume = fromMpdVol(vol)
     @emit 'statusupdate'
 
-  changeStatus: !(status) ->
-    cmds = []
-    if status.consume?
-      @status.consume = status.consume
-      cmds.push "consume #{Number(status.consume)}"
-    if status.random?
-      @status.random = status.random
-      cmds.push "random #{Number(status.random)}"
-    if status.repeat?
-      @status.repeat = status.repeat
-      cmds.push "repeat #{Number(status.repeat)}"
-    if status.single?
-      @status.single = status.single
-      cmds.push "single #{Number(status.single)}"
-
-    @sendCommands cmds
+  changeStatus: !({repeat, single}) ->
+    @status.repeat = repeat
+    @status.single = single
+    @sendCommands [
+      "repeat #{Number(repeat)}"
+      "single #{Number(single)}"
+    ]
     @emit 'statusupdate'
 
   getFileInfo: !(file, callback=noop) ->
@@ -632,25 +619,12 @@ class Player extends EventEmitter
       "sticker set song \"#{qEscape(file)}\" \"#{qEscape(name)}\" \"#{qEscape(value)}\""
     @sendCommands cmds, (err) ~> cb(err)
 
-  queueFilesInStoredPlaylist: !(files, stored_playlist_name, pos) ->
-    return unless files.length
+  queueFilesInStoredPlaylist: !(files, stored_playlist_name) ->
+    @sendCommands ("playlistadd \"#{qEscape(stored_playlist_name)}\" \"#{qEscape(file)}\"" for file of files)
 
-    esc_name = qEscape(stored_playlist_name)
-    stored_playlist = @stored_playlist_table[stored_playlist_name]
-    cmds = []
-    if stored_playlist?
-      pl_length = stored_playlist.item_list.length
-      pos ||= pl_length
-
-      for file of files by -1
-        cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-        cmds.push "playlistmove \"#esc_name\" #pl_length #pos"
-        pl_length += 1
-    else
-      # this playlist doesn't exist yet.
-      for file of files
-        cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-    @sendCommands cmds
+  sendCommands: !(command_list, callback=noop) ->
+    return if command_list.length is 0
+    @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
   sendCommand: !(cmd, cb=noop) ->
     callback_id = @next_response_handler_id++

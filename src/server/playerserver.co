@@ -21,6 +21,7 @@ module.exports = class PlayerServer extends EventEmitter
         case \listallinfo then @library.get_library (library) -> cb {msg: library}
         case \addid       then send_cmds_to_mpd ("addid \"#{qEscape file}\" #{Number pos}" for {file, pos} of request.items)
         case \deleteid    then send_cmds_to_mpd ("deleteid #{Number id}" for id of request.ids)
+        case \move        then send_cmds_to_mpd ("moveid #{Number id} #{Number pos}" for {id, pos} of request.items)
         case \repeat
           send_cmds_to_mpd [
             "repeat #{Number(request.repeat)}"

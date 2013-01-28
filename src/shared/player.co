@@ -505,7 +505,7 @@ class Player extends EventEmitter
     # sort the list by the reverse order in the playlist
     items.sort (a, b) -> b.pos - a.pos
 
-    cmds = []
+    command_items = []
     while items.length > 0
       if pos <= items[0].pos
         real_pos = pos
@@ -514,13 +514,13 @@ class Player extends EventEmitter
         real_pos = pos - 1
         item = items.pop()
 
-      cmds.push "moveid #{item.id} #{real_pos}"
+      command_items.push {id: item.id, pos: real_pos}
       @playlist.item_list.splice item.pos, 1
       @playlist.item_list.splice real_pos, 0, item
 
       @fixPlaylistPosCache()
 
-    @sendCommands cmds
+    @sendCommand {name: \move, items: command_items}
     @emit 'playlistupdate'
 
   # shifts the list of ids by offset, winamp style
@@ -536,7 +536,10 @@ class Player extends EventEmitter
       new_pos = item.pos + offset
       return if new_pos < 0 or new_pos >= @playlist.item_list.length
 
-    @sendCommands ("moveid #{item.id} #{item.pos + offset}" for item of items)
+    @sendCommand {
+      name: \move
+      items: ({id: item.id, pos: item.pos + offset} for item of items)
+    }
 
     # anticipate the result
     for item of items

@@ -1,5 +1,9 @@
 {EventEmitter} = require 'events'
 
+function qEscape (str)
+  # replace all " with \"
+  str.toString().replace /"/g, '\\"'
+
 module.exports = class PlayerServer extends EventEmitter
   (@library, @parser) ~>
     @parser.on \status, @~onStatus
@@ -7,10 +11,26 @@ module.exports = class PlayerServer extends EventEmitter
     @parser.on \error, !(msg) ~> @emit \error, msg
 
   request: !(request, cb=->) ->
-    [name] = request.split ' '
-    switch name
-      case \listallinfo then @library.get_library (library) -> cb {msg: library}
-      default @parser.sendRequest request, cb
+    !~function send_cmds_to_mpd (cmds)
+      @parser.sendRequest "command_list_begin\n#{cmds.join("\n")}\ncommand_list_end", cb
+
+    if typeof request is 'object'
+      # new-style command is an object
+      {name} = request
+      switch name
+        case \listallinfo then @library.get_library (library) -> cb {msg: library}
+        case \addid       then send_cmds_to_mpd ("addid \"#{qEscape file}\" #{Number pos}" for {file, pos} of request.items)
+        case \deleteid    then send_cmds_to_mpd ("deleteid #{Number id}" for id of request.ids)
+        case \repeat
+          send_cmds_to_mpd [
+            "repeat #{Number(request.repeat)}"
+            "single #{Number(request.single)}"
+          ]
+        default throw new Error "invalid command #{JSON.stringify name}"
+
+    else
+      # old code still uses mpd string commands
+      @parser.sendRequest request, cb
 
   onStatus: !(arg) ->
     @emit \status, arg

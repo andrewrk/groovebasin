@@ -256,7 +256,7 @@ class Player extends EventEmitter
     @updateStoredPlaylists()
 
   updateLibrary: !(callback=noop) ->
-    @sendCommand 'listallinfo', !(err, track_table) ~>
+    @sendCommand {name: \listallinfo}, !(err, track_table) ~>
       return callback(err) if err
       tracks = (track for _, track in track_table)
       ..addSearchTags tracks
@@ -417,15 +417,16 @@ class Player extends EventEmitter
 
   queueFiles: !(files, pos=@playlist.item_list.length, callback=noop) ->
     return callback(null, []) unless files.length
-    cmds = []
-    for file of files by -1
-      cmds.push "addid \"#{qEscape(file)}\" #{pos}"
+    cmds = {
+      name: \addid
+      items: ({file, pos} for file of files by -1)
+    }
 
     items = ({id: null, pos: null, track: @library.track_table[file]} for file of files)
     @playlist.item_list.splice pos, 0, ...items
     @fixPlaylistPosCache()
 
-    @sendCommands cmds, !(err, msg) ~>
+    @sendCommand cmds, !(err, msg) ~>
       return callback(err) if err
       for line, i of msg.split("\n")
         continue unless line
@@ -547,20 +548,20 @@ class Player extends EventEmitter
 
   removeIds: !(track_ids) ->
     return if track_ids.length is 0
-    cmds = []
+    ids = []
     for track_id of track_ids
       track_id = parseInt(track_id, 10)
       if @status.current_item?.id is track_id
         @anticipateSkip 1
         if @status.state is not "play"
           @status.state = "stop"
-      cmds.push "deleteid #{qEscape(track_id)}"
+      ids.push track_id
       item = @playlist.item_table[track_id]
       delete @playlist.item_table[item.id]
       @playlist.item_list.splice(item.pos, 1)
       @fixPlaylistPosCache()
 
-    @sendCommands cmds
+    @sendCommand {name: \deleteid, ids}
     @emit 'playlistupdate'
 
   # in seconds
@@ -582,10 +583,7 @@ class Player extends EventEmitter
   changeStatus: !({repeat, single}) ->
     @status.repeat = repeat
     @status.single = single
-    @sendCommands [
-      "repeat #{Number(repeat)}"
-      "single #{Number(single)}"
-    ]
+    @sendCommand {name: \repeat, repeat, single}
     @emit 'statusupdate'
 
   getFileInfo: !(file, callback=noop) ->

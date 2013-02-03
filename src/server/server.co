@@ -33,6 +33,7 @@ const
 
 mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
+mpd_parser = null
 my_player = null
 connect_success = true
 state = null
@@ -82,9 +83,13 @@ async.series [
   plugins~initialize
   restoreState
   writeMpdConf
+  # we always restart mpd so that it uses the mpd.conf we just generated
+  restartMpd
 ], !(err) ->
   assert.ifError(err)
+  connectToMpd!
 
+!function startServer
   app = express()
   app.configure !->
     app.use(express.static(path.join(__dirname, '../public')))
@@ -109,14 +114,12 @@ async.series [
   app_server.listen PORT, HOST, !->
     process.send 'online'
     console.info "Listening at http://#HOST:#PORT"
+  app_server.on \close, !->
+    console.info "server closed"
 
   process.on 'message', onProcessMessage
 
-  # we always restart mpd so that it uses the mpd.conf we just generated
-  # also then we can pipe its stdio to ours
-  restartMpd !(err) ->
-    if err then console.error "Unable to restart mpd: #{err}"
-    connectServerMpd()
+  connectMasterPlayer!
 
 function oncePerEventLoopFunc (fn)
   queued = false
@@ -184,8 +187,7 @@ function createMpdConnection (unix_socket)
 
 !function onSocketIoConnection (socket)
   permissions = state.mpd_conf.default_permissions
-  mpd_socket = createMpdConnection false
-  server = PlayerServer library, MpdParser(mpd_socket), -> permissions
+  server = PlayerServer library, mpd_parser, -> permissions
   player_servers[id = next_player_server_id++] = server
   socket.on \request, !(request) ->
     request = JSON.parse request
@@ -193,14 +195,9 @@ function createMpdConnection (unix_socket)
       response = JSON.stringify {callback_id: request.callback_id} <<< arg
       socket.emit \MpdResponse, response
   server.on     \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
-  server.on     \lifesigns,    !-> try socket.emit \MpdLifeSigns
   server.on     \error   !(msg) -> try socket.emit \MpdError, msg
-  mpd_socket.on \connect,      !-> try socket.emit \MpdConnect
-  mpd_socket.on \end,          !-> try socket.emit \MpdDisconnect
-  mpd_socket.on \error,        !-> console.warn "browser no mpd daemon found."
 
   socket.on \disconnect, !->
-    mpd_socket.end()
     delete player_servers[id]
 
   plugins.bus.emit \socket_connect, socket, -> permissions
@@ -240,35 +237,41 @@ function createMpdConnection (unix_socket)
   }
   cb()
 
-!function connectServerMpd
-  socket = socketio_client.connect("http://localhost:#PORT")
-  my_player := Player socket
+!function connectToMpd
+  socket = createMpdConnection true
   socket.on 'close', !->
     console.warn "server mpd disconnect"
-    tryReconnect()
+    tryReconnect!
   socket.on 'error', !->
     if connect_success
       connect_success := false
       console.warn "server no mpd daemon found."
-    tryReconnect()
+    tryReconnect!
+  mpd_parser := MpdParser socket
+  mpd_parser.on \lifesigns, !->
+    console.info "server to mpd connect"
+    connect_success := true
+    startServer!
+
+!function connectMasterPlayer
+  socket = socketio_client.connect "http://localhost:#PORT"
+  my_player := Player socket
   my_player.on \MpdError, !(msg) -> console.error msg
 
   socket.on \connect, !->
-    console.info "server to mpd connect"
-    connect_success := true
     socket.emit \SetUserName, '[server]'
     my_player.authenticate state.mpd_conf.admin_password
-    my_player.handleConnectionStart()
 
   plugins.bus.emit \mpd, my_player
 
 connect_server_timeout = null
 !function tryReconnect
-  if connect_server_timeout!?
-    connect_server_timeout := setTimeout((!->
-      connect_server_timeout := null
-      connectServerMpd()
-    ), 1000)
+  return unless connect_server_timeout!?
+  connect_server_timeout := setTimeout((!->
+    connect_server_timeout := null
+    connectToMpd!
+  ), 1000)
+  try io.server.close!
 
 function arrayToSet (array)
   obj = {}

@@ -263,15 +263,9 @@ my_user_id = null
 chat_name_input_visible = false
 
 LoadStatus =
-  Init: 0
-  NoMpd: 1
-  NoServer: 2
-  GoodToGo: 3
-LoadStatusMsg = [
-  'Loading...'
-  'mpd is not running on the server.'
-  'Server is down.'
-]
+  Init: 'Loading...'
+  NoServer: 'Server is down.'
+  GoodToGo: '[good to go]'
 load_status = LoadStatus.Init
 
 settings_ui =
@@ -694,7 +688,7 @@ function getCurrentTrackPosition
   $main_err_msg.toggle(not hide_main_err)
   unless hide_main_err
     document.title = BASE_TITLE
-    $main_err_msg_text.text(LoadStatusMsg[load_status])
+    $main_err_msg_text.text(load_status)
     return
 
   renderPlaylist()
@@ -1749,10 +1743,6 @@ $document.ready !->
       refreshPage()
     return
 
-  socket.on 'connect', !->
-    load_status := LoadStatus.NoMpd
-    render()
-
   socket.on 'Identify', !(data) ->
     my_user_id := data.toString()
     local_state.my_user_ids[my_user_id] = 1
@@ -1781,15 +1771,12 @@ $document.ready !->
     labelPlaylistItems()
     updateStreamingPlayer()
   mpd.on 'chat', renderChat
-  socket.on 'MpdLifeSigns', !->
+  socket.on \connect, !->
     sendAuth()
     load_status := LoadStatus.GoodToGo
     render()
   socket.on 'disconnect', !->
     load_status := LoadStatus.NoServer
-    render()
-  socket.on 'MpdDisconnect', !->
-    load_status := LoadStatus.NoMpd
     render()
 
   setUpUi()

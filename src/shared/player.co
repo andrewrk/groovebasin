@@ -221,11 +221,10 @@ class Player extends EventEmitter
   (@socket) ~>
     super()
 
-    @socket.on 'MpdResponse', !(data) ~> @handleResponse JSON.parse data
-    @socket.on 'MpdStatus',   !(data) ~> @handleStatus JSON.parse data
-    @socket.on 'MpdConnect',         !~> @handleConnectionStart()
-    @socket.on 'MpdDisconnect',      !~> @resetServerState()
-    @socket.on 'disconnect',         !~> @resetServerState()
+    @socket.on \MpdResponse, !(data) ~> @handleResponse JSON.parse data
+    @socket.on \MpdStatus,   !(data) ~> @handleStatus JSON.parse data
+    @socket.on \connect,            !~> @handleConnectionStart()
+    @socket.on \disconnect,         !~> @resetServerState()
 
     # options the user can toggle
     @various_artists_name = "Various Artists"

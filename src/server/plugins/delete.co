@@ -7,7 +7,7 @@ module.exports = class extends Plugin
   (bus) ~>
     super(...)
     bus.on 'save_state', @~saveState
-    bus.on 'mpd', @~setMpd
+    bus.on 'mpd', !(@mpd) ~>
     bus.on 'socket_connect', @~onSocketConnection
 
     bus.on 'restore_state', !(state) ~>
@@ -36,6 +36,4 @@ module.exports = class extends Plugin
         else # tail call recursion, bitch
           fs.unlink path.join(@music_directory, file), next
       next()
-
-  setMpd: !(@mpd) ->
 

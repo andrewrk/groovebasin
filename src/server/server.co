@@ -183,8 +183,9 @@ function createMpdConnection (unix_socket)
   connection
 
 !function onSocketIoConnection (socket)
+  permissions = state.mpd_conf.default_permissions
   mpd_socket = createMpdConnection false
-  server = PlayerServer library, MpdParser mpd_socket
+  server = PlayerServer library, MpdParser(mpd_socket), -> permissions
   player_servers[id = next_player_server_id++] = server
   socket.on \request, !(request) ->
     request = JSON.parse request
@@ -202,7 +203,6 @@ function createMpdConnection (unix_socket)
     mpd_socket.end()
     delete player_servers[id]
 
-  permissions = state.mpd_conf.default_permissions
   plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
   socket.on 'Password', !(pass) ->

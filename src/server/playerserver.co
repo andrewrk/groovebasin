@@ -1,11 +1,37 @@
 {EventEmitter} = require 'events'
 
+command_permissions =
+  addid: \add
+  clear: \control
+  currentsong: \read
+  deleteid: \control
+  listallinfo: \read
+  listplaylist: \read
+  listplaylists: \read
+  lsinfo: \read
+  move: \control
+  next: \control
+  password: null
+  pause: \control
+  play: \control
+  playid: \control
+  playlistadd: \add
+  playlistinfo: \read
+  previous: \control
+  repeat: \control
+  seekid: \control
+  setvol: \control
+  shuffle: \control
+  status: \read
+  sticker: \admin
+  stop: \control
+
 function qEscape (str)
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
 module.exports = class PlayerServer extends EventEmitter
-  (@library, @parser) ~>
+  (@library, @parser, @getPermissions) ~>
     @parser.on \status, @~onStatus
     @parser.on \lifesigns, !~> @emit \lifesigns
     @parser.on \error, !(msg) ~> @emit \error, msg
@@ -14,9 +40,17 @@ module.exports = class PlayerServer extends EventEmitter
     !~function send_cmds_to_mpd (cmds)
       @parser.sendRequest "command_list_begin\n#{cmds.join("\n")}\ncommand_list_end", cb
 
+    ~function check_permission (name)
+      permission = command_permissions[name]
+      return true if permission is null
+      return true if @getPermissions![permission]
+      cb {err: "command #{JSON.stringify name} requires permission #{JSON.stringify permission}"}
+      return false
+
     if typeof request is 'object'
       # new-style command is an object
       {name} = request
+      return unless check_permission name
       switch name
         case \listallinfo then @library.get_library (library) -> cb {msg: library}
         case \addid       then send_cmds_to_mpd ("addid \"#{qEscape file}\" #{Number pos}" for {file, pos} of request.items)
@@ -30,7 +64,18 @@ module.exports = class PlayerServer extends EventEmitter
         default throw new Error "invalid command #{JSON.stringify name}"
 
     else
-      # old code still uses mpd string commands
+      # old code still uses mpd string commands.
+      # check permissions
+      name = request.split(/\s/)[0]
+      if name is 'command_list_begin'
+        commands = request.split('\n')
+        commands.shift!
+        commands.pop!
+        for command of commands
+          name = command.split(/\s/)[0]
+          return unless check_permission name
+      else
+        return unless check_permission name
       @parser.sendRequest request, cb
 
   onStatus: !(arg) ->

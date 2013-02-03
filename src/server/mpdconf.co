@@ -36,7 +36,6 @@ module.exports = class MpdConf
 
     @state.run_dir = null
     @state.music_directory = path.join(osenv.home(), 'music')
-    @state.port = 16244
     @state.default_permissions = DEFAULT_PERMISSIONS
 
   accountHasPerm: (passwd, perm) -> !!@state.permissions[passwd][perm]
@@ -111,9 +110,7 @@ module.exports = class MpdConf
     pid_file                "#{path.join(@state.run_dir, "mpd.pid")}"
     state_file              "#{path.join(@state.run_dir, "mpd.state")}"
     sticker_file            "#{path.join(@state.run_dir, "mpd.sticker.db")}"
-    bind_to_address         "localhost"
     bind_to_address         "#{path.join(@state.run_dir, "mpd.socket")}"
-    port                    "#{@state.port}"
     gapless_mp3_playback    "yes"
     auto_update             "yes"
     default_permissions     "#{permsToList(@state.default_permissions)}"
@@ -125,5 +122,8 @@ module.exports = class MpdConf
     id3v1_encoding          "UTF-8"
     #{accounts.join("\n")}
     #{audio_outputs.join("\n")}
-    """
+    # this socket is just for debugging with telnet
+    bind_to_address         "localhost"
+    port                    "16244"
+    """ + "\n"
 

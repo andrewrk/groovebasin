@@ -175,16 +175,6 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   state.mpd_conf = mpd_conf.state
   fs.writeFile MPD_CONF_PATH, mpd_conf.toMpdConf(), cb
 
-function createMpdConnection (unix_socket)
-  if unix_socket
-    connection = net.connect {path: MPD_SOCKET_PATH}
-  else
-    port = state.mpd_conf.port
-    host = 'localhost'
-    connection = net.connect {port, host}
-  connection.setEncoding 'utf8'
-  connection
-
 !function onSocketIoConnection (socket)
   permissions = state.mpd_conf.default_permissions
   server = PlayerServer library, mpd_parser, -> permissions
@@ -238,7 +228,8 @@ function createMpdConnection (unix_socket)
   cb()
 
 !function connectToMpd
-  socket = createMpdConnection true
+  socket = net.connect {path: MPD_SOCKET_PATH}
+  socket.setEncoding 'utf8'
   socket.on 'close', !->
     console.warn "server mpd disconnect"
     tryReconnect!

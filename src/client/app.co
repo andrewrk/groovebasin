@@ -1092,7 +1092,6 @@ function queueSelection (event)
       local_state.auth_password = null
       saveLocalState()
     renderSettings()
-  socket.emit 'Password', pass
 
 !function settingsAuthSave
   settings_ui.auth.show_edit = false

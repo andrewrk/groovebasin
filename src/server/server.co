@@ -205,7 +205,7 @@ function createMpdConnection (unix_socket)
 
   plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
-  socket.on 'Password', !(pass) ->
+  server.on 'password', !(pass) ->
     if success = (ref = state.mpd_conf.permissions[pass])?
       permissions := ref
     socket.emit 'Permissions', JSON.stringify(permissions)

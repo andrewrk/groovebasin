@@ -47,6 +47,7 @@ module.exports = class DynamicMode extends Plugin
       if did_anything
         @checkDynamicMode()
         @emit('status_changed')
+    socket.on 'Permissions', @~updateStickers
 
   checkDynamicMode: !->
     return unless @is_enabled

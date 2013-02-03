@@ -595,7 +595,7 @@ class Player extends EventEmitter
       callback(null, track)
 
   authenticate: !(password, callback=noop) ->
-    @sendCommand "password \"#{qEscape(password)}\"", !(err) ~> callback(err)
+    @sendCommand {name: \password, password: password}, !(err) ~> callback(err)
 
   scanFiles: !(files) ->
     @sendCommands ("update \"#{qEscape(file)}\"" for file of files)

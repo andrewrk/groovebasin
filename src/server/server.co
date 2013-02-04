@@ -35,7 +35,6 @@ mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
 mpd_parser = null
 my_player = null
-mpd_connect_success = false
 state = null
 app = null
 io = null
@@ -243,12 +242,12 @@ function makeTryReconnect (fn, delay)
   connect_timeout = null
   ->
     return unless connect_timeout!?
-    console.log 'attempting to connect to something'
     connect_timeout := setTimeout((!->
       connect_timeout := null
       fn!
-    ), 1000)
+    ), delay)
 
+mpd_connect_success = false
 const tryReconnectMpd = makeTryReconnect connectToMpd, 1000
 !function connectToMpd
   socket = net.connect {path: MPD_SOCKET_PATH}

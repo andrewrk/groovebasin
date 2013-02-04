@@ -60,9 +60,7 @@ module.exports = class Download extends Plugin
             files.push(path.join(@music_directory, track.file))
         @sendZipOfFiles zip_name, files, req, resp
 
-
     bus.on 'mpd', !(@mpd) ~>
-
 
   downloadPath: !(dl_path, zip_name, req, resp) ->
     finder = findit.find dl_path

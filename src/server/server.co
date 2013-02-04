@@ -35,8 +35,9 @@ mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
 mpd_parser = null
 my_player = null
-connect_success = true
+mpd_connect_success = false
 state = null
+app = null
 io = null
 
 plugins =
@@ -64,17 +65,25 @@ next_player_server_id = 0
 !function makeRunDir (cb)
   mkdirp(RUN_DIR, cb)
 
-const STATE_VERSION = 3 # increment this when layout of state object changes
+const STATE_VERSION = 4 # increment this when layout of state object changes
+
+const DEFAULT_PERMISSIONS =
+  read: true
+  add: true
+  control: true
+  # admin: true
+
 !function initState (cb)
   which 'mpd', !(err, mpd_exe) ->
     # it's ok if we can't find the mpd binary right now.
     if err then console.warn "Unable to find mpd binary in path: #{err.stack}"
-
     state :=
       state_version: STATE_VERSION
       mpd_exe_path: mpd_exe
       status: {} # this structure is visible to clients
       mpd_conf: mpd_conf.state
+      permissions: {}
+      default_permissions: DEFAULT_PERMISSIONS
     cb()
 
 async.series [
@@ -89,27 +98,17 @@ async.series [
   assert.ifError(err)
   connectToMpd!
 
-!function startServer
-  app = express()
-  app.configure !->
-    app.use(express.static(path.join(__dirname, '../public')))
-    app.use(express.static(path.join(__dirname, '../src/public')))
-    app.disable('x-powered-by')
+!function startSocketIo
+  app := express()
+  app.disable('x-powered-by')
 
   app_server = http.createServer(app)
 
+  if io?
+    try io.server.close!
   io := socketio.listen(app_server)
   io.set 'log level', 2
   io.sockets.on 'connection', onSocketIoConnection
-
-  plugins.bus.emit \app, app
-  plugins.bus.emit \save_state, state
-
-  for [name, enabled] of plugins.featuresList()
-    if enabled
-      console.info "#{name} is enabled."
-    else
-      console.warn "#{name} is disabled."
 
   app_server.listen PORT, HOST, !->
     process.send 'online'
@@ -120,6 +119,19 @@ async.series [
   process.on 'message', onProcessMessage
 
   connectMasterPlayer!
+
+!function startPlugins
+  console.log 'starting plugins'
+  app.use(express.static(path.join(__dirname, '../public')))
+  app.use(express.static(path.join(__dirname, '../src/public')))
+  plugins.bus.emit \app, app
+  plugins.bus.emit \mpd, my_player
+  plugins.bus.emit \save_state, state
+  for [name, enabled] of plugins.featuresList()
+    if enabled
+      console.info "#{name} is enabled."
+    else
+      console.warn "#{name} is disabled."
 
 function oncePerEventLoopFunc (fn)
   queued = false
@@ -176,24 +188,24 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   fs.writeFile MPD_CONF_PATH, mpd_conf.toMpdConf(), cb
 
 !function onSocketIoConnection (socket)
-  permissions = state.mpd_conf.default_permissions
+  permissions = state.default_permissions
   server = PlayerServer library, mpd_parser, -> permissions
   player_servers[id = next_player_server_id++] = server
+  socket.on \disconnect, !->
+    delete player_servers[id]
+
   socket.on \request, !(request) ->
     request = JSON.parse request
     server.request request.cmd, !(arg) ->
       response = JSON.stringify {callback_id: request.callback_id} <<< arg
       socket.emit \MpdResponse, response
-  server.on     \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
-  server.on     \error   !(msg) -> try socket.emit \MpdError, msg
-
-  socket.on \disconnect, !->
-    delete player_servers[id]
+  server.on \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
+  server.on \error,  !(msg) -> try socket.emit \MpdError, msg
 
   plugins.bus.emit \socket_connect, socket, -> permissions
   socket.emit 'Permissions', JSON.stringify(permissions)
   server.on 'password', !(pass) ->
-    if success = (ref = state.mpd_conf.permissions[pass])?
+    if success = (ref = state.permissions[pass])?
       permissions := ref
     socket.emit 'Permissions', JSON.stringify(permissions)
     socket.emit 'PasswordResult', JSON.stringify(success)
@@ -227,42 +239,57 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   }
   cb()
 
+function makeTryReconnect (fn, delay)
+  connect_timeout = null
+  ->
+    return unless connect_timeout!?
+    console.log 'attempting to connect to something'
+    connect_timeout := setTimeout((!->
+      connect_timeout := null
+      fn!
+    ), 1000)
+
+const tryReconnectMpd = makeTryReconnect connectToMpd, 1000
 !function connectToMpd
   socket = net.connect {path: MPD_SOCKET_PATH}
   socket.setEncoding 'utf8'
   socket.on 'close', !->
-    console.warn "server mpd disconnect"
-    tryReconnect!
+    if mpd_connect_success
+      console.warn "mpd disconnect"
+    tryReconnectMpd!
   socket.on 'error', !->
-    if connect_success
-      connect_success := false
-      console.warn "server no mpd daemon found."
-    tryReconnect!
+    if mpd_connect_success
+      mpd_connect_success := false
+      console.warn "no mpd daemon found."
+    tryReconnectMpd!
   mpd_parser := MpdParser socket
   mpd_parser.on \lifesigns, !->
-    console.info "server to mpd connect"
-    connect_success := true
-    startServer!
+    console.info "connected to mpd"
+    mpd_connect_success := true
+    startSocketIo!
 
+master_player_connect_success = false
+const tryReconnectMasterPlayer = makeTryReconnect connectMasterPlayer, 100
 !function connectMasterPlayer
   socket = socketio_client.connect "http://localhost:#PORT"
   my_player := Player socket
   my_player.on \MpdError, !(msg) -> console.error msg
 
+  socket.on \close, !->
+    if master_player_connect_success
+      console.warn 'server player closed'
+    tryReconnectMasterPlayer!
+  socket.on \error, !(err) ->
+    if master_player_connect_success
+      console.warn 'server player error:', err
+    tryReconnectMasterPlayer!
   socket.on \connect, !->
+    console.log 'server player connected'
+    master_player_connect_success := true
     socket.emit \SetUserName, '[server]'
-    my_player.authenticate state.mpd_conf.admin_password
+    my_player.authenticate state.admin_password
+    startPlugins!
 
-  plugins.bus.emit \mpd, my_player
-
-connect_server_timeout = null
-!function tryReconnect
-  return unless connect_server_timeout!?
-  connect_server_timeout := setTimeout((!->
-    connect_server_timeout := null
-    connectToMpd!
-  ), 1000)
-  try io.server.close!
 
 function arrayToSet (array)
   obj = {}

@@ -33,6 +33,7 @@ module.exports = class DynamicMode extends Plugin
     @mpd.on 'statusupdate', @~checkDynamicMode
     @mpd.on 'playlistupdate', @~checkDynamicMode
     @mpd.on 'libraryupdate', @~updateStickers
+    @updateStickers!
 
   onSocketConnection: !(socket) ->
     socket.on 'DynamicMode', !(data) ~>
@@ -110,7 +111,7 @@ module.exports = class DynamicMode extends Plugin
   updateStickers: !->
     @mpd.findStickers '/', LAST_QUEUED_STICKER, !(err, stickers) ~>
       if err
-        console.error "dynamicmode findsticker error: #{err}"
+        console.error 'dynamicmode find sticker error:', err
         return
       for sticker in stickers
         [file, value] = sticker

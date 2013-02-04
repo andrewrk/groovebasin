@@ -2,20 +2,6 @@ const
   path = require('path')
   osenv = require('osenv')
 
-  ALL_PERMISSIONS =
-    read: true
-    add: true
-    control: true
-    admin: true
-
-  DEFAULT_PERMISSIONS =
-    read: true
-    add: true
-    control: true
-
-function permsToList (perms)
-  Object.keys(perms).join(',')
-
 module.exports = class MpdConf
 
   (@state) ~>
@@ -23,8 +9,6 @@ module.exports = class MpdConf
 
   setDefaultState: !->
     @state = {}
-    @state.admin_password = Math.floor(Math.random() * 99999999999)
-    @state.permissions = "#{@state.admin_password}": ALL_PERMISSIONS
 
     @state.audio_httpd =
       format: \ogg
@@ -36,19 +20,12 @@ module.exports = class MpdConf
 
     @state.run_dir = null
     @state.music_directory = path.join(osenv.home(), 'music')
-    @state.default_permissions = DEFAULT_PERMISSIONS
-
-  accountHasPerm: (passwd, perm) -> !!@state.permissions[passwd][perm]
 
   playlistDirectory: -> path.join(@state.run_dir, "playlists")
 
   setRunDir: !-> @state.run_dir = path.resolve(it)
 
   toMpdConf: ->
-    accounts = []
-    for password, perms in @state.permissions
-      accounts.push "password \"#{password}@#{permsToList(perms)}\""
-
     audio_outputs = []
     if @state.audio_httpd?
       if @state.audio_httpd.format is \ogg
@@ -113,14 +90,13 @@ module.exports = class MpdConf
     bind_to_address         "#{path.join(@state.run_dir, "mpd.socket")}"
     gapless_mp3_playback    "yes"
     auto_update             "yes"
-    default_permissions     "#{permsToList(@state.default_permissions)}"
+    default_permissions     "read,add,control,admin"
     replaygain              "album"
     volume_normalization    "yes"
     max_command_list_size   "16384"
     max_connections         "10"
     max_output_buffer_size  "16384"
     id3v1_encoding          "UTF-8"
-    #{accounts.join("\n")}
     #{audio_outputs.join("\n")}
     # this socket is just for debugging with telnet
     bind_to_address         "localhost"

@@ -44,7 +44,9 @@ module.exports = class PlayerServer extends EventEmitter
       permission = command_permissions[name]
       return true if permission is null
       return true if @getPermissions![permission]
-      cb {err: "command #{JSON.stringify name} requires permission #{JSON.stringify permission}"}
+      err = "command #{JSON.stringify name} requires permission #{JSON.stringify permission}"
+      console.warn "permissions error:", err
+      cb {err}
       return false
 
     if typeof request is 'object'
@@ -63,7 +65,6 @@ module.exports = class PlayerServer extends EventEmitter
           ]
         case \password
           @emit 'password', request.password
-          send_cmds_to_mpd ["password \"#{qEscape request.password}\""]
         default throw new Error "invalid command #{JSON.stringify name}"
 
     else

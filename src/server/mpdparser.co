@@ -1,110 +1,7 @@
-######################### private static #####################
-const DIACRITICS_REMOVAL_MAP = [
-    {base:'a', regex:/[A\u0041\u24B6\uFF21\u00C0\u00C1\u00C2\u1EA6\u1EA4\u1EAA\u1EA8\u00C3\u0100\u0102\u1EB0\u1EAE\u1EB4\u1EB2\u0226\u01E0\u00C4\u01DE\u1EA2\u00C5\u01FA\u01CD\u0200\u0202\u1EA0\u1EAC\u1EB6\u1E00\u0104\u023A\u2C6F\u0061\u24D0\uFF41\u1E9A\u00E0\u00E1\u00E2\u1EA7\u1EA5\u1EAB\u1EA9\u00E3\u0101\u0103\u1EB1\u1EAF\u1EB5\u1EB3\u0227\u01E1\u00E4\u01DF\u1EA3\u00E5\u01FB\u01CE\u0201\u0203\u1EA1\u1EAD\u1EB7\u1E01\u0105\u2C65\u0250]/g},
-    {base:'aa',regex:/[\uA733\uA732]/g},
-    {base:'ae',regex:/[\u00E6\u01FD\u01E3\u00C6\u01FC\u01E2]/g},
-    {base:'ao',regex:/[\uA735\uA734]/g},
-    {base:'au',regex:/[\uA737\uA736]/g},
-    {base:'av',regex:/[\uA739\uA73B\uA738\uA73A]/g},
-    {base:'ay',regex:/[\uA73D\uA73C]/g},
-    {base:'b', regex:/[B\u0062\u24D1\uFF42\u1E03\u1E05\u1E07\u0180\u0183\u0253\u0042\u24B7\uFF22\u1E02\u1E04\u1E06\u0243\u0182\u0181]/g},
-    {base:'c', regex:/[C\u0063\u24D2\uFF43\u0107\u0109\u010B\u010D\u00E7\u1E09\u0188\u023C\uA73F\u2184\u0043\u24B8\uFF23\u0106\u0108\u010A\u010C\u00C7\u1E08\u0187\u023B\uA73E]/g},
-    {base:'d', regex:/[D\u0064\u24D3\uFF44\u1E0B\u010F\u1E0D\u1E11\u1E13\u1E0F\u0111\u018C\u0256\u0257\uA77A\u0044\u24B9\uFF24\u1E0A\u010E\u1E0C\u1E10\u1E12\u1E0E\u0110\u018B\u018A\u0189\uA779]/g},
-    {base:'dz',regex:/[\u01F3\u01C6\u01F1\u01C4\u01F2\u01C5]/g},
-    {base:'e', regex:/[E\u0065\u24D4\uFF45\u00E8\u00E9\u00EA\u1EC1\u1EBF\u1EC5\u1EC3\u1EBD\u0113\u1E15\u1E17\u0115\u0117\u00EB\u1EBB\u011B\u0205\u0207\u1EB9\u1EC7\u0229\u1E1D\u0119\u1E19\u1E1B\u0247\u025B\u01DD\u0045\u24BA\uFF25\u00C8\u00C9\u00CA\u1EC0\u1EBE\u1EC4\u1EC2\u1EBC\u0112\u1E14\u1E16\u0114\u0116\u00CB\u1EBA\u011A\u0204\u0206\u1EB8\u1EC6\u0228\u1E1C\u0118\u1E18\u1E1A\u0190\u018E]/g},
-    {base:'f', regex:/[F\u0066\u24D5\uFF46\u1E1F\u0192\uA77C\u0046\u24BB\uFF26\u1E1E\u0191\uA77B]/g},
-    {base:'g', regex:/[G\u0067\u24D6\uFF47\u01F5\u011D\u1E21\u011F\u0121\u01E7\u0123\u01E5\u0260\uA7A1\u1D79\uA77F\u0047\u24BC\uFF27\u01F4\u011C\u1E20\u011E\u0120\u01E6\u0122\u01E4\u0193\uA7A0\uA77D\uA77E]/g},
-    {base:'h', regex:/[H\u0068\u24D7\uFF48\u0125\u1E23\u1E27\u021F\u1E25\u1E29\u1E2B\u1E96\u0127\u2C68\u2C76\u0265\u0048\u24BD\uFF28\u0124\u1E22\u1E26\u021E\u1E24\u1E28\u1E2A\u0126\u2C67\u2C75\uA78D]/g},
-    {base:'hv',regex:/[\u0195]/g},
-    {base:'i', regex:/[I\u0069\u24D8\uFF49\u00EC\u00ED\u00EE\u0129\u012B\u012D\u00EF\u1E2F\u1EC9\u01D0\u0209\u020B\u1ECB\u012F\u1E2D\u0268\u0131\u0049\u24BE\uFF29\u00CC\u00CD\u00CE\u0128\u012A\u012C\u0130\u00CF\u1E2E\u1EC8\u01CF\u0208\u020A\u1ECA\u012E\u1E2C\u0197]/g},
-    {base:'j', regex:/[J\u006A\u24D9\uFF4A\u0135\u01F0\u0249\u004A\u24BF\uFF2A\u0134\u0248]/g},
-    {base:'k', regex:/[K\u006B\u24DA\uFF4B\u1E31\u01E9\u1E33\u0137\u1E35\u0199\u2C6A\uA741\uA743\uA745\uA7A3\u004B\u24C0\uFF2B\u1E30\u01E8\u1E32\u0136\u1E34\u0198\u2C69\uA740\uA742\uA744\uA7A2]/g},
-    {base:'l', regex:/[L\u006C\u24DB\uFF4C\u0140\u013A\u013E\u1E37\u1E39\u013C\u1E3D\u1E3B\u017F\u0142\u019A\u026B\u2C61\uA749\uA781\uA747\u004C\u24C1\uFF2C\u013F\u0139\u013D\u1E36\u1E38\u013B\u1E3C\u1E3A\u0141\u023D\u2C62\u2C60\uA748\uA746\uA780]/g},
-    {base:'lj',regex:/[\u01C9\u01C7\u01C8]/g},
-    {base:'m', regex:/[M\u006D\u24DC\uFF4D\u1E3F\u1E41\u1E43\u0271\u026F\u004D\u24C2\uFF2D\u1E3E\u1E40\u1E42\u2C6E\u019C]/g},
-    {base:'n', regex:/[N\u006E\u24DD\uFF4E\u01F9\u0144\u00F1\u1E45\u0148\u1E47\u0146\u1E4B\u1E49\u019E\u0272\u0149\uA791\uA7A5\u004E\u24C3\uFF2E\u01F8\u0143\u00D1\u1E44\u0147\u1E46\u0145\u1E4A\u1E48\u0220\u019D\uA790\uA7A4]/g},
-    {base:'nj',regex:/[\u01CC\u01CA\u01CB]/g},
-    {base:'o', regex:/[O\u006F\u24DE\uFF4F\u00F2\u00F3\u00F4\u1ED3\u1ED1\u1ED7\u1ED5\u00F5\u1E4D\u022D\u1E4F\u014D\u1E51\u1E53\u014F\u022F\u0231\u00F6\u022B\u1ECF\u0151\u01D2\u020D\u020F\u01A1\u1EDD\u1EDB\u1EE1\u1EDF\u1EE3\u1ECD\u1ED9\u01EB\u01ED\u00F8\u01FF\u0254\uA74B\uA74D\u0275\u004F\u24C4\uFF2F\u00D2\u00D3\u00D4\u1ED2\u1ED0\u1ED6\u1ED4\u00D5\u1E4C\u022C\u1E4E\u014C\u1E50\u1E52\u014E\u022E\u0230\u00D6\u022A\u1ECE\u0150\u01D1\u020C\u020E\u01A0\u1EDC\u1EDA\u1EE0\u1EDE\u1EE2\u1ECC\u1ED8\u01EA\u01EC\u00D8\u01FE\u0186\u019F\uA74A\uA74C]/g},
-    {base:'oi',regex:/[\u01A3\u01A2]/g},
-    {base:'oo',regex:/[\uA74F\uA74E]/g},
-    {base:'ou',regex:/[\u0223\u0222]/g},
-    {base:'p',regex:/[P\u0070\u24DF\uFF50\u1E55\u1E57\u01A5\u1D7D\uA751\uA753\uA755\u0050\u24C5\uFF30\u1E54\u1E56\u01A4\u2C63\uA750\uA752\uA754]/g},
-    {base:'q',regex:/[Q\u0071\u24E0\uFF51\u024B\uA757\uA759\u0051\u24C6\uFF31\uA756\uA758\u024A]/g},
-    {base:'r',regex:/[R\u0072\u24E1\uFF52\u0155\u1E59\u0159\u0211\u0213\u1E5B\u1E5D\u0157\u1E5F\u024D\u027D\uA75B\uA7A7\uA783\u0052\u24C7\uFF32\u0154\u1E58\u0158\u0210\u0212\u1E5A\u1E5C\u0156\u1E5E\u024C\u2C64\uA75A\uA7A6\uA782]/g},
-    {base:'s',regex:/[S\u0073\u24E2\uFF53\u00DF\u015B\u1E65\u015D\u1E61\u0161\u1E67\u1E63\u1E69\u0219\u015F\u023F\uA7A9\uA785\u1E9B\u0053\u24C8\uFF33\u1E9E\u015A\u1E64\u015C\u1E60\u0160\u1E66\u1E62\u1E68\u0218\u015E\u2C7E\uA7A8\uA784]/g},
-    {base:'t',regex:/[T\u0074\u24E3\uFF54\u1E6B\u1E97\u0165\u1E6D\u021B\u0163\u1E71\u1E6F\u0167\u01AD\u0288\u2C66\uA787\u0054\u24C9\uFF34\u1E6A\u0164\u1E6C\u021A\u0162\u1E70\u1E6E\u0166\u01AC\u01AE\u023E\uA786]/g},
-    {base:'tz',regex:/[\uA729\uA728]/g},
-    {base:'u',regex:/[U\u0075\u24E4\uFF55\u00F9\u00FA\u00FB\u0169\u1E79\u016B\u1E7B\u016D\u00FC\u01DC\u01D8\u01D6\u01DA\u1EE7\u016F\u0171\u01D4\u0215\u0217\u01B0\u1EEB\u1EE9\u1EEF\u1EED\u1EF1\u1EE5\u1E73\u0173\u1E77\u1E75\u0289\u0055\u24CA\uFF35\u00D9\u00DA\u00DB\u0168\u1E78\u016A\u1E7A\u016C\u00DC\u01DB\u01D7\u01D5\u01D9\u1EE6\u016E\u0170\u01D3\u0214\u0216\u01AF\u1EEA\u1EE8\u1EEE\u1EEC\u1EF0\u1EE4\u1E72\u0172\u1E76\u1E74\u0244]/g},
-    {base:'v',regex:/[V\u0076\u24E5\uFF56\u1E7D\u1E7F\u028B\uA75F\u028C\u0056\u24CB\uFF36\u1E7C\u1E7E\u01B2\uA75E\u0245]/g},
-    {base:'vy',regex:/[\uA761\uA760]/g},
-    {base:'w',regex:/[W\u0077\u24E6\uFF57\u1E81\u1E83\u0175\u1E87\u1E85\u1E98\u1E89\u2C73\u0057\u24CC\uFF37\u1E80\u1E82\u0174\u1E86\u1E84\u1E88\u2C72]/g},
-    {base:'x',regex:/[X\u0078\u24E7\uFF58\u1E8B\u1E8D\u0058\u24CD\uFF38\u1E8A\u1E8C]/g},
-    {base:'y',regex:/[Y\u0079\u24E8\uFF59\u1EF3\u00FD\u0177\u1EF9\u0233\u1E8F\u00FF\u1EF7\u1E99\u1EF5\u01B4\u024F\u1EFF\u0059\u24CE\uFF39\u1EF2\u00DD\u0176\u1EF8\u0232\u1E8E\u0178\u1EF6\u1EF4\u01B3\u024E\u1EFE]/g},
-    {base:'z',regex:/[Z\u007A\u24E9\uFF5A\u017A\u1E91\u017C\u017E\u1E93\u1E95\u01B6\u0225\u0240\u2C6C\uA763\u005A\u24CF\uFF3A\u0179\u1E90\u017B\u017D\u1E92\u1E94\u01B5\u0224\u2C7F\u2C6B\uA762]/g}
-]
-function removeDiacritics (str)
-  str .= replace(regex, base) for {regex, base} of DIACRITICS_REMOVAL_MAP
-  str
-
-const PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/]
-function stripPrefixes (str)
-  for regex of PREFIXES_TO_STRIP
-    str .= replace(regex, '')
-    break
-  str
-
-const MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m
-
-const trim = do
-  if (__trim = String.prototype.trim)?
-    (text) -> __trim.call(text)
-  else
-    __trimLeft = /^\s+/
-    __trimRight = /\s+$/
-    (text) -> text.replace(__trimLeft, "").replace(__trimRight, "")
-
-function elapsedToDate (elapsed)
-  new Date((new Date()) - elapsed * 1000)
-
-function dateToElapsed (date)
-  ((new Date()) - date) / 1000
-
-function fromMpdVol (vol)
-  vol = parseInt(vol, 10)
-  if vol < 0 or vol > 100 then null else vol / 100
-
-function toMpdVol (vol)
-  0 >? Math.round(parseFloat(vol, 10) * 100) <? 100
-
-function sortableTitle (title)
-  stripPrefixes(removeDiacritics(title))
-
-function titleCompare (a, b)
-  _a = sortableTitle(a)
-  _b = sortableTitle(b)
-  if _a < _b
-    -1
-  else if _a > _b
-    1
-  else
-    # At this point we compare the original strings. Our cache update code
-    # depends on this behavior.
-    if a < b
-      -1
-    else if a > b
-      1
-    else
-      0
+{EventEmitter} = require 'events'
 
 function noop (err)
   throw err if err
-
-function qEscape (str)
-  # replace all " with \"
-  str.toString().replace /"/g, '\\"'
-
-function sign (n)
-  if n > 0 then 1 else if n < 0 then -1 else 0
 
 function parseMaybeUndefNumber (n)
   n = parseInt(n, 10)
@@ -142,139 +39,38 @@ function parseWithSepField (msg, sep_field, skip_fields, flush)
 function parseMpdTracks (msg, flush)
   parseWithSepField(msg, 'file', 'directory': true, flush)
 
-function getOrCreate (key, table, initObjFunc)
-  result = table[key]
-  if result!?
-    result = initObjFunc()
-    # insert into table
-    table[key] = result
-  result
+trackNameFromFile = (filename) ->
+  filetitle = filename.substr(filename.lastIndexOf('/') + 1)
+  len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
+  filetitle.substr 0, len
 
-function trackComparator (a, b)
-  if a.track < b.track
-    return -1
-  else if a.track > b.track
-    return 1
-  else
-    titleCompare(a.name, b.name)
-
-function albumComparator (a, b)
-  if a.year < b.year
-    return -1
-  else if a.year > b.year
-    return 1
-  else
-    titleCompare(a.name, b.name)
-
-function artistComparator (a, b)
-  titleCompare(a.name, b.name)
-
-function playlistComparator (a, b)
-  titleCompare(a.name, b.name)
-
-function albumKey (track)
-  if track.album_name
-    removeDiacritics(track.album_name)
-  else
-    removeDiacritics(track.album_artist_name)
-
-function artistKey (artist_name)
-  removeDiacritics(artist_name)
-
-function moreThanOneKey (object)
-  count = -2
-  for k in object
-    return true if not ++count
-  return false
-
-function firstKey (object)
-  for k in object
-    return k
-  return null
-
-next_id = 0
-function nextId
-  "id-#{next_id++}"
-
-if (EventEmitter = require?('events')?EventEmitter)!?
-  class EventEmitter
-    ..count = 0
-
-    ~>
-      @event_handlers = {}
-      @next_id = 0
-      @prop = "__EventEmitter_#{..count++}_id"
-
-    on: !(event_name, handler) ->
-      handler[@prop] = @next_id
-      @event_handlers@[event_name][@next_id] = handler
-      @next_id += 1
-
-    removeListener: !(event_name, handler) ->
-      delete @event_handlers@[event_name][handler[@prop]]
-
-    emit: !(event_name, ...args) ->
-      for id, h in @event_handlers@[event_name]
-        h(...args)
+parseMsgToTrackObjects = (msg) ->
+  tracks = []
+  parseMpdTracks msg, !(mpd_track) ->
+    artist_name = (mpd_track.Artist ? "").trim!
+    track =
+      file: mpd_track.file
+      name: mpd_track.Title or trackNameFromFile(mpd_track.file)
+      artist_name: artist_name
+      artist_disambiguation: ""
+      album_artist_name: mpd_track.AlbumArtist or artist_name
+      album_name: (mpd_track.Album ? "").trim!
+      track: parseMaybeUndefNumber(mpd_track.Track)
+      time: parseInt(mpd_track.Time, 10)
+      year: parseMaybeUndefNumber(mpd_track.Date)
+    tracks.push track
+  tracks
 
 module.exports = class MpdParser extends EventEmitter
-  ..trackNameFromFile = (filename) ->
-    filetitle = filename.substr(filename.lastIndexOf('/') + 1)
-    len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
-    filetitle.substr 0, len
-
-  ..parseMsgToTrackObjects = (msg) ->
-    tracks = []
-    parseMpdTracks msg, !(mpd_track) ->
-      artist_name = trim(mpd_track.Artist ? "")
-      track =
-        file: mpd_track.file
-        name: mpd_track.Title or ..trackNameFromFile(mpd_track.file)
-        artist_name: artist_name
-        artist_disambiguation: ""
-        album_artist_name: mpd_track.AlbumArtist or artist_name
-        album_name: trim(mpd_track.Album ? "")
-        track: parseMaybeUndefNumber(mpd_track.Track)
-        time: parseInt(mpd_track.Time, 10)
-        year: parseMaybeUndefNumber(mpd_track.Date)
-      tracks.push track
-    tracks
-
-  # this key is unique because it has capital letters
-  ..VARIOUS_ARTISTS_KEY = "VariousArtists"
-
   (@mpd_socket) ~>
     super()
 
     @mpd_socket.on \data, !(data) ~> @receive data
 
-    # options the user can toggle
-    @various_artists_name = "Various Artists"
-
-    @resetServerState()
-
-    # maps mpd subsystems to our function to call which will update ourself
-    @updateFuncs =
-      database: ~> # the song database has been modified after update.
-        @have_file_list_cache = false
-        @updateLibrary()
-      update: noop # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
-      stored_playlist: @~updateStoredPlaylists # a stored playlist has been modified, renamed, created or deleted
-      playlist: @~updatePlaylist # the current playlist has been modified
-      player: @~updateStatus # the player has been started, stopped or seeked
-      mixer: @~updateStatus # the volume has been changed
-      output: noop # an audio output has been enabled or disabled
-      options: @~updateStatus # options like repeat, random, crossfade, replay gain
-      sticker: ~> # the sticker database has been modified.
-        @emit \stickerupdate
-      subscription: noop # a client has subscribed or unsubscribed to a channel
-      message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
-
-  handleConnectionStart: !->
-    @updateLibrary()
-    @updateStatus()
-    @updatePlaylist()
-    @updateStoredPlaylists()
+    @buffer = ""
+    @msg_handler_queue = []
+    # whether we've sent the idle command to mpd
+    @idling = false
 
   sendRequest: !(command, cb=noop) ->
     @send "noidle\n" if @idling
@@ -291,8 +87,8 @@ module.exports = class MpdParser extends EventEmitter
     return response if err?
     command_name = complete_command.match(/^\S*/)[0]
     msg: switch command_name
-      case 'listallinfo'  then ..parseMsgToTrackObjects(msg)
-      case 'lsinfo'       then ..parseMsgToTrackObjects(msg)[0]
+      case 'listallinfo'  then parseMsgToTrackObjects(msg)
+      case 'lsinfo'       then parseMsgToTrackObjects(msg)[0]
       case 'status'       then parseMpdObject msg
       case 'playlistinfo'
         items = []
@@ -306,440 +102,6 @@ module.exports = class MpdParser extends EventEmitter
         item
       default msg
 
-  updateLibrary: !(callback=noop) ->
-    @sendCommand 'listallinfo', !(err, msg) ~>
-      return callback(err) if err
-      tracks = ..parseMsgToTrackObjects msg
-      @buildArtistAlbumTree tracks, @library
-      @have_file_list_cache = true
-      # in case the user has a search open, we'll apply their search again.
-      last_query = @last_query
-      # reset last query so that search is forced to run again
-      @last_query = ""
-      @search last_query
-      callback()
-
-  updatePlaylist: !(callback=noop) ->
-    @sendCommand "playlistinfo", !(err, msg) ~>
-      return callback(err) if err
-      @clearPlaylist()
-      parseMpdTracks msg, !(mpd_track) ~>
-        id = parseInt(mpd_track.Id, 10)
-        obj =
-          id: id
-          track: @library.track_table[mpd_track.file]
-          pos: @playlist.item_list.length
-          playlist: @playlist
-        @playlist.item_list.push obj
-        @playlist.item_table[id] = obj
-
-      # make sure current track data is correct
-      if @status.current_item?
-        @status.current_item = @playlist.item_table[@status.current_item.id]
-
-      if @status.current_item?
-        # looks good, notify listeners
-        @emit 'playlistupdate'
-        callback()
-      else
-        # we need a status update before raising a playlist update event
-        @updateStatus !(err) ~>
-          return callback(err) if err
-          @emit 'playlistupdate'
-          callback()
-
-  updateStoredPlaylists: !(callback=noop) ->
-    @sendCommand "listplaylists", !(err, msg) ~>
-      return callback(err) if err
-
-      count = 0
-      stored_playlist_table = {}
-      stored_playlist_item_table = {}
-      parseWithSepField msg, 'playlist', {}, !(obj) ~>
-        name = obj.playlist
-        count += 1
-        updateStoredPlaylist name, !(err) ~>
-          return if count!?
-          if err
-            count := null
-            return cb(err)
-          count -= 1
-          finishUp()
-
-      finishUp()
-
-      ~function finishUp
-        if count is 0
-          @stored_playlist_table = stored_playlist_table
-          @stored_playlist_item_table = stored_playlist_item_table
-          @stored_playlists = (v for k, v in stored_playlist_table)
-          @stored_playlists.sort(playlistComparator)
-          playlist.pos = i for playlist, i of @stored_playlists
-          callback()
-          @emit \storedplaylistupdate
-
-      !~function updateStoredPlaylist (name, callback)
-        @sendCommand "listplaylist \"#{qEscape(name)}\"", !(err, msg) ~>
-          return callback(err) if err
-          item_list = []
-          item_table = {}
-          playlist = {name, item_list, item_table}
-          parseWithSepField msg, 'file', {}, !(item) ~>
-            item =
-              track: @library.track_table[item.file]
-              pos: item_list.length
-              id: nextId()
-              playlist: playlist
-            item_list.push(item)
-            item_table[item.id] = item
-            stored_playlist_item_table[item.id] = item
-          stored_playlist_table[name] = playlist
-          callback()
-
-  updateStatus: !(callback=noop) ->
-    @sendCommand "status", !(err, msg) ~>
-      return callback(err) if err
-      o = parseMpdObject(msg)
-      @status <<<
-        volume: fromMpdVol(o.volume)
-        repeat: !!parseInt(o.repeat, 2)
-        random: !!parseInt(o.random, 2)
-        single: !!parseInt(o.single, 2)
-        consume: !!parseInt(o.consume, 2)
-        state: o.state
-        time: null
-        bitrate: null
-        track_start_date: null
-
-      @status.bitrate = parseInt(o.bitrate, 10) if o.bitrate?
-
-      if o.time? and o.elapsed?
-        @status.time = parseInt(o.time.split(":")[1], 10)
-        # we still add elapsed for when its paused
-        @status.elapsed = parseFloat(o.elapsed, 10)
-        # add a field for the start date of the current track
-        @status.track_start_date = elapsedToDate(@status.elapsed)
-
-    @sendCommand "currentsong", !(err, msg) ~>
-      return callback(err) if err
-
-      count = 0
-      parseMpdTracks(msg, updateWithMpdTrack)
-
-      if count is 0
-        # no current song
-        @status.current_item = null
-        callback()
-        @emit 'statusupdate'
-        return
-      else if count > 1
-        throw new Error()
-
-      !~function updateWithMpdTrack(mpd_track)
-        count += 1
-        id = parseInt(mpd_track.Id, 10)
-        pos = parseInt(mpd_track.Pos, 10)
-
-        @status.current_item = @playlist.item_table[id]
-
-        if @status.current_item? and @status.current_item.pos is pos
-          @status.current_item.track = @library.track_table[mpd_track.file]
-          # looks good, notify listeners
-          @emit 'statusupdate'
-          callback()
-        else
-          # missing or inconsistent playlist data, need to get playlist update
-          @status.current_item =
-            id: id
-            pos: pos
-            track: @library.track_table[mpd_track.file]
-          @updatePlaylist !(err) ~>
-            return callback(err) if err
-            @emit 'statusupdate'
-            callback()
-
-  # puts the search results in search_results
-  search: !(query) ->
-    query = trim(query)
-    if query.length is 0
-      @search_results = @library
-      @emit \libraryupdate
-      @last_query = query
-      return
-    words = removeDiacritics(query).split(/\s+/)
-    query = words.join(" ")
-    return if query is @last_query
-    @last_query = query
-    result = []
-    for k, track in @library.track_table
-      is_match = do ->
-        for word of words
-          if track.search_tags.indexOf(word) is -1
-            return false
-        true
-      result.push track if is_match
-    # zip results into album
-    @buildArtistAlbumTree result, @search_results = {}
-    @emit \libraryupdate
-
-  queueFiles: !(files, pos=@playlist.item_list.length, callback=noop) ->
-    return callback(null, []) unless files.length
-    cmds = []
-    for file of files by -1
-      cmds.push "addid \"#{qEscape(file)}\" #{pos}"
-
-    items = ({id: null, pos: null, track: @library.track_table[file]} for file of files)
-    @playlist.item_list.splice pos, 0, ...items
-    @fixPlaylistPosCache()
-
-    @sendCommands cmds, !(err, msg) ~>
-      return callback(err) if err
-      for line, i of msg.split("\n")
-        continue unless line
-        index = files.length - 1 - i
-        item_id = parseInt(line.substring(4), 10)
-        items[index].id = item_id
-      callback(null, items)
-
-    @emit 'playlistupdate'
-
-  queueFile: !(file, pos, callback) -> @queueFiles([file], pos, callback)
-
-  queueFilesNext: !(files) ->
-    new_pos = (@status.current_item?.pos ? -1) + 1
-    @queueFiles files, new_pos
-
-  queueFileNext: !(file) -> @queueFilesNext [file]
-
-  clear: !->
-    @sendCommand "clear"
-    @clearPlaylist()
-    @emit 'playlistupdate'
-
-  shuffle: !-> @sendCommand "shuffle"
-
-  stop: !->
-    @sendCommand "stop"
-    @status.state = "stop"
-    @emit 'statusupdate'
-
-  play: !->
-    @sendCommand "play"
-
-    if @status.state is "pause"
-      @status.track_start_date = elapsedToDate(@status.elapsed)
-      @status.state = "play"
-      @emit 'statusupdate'
-
-  pause: !->
-    @sendCommand "pause 1"
-
-    if @status.state is "play"
-      @status.elapsed = dateToElapsed(@status.track_start_date)
-      @status.state = "pause"
-      @emit 'statusupdate'
-
-  next: !->
-    # if mpd is stopped, it will ignore our request. so we must play, then skip, then stop.
-    if @status.state is "stop"
-      @sendCommand "play"
-      @sendCommand "next"
-      @sendCommand "stop"
-    else
-      @sendCommand "next"
-    @anticipateSkip 1
-
-  prev: !->
-    # if mpd is stopped, it will ignore our request. so we must play, then skip, then stop.
-    if @status.state is "stop"
-      @sendCommand "play"
-      @sendCommand "previous"
-      @sendCommand "stop"
-    else
-      @sendCommand "previous"
-    @anticipateSkip -1
-
-  playId: !(track_id) ->
-    track_id = parseInt(track_id, 10)
-    @sendCommand "playid #{qEscape(track_id)}"
-    @anticipatePlayId track_id
-
-  moveIds: !(track_ids, pos) ->
-    pos = parseInt(pos, 10)
-    # get the playlist items for the ids
-    items = (item if (item = @playlist.item_table[id])? for id of track_ids)
-    # sort the list by the reverse order in the playlist
-    items.sort (a, b) -> b.pos - a.pos
-
-    cmds = []
-    while items.length > 0
-      if pos <= items[0].pos
-        real_pos = pos
-        item = items.shift()
-      else
-        real_pos = pos - 1
-        item = items.pop()
-
-      cmds.push "moveid #{item.id} #{real_pos}"
-      @playlist.item_list.splice item.pos, 1
-      @playlist.item_list.splice real_pos, 0, item
-
-      @fixPlaylistPosCache()
-
-    @sendCommands cmds
-    @emit 'playlistupdate'
-
-  # shifts the list of ids by offset, winamp style
-  shiftIds: !(track_ids, offset) ->
-    offset = parseInt(offset, 10)
-    return if offset is 0 or track_ids.length is 0
-
-    items = (item if (item = @playlist.item_table[id])? for id of track_ids)
-    items.sort (a, b) -> sign(offset) * (b.pos - a.pos)
-
-    # abort if any are out of bounds
-    for item of [items[0], items[items.length - 1]]
-      new_pos = item.pos + offset
-      return if new_pos < 0 or new_pos >= @playlist.item_list.length
-
-    @sendCommands ("moveid #{item.id} #{item.pos + offset}" for item of items)
-
-    # anticipate the result
-    for item of items
-      @playlist.item_list.splice item.pos, 1
-      @playlist.item_list.splice item.pos+offset, 0, item
-      @fixPlaylistPosCache()
-
-    @emit 'playlistupdate'
-
-  removeIds: !(track_ids, callback=noop) ->
-    return callback() if track_ids.length is 0
-    cmds = []
-    for track_id of track_ids
-      track_id = parseInt(track_id, 10)
-      if @status.current_item?.id is track_id
-        @anticipateSkip 1
-        if @status.state is not "play"
-          @status.state = "stop"
-      cmds.push "deleteid #{qEscape(track_id)}"
-      item = @playlist.item_table[track_id]
-      delete @playlist.item_table[item.id]
-      @playlist.item_list.splice(item.pos, 1)
-      @fixPlaylistPosCache()
-
-    @sendCommands cmds, (err) ~> callback(err)
-    @emit 'playlistupdate'
-
-  removeId: !(track_id, callback=noop) ->
-    @removeIds [track_id], callback
-
-  close: !-> @send "close\n" # bypass message queue
-
-  # in seconds
-  seek: !(pos) ->
-    pos = parseFloat(pos, 10)
-    pos = 0 if pos < 0
-    pos = @status.time if pos > @status.time
-    @sendCommand "seekid #{@status.current_item.id} #{Math.round(pos)}"
-    @status.track_start_date = elapsedToDate(pos)
-    @emit 'statusupdate'
-
-  # between 0 and 1
-  setVolume: !(vol) ->
-    vol = toMpdVol(vol)
-    @sendCommand "setvol #{vol}"
-    @status.volume = fromMpdVol(vol)
-    @emit 'statusupdate'
-
-  changeStatus: !(status) ->
-    cmds = []
-    if status.consume?
-      @status.consume = status.consume
-      cmds.push "consume #{Number(status.consume)}"
-    if status.random?
-      @status.random = status.random
-      cmds.push "random #{Number(status.random)}"
-    if status.repeat?
-      @status.repeat = status.repeat
-      cmds.push "repeat #{Number(status.repeat)}"
-    if status.single?
-      @status.single = status.single
-      cmds.push "single #{Number(status.single)}"
-
-    @sendCommands cmds
-    @emit 'statusupdate'
-
-  getFileInfo: !(file, callback=noop) ->
-    @sendCommand "lsinfo \"#{qEscape(file)}\"", !(err, msg) ~>
-      return callback(err) if err
-      [track] = ..parseMsgToTrackObjects msg
-      callback(null, track)
-
-  authenticate: !(password, callback=noop) ->
-    @sendCommand "password \"#{qEscape(password)}\"", !(err) ~> callback(err)
-
-  scanFiles: !(files) ->
-    @sendCommands ("update \"#{qEscape(file)}\"" for file of files)
-
-  findStickers: !(dir, name, cb=noop) ->
-    @sendCommand "sticker find song \"#{qEscape(dir)}\" \"#{qEscape(name)}\"", !(err, msg) ~>
-      return cb(err) if err
-      current_file = null
-      stickers = {}
-      for line of msg.split("\n")
-        [name, value] = splitOnce line, ": "
-        if name is "file"
-          current_file = value
-        else if name is "sticker"
-          return cb("protocol") if current_file!?
-          value = splitOnce(value, "=")[1]
-          stickers[current_file] = value
-      cb(null, stickers)
-
-  setStickers: !(files, name, value, cb=noop) ->
-    cmds = for file of files
-      "sticker set song \"#{qEscape(file)}\" \"#{qEscape(name)}\" \"#{qEscape(value)}\""
-    @sendCommands cmds, (err) ~> cb(err)
-
-  setSticker: !(file, name, value, cb=noop) ->
-    @setStickers [file], name, value, cb
-
-  queueFilesInStoredPlaylist: !(files, stored_playlist_name, pos, callback=noop) ->
-    return callback(null, []) unless files.length
-
-    esc_name = qEscape(stored_playlist_name)
-    stored_playlist = @stored_playlist_table[stored_playlist_name]
-    cmds = []
-    if stored_playlist?
-      pl_length = stored_playlist.item_list.length
-      pos ||= pl_length
-
-      for file of files by -1
-        cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-        cmds.push "playlistmove \"#esc_name\" #pl_length #pos"
-        pl_length += 1
-    else
-      # this playlist doesn't exist yet.
-      for file of files
-        cmds.push "playlistadd \"#esc_name\" \"#{qEscape(file)}\""
-    @sendCommands cmds, !(err, msg) ->
-      return callback(err) if err
-      callback()
-
-  queueFileInStoredPlaylist: !(file, stored_playlist_name, pos, callback) ->
-    @queueFilesInStoredPlaylist([file], stored_playlist_name, pos, callback)
-
-  createStoredPlaylist: !(name, callback=noop) ->
-    any_file = firstKey(@library.track_table)
-    esc_name = qEscape(name)
-    cmds = [
-      "playlistadd \"#esc_name\" \"#{qEscape(any_file)}\""
-      "playlistclear \"#esc_name\""
-    ]
-    @sendCommands cmds, !(err, msg) ->
-      return callback(err) if err
-      callback()
-
   send: !(data) ->
     @mpd_socket.write data
 
@@ -750,7 +112,7 @@ module.exports = class MpdParser extends EventEmitter
     @buffer += data
 
     for ever
-      m = @buffer.match(MPD_SENTINEL)
+      m = @buffer.match(/^(OK|ACK|list_OK)(.*)$/m)
       return if not m?
 
       msg = @buffer.substring(0, m.index)
@@ -768,96 +130,10 @@ module.exports = class MpdParser extends EventEmitter
 
   handleIdleResults: !(msg) ->
     systems = []
-    for system of trim(msg).split("\n")
+    for system of msg.trim!.split("\n")
       if system.length > 0
         systems.push system.substring(9)
     @emit \status, systems
-
-  clearPlaylist: !->
-    @playlist =
-      item_list: []
-      item_table: {}
-      pos: null
-      name: null
-
-  anticipatePlayId: !(track_id) ->
-    item = @playlist.item_table[track_id]
-    @status.current_item = item
-    @status.state = "play"
-    @status.time = item.track.time
-    @status.track_start_date = new Date()
-    @emit 'statusupdate'
-
-  anticipateSkip: !(direction) ->
-    next_item = @playlist.item_list[@status.current_item.pos + direction]
-    if next_item?
-      @anticipatePlayId next_item.id
-
-  buildArtistAlbumTree: !(tracks, library) ->
-    # determine set of albums
-    library.track_table = {}
-    library.album_table = {}
-    for track of tracks
-      library.track_table[track.file] = track
-      album_key = albumKey(track)
-      album = getOrCreate album_key, library.album_table, ->
-        name: track.album_name
-        year: track.year
-        tracks: []
-        key: album_key
-      track.album = album
-      album.tracks.push track
-      album.year = track.year if not album.year?
-
-    # find compilation albums and create artist objects
-    artist_table = {}
-    for k, album in library.album_table
-      # count up all the artists and album artists mentioned in this album
-      album_artists = {}
-      album.tracks.sort trackComparator
-      for track, i of album.tracks
-        # cache the track indexes
-        track.pos = i
-        album_artist_name = track.album_artist_name
-        album_artists[artistKey(album_artist_name)] = true
-        album_artists[artistKey(track.artist_name)] = true
-      if moreThanOneKey(album_artists)
-        # multiple artists. we're sure it's a compilation album.
-        album_artist_name = @various_artists_name
-        artist_key = ..VARIOUS_ARTISTS_KEY
-        # make sure to disambiguate the artist names
-        for track of album.tracks
-          track.artist_disambiguation = track.artist_name
-      else
-        artist_key = artistKey(album_artist_name)
-      artist = getOrCreate artist_key, artist_table, ->
-        name: album_artist_name
-        albums: []
-        key: artist_key
-      album.artist = artist
-      artist.albums.push album
-
-    # collect list of artists and sort albums
-    library.artists = []
-    various_artist = null
-    for k, artist in artist_table
-      artist.albums.sort albumComparator
-      # cache the album indexes
-      album.pos = i for album, i of artist.albums
-      if artist.key is ..VARIOUS_ARTISTS_KEY
-        various_artist = artist
-      else
-        library.artists.push artist
-
-    # sort artists
-    library.artists.sort artistComparator
-    # various artists goes first
-    library.artists.splice 0, 0, various_artist if various_artist?
-
-    # cache the artist indexes
-    artist.pos = i for artist, i of library.artists
-
-    library.artist_table = artist_table
 
   sendWithCallback: !(cmd, cb=noop) ->
     @msg_handler_queue.push cb
@@ -870,29 +146,4 @@ module.exports = class MpdParser extends EventEmitter
     # if we have nothing else to do, idle.
     if @msg_handler_queue.length is 0
       @sendWithCallback "idle", @~handleIdleResultsLoop
-
-  fixPlaylistPosCache: !-> item.pos = i for item, i of @playlist.item_list
-
-  # clear state so we can start over with new mpd connection
-  resetServerState: !->
-    @buffer = ""
-    @msg_handler_queue = []
-
-    # whether we've sent the idle command to mpd
-    @idling = false
-
-    @have_file_list_cache = false
-
-    # cache of library data from mpd. See comment at top of this file
-    @library =
-      artists: []
-      track_table: {}
-    @search_results = @library
-    @last_query = ""
-    @clearPlaylist()
-    @status =
-      current_item: null
-    @stored_playlist_table = {}
-    @stored_playlist_item_table = {}
-    @stored_playlists = []
 

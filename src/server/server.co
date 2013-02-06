@@ -85,18 +85,6 @@ const DEFAULT_PERMISSIONS =
       default_permissions: DEFAULT_PERMISSIONS
     cb()
 
-async.series [
-  initState
-  makeRunDir
-  plugins~initialize
-  restoreState
-  writeMpdConf
-  # we always restart mpd so that it uses the mpd.conf we just generated
-  restartMpd
-], !(err) ->
-  assert.ifError(err)
-  connectToMpd!
-
 !function startSocketIo
   app := express()
   app.disable('x-powered-by')
@@ -112,12 +100,13 @@ async.series [
   app_server.listen PORT, HOST, !->
     process.send 'online'
     console.info "Listening at http://#HOST:#PORT"
+    connectMasterPlayer!
   app_server.on \close, !->
     console.info "server closed"
 
-  process.on 'message', onProcessMessage
-
-  connectMasterPlayer!
+  process.on 'message', !(message) ->
+    if message is 'shutdown'
+      process.exit(0)
 
 !function startPlugins
   console.log 'starting plugins'
@@ -238,64 +227,62 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   }
   cb()
 
-function makeTryReconnect (fn, delay)
+function makeConnectFunction (name, {createSocket, onSuccess})
   connect_timeout = null
-  ->
-    return unless connect_timeout!?
+  !function tryReconnect
+    return if connect_timeout?
     connect_timeout := setTimeout((!->
       connect_timeout := null
-      fn!
-    ), delay)
+      connect!
+    ), 1000)
+  # start this as true so that we complain abuot the first sign of trouble
+  connect_success = true
+  !function connect
+    socket = createSocket!
+    socket.on \close, !->
+      if connect_success
+        console.warn "#name connection closed"
+      tryReconnect!
+    socket.on \error, !->
+      if connect_success
+        connect_success := false
+        console.warn "#name connection error..."
+      tryReconnect!
+    socket.on \connect, !->
+      console.log "#{if connect_success then '' else '...'}#name connected"
+      connect_success := true
+      onSuccess socket
 
-mpd_connect_success = false
-const tryReconnectMpd = makeTryReconnect connectToMpd, 1000
-!function connectToMpd
-  socket = net.connect {path: MPD_SOCKET_PATH}
-  socket.setEncoding 'utf8'
-  socket.on 'close', !->
-    if mpd_connect_success
-      console.warn "mpd disconnect"
-    tryReconnectMpd!
-  socket.on 'error', !->
-    if mpd_connect_success
-      mpd_connect_success := false
-      console.warn "no mpd daemon found."
-    tryReconnectMpd!
-  mpd_parser := MpdParser socket
-  mpd_parser.on \lifesigns, !->
-    console.info "connected to mpd"
-    mpd_connect_success := true
+const connectToMpd = makeConnectFunction 'mpd', {
+  createSocket: ->
+    socket = net.connect {path: MPD_SOCKET_PATH}
+    socket.setEncoding 'utf8'
+    socket
+  onSuccess: !(socket) ->
+    mpd_parser := MpdParser socket
     startSocketIo!
+}
 
-master_player_connect_success = false
-const tryReconnectMasterPlayer = makeTryReconnect connectMasterPlayer, 100
-!function connectMasterPlayer
-  socket = socketio_client.connect "http://localhost:#PORT"
-  my_player := Player socket
-  my_player.on \MpdError, !(msg) -> console.error msg
-
-  socket.on \close, !->
-    if master_player_connect_success
-      console.warn 'server player closed'
-    tryReconnectMasterPlayer!
-  socket.on \error, !(err) ->
-    if master_player_connect_success
-      console.warn 'server player error:', err
-    tryReconnectMasterPlayer!
-  socket.on \connect, !->
-    console.log 'server player connected'
-    master_player_connect_success := true
+const connectMasterPlayer = makeConnectFunction 'master player', {
+  createSocket: ->
+    socketio_client.connect "http://localhost:#PORT"
+  onSuccess: !(socket) ->
+    my_player := Player socket
+    my_player.on \MpdError, !(msg) -> console.error msg
     socket.emit \SetUserName, '[server]'
     my_player.authenticate state.admin_password
     startPlugins!
+}
 
-
-function arrayToSet (array)
-  obj = {}
-  obj[item] = true for item of array
-  obj
-
-!function onProcessMessage (message)
-  if message is 'shutdown'
-    process.exit(0)
+async.series [
+  initState
+  makeRunDir
+  plugins~initialize
+  restoreState
+  writeMpdConf
+  # we always restart mpd so that it uses the mpd.conf we just generated
+  restartMpd
+], !(err) ->
+  assert.ifError(err)
+  connectToMpd!
 

@@ -33,7 +33,7 @@ const
 
 mpd_conf = MpdConf() # default
 mpd_conf.setRunDir(RUN_DIR)
-mpd_parser = null
+player_server = null
 my_player = null
 state = null
 app = null
@@ -57,9 +57,7 @@ plugins =
   featuresList: ->
     ([name, plugin.is_enabled] for name, plugin in @objects)
 
-library = Library plugins.bus
-player_servers = {}
-next_player_server_id = 0
+const library = Library plugins.bus
 
 !function makeRunDir (cb)
   mkdirp(RUN_DIR, cb)
@@ -176,27 +174,8 @@ const saveState = oncePerEventLoopFunc !(cb) ->
   fs.writeFile MPD_CONF_PATH, mpd_conf.toMpdConf(), cb
 
 !function onSocketIoConnection (socket)
-  permissions = state.default_permissions
-  server = PlayerServer library, mpd_parser, -> permissions
-  player_servers[id = next_player_server_id++] = server
-  socket.on \disconnect, !->
-    delete player_servers[id]
-
-  socket.on \request, !(request) ->
-    request = JSON.parse request
-    server.request request.cmd, !(arg) ->
-      response = JSON.stringify {callback_id: request.callback_id} <<< arg
-      socket.emit \PlayerResponse, response
-  server.on \status, !(arg) -> try socket.emit \PlayerStatus, JSON.stringify arg
-  server.on \error,  !(msg) -> try socket.emit \MpdError, msg
-
-  plugins.bus.emit \socket_connect, socket, -> permissions
-  socket.emit 'Permissions', JSON.stringify(permissions)
-  server.on 'password', !(pass) ->
-    if success = (ref = state.permissions[pass])?
-      permissions := ref
-    socket.emit 'Permissions', JSON.stringify(permissions)
-    socket.emit 'PasswordResult', JSON.stringify(success)
+  client = player_server.createClient socket, state.default_permissions
+  plugins.bus.emit \socket_connect, client
 
 !function restartMpd (cb)
   mkdirp mpd_conf.playlistDirectory(), !(err) ->
@@ -259,7 +238,9 @@ const connectToMpd = makeConnectFunction 'mpd', {
     socket.setEncoding 'utf8'
     socket
   onSuccess: !(socket) ->
-    mpd_parser := MpdParser socket
+    mpd_parser = MpdParser socket
+    authenticate = (pass) -> state.permissions[pass]
+    player_server := PlayerServer library, mpd_parser, authenticate
     startSocketIo!
 }
 

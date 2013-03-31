@@ -118,8 +118,7 @@ module.exports = class MpdParser extends EventEmitter
         err = new Error(str)
         @handleMessage {err}
       else if line.indexOf("OK MPD") is 0
-        # new connection
-        @emit 'lifesigns'
+        void # new connection
       else
         @handleMessage {msg}
       @buffer = @buffer.substring(msg.length+line.length+1)

@@ -31,19 +31,40 @@ function qEscape (str)
   str.toString().replace /"/g, '\\"'
 
 module.exports = class PlayerServer extends EventEmitter
-  (@library, @parser, @getPermissions) ~>
-    @parser.on \status, @~onStatus
-    @parser.on \lifesigns, !~> @emit \lifesigns
+  (@library, @parser, @authenticate) ~>
+    @parser.on \status, !(arg) ~> @emit \status, arg
     @parser.on \error, !(msg) ~> @emit \error, msg
 
-  request: !(request, cb=->) ->
+  createClient: (socket, permissions) ->
+    # TODO: encapsulate client object
+    client = socket
+    client.permissions = permissions
+    socket.on \request, !(request) ~>
+      request = JSON.parse request
+      @request client, request.cmd, !(arg) ~>
+        response = JSON.stringify {callback_id: request.callback_id} <<< arg
+        socket.emit \PlayerResponse, response
+    # TODO: clean up these listeners when the socket disconnects
+    @on \status, !(arg) ~> try socket.emit \PlayerStatus, JSON.stringify arg
+    @on \error,  !(msg) ~> try socket.emit \MpdError, msg
+
+    socket.emit 'Permissions', JSON.stringify(permissions)
+    @on 'password', !(pass) ~>
+      if success = (ref = @authenticate(pass))?
+        client.permissions := ref
+      socket.emit 'Permissions', JSON.stringify(client.permissions)
+      socket.emit 'PasswordResult', JSON.stringify(success)
+
+    return client
+
+  request: !(client, request, cb=->) ->
     !~function send_cmds_to_mpd (cmds)
       @parser.sendRequest "command_list_begin\n#{cmds.join("\n")}\ncommand_list_end", cb
 
     ~function check_permission (name)
       permission = command_permissions[name]
       return true if permission is null
-      return true if @getPermissions![permission]
+      return true if client.permissions[permission]
       err = "command #{JSON.stringify name} requires permission #{JSON.stringify permission}"
       console.warn "permissions error:", err
       cb {err}
@@ -81,6 +102,3 @@ module.exports = class PlayerServer extends EventEmitter
       else
         return unless check_permission name
       @parser.sendRequest request, cb
-
-  onStatus: !(arg) ->
-    @emit \status, arg

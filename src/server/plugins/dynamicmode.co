@@ -51,9 +51,12 @@ module.exports = class DynamicMode extends Plugin
     socket.on 'Permissions', @~updateStickers
 
   checkDynamicMode: !->
-    return unless @is_enabled
-    return unless Object.keys(@mpd.library.track_table).length
-    return unless @got_stickers
+    if (reason = @checkDynamicModeOrWhyNot!)?
+      console.log "DynamicMode: not updating because: #{reason}"
+  checkDynamicModeOrWhyNot: ->
+    return "disabled"    unless @is_enabled
+    return "no tracks"   unless Object.keys(@mpd.library.track_table).length
+    return "no stickers" unless @got_stickers
     item_list = @mpd.playlist.item_list
     current_id = @mpd.status.current_item?.id
     current_index = -1
@@ -62,7 +65,7 @@ module.exports = class DynamicMode extends Plugin
     for item, i of item_list
       unless item.track?
         # some race condition or something's up. TODO better fix for this
-        return
+        return "item with no track"
       if item.id is current_id
         current_index = i
       all_ids[item.id] = true
@@ -107,6 +110,7 @@ module.exports = class DynamicMode extends Plugin
       @random_ids = new_random_ids
     @previous_ids = all_ids
     @emit('status_changed')
+    return null
 
   updateStickers: !->
     @mpd.findStickers '/', LAST_QUEUED_STICKER, !(err, stickers) ~>

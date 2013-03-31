@@ -19,9 +19,9 @@ module.exports = class extends Plugin
   saveState: !(state) ->
     state.status.delete_enabled = @is_enabled
 
-  onSocketConnection: !(socket, getPermissions) ->
-    socket.on 'DeleteFromLibrary', !(data) ~>
-      if not getPermissions().admin
+  onSocketConnection: !(client) ->
+    client.on 'DeleteFromLibrary', !(data) ~>
+      if not client.permissions.admin
         console.warn "User without admin permission trying to delete songs"
         return
       files = JSON.parse data

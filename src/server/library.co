@@ -2,6 +2,7 @@ path    = require 'path'
 mutagen = require 'mutagen'
 walk    = require 'walk'
 {EventEmitter} = require 'events'
+{trackNameFromFile} = require './futils'
 
 module.exports = class Library extends EventEmitter
   (@bus) ~>
@@ -10,11 +11,6 @@ module.exports = class Library extends EventEmitter
   onSaveState: !(state) ->
     @music_lib_path = state.mpd_conf.music_directory
     @startScan!
-
-  ..trackNameFromFile = (file) ->
-    filetitle = file.substr(file.lastIndexOf('/') + 1)
-    len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
-    filetitle.substr 0, len
 
   ..parseMaybeUndefNumber = (n) ->
     n = parseInt(n, 10)
@@ -52,7 +48,7 @@ module.exports = class Library extends EventEmitter
           local_file = file.substr @music_lib_path.length+1
           @library[local_file] =
             file: local_file
-            name: tags.title?.0?.trim! or ..trackNameFromFile file
+            name: tags.title?.0?.trim! or trackNameFromFile file
             artist_name: tags.artist?.0?.trim! or ""
             artist_disambiguation: ""
             album_artist_name: tags.artist?.0?.trim! or "" # TODO

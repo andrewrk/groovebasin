@@ -8,7 +8,7 @@ const
   path = require 'path'
   assert = require 'assert'
   mkdirp = require 'mkdirp'
-  Player = require './player'
+  PlayerClient = require './player'
   MpdParser = require './mpdparser'
   PlayerServer = require './playerserver'
   async = require 'async'
@@ -186,8 +186,8 @@ const saveState = oncePerEventLoopFunc !(cb) ->
     request = JSON.parse request
     server.request request.cmd, !(arg) ->
       response = JSON.stringify {callback_id: request.callback_id} <<< arg
-      socket.emit \MpdResponse, response
-  server.on \status, !(arg) -> try socket.emit \MpdStatus, JSON.stringify arg
+      socket.emit \PlayerResponse, response
+  server.on \status, !(arg) -> try socket.emit \PlayerStatus, JSON.stringify arg
   server.on \error,  !(msg) -> try socket.emit \MpdError, msg
 
   plugins.bus.emit \socket_connect, socket, -> permissions
@@ -267,7 +267,7 @@ const connectMasterPlayer = makeConnectFunction 'master player', {
   createSocket: ->
     socketio_client.connect "http://localhost:#PORT"
   onSuccess: !(socket) ->
-    my_player := Player socket
+    my_player := PlayerClient socket
     my_player.on \MpdError, !(msg) -> console.error msg
     socket.emit \SetUserName, '[server]'
     my_player.authenticate state.admin_password

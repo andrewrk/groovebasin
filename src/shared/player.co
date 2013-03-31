@@ -205,12 +205,7 @@ if (EventEmitter = require?('events')?EventEmitter)!?
       for id, h in @event_handlers@[event_name]
         h(...args)
 
-class Player extends EventEmitter
-  ..trackNameFromFile = (filename) ->
-    filetitle = filename.substr(filename.lastIndexOf('/') + 1)
-    len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
-    filetitle.substr 0, len
-
+class PlayerClient extends EventEmitter
   ..addSearchTags = !(tracks) ->
     for track of tracks
       track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
@@ -221,10 +216,10 @@ class Player extends EventEmitter
   (@socket) ~>
     super()
 
-    @socket.on \MpdResponse, !(data) ~> @handleResponse JSON.parse data
-    @socket.on \MpdStatus,   !(data) ~> @handleStatus JSON.parse data
-    @socket.on \connect,            !~> @handleConnectionStart()
-    @socket.on \disconnect,         !~> @resetServerState()
+    @socket.on \PlayerResponse, !(data) ~> @handleResponse JSON.parse data
+    @socket.on \PlayerStatus,   !(data) ~> @handleStatus JSON.parse data
+    @socket.on \connect,               !~> @handleConnectionStart()
+    @socket.on \disconnect,            !~> @resetServerState()
 
     # options the user can toggle
     @various_artists_name = "Various Artists"
@@ -751,5 +746,5 @@ class Player extends EventEmitter
     @stored_playlist_item_table = {}
     @stored_playlists = []
 
-module?.exports = Player
-window?.Player = Player
+module?.exports = PlayerClient
+window?.PlayerClient = PlayerClient

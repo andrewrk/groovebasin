@@ -1761,7 +1761,7 @@ $document.ready !->
 
     window._debug_server_status = server_status
 
-  mpd := Player socket
+  mpd := PlayerClient socket
   mpd.on 'libraryupdate', renderLibrary
   mpd.on 'playlistupdate', renderPlaylist
   mpd.on 'storedplaylistupdate', renderStoredPlaylists

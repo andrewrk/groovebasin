@@ -1,4 +1,5 @@
 {EventEmitter} = require 'events'
+{trackNameFromFile} = require './futils'
 
 function noop (err)
   throw err if err
@@ -38,11 +39,6 @@ function parseWithSepField (msg, sep_field, skip_fields, flush)
 
 function parseMpdTracks (msg, flush)
   parseWithSepField(msg, 'file', 'directory': true, flush)
-
-trackNameFromFile = (filename) ->
-  filetitle = filename.substr(filename.lastIndexOf('/') + 1)
-  len = if (dot = filetitle.lastIndexOf('.')) >= 0 then dot else filetitle.length
-  filetitle.substr 0, len
 
 parseMsgToTrackObjects = (msg) ->
   tracks = []

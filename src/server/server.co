@@ -8,7 +8,7 @@ const
   path = require 'path'
   assert = require 'assert'
   mkdirp = require 'mkdirp'
-  PlayerClient = require './player'
+  PlayerClient = require './playerclient'
   MpdParser = require './mpdparser'
   PlayerServer = require './playerserver'
   async = require 'async'

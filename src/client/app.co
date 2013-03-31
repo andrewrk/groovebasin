@@ -1,7 +1,7 @@
 #depend "handlebars.runtime" bare
 #depend "views" bare
 #depend "util"
-#depend "player" bare
+#depend "playerclient" bare
 #depend "jquery-1.8.2.min" bare
 #depend "jquery-ui-1.8.24.custom.min" bare
 #depend "soundmanager2/soundmanager2-nodebug-jsmin" bare

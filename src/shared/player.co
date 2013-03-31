@@ -212,18 +212,10 @@ class PlayerClient extends EventEmitter
 
   # this key is unique because it has capital letters
   ..VARIOUS_ARTISTS_KEY = "VariousArtists"
+  ..VARIOUS_ARTISTS_NAME = "Various Artists"
 
   (@socket) ~>
     super()
-
-    @socket.on \PlayerResponse, !(data) ~> @handleResponse JSON.parse data
-    @socket.on \PlayerStatus,   !(data) ~> @handleStatus JSON.parse data
-    @socket.on \connect,               !~> @handleConnectionStart()
-    @socket.on \disconnect,            !~> @resetServerState()
-
-    # options the user can toggle
-    @various_artists_name = "Various Artists"
-
     @resetServerState()
 
     # maps mpd subsystems to our function to call which will update ourself
@@ -242,6 +234,14 @@ class PlayerClient extends EventEmitter
         @emit \stickerupdate
       subscription: noop # a client has subscribed or unsubscribed to a channel
       message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
+
+    @socket.on \PlayerResponse, !(data) ~> @handleResponse JSON.parse data
+    @socket.on \PlayerStatus,   !(data) ~> @handleStatus JSON.parse data
+    @socket.on \disconnect,            !~> @resetServerState()
+    if @socket.socket.connected
+      @handleConnectionStart!
+    else
+      @socket.on \connect, @~handleConnectionStart
 
   handleConnectionStart: !->
     <~! @updateLibrary
@@ -687,7 +687,7 @@ class PlayerClient extends EventEmitter
         album_artists[artistKey(track.artist_name)] = true
       if moreThanOneKey(album_artists)
         # multiple artists. we're sure it's a compilation album.
-        album_artist_name = @various_artists_name
+        album_artist_name = ..VARIOUS_ARTISTS_NAME
         artist_key = ..VARIOUS_ARTISTS_KEY
         # make sure to disambiguate the artist names
         for track of album.tracks

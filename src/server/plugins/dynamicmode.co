@@ -52,7 +52,7 @@ module.exports = class DynamicMode extends Plugin
 
   checkDynamicMode: !->
     return unless @is_enabled
-    return unless @mpd.library.artists.length
+    return unless Object.keys(@mpd.library.track_table).length
     return unless @got_stickers
     item_list = @mpd.playlist.item_list
     current_id = @mpd.status.current_item?.id

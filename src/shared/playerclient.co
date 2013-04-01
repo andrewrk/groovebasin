@@ -250,7 +250,7 @@ class PlayerClient extends EventEmitter
     @updateStoredPlaylists()
 
   updateLibrary: !(callback=noop) ->
-    @sendCommand {name: \listallinfo}, !(err, track_table) ~>
+    @sendCommandName \listallinfo, !(err, track_table) ~>
       return callback(err) if err
       tracks = (track for _, track in track_table)
       ..addSearchTags tracks
@@ -264,10 +264,10 @@ class PlayerClient extends EventEmitter
       callback()
 
   updatePlaylist: !(callback=noop) ->
-    @sendCommand "playlistinfo", !(err, tracks) ~>
+    @sendCommandName \playlistinfo, !(err, tracks) ~>
       return callback(err) if err
       @clearPlaylist()
-      for {id, file} of tracks
+      for id, file in tracks
         obj =
           id: id
           track: @library.track_table[file]
@@ -362,13 +362,11 @@ class PlayerClient extends EventEmitter
         # add a field for the start date of the current track
         @status.track_start_date = elapsedToDate(@status.elapsed)
 
-    @sendCommand "currentsong", !(err, track) ~>
+    @sendCommandName \currentsong, !(err, id) ~>
       return callback(err) if err
-      if track?
-        {id, pos, file} = track
+      if id?
         @status.current_item = @playlist.item_table[id]
-        if @status.current_item? and @status.current_item.pos is pos
-          @status.current_item.track = @library.track_table[file]
+        if @status.current_item?
           # looks good, notify listeners
           @emit 'statusupdate'
           callback()
@@ -409,15 +407,18 @@ class PlayerClient extends EventEmitter
     @buildArtistAlbumTree result, @search_results = {}
     @emit \libraryupdate
 
-  queueFiles: !(files, pos=@playlist.item_list.length, callback=noop) ->
+  getNextPlaylistId: ->
+    return 0 unless @playlist.item_list.length
+    Number(@playlist.item_list[@playlist.item_list.length - 1].id) + 1
+  queueFiles: !(files, starting_id=@getNextPlaylistId!, callback=noop) ->
     return callback(null, []) unless files.length
     cmds = {
       name: \addid
-      items: ({file, pos} for file of files by -1)
+      items: ({file, pos: starting_id++} for file of files by -1)
     }
 
     items = ({id: null, pos: null, track: @library.track_table[file]} for file of files)
-    @playlist.item_list.splice pos, 0, ...items
+    @playlist.item_list.splice starting_id, 0, ...items
     @fixPlaylistPosCache()
 
     @sendCommand cmds, !(err, msg) ~>
@@ -440,19 +441,19 @@ class PlayerClient extends EventEmitter
   queueFileNext: !(file) -> @queueFilesNext [file]
 
   clear: !->
-    @sendCommand "clear"
+    @sendCommandName \clear
     @clearPlaylist()
     @emit 'playlistupdate'
 
-  shuffle: !-> @sendCommand "shuffle"
+  shuffle: !-> @sendCommandName \shuffle
 
   stop: !->
-    @sendCommand "stop"
+    @sendCommandName \stop
     @status.state = "stop"
     @emit 'statusupdate'
 
   play: !->
-    @sendCommand "play"
+    @sendCommandName \play
 
     if @status.state is "pause"
       @status.track_start_date = elapsedToDate(@status.elapsed)
@@ -460,7 +461,7 @@ class PlayerClient extends EventEmitter
       @emit 'statusupdate'
 
   pause: !->
-    @sendCommand "pause 1"
+    @sendCommandName \pause
 
     if @status.state is "play"
       @status.elapsed = dateToElapsed(@status.track_start_date)
@@ -468,28 +469,16 @@ class PlayerClient extends EventEmitter
       @emit 'statusupdate'
 
   next: !->
-    # if mpd is stopped, it will ignore our request. so we must play, then skip, then stop.
-    if @status.state is "stop"
-      @sendCommand "play"
-      @sendCommand "next"
-      @sendCommand "stop"
-    else
-      @sendCommand "next"
+    @sendCommandName \next
     @anticipateSkip 1
 
   prev: !->
-    # if mpd is stopped, it will ignore our request. so we must play, then skip, then stop.
-    if @status.state is "stop"
-      @sendCommand "play"
-      @sendCommand "previous"
-      @sendCommand "stop"
-    else
-      @sendCommand "previous"
+    @sendCommandName \previous
     @anticipateSkip -1
 
   playId: !(track_id) ->
     track_id = parseInt(track_id, 10)
-    @sendCommand "playid #{qEscape(track_id)}"
+    @sendCommand {name: \playid, track_id}
     @anticipatePlayId track_id
 
   moveIds: !(track_ids, pos) ->
@@ -621,6 +610,8 @@ class PlayerClient extends EventEmitter
     return if command_list.length is 0
     @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
 
+  sendCommandName: !(name, cb=noop) ->
+    @sendCommand {name}, cb
   sendCommand: !(cmd, cb=noop) ->
     callback_id = @next_response_handler_id++
     @response_handlers[callback_id] = cb
@@ -653,7 +644,7 @@ class PlayerClient extends EventEmitter
     @emit 'statusupdate'
 
   anticipateSkip: !(direction) ->
-    next_item = @playlist.item_list[@status.current_item.pos + direction]
+    next_item = @playlist.item_list[@status.current_item?.pos + direction]
     if next_item?
       @anticipatePlayId next_item.id
 

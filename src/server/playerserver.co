@@ -32,8 +32,13 @@ function qEscape (str)
 
 module.exports = class PlayerServer extends EventEmitter
   (@library, @parser, @authenticate) ~>
+    # TODO: we are the only listeners to these emits. we should have more direct communication.
     @parser.on \status, !(arg) ~> @emit \status, arg
     @parser.on \error, !(msg) ~> @emit \error, msg
+
+    @playlist = {}
+    @current_id = null
+    @repeat = repeat: false, single: false
 
   createClient: (socket, permissions) ->
     # TODO: encapsulate client object
@@ -58,9 +63,6 @@ module.exports = class PlayerServer extends EventEmitter
     return client
 
   request: !(client, request, cb=->) ->
-    !~function send_cmds_to_mpd (cmds)
-      @parser.sendRequest "command_list_begin\n#{cmds.join("\n")}\ncommand_list_end", cb
-
     ~function check_permission (name)
       permission = command_permissions[name]
       return true if permission is null
@@ -76,16 +78,45 @@ module.exports = class PlayerServer extends EventEmitter
       return unless check_permission name
       switch name
         case \listallinfo then @library.get_library (library) -> cb {msg: library}
-        case \addid       then send_cmds_to_mpd ("addid \"#{qEscape file}\" #{Number pos}" for {file, pos} of request.items)
-        case \deleteid    then send_cmds_to_mpd ("deleteid #{Number id}" for id of request.ids)
-        case \move        then send_cmds_to_mpd ("moveid #{Number id} #{Number pos}" for {id, pos} of request.items)
+        case \password then @emit \password, request.password
+
+        case \playlistinfo
+          cb {msg: @playlist}
+        case \currentsong
+          cb {msg: @current_id}
+        case \addid
+          for {file, pos} of request.items
+            @playlist[pos] = file
+          @emitStatus client
+        case \deleteid
+          for id of request.ids
+            delete @playlist[id]
+          @emitStatus client
+        case \move
+          for {id, pos} of request.items
+            @playlist[pos] = delete @playlist[id]
+          @emitStatus client
+        case \clear
+          @playlist = {}
+          @emitStatus client
+        case \shuffle
+          void # TODO
+
         case \repeat
-          send_cmds_to_mpd [
-            "repeat #{Number(request.repeat)}"
-            "single #{Number(request.single)}"
-          ]
-        case \password
-          @emit 'password', request.password
+          @repeat.repeat = request.repeat
+          @repeat.single = request.single
+        case \stop
+          void # TODO
+        case \play
+          void # TODO
+        case \pause
+          void # TODO
+        case \next
+          void # TODO
+        case \previous
+          void # TODO
+        case \playid
+          @current_id = request.id
         default throw new Error "invalid command #{JSON.stringify name}"
 
     else
@@ -102,3 +133,5 @@ module.exports = class PlayerServer extends EventEmitter
       else
         return unless check_permission name
       @parser.sendRequest request, cb
+  emitStatus: !->
+    @emit \status, <[playlist player]>

@@ -220,20 +220,12 @@ class PlayerClient extends EventEmitter
 
     # maps mpd subsystems to our function to call which will update ourself
     @updateFuncs =
-      database: ~> # the song database has been modified after update.
-        @have_file_list_cache = false
-        @updateLibrary()
-      update: noop # a database update has started or finished. If the database was modified during the update, the database event is also emitted.
       stored_playlist: @~updateStoredPlaylists # a stored playlist has been modified, renamed, created or deleted
       playlist: @~updatePlaylist # the current playlist has been modified
       player: @~updateStatus # the player has been started, stopped or seeked
       mixer: @~updateStatus # the volume has been changed
-      output: noop # an audio output has been enabled or disabled
-      options: @~updateStatus # options like repeat, random, crossfade, replay gain
       sticker: ~> # the sticker database has been modified.
         @emit \stickerupdate
-      subscription: noop # a client has subscribed or unsubscribed to a channel
-      message: noop # a message was received on a channel this client is subscribed to; this event is only emitted when the queue is empty
 
     @socket.on \PlayerResponse, !(data) ~> @handleResponse JSON.parse data
     @socket.on \PlayerStatus,   !(data) ~> @handleStatus JSON.parse data
@@ -340,14 +332,12 @@ class PlayerClient extends EventEmitter
           callback()
 
   updateStatus: !(callback=noop) ->
-    @sendCommand "status", !(err, o) ~>
+    @sendCommandName \status, !(err, o) ~>
       return callback(err) if err
       @status <<<
-        volume: fromMpdVol(o.volume)
-        repeat: !!parseInt(o.repeat, 2)
-        random: !!parseInt(o.random, 2)
-        single: !!parseInt(o.single, 2)
-        consume: !!parseInt(o.consume, 2)
+        volume: o.volume
+        repeat: o.repeat
+        single: o.single
         state: o.state
         time: null
         bitrate: null
@@ -355,10 +345,10 @@ class PlayerClient extends EventEmitter
 
       @status.bitrate = parseInt(o.bitrate, 10) if o.bitrate?
 
-      if o.time? and o.elapsed?
-        @status.time = parseInt(o.time.split(":")[1], 10)
+      if o.elapsed?
         # we still add elapsed for when its paused
         @status.elapsed = parseFloat(o.elapsed, 10)
+        @status.time = @status.elapsed
         # add a field for the start date of the current track
         @status.track_start_date = elapsedToDate(@status.elapsed)
 
@@ -414,20 +404,17 @@ class PlayerClient extends EventEmitter
     return callback(null, []) unless files.length
     cmds = {
       name: \addid
-      items: ({file, pos: starting_id++} for file of files by -1)
+      items: ({file, pos: starting_id++} for file of files)
     }
 
     items = ({id: null, pos: null, track: @library.track_table[file]} for file of files)
     @playlist.item_list.splice starting_id, 0, ...items
     @fixPlaylistPosCache()
 
-    @sendCommand cmds, !(err, msg) ~>
+    @sendCommand cmds, !(err) ~>
       return callback(err) if err
-      for line, i of msg.split("\n")
-        continue unless line
-        index = files.length - 1 - i
-        item_id = parseInt(line.substring(4), 10)
-        items[index].id = item_id
+      for item of items
+        item.id = item.pos
       callback(null, items)
 
     @emit 'playlistupdate'

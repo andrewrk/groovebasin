@@ -1,7 +1,7 @@
 {EventEmitter} = require 'events'
 {trackNameFromFile} = require './futils'
 
-function noop (err)
+function noop ({err})
   throw err if err
 
 function parseMaybeUndefNumber (n)
@@ -74,10 +74,6 @@ module.exports = class MpdParser extends EventEmitter
     @sendWithCallback "idle", @~handleIdleResultsLoop
     @idling = true # we're always idling after the first command.
 
-  sendCommands: !(command_list, callback=noop) ->
-    return if command_list.length is 0
-    @sendCommand "command_list_begin\n#{command_list.join("\n")}\ncommand_list_end", callback
-
   parseResponse: (complete_command, response) ->
     {err, msg} = response
     return response if err?
@@ -128,7 +124,7 @@ module.exports = class MpdParser extends EventEmitter
     for system of msg.trim!.split("\n")
       if system.length > 0
         systems.push system.substring(9)
-    @emit \status, systems
+    @emit \status, systems if systems.length
 
   sendWithCallback: !(cmd, cb=noop) ->
     @msg_handler_queue.push cb

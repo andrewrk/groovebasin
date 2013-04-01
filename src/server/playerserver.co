@@ -30,16 +30,44 @@ function qEscape (str)
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
+const
+  PLAYING = \playing
+  PAUSED = \paused
+
 module.exports = class PlayerServer extends EventEmitter
   (@library, @parser, @authenticate) ~>
-    # TODO: we are the only listeners to these emits. we should have more direct communication.
-    @parser.on \status, !(arg) ~> @emit \status, arg
-    @parser.on \error, !(msg) ~> @emit \error, msg
+    @parser.on \status, !(systems) ~>
+      refresh_mpd_status = false
+      client_systems = []
+      for system of systems
+        if system of <[stored_playlist sticker]>
+          client_systems.push system
+        else if system of <[playlist player mixer options]>
+          refresh_mpd_status = true
+      @emit \status, client_systems if client_systems.length
+      @refreshMpdStatus! if refresh_mpd_status
+    @parser.on \error, !(msg) ~>
+      console.error "mpd error:", msg
 
     @playlist = {}
     @current_id = null
     @repeat = repeat: false, single: false
+    @playing_state = PAUSED
+    @seekto = null
 
+    @parser.sendRequest "clear"
+    @mpd_playlist = []
+    @mpd_status =
+      current_song: null
+      state: \stop
+      elapsed: null
+
+  refreshMpdStatus: !->
+    @parser.sendRequest \currentsong, (response) ~>
+      @mpd_status.current_song = response
+    @parser.sendRequest \status, (o) ~>
+      @mpd_status.state = o.state
+      @mpd_status.elapsed = if o.elapsed? then parseFloat o.elapsed else null
   createClient: (socket, permissions) ->
     # TODO: encapsulate client object
     client = socket
@@ -76,48 +104,75 @@ module.exports = class PlayerServer extends EventEmitter
       # new-style command is an object
       {name} = request
       return unless check_permission name
+      suppress_reply = false
+      reply_object = null
       switch name
-        case \listallinfo then @library.get_library (library) -> cb {msg: library}
+        case \listallinfo
+          suppress_reply = true
+          @library.get_library (library) -> cb {msg: library}
         case \password then @emit \password, request.password
 
         case \playlistinfo
-          cb {msg: @playlist}
+          reply_object = @playlist
         case \currentsong
-          cb {msg: @current_id}
+          reply_object = @current_id
+        case \status
+          reply_object =
+            volume: null
+            repeat: @repeat.repeat
+            single: @repeat.single
+            state: if @playing_state is PLAYING then 'play' else 'pause'
+            elapsed: 0
+
         case \addid
           for {file, pos} of request.items
             @playlist[pos] = file
-          @emitStatus client
+          @playlistChanged!
         case \deleteid
           for id of request.ids
             delete @playlist[id]
-          @emitStatus client
+          @playlistChanged!
         case \move
           for {id, pos} of request.items
             @playlist[pos] = delete @playlist[id]
-          @emitStatus client
+          @playlistChanged!
         case \clear
           @playlist = {}
-          @emitStatus client
+          @playlistChanged!
         case \shuffle
           void # TODO
 
         case \repeat
           @repeat.repeat = request.repeat
           @repeat.single = request.single
-        case \stop
-          void # TODO
         case \play
-          void # TODO
+          @current_id ?= @playlist[0]?.id
+          @playing_state = PLAYING
+          @playlistChanged!
         case \pause
-          void # TODO
+          if @playing_state is PLAYING
+            @playing_state = PAUSED
+          @playlistChanged!
+        case \stop
+          @playing_state = PAUSED
+          @seekto = 0
+          @playlistChanged!
         case \next
-          void # TODO
+          @current_id = (@current_id ? -1) + 1
+          @seekto = 0
+          @playlistChanged!
         case \previous
-          void # TODO
+          @current_id = (@current_id ? -1) - 1
+          @seekto = 0
+          @playlistChanged!
         case \playid
-          @current_id = request.id
+          @current_id = request.track_id
+          @seekto = 0
+          @playing_state = PLAYING
+          @playlistChanged!
         default throw new Error "invalid command #{JSON.stringify name}"
+      unless suppress_reply
+        if reply_object? then cb {msg: reply_object} else cb {}
 
     else
       # old code still uses mpd string commands.
@@ -133,5 +188,19 @@ module.exports = class PlayerServer extends EventEmitter
       else
         return unless check_permission name
       @parser.sendRequest request, cb
-  emitStatus: !->
+
+  playlistChanged: !->
+    unless @playlist[@current_id]?
+      # TODO look forward for the next song
+      @current_id = null
+      @playing_state = PAUSED
+      @seekto = 0
+    if @seekto?
+      # TODO
+      @seekto = null
+    @parser.sendRequest "clear"
+    if @current_id?
+      @parser.sendRequest "addid \"#{qEscape @playlist[@current_id]}\""
+    if @playing_state is PLAYING
+      @parser.sendRequest "play"
     @emit \status, <[playlist player]>

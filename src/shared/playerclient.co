@@ -362,7 +362,7 @@ class PlayerClient extends EventEmitter
           callback()
         else
           # missing or inconsistent playlist data, need to get playlist update
-          @status.current_item = {id, pos, track: @library.track_table[file]}
+          @status.current_item = {id, pos: id, track: @library.track_table[file]}
           @updatePlaylist !(err) ~>
             return callback(err) if err
             @emit 'statusupdate'

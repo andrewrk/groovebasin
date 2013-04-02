@@ -623,9 +623,10 @@ function getCurrentTrackPosition
 
 !function updateSliderPos
   return if user_is_seeking
-  if (time = mpd.status.time)? and mpd.status.current_item? and (mpd.status.state ? "stop") is not "stop"
+  if mpd.status.current_item? and (mpd.status.state ? "stop") is not "stop"
     disabled = false
     elapsed = getCurrentTrackPosition()
+    time = mpd.status.current_item.track.time
     slider_pos = elapsed / time
   else
     disabled = true

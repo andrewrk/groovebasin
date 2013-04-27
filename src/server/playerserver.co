@@ -30,17 +30,15 @@ function qEscape (str)
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
-const
-  PLAYING = \playing
-  PAUSED = \paused
-
 module.exports = class PlayerServer extends EventEmitter
   (@library, @parser, @authenticate) ~>
     @parser.on \status, !(systems) ~>
+      console.log 'changed systems:', systems
       refresh_mpd_status = false
       client_systems = []
       for system of systems
         if system of <[stored_playlist sticker]>
+          # eventually the client won't need to know about these
           client_systems.push system
         else if system of <[playlist player mixer options]>
           refresh_mpd_status = true
@@ -52,22 +50,27 @@ module.exports = class PlayerServer extends EventEmitter
     @playlist = {}
     @current_id = null
     @repeat = repeat: false, single: false
-    @playing_state = PAUSED
+    @is_playing = false
     @seekto = null
 
+    @mpd_is_playing = false
+    @mpd_should_be_playing_id = null
+
     @parser.sendRequest "clear"
-    @mpd_playlist = []
-    @mpd_status =
-      current_song: null
-      state: \stop
-      elapsed: null
+    @elapsed_anchor =
+      value: 0
+      timestamp: new Date
 
   refreshMpdStatus: !->
-    @parser.sendRequest \currentsong, (response) ~>
-      @mpd_status.current_song = response
-    @parser.sendRequest \status, (o) ~>
-      @mpd_status.state = o.state
-      @mpd_status.elapsed = if o.elapsed? then parseFloat o.elapsed else null
+    @parser.sendRequest @parser.current_song_and_status_command, (o) ~>
+      mpd_was_playing = @mpd_is_playing
+      @mpd_is_playing = o.state is \play
+      if mpd_was_playing and not @mpd_is_playing
+        # reached the end of the song
+        # TODO go to next song instead of stopping
+        @is_playing = false
+        @playlistChanged!
+
   createClient: (socket, permissions) ->
     # TODO: encapsulate client object
     client = socket
@@ -121,8 +124,8 @@ module.exports = class PlayerServer extends EventEmitter
             volume: null
             repeat: @repeat.repeat
             single: @repeat.single
-            state: if @playing_state is PLAYING then 'play' else 'pause'
-            elapsed: 0
+            state: if @is_playing then 'play' else 'pause'
+            elapsed_anchor: @elapsed_anchor
 
         case \addid
           for {file, pos} of request.items
@@ -147,28 +150,21 @@ module.exports = class PlayerServer extends EventEmitter
           @repeat.single = request.single
         case \play
           @current_id ?= @playlist[0]?.id
-          @playing_state = PLAYING
+          @is_playing = true
           @playlistChanged!
         case \pause
-          if @playing_state is PLAYING
-            @playing_state = PAUSED
+          @is_playing = false
           @playlistChanged!
         case \stop
-          @playing_state = PAUSED
+          @is_playing = false
           @seekto = 0
           @playlistChanged!
-        case \next
-          @current_id = (@current_id ? -1) + 1
-          @seekto = 0
-          @playlistChanged!
-        case \previous
-          @current_id = (@current_id ? -1) - 1
-          @seekto = 0
-          @playlistChanged!
+        case \next, \previous
+          void # TODO use playid instead of next/previous
         case \playid
           @current_id = request.track_id
           @seekto = 0
-          @playing_state = PLAYING
+          @is_playing = true
           @playlistChanged!
         default throw new Error "invalid command #{JSON.stringify name}"
       unless suppress_reply
@@ -191,16 +187,29 @@ module.exports = class PlayerServer extends EventEmitter
 
   playlistChanged: !->
     unless @playlist[@current_id]?
-      # TODO look forward for the next song
+      # stopped
       @current_id = null
-      @playing_state = PAUSED
+      @is_playing = false
       @seekto = 0
     if @seekto?
       # TODO
       @seekto = null
-    @parser.sendRequest "clear"
-    if @current_id?
-      @parser.sendRequest "addid \"#{qEscape @playlist[@current_id]}\""
-    if @playing_state is PLAYING
-      @parser.sendRequest "play"
+    commands = []
+    if @is_playing
+      unless @current_id is @mpd_should_be_playing_id
+        # start mpd playing
+        commands.push "clear"
+        commands.push "addid \"#{qEscape @playlist[@current_id]}\""
+        commands.push "play"
+        @mpd_should_be_playing_id = @current_id
+    else
+      if @mpd_should_be_playing_id?
+        # stop mpd
+        commands.push "clear"
+        @mpd_should_be_playing_id = null
+    if commands.length
+      if commands.length > 1
+        commands.unshift "command_list_begin"
+        commands.push "command_list_end"
+      @parser.sendRequest commands.join "\n"
     @emit \status, <[playlist player]>

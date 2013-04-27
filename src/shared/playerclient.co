@@ -345,12 +345,10 @@ class PlayerClient extends EventEmitter
 
       @status.bitrate = parseInt(o.bitrate, 10) if o.bitrate?
 
-      if o.elapsed?
-        # we still add elapsed for when its paused
-        @status.elapsed = parseFloat(o.elapsed, 10)
-        @status.time = @status.elapsed
-        # add a field for the start date of the current track
-        @status.track_start_date = elapsedToDate(@status.elapsed)
+      @status.elapsed = parseFloat(o.elapsed_anchor.value, 10)
+      @status.time = @status.elapsed
+      # add a field for the start date of the current track
+      @status.track_start_date = elapsedToDate(@status.elapsed)
 
     @sendCommandName \currentsong, !(err, id) ~>
       return callback(err) if err
@@ -362,7 +360,7 @@ class PlayerClient extends EventEmitter
           callback()
         else
           # missing or inconsistent playlist data, need to get playlist update
-          @status.current_item = {id, pos: id, track: @library.track_table[file]}
+          @status.current_item = null
           @updatePlaylist !(err) ~>
             return callback(err) if err
             @emit 'statusupdate'

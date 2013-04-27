@@ -68,7 +68,9 @@ module.exports = class MpdParser extends EventEmitter
     # whether we've sent the idle command to mpd
     @idling = false
 
+  current_song_and_status_command: "command_list_begin\ncurrentsong\nstatus\ncommand_list_end"
   sendRequest: !(command, cb=noop) ->
+    console.log "sending to mpd:", JSON.stringify command if command.indexOf("sticker") == -1
     @send "noidle\n" if @idling
     @sendWithCallback command, !(response) ~> cb @parseResponse command, response
     @sendWithCallback "idle", @~handleIdleResultsLoop
@@ -77,6 +79,7 @@ module.exports = class MpdParser extends EventEmitter
   parseResponse: (complete_command, response) ->
     {err, msg} = response
     return response if err?
+    return parseMpdObject msg if complete_command is @current_song_and_status_command
     command_name = complete_command.match(/^\S*/)[0]
     msg: switch command_name
       case 'listallinfo'  then parseMsgToTrackObjects(msg)

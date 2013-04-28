@@ -16,13 +16,11 @@ module.exports = class Upload extends Plugin
   (bus) ~>
     super(...)
     @is_enabled = false
-    @random_ids = null
 
     bus.on 'app', @~setUpRoutes
     bus.on 'mpd', @~setMpd
     bus.on 'save_state', @~saveState
     bus.on 'restore_state', @~restoreState
-    bus.on 'status_sent', @~onSendStatus
     bus.on 'socket_connect', @~onSocketConnection
 
   restoreState: !(state) ->
@@ -94,15 +92,6 @@ module.exports = class Upload extends Plugin
       response.setHeader 'content-type', 'application/json'
       response.end JSON.stringify {success: true}
 
-  onSendStatus: !(status) ->
-    @random_ids = status?.random_ids
-
-  queueFilesPos: ->
-    pos = @mpd.playlist.item_list.length
-    return pos unless @random_ids?
-    for item, i of @mpd.playlist.item_list
-      return i if @random_ids[item.id]?
-
   flushWantToQueue: !->
     i = 0
     files = []
@@ -113,6 +102,6 @@ module.exports = class Upload extends Plugin
         @want_to_queue.splice i, 1
       else
         i++
-    @mpd.queueFiles files, @queueFilesPos()
+    @mpd.queueFiles files
     @mpd.queueFilesInStoredPlaylist(files, "Incoming")
     @emit('state_changed') if files.length

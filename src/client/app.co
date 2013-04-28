@@ -1065,18 +1065,12 @@ function isStoredPlaylistExpanded (stored_playlist)
       if lib_pos.album? and isAlbumExpanded(lib_pos.album)
         lib_pos.track = lib_pos.album.tracks[lib_pos.album.tracks.length - 1]
 
-function queueFilesPos
-  pos = mpd.playlist.item_list.length
-  return pos unless server_status?
-  for item, i of mpd.playlist.item_list
-    return i if server_status.random_ids[item.id]?
-
 function queueSelection (event)
   files = selection.toFiles(event.altKey)
   if event.shiftKey
     mpd.queueFilesNext files
   else
-    mpd.queueFiles files, queueFilesPos()
+    mpd.queueFiles files
   return false
 
 !function sendAuth
@@ -1499,7 +1493,7 @@ function queueSelection (event)
         if event.shiftKey
           mpd.queueFilesNext files
         else
-          mpd.queueFiles files, queueFilesPos()
+          mpd.queueFiles files
         return false
       case 40 # down
         # select the first item in the library
@@ -1592,8 +1586,10 @@ function queueSelection (event)
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
+            before_id = mpd.playlist.item_table[new_pos]?.id
+            before_id = mpd.LAST unless before_id?
             files = selection.toFiles(event.altKey)
-            mpd.queueFiles(files, new_pos)
+            mpd.queueFiles files, {before_id}
           cancel: !->
             # we didn't end up dragging, select the item
             selection.selectOnly(type, key)

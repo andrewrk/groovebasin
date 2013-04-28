@@ -21,13 +21,10 @@ module.exports = class DynamicMode extends Plugin
 
   restoreState: !(state) ->
     @is_on = state.status.dynamic_mode ? false
-    @random_ids = state.status.random_ids ? {}
 
   saveState: !(state) ->
     state.status.dynamic_mode = @is_on
     state.status.dynamic_mode_enabled = @is_enabled
-    state.status.random_ids = @random_ids
-
 
   setMpd: !(@mpd) ->
     @mpd.on 'statusupdate', @~checkDynamicMode
@@ -63,7 +60,7 @@ module.exports = class DynamicMode extends Plugin
     all_ids = {}
     new_files = []
     for item, i of item_list
-      unless item.track?
+      unless item.track? and item.id?
         # some race condition or something's up. TODO better fix for this
         return "item with no track"
       if item.id is current_id
@@ -80,10 +77,6 @@ module.exports = class DynamicMode extends Plugin
     # if no track is playing, assume the first track is about to be
     if current_index is -1
       current_index = 0
-    else
-      # any tracks <= current track don't count as random anymore
-      for i from 0 to current_index
-        delete @random_ids[item_list[i].id]
 
     if @is_on
       delete_count = Math.max(current_index - history_size, 0)
@@ -91,25 +84,11 @@ module.exports = class DynamicMode extends Plugin
         delete_count = 0
 
       @mpd.removeIds (item_list[i].id for i from 0 til delete_count)
-      add_count = Math.max(future_size + 1 - (item_list.length - current_index), 0)
-      @mpd.queueFiles @getRandomSongFiles(add_count), null, !(err, items) ~>
-        throw err if err
-        # track which ones are the automatic ones
-        changed = false
-        for item of items
-          @random_ids[item.id] = true
-          changed = true
-        @emit('status_changed') if changed
+      add_count = Math.max(future_size - (item_list.length - current_index), 0)
+      @mpd.queueFiles @getRandomSongFiles(add_count)
 
-    # scrub the random_ids (only if we're sure we're not still loading
-    if item_list.length
-      new_random_ids = {}
-      for id in @random_ids
-        if all_ids[id]
-          new_random_ids[id] = true
-      @random_ids = new_random_ids
     @previous_ids = all_ids
-    @emit('status_changed')
+    @emit 'status_changed' if delete_count + add_count > 0
     return null
 
   updateStickers: !->

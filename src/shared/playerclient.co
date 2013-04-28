@@ -263,10 +263,9 @@ class PlayerClient extends EventEmitter
         obj =
           id: id
           track: @library.track_table[file]
-          pos: @playlist.item_list.length
           playlist: @playlist
-        @playlist.item_list.push obj
         @playlist.item_table[id] = obj
+      @refreshPlaylistList!
 
       # make sure current track data is correct
       if @status.current_item?
@@ -339,9 +338,6 @@ class PlayerClient extends EventEmitter
         repeat: o.repeat
         single: o.single
         state: o.state
-        bitrate: null
-
-      @status.bitrate = parseInt(o.bitrate, 10) if o.bitrate?
 
       # TODO account for server/client time differences
       @status.track_start_date = if o.track_start_date? then new Date o.track_start_date else null
@@ -393,35 +389,52 @@ class PlayerClient extends EventEmitter
     @buildArtistAlbumTree result, @search_results = {}
     @emit \libraryupdate
 
-  getNextPlaylistId: ->
-    return 0 unless @playlist.item_list.length
-    Number(@playlist.item_list[@playlist.item_list.length - 1].id) + 1
-  queueFiles: !(files, starting_id=@getNextPlaylistId!, callback=noop) ->
-    return callback(null, []) unless files.length
-    cmds = {
-      name: \addid
-      items: ({file, pos: starting_id++} for file of files)
-    }
+  getDefaultQueueBeforeId: ->
+    for i from @status.current_item?.pos ? 0 til @playlist.item_list.length
+      id = @playlist.item_list[i].id
+      if false # TODO if is random
+        return id
+    return @LAST
 
-    items = ({id: null, pos: null, track: @library.track_table[file]} for file of files)
-    @playlist.item_list.splice starting_id, 0, ...items
-    @fixPlaylistPosCache()
+  generateId: (after_id, before_id) ->
+    base = parseFloat after_id
+    if before_id?
+      max = parseFloat before_id
+      result = (max + base) / 2
+    else
+      result = base + 1
+    return result.toString!
 
-    @sendCommand cmds, !(err) ~>
-      return callback(err) if err
-      for item of items
-        item.id = item.pos
-      callback(null, items)
+  LAST: <[last]>
+  queueFiles: !(files, o={}) ->
+    return unless files.length
+    before_id = o.before_id
+    unless o.before_id?
+      before_id = @getDefaultQueueBeforeId!
+    if before_id is @LAST
+      after_id = @playlist.item_list[@playlist.item_list.length - 1]?.id
+      before_id = null
+    else
+      after_id = @playlist.item_list[@playlist.item_table[before_id].pos - 1]?.id
+    unless after_id?
+      # playlist is empty
+      after_id = "0"
+    items = {}
+    item_list = []
+    for file of files
+      id = @generateId after_id, before_id
+      after_id = id
+      items[id] = file
+      @playlist.item_table[id] = {id, track: @library.track_table[file]}
+    @refreshPlaylistList()
+
+    @sendCommand {name: \addid, items}
 
     @emit 'playlistupdate'
-
-  queueFile: !(file, pos, callback) -> @queueFiles([file], pos, callback)
 
   queueFilesNext: !(files) ->
     new_pos = (@status.current_item?.pos ? -1) + 1
     @queueFiles files, new_pos
-
-  queueFileNext: !(file) -> @queueFilesNext [file]
 
   clear: !->
     @sendCommandName \clear
@@ -452,15 +465,26 @@ class PlayerClient extends EventEmitter
       @emit 'statusupdate'
 
   next: !->
-    @sendCommandName \next
-    @anticipateSkip 1
+    current_pos = @status.current_item?.pos
+    if current_pos?
+      pos = current_pos + 1
+    else
+      # start at the beginning
+      pos = 0
+    id = @playlist.item_list[pos]?.id
+    @playId id
 
   prev: !->
-    @sendCommandName \previous
-    @anticipateSkip -1
+    current_pos = @status.current_item?.pos
+    if current_pos?
+      pos = current_pos - 1
+    else
+      # start at the end
+      pos = @playlist.item_list.length - 1
+    id = @playlist.item_list[pos]?.id
+    @playId id
 
   playId: !(track_id) ->
-    track_id = parseInt(track_id, 10)
     @sendCommand {name: \playid, track_id}
     @anticipatePlayId track_id
 
@@ -484,7 +508,7 @@ class PlayerClient extends EventEmitter
       @playlist.item_list.splice item.pos, 1
       @playlist.item_list.splice real_pos, 0, item
 
-      @fixPlaylistPosCache()
+      @refreshPlaylistList()
 
     @sendCommand {name: \move, items: command_items}
     @emit 'playlistupdate'
@@ -511,7 +535,7 @@ class PlayerClient extends EventEmitter
     for item of items
       @playlist.item_list.splice item.pos, 1
       @playlist.item_list.splice item.pos+offset, 0, item
-      @fixPlaylistPosCache()
+      @refreshPlaylistList()
 
     @emit 'playlistupdate'
 
@@ -521,14 +545,11 @@ class PlayerClient extends EventEmitter
     for track_id of track_ids
       track_id = parseInt(track_id, 10)
       if @status.current_item?.id is track_id
-        @anticipateSkip 1
-        if @status.state is not "play"
-          @status.state = "stop"
+        @status.current_item = null
       ids.push track_id
       item = @playlist.item_table[track_id]
       delete @playlist.item_table[item.id]
-      @playlist.item_list.splice(item.pos, 1)
-      @fixPlaylistPosCache()
+      @refreshPlaylistList()
 
     @sendCommand {name: \deleteid, ids}
     @emit 'playlistupdate'
@@ -697,7 +718,18 @@ class PlayerClient extends EventEmitter
 
     library.artist_table = artist_table
 
-  fixPlaylistPosCache: !-> item.pos = i for item, i of @playlist.item_list
+  refreshPlaylistList: !->
+    @playlist.item_list = []
+    for id, item in @playlist.item_table
+      item.playlist = @playlist
+      @playlist.item_list.push item
+    # sort items by id
+    @playlist.item_list.sort (left, right) ->
+      left = parseFloat left.id
+      right = parseFloat right.id
+      if left < right then -1 else if left > right then 1 else 0
+    # cache positions
+    item.pos = i for item, i of @playlist.item_list
 
   # clear state so we can start over with new mpd connection
   resetServerState: !->

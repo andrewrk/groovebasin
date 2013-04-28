@@ -96,7 +96,7 @@ const DEFAULT_PERMISSIONS =
   io.sockets.on 'connection', onSocketIoConnection
 
   app_server.listen PORT, HOST, !->
-    process.send 'online'
+    process.send?('online')
     console.info "Listening at http://#HOST:#PORT"
     connectMasterPlayer!
   app_server.on \close, !->
@@ -160,13 +160,9 @@ const saveState = oncePerEventLoopFunc !(cb) ->
 
     cb()
 
-!function sendStatus
-  plugins.bus.emit \status_sent, state.status
-  io.sockets.emit 'Status', JSON.stringify state.status
-
 !function saveAndSendStatus
   saveState()
-  sendStatus()
+  io.sockets.emit 'Status', JSON.stringify state.status
 
 !function writeMpdConf (cb)
   mpd_conf := new MpdConf(state.mpd_conf)

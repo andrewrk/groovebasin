@@ -134,8 +134,8 @@ module.exports = class PlayerServer extends EventEmitter
             paused_time: @paused_time
 
         case \addid
-          for {file, pos} of request.items
-            @playlist[pos] = file
+          for id, file in request.items
+            @playlist[id] = file
           @playlistChanged!
         case \deleteid
           for id of request.ids

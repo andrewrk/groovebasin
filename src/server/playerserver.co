@@ -19,7 +19,7 @@ command_permissions =
   playlistinfo: \read
   previous: \control
   repeat: \control
-  seekid: \control
+  seek: \control
   setvol: \control
   shuffle: \control
   status: \read
@@ -29,6 +29,14 @@ command_permissions =
 function qEscape (str)
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
+
+function findNextKey (object, from_key)
+  result = null
+  for k in object
+    if k > from_key
+      if result is null or k < result
+        result = k
+  result
 
 module.exports = class PlayerServer extends EventEmitter
   (@library, @parser, @authenticate) ~>
@@ -51,24 +59,21 @@ module.exports = class PlayerServer extends EventEmitter
     @current_id = null
     @repeat = repeat: false, single: false
     @is_playing = false
-    @seekto = null
 
     @mpd_is_playing = false
     @mpd_should_be_playing_id = null
 
     @parser.sendRequest "clear"
-    @elapsed_anchor =
-      value: 0
-      timestamp: new Date
+    @track_start_date = null
+    @paused_time = 0
 
   refreshMpdStatus: !->
     @parser.sendRequest @parser.current_song_and_status_command, (o) ~>
       mpd_was_playing = @mpd_is_playing
       @mpd_is_playing = o.state is \play
-      if mpd_was_playing and not @mpd_is_playing
+      if @mpd_should_be_playing_id? and mpd_was_playing and not @mpd_is_playing
         # reached the end of the song
-        # TODO go to next song instead of stopping
-        @is_playing = false
+        @current_id = findNextKey @playlist, @current_id
         @playlistChanged!
 
   createClient: (socket, permissions) ->
@@ -125,7 +130,8 @@ module.exports = class PlayerServer extends EventEmitter
             repeat: @repeat.repeat
             single: @repeat.single
             state: if @is_playing then 'play' else 'pause'
-            elapsed_anchor: @elapsed_anchor
+            track_start_date: @track_start_date
+            paused_time: @paused_time
 
         case \addid
           for {file, pos} of request.items
@@ -153,17 +159,19 @@ module.exports = class PlayerServer extends EventEmitter
           @is_playing = true
           @playlistChanged!
         case \pause
-          @is_playing = false
-          @playlistChanged!
+          if @is_playing
+            @is_playing = false
+            @paused_time = (new Date - @track_start_date) / 1000
+            @playlistChanged!
         case \stop
           @is_playing = false
-          @seekto = 0
           @playlistChanged!
+        case \seek
+          @playlistChanged seekto: request.pos
         case \next, \previous
           void # TODO use playid instead of next/previous
         case \playid
           @current_id = request.track_id
-          @seekto = 0
           @is_playing = true
           @playlistChanged!
         default throw new Error "invalid command #{JSON.stringify name}"
@@ -185,15 +193,14 @@ module.exports = class PlayerServer extends EventEmitter
         return unless check_permission name
       @parser.sendRequest request, cb
 
-  playlistChanged: !->
+  playlistChanged: !(o={}) ->
     unless @playlist[@current_id]?
-      # stopped
+      # stopped with no current track
       @current_id = null
       @is_playing = false
-      @seekto = 0
-    if @seekto?
-      # TODO
-      @seekto = null
+      @track_start_date = null
+      @paused_time = 0
+      o.seekto = null
     commands = []
     if @is_playing
       unless @current_id is @mpd_should_be_playing_id
@@ -202,11 +209,33 @@ module.exports = class PlayerServer extends EventEmitter
         commands.push "addid \"#{qEscape @playlist[@current_id]}\""
         commands.push "play"
         @mpd_should_be_playing_id = @current_id
+        if o.seekto is 0
+          # don't bother seeking to the beginning
+          o.seekto = null
+        else if @paused_time
+          # resume where we left off
+          o.seekto = @paused_time
+        @track_start_date = new Date
+      if o.seekto?
+        # tell mpd to seek somewhere
+        seek_command = "seek 0 #{Math.round o.seekto}"
+        if commands[commands.length - 1] is "play"
+          # seek before playing for smoother sound
+          commands.splice commands.length - 1, 0, seek_command
+        else
+          commands.push seek_command
+        @track_start_date = new Date - o.seekto * 1000
+      @paused_time = null
     else
       if @mpd_should_be_playing_id?
         # stop mpd
         commands.push "clear"
         @mpd_should_be_playing_id = null
+      if o.seekto?
+        # seeking while paused
+        @paused_time = o.seekto
+      @track_start_date = null
+      @paused_time ?= 0
     if commands.length
       if commands.length > 1
         commands.unshift "command_list_begin"

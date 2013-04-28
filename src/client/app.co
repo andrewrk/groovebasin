@@ -619,7 +619,7 @@ function getCurrentTrackPosition
   if mpd.status.track_start_date? and mpd.status.state is "play"
     (new Date() - mpd.status.track_start_date) / 1000
   else
-    mpd.status.elapsed
+    mpd.status.paused_time
 
 !function updateSliderPos
   return if user_is_seeking

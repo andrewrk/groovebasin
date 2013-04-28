@@ -64,7 +64,7 @@ const trim = do
     (text) -> text.replace(__trimLeft, "").replace(__trimRight, "")
 
 function elapsedToDate (elapsed)
-  new Date((new Date()) - elapsed * 1000)
+  new Date(new Date - elapsed * 1000)
 
 function dateToElapsed (date)
   ((new Date()) - date) / 1000
@@ -339,16 +339,13 @@ class PlayerClient extends EventEmitter
         repeat: o.repeat
         single: o.single
         state: o.state
-        time: null
         bitrate: null
-        track_start_date: null
 
       @status.bitrate = parseInt(o.bitrate, 10) if o.bitrate?
 
-      @status.elapsed = parseFloat(o.elapsed_anchor.value, 10)
-      @status.time = @status.elapsed
-      # add a field for the start date of the current track
-      @status.track_start_date = elapsedToDate(@status.elapsed)
+      # TODO account for server/client time differences
+      @status.track_start_date = if o.track_start_date? then new Date o.track_start_date else null
+      @status.paused_time = o.paused_time
 
     @sendCommandName \currentsong, !(err, id) ~>
       return callback(err) if err
@@ -356,6 +353,7 @@ class PlayerClient extends EventEmitter
         @status.current_item = @playlist.item_table[id]
         if @status.current_item?
           # looks good, notify listeners
+          @status.time = @status.current_item.track.time
           @emit 'statusupdate'
           callback()
         else
@@ -439,17 +437,17 @@ class PlayerClient extends EventEmitter
 
   play: !->
     @sendCommandName \play
-
+    # anticipate changes
     if @status.state is "pause"
-      @status.track_start_date = elapsedToDate(@status.elapsed)
+      @status.track_start_date = elapsedToDate(@status.paused_time)
       @status.state = "play"
       @emit 'statusupdate'
 
   pause: !->
     @sendCommandName \pause
-
+    # anticipate changes
     if @status.state is "play"
-      @status.elapsed = dateToElapsed(@status.track_start_date)
+      @status.paused_time = dateToElapsed(@status.track_start_date)
       @status.state = "pause"
       @emit 'statusupdate'
 
@@ -540,7 +538,7 @@ class PlayerClient extends EventEmitter
     pos = parseFloat(pos, 10)
     pos = 0 if pos < 0
     pos = @status.time if pos > @status.time
-    @sendCommand "seekid #{@status.current_item.id} #{Math.round(pos)}"
+    @sendCommand {name: \seek, pos}
     @status.track_start_date = elapsedToDate(pos)
     @emit 'statusupdate'
 

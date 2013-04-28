@@ -543,7 +543,6 @@ class PlayerClient extends EventEmitter
     return if track_ids.length is 0
     ids = []
     for track_id of track_ids
-      track_id = parseInt(track_id, 10)
       if @status.current_item?.id is track_id
         @status.current_item = null
       ids.push track_id

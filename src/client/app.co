@@ -1586,7 +1586,7 @@ function queueSelection (event)
               top: 0
               bottom: 1
             new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-            before_id = mpd.playlist.item_table[new_pos]?.id
+            before_id = mpd.playlist.item_list[new_pos]?.id
             before_id = mpd.LAST unless before_id?
             files = selection.toFiles(event.altKey)
             mpd.queueFiles files, {before_id}

@@ -33,7 +33,7 @@ function qEscape (str)
 function findNextKey (object, from_key)
   result = null
   for k in object
-    if k > from_key
+    if from_key is null or k > from_key
       if result is null or k < result
         result = k
   result
@@ -155,9 +155,9 @@ module.exports = class PlayerServer extends EventEmitter
           @repeat.repeat = request.repeat
           @repeat.single = request.single
         case \play
-          @current_id ?= @playlist[0]?.id
+          @current_id ?= findNextKey @playlist, null
           @is_playing = true
-          @playlistChanged seekto: 0
+          @playlistChanged!
         case \pause
           if @is_playing
             @is_playing = false
@@ -173,7 +173,7 @@ module.exports = class PlayerServer extends EventEmitter
         case \playid
           @current_id = request.track_id
           @is_playing = true
-          @playlistChanged!
+          @playlistChanged seekto: 0
         default throw new Error "invalid command #{JSON.stringify name}"
       unless suppress_reply
         if reply_object? then cb {msg: reply_object} else cb {}

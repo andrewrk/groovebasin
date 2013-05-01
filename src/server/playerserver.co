@@ -157,7 +157,7 @@ module.exports = class PlayerServer extends EventEmitter
         case \play
           @current_id ?= @playlist[0]?.id
           @is_playing = true
-          @playlistChanged!
+          @playlistChanged seekto: 0
         case \pause
           if @is_playing
             @is_playing = false
@@ -165,7 +165,7 @@ module.exports = class PlayerServer extends EventEmitter
             @playlistChanged!
         case \stop
           @is_playing = false
-          @playlistChanged!
+          @playlistChanged seekto: 0
         case \seek
           @playlistChanged seekto: request.pos
         case \next, \previous

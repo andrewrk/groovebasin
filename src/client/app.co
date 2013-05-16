@@ -396,29 +396,20 @@ function scrollThingToSelection ($scroll_area, helpers)
 
 function getDragPosition (x, y)
   # loop over the playlist items and find where it fits
-  best =
-    track_id: null
-    distance: null
-    direction: null
+  result = {}
   for item of $playlist_items.find(".pl-item").get()
     $item = $(item)
-    pos = $item.offset()
-    height = $item.height()
-    track_id = parseInt($item.attr('data-id'), 10)
-    # try the top of this element
-    distance = Math.abs(pos.top - y)
-    if not best.distance? or distance < best.distance
-      best.distance = distance
-      best.direction = "top"
-      best.track_id = track_id
-    # try the bottom
-    distance = Math.abs(pos.top + height - y)
-    if distance < best.distance
-      best.distance = distance
-      best.direction = "bottom"
-      best.track_id = track_id
-
-  return best
+    middle = $item.offset!.top + $item.height! / 2
+    track = mpd.playlist.item_table[$item.attr('data-id')]
+    if middle < y
+      if result.previous_key == null or track.sort_key > result.previous_key
+        result.$previous = $item
+        result.previous_key = track.sort_key
+    else
+      if result.next_key == null or track.sort_key < result.next_key
+        result.$next = $item
+        result.next_key = track.sort_key
+  return result
 
 !function renderSettings
   return unless (api_key = server_status?.lastfm_api_key)?
@@ -839,7 +830,7 @@ keyboard_handlers = do ->
     if event.ctrlKey
       if selection.isPlaylist()
         # re-order playlist items
-        mpd.shiftIds (id for id in selection.ids.playlist), dir
+        mpd.shiftIds selection.ids.playlist, dir
     else
       # change selection
       if selection.isPlaylist()
@@ -1118,7 +1109,10 @@ function queueSelection (event)
       return unless started_drag
     result = getDragPosition(event.pageX, event.pageY)
     $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom')
-    $("\#playlist-track-#{result.track_id}").addClass "border-#{result.direction}"
+    if result.$next?
+      result.$next.addClass "border-top"
+    else if result.$previous?
+      result.$previous.addClass "border-bottom"
 
   !function onDragEnd (event)
     return false unless event.which is 1
@@ -1213,8 +1207,7 @@ function queueSelection (event)
             delta =
               top: 0
               bottom: 1
-            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-            mpd.moveIds (id for id in selection.ids.playlist), new_pos
+            mpd.moveIds (id for id in selection.ids.playlist), result.previous_key, result.next_key
           cancel: !->
             # we didn't end up dragging, select the item
             selection.selectOnly 'playlist', track_id
@@ -1226,7 +1219,7 @@ function queueSelection (event)
       # context menu
       removeContextMenu()
 
-      track_id = parseInt($(this).attr('data-id'), 10)
+      track_id = $(this).attr('data-id')
 
       if not selection.isPlaylist() or not selection.ids.playlist[track_id]?
         selection.selectOnly 'playlist', track_id
@@ -1585,11 +1578,8 @@ function queueSelection (event)
             delta =
               top: 0
               bottom: 1
-            new_pos = mpd.playlist.item_table[result.track_id].pos + delta[result.direction]
-            before_id = mpd.playlist.item_list[new_pos]?.id
-            before_id = mpd.LAST unless before_id?
             files = selection.toFiles(event.altKey)
-            mpd.queueFiles files, {before_id}
+            mpd.queueFiles files, result.previous_key, result.next_key
           cancel: !->
             # we didn't end up dragging, select the item
             selection.selectOnly(type, key)

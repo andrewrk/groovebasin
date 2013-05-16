@@ -175,11 +175,6 @@ function moreThanOneKey (object)
     return true if not ++count
   return false
 
-function firstKey (object)
-  for k in object
-    return k
-  return null
-
 next_id = 0
 function nextId
   "id-#{next_id++}"
@@ -205,15 +200,26 @@ if (EventEmitter = require?('events')?EventEmitter)!?
       for id, h in @event_handlers@[event_name]
         h(...args)
 
+!function addSearchTags (tracks)
+  for track of tracks
+    track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
+
+# this key is unique because it has capital letters
+const VARIOUS_ARTISTS_KEY = "VariousArtists"
+const VARIOUS_ARTISTS_NAME = "Various Artists"
+
+function operatorCompare (a, b)
+  return 0 if a is b
+  if a < b then -1 else 1
+function makeCompareProps (props)
+  (a, b) ->
+    for prop of props
+      result = operatorCompare a[prop], b[prop]
+      return result if result
+    return 0
+const compareSortKeyAndId = makeCompareProps <[sort_key id]>
+
 class PlayerClient extends EventEmitter
-  ..addSearchTags = !(tracks) ->
-    for track of tracks
-      track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"))
-
-  # this key is unique because it has capital letters
-  ..VARIOUS_ARTISTS_KEY = "VariousArtists"
-  ..VARIOUS_ARTISTS_NAME = "Various Artists"
-
   (@socket) ~>
     super()
     @resetServerState()
@@ -245,7 +251,7 @@ class PlayerClient extends EventEmitter
     @sendCommandName \listallinfo, !(err, track_table) ~>
       return callback(err) if err
       tracks = (track for _, track in track_table)
-      ..addSearchTags tracks
+      addSearchTags tracks
       @buildArtistAlbumTree tracks, @library
       @have_file_list_cache = true
       # in case the user has a search open, we'll apply their search again.
@@ -259,12 +265,12 @@ class PlayerClient extends EventEmitter
     @sendCommandName \playlistinfo, !(err, tracks) ~>
       return callback(err) if err
       @clearPlaylist()
-      for id, file in tracks
-        obj =
+      for id, item in tracks
+        @playlist.item_table[id] =
           id: id
-          track: @library.track_table[file]
+          sort_key: item.sort_key
+          track: @library.track_table[item.file]
           playlist: @playlist
-        @playlist.item_table[id] = obj
       @refreshPlaylistList!
 
       # make sure current track data is correct
@@ -389,43 +395,51 @@ class PlayerClient extends EventEmitter
     @buildArtistAlbumTree result, @search_results = {}
     @emit \libraryupdate
 
-  getDefaultQueueBeforeId: ->
+  getDefaultQueuePosition: ->
+    previous_key = @status.current_item?.sort_key
+    next_key = null
     for i from @status.current_item?.pos ? 0 til @playlist.item_list.length
-      id = @playlist.item_list[i].id
+      sort_key = @playlist.item_list[i].sort_key
       if false # TODO if is random
-        return id
-    return @LAST
+        next_key = sort_key
+        break
+      previous_key = sort_key
+    return {previous_key, next_key}
 
-  generateId: (after_id, before_id) ->
-    base = parseFloat after_id
-    if before_id?
-      max = parseFloat before_id
-      result = (max + base) / 2
+  generateSortKey: (previous_key, next_key) ->
+    if previous_key?
+      if next_key?
+        (previous_key + next_key) / 2
+      else
+        0 | previous_key + 1
     else
-      result = base + 1
-    return result.toString!
+      if next_key?
+        (0 + next_key) / 2
+      else
+        1
 
-  LAST: <[last]>
-  queueFiles: !(files, o={}) ->
+  generateId: ->
+    # random 128-bit hex string
+    result = ""
+    for _ from 0 til 8
+      shortHex = (0 | Math.random! * 0x10000).toString 16
+      for __ from shortHex.length til 4
+        result += "0"
+      result += shortHex
+    result
+
+  queueFiles: !(files, previous_key, next_key) ->
     return unless files.length
-    before_id = o.before_id
-    unless o.before_id?
-      before_id = @getDefaultQueueBeforeId!
-    if before_id is @LAST
-      after_id = @playlist.item_list[@playlist.item_list.length - 1]?.id
-      before_id = null
-    else
-      after_id = @playlist.item_list[@playlist.item_table[before_id].pos - 1]?.id
-    unless after_id?
-      # playlist is empty
-      after_id = "0"
+    if previous_key == null and next_key == null
+      {previous_key, next_key} = @getDefaultQueuePosition!
     items = {}
-    item_list = []
     for file of files
-      id = @generateId after_id, before_id
-      after_id = id
-      items[id] = file
-      @playlist.item_table[id] = {id, track: @library.track_table[file]}
+      sort_key = @generateSortKey previous_key, next_key
+      id = @generateId!
+      items[id] = {file, sort_key}
+      # anticipate changes
+      @playlist.item_table[id] = {id, sort_key, track: @library.track_table[file]}
+      previous_key = sort_key
     @refreshPlaylistList()
 
     @sendCommand {name: \addid, items}
@@ -433,8 +447,14 @@ class PlayerClient extends EventEmitter
     @emit 'playlistupdate'
 
   queueFilesNext: !(files) ->
-    new_pos = (@status.current_item?.pos ? -1) + 1
-    @queueFiles files, new_pos
+    previous_key = @status.current_item?.sort_key
+    # TODO unify this code somewhere
+    next_key = null
+    for track of @playlist.item_list
+      if previous_key == null or track.sort_key > previous_key
+        if next_key == null or track.sort_key < next_key
+          next_key = track.sort_key
+    @queueFiles files, previous_key, next_key
 
   clear: !->
     @sendCommandName \clear
@@ -488,54 +508,53 @@ class PlayerClient extends EventEmitter
     @sendCommand {name: \playid, track_id}
     @anticipatePlayId track_id
 
-  moveIds: !(track_ids, pos) ->
-    pos = parseInt(pos, 10)
+  moveIds: !(track_ids, previous_key, next_key) ->
     # get the playlist items for the ids
-    items = (item if (item = @playlist.item_table[id])? for id of track_ids)
-    # sort the list by the reverse order in the playlist
-    items.sort (a, b) -> b.pos - a.pos
+    tracks = (track if (track = @playlist.item_table[id])? for id of track_ids)
+    # sort the list
+    tracks.sort compareSortKeyAndId
 
-    command_items = []
-    while items.length > 0
-      if pos <= items[0].pos
-        real_pos = pos
-        item = items.shift()
-      else
-        real_pos = pos - 1
-        item = items.pop()
+    items = {}
+    for track of tracks
+      sort_key = @generateSortKey previous_key, next_key
+      items[id] = {sort_key}
+      # anticipate the changes
+      track.sort_key = sort_key
+      previous_key = sort_key
 
-      command_items.push {id: item.id, pos: real_pos}
-      @playlist.item_list.splice item.pos, 1
-      @playlist.item_list.splice real_pos, 0, item
+    @refreshPlaylistList()
 
-      @refreshPlaylistList()
-
-    @sendCommand {name: \move, items: command_items}
+    @sendCommand {name: \move, items}
     @emit 'playlistupdate'
 
   # shifts the list of ids by offset, winamp style
-  shiftIds: !(track_ids, offset) ->
-    offset = parseInt(offset, 10)
-    return if offset is 0 or track_ids.length is 0
+  shiftIds: !(track_id_set, offset) ->
+    items = {}
+    previous_key = null
+    next_key = null
+    if offset < 0
+      for track of @playlist.item_list
+        if track.id in track_id_set
+          continue unless next_key? # can't shift first item up
+          sort_key = @generateSortKey previous_key, next_key
+          items[track.id] = {sort_key}
+          # anticipate change
+          track.sort_key = sort_key
+        previous_key = next_key
+        next_key = track.sort_key
+    else
+      for track of @playlist.item_list by -1
+        if track.id in track_id_set
+          continue unless previous_key? # can't shift last item down
+          sort_key = @generateSortKey previous_key, next_key
+          items[track.id] = {sort_key}
+          # anticipate change
+          track.sort_key = sort_key
+        next_key = previous_key
+        previous_key = track.sort_key
+    @refreshPlaylistList()
 
-    items = (item if (item = @playlist.item_table[id])? for id of track_ids)
-    items.sort (a, b) -> sign(offset) * (b.pos - a.pos)
-
-    # abort if any are out of bounds
-    for item of [items[0], items[items.length - 1]]
-      new_pos = item.pos + offset
-      return if new_pos < 0 or new_pos >= @playlist.item_list.length
-
-    @sendCommand {
-      name: \move
-      items: ({id: item.id, pos: item.pos + offset} for item of items)
-    }
-
-    # anticipate the result
-    for item of items
-      @playlist.item_list.splice item.pos, 1
-      @playlist.item_list.splice item.pos+offset, 0, item
-      @refreshPlaylistList()
+    @sendCommand {name: \move, items}
 
     @emit 'playlistupdate'
 
@@ -681,8 +700,8 @@ class PlayerClient extends EventEmitter
         album_artists[artistKey(track.artist_name)] = true
       if moreThanOneKey(album_artists)
         # multiple artists. we're sure it's a compilation album.
-        album_artist_name = ..VARIOUS_ARTISTS_NAME
-        artist_key = ..VARIOUS_ARTISTS_KEY
+        album_artist_name = VARIOUS_ARTISTS_NAME
+        artist_key = VARIOUS_ARTISTS_KEY
         # make sure to disambiguate the artist names
         for track of album.tracks
           track.artist_disambiguation = track.artist_name
@@ -702,7 +721,7 @@ class PlayerClient extends EventEmitter
       artist.albums.sort albumComparator
       # cache the album indexes
       album.pos = i for album, i of artist.albums
-      if artist.key is ..VARIOUS_ARTISTS_KEY
+      if artist.key is VARIOUS_ARTISTS_KEY
         various_artist = artist
       else
         library.artists.push artist
@@ -722,11 +741,7 @@ class PlayerClient extends EventEmitter
     for id, item in @playlist.item_table
       item.playlist = @playlist
       @playlist.item_list.push item
-    # sort items by id
-    @playlist.item_list.sort (left, right) ->
-      left = parseFloat left.id
-      right = parseFloat right.id
-      if left < right then -1 else if left > right then 1 else 0
+    @playlist.item_list.sort compareSortKeyAndId
     # cache positions
     item.pos = i for item, i of @playlist.item_list
 

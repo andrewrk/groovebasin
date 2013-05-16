@@ -30,12 +30,13 @@ function qEscape (str)
   # replace all " with \"
   str.toString().replace /"/g, '\\"'
 
-function findNextKey (object, from_key)
+function findNext (object, from_id)
+  from_key = object[from_id]?.sort_key
   result = null
-  for k in object
-    if from_key is null or k > from_key
-      if result is null or k < result
-        result = k
+  for id, item in object
+    if from_key == null or item.sort_key > from_key
+      if result == null or item.sort_key < object[result].sort_key
+        result = id
   result
 
 module.exports = class PlayerServer extends EventEmitter
@@ -73,7 +74,7 @@ module.exports = class PlayerServer extends EventEmitter
       @mpd_is_playing = o.state is \play
       if @mpd_should_be_playing_id? and mpd_was_playing and not @mpd_is_playing
         # reached the end of the song
-        @current_id = findNextKey @playlist, @current_id
+        @current_id = findNext @playlist, @current_id
         @playlistChanged!
 
   createClient: (socket, permissions) ->
@@ -134,16 +135,18 @@ module.exports = class PlayerServer extends EventEmitter
             paused_time: @paused_time
 
         case \addid
-          for id, file in request.items
-            @playlist[id] = file
+          for id, item in request.items
+            @playlist[id] =
+              file: item.file
+              sort_key: item.sort_key
           @playlistChanged!
         case \deleteid
           for id of request.ids
             delete @playlist[id]
           @playlistChanged!
         case \move
-          for {id, pos} of request.items
-            @playlist[pos] = delete @playlist[id]
+          for id, {sort_key} in request.items
+            @playlist[id].sort_key = sort_key
           @playlistChanged!
         case \clear
           @playlist = {}
@@ -155,7 +158,7 @@ module.exports = class PlayerServer extends EventEmitter
           @repeat.repeat = request.repeat
           @repeat.single = request.single
         case \play
-          @current_id ?= findNextKey @playlist, null
+          @current_id ?= findNext @playlist, null
           @is_playing = true
           @playlistChanged!
         case \pause
@@ -206,7 +209,7 @@ module.exports = class PlayerServer extends EventEmitter
       unless @current_id is @mpd_should_be_playing_id
         # start mpd playing
         commands.push "clear"
-        commands.push "addid \"#{qEscape @playlist[@current_id]}\""
+        commands.push "addid \"#{qEscape @playlist[@current_id].file}\""
         commands.push "play"
         @mpd_should_be_playing_id = @current_id
         if o.seekto is 0

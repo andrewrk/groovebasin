@@ -59,12 +59,15 @@ module.exports = class DynamicMode extends Plugin
     current_index = -1
     all_ids = {}
     new_files = []
+    last_key = null
     for item, i of item_list
       unless item.track? and item.id?
         # some race condition or something's up. TODO better fix for this
         return "item with no track"
       if item.id is current_id
         current_index = i
+      if last_key == null or last_key < item.sort_key
+        last_key = item.sort_key
       all_ids[item.id] = true
       new_files.push item.track.file unless @previous_ids[item.id]?
     # tag any newly queued tracks
@@ -85,7 +88,7 @@ module.exports = class DynamicMode extends Plugin
 
       @mpd.removeIds (item_list[i].id for i from 0 til delete_count)
       add_count = Math.max(future_size - (item_list.length - current_index), 0)
-      @mpd.queueFiles @getRandomSongFiles(add_count)
+      @mpd.queueFiles @getRandomSongFiles(add_count), last_key, null, true
 
     @previous_ids = all_ids
     @emit 'status_changed' if delete_count + add_count > 0

@@ -529,10 +529,9 @@ function getDragPosition (x, y)
       if (id = mpd.playlist.item_list[pos]?.id)?
         $("\#playlist-track-#{id}").addClass('old')
   # label the random ones
-  if server_status?.random_ids?
-    for item of mpd.playlist.item_list
-      if server_status.random_ids[item.id]
-        $("\#playlist-track-#{item.id}").addClass('random')
+  for item of mpd.playlist.item_list
+    if item.is_random
+      $("\#playlist-track-#{item.id}").addClass('random')
   # label the current one
   $("\#playlist-track-#{cur_item.id}").addClass('current') if cur_item?
 

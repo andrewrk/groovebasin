@@ -139,6 +139,7 @@ module.exports = class PlayerServer extends EventEmitter
             @playlist[id] =
               file: item.file
               sort_key: item.sort_key
+              is_random: item.is_random
           @playlistChanged!
         case \deleteid
           for id of request.ids

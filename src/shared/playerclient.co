@@ -269,6 +269,7 @@ class PlayerClient extends EventEmitter
         @playlist.item_table[id] =
           id: id
           sort_key: item.sort_key
+          is_random: item.is_random
           track: @library.track_table[item.file]
           playlist: @playlist
       @refreshPlaylistList!
@@ -398,9 +399,11 @@ class PlayerClient extends EventEmitter
   getDefaultQueuePosition: ->
     previous_key = @status.current_item?.sort_key
     next_key = null
-    for i from @status.current_item?.pos ? 0 til @playlist.item_list.length
-      sort_key = @playlist.item_list[i].sort_key
-      if false # TODO if is random
+    start_pos = (@status.current_item?.pos ? -1) + 1
+    for i from start_pos til @playlist.item_list.length
+      track = @playlist.item_list[i]
+      sort_key = track.sort_key
+      if track.is_random
         next_key = sort_key
         break
       previous_key = sort_key
@@ -428,17 +431,18 @@ class PlayerClient extends EventEmitter
       result += shortHex
     result
 
-  queueFiles: !(files, previous_key, next_key) ->
+  queueFiles: !(files, previous_key, next_key, is_random) ->
     return unless files.length
+    is_random = Boolean(is_random)
     if previous_key == null and next_key == null
       {previous_key, next_key} = @getDefaultQueuePosition!
     items = {}
     for file of files
       sort_key = @generateSortKey previous_key, next_key
       id = @generateId!
-      items[id] = {file, sort_key}
+      items[id] = {file, sort_key, is_random}
       # anticipate changes
-      @playlist.item_table[id] = {id, sort_key, track: @library.track_table[file]}
+      @playlist.item_table[id] = {id, sort_key, is_random, track: @library.track_table[file]}
       previous_key = sort_key
     @refreshPlaylistList()
 

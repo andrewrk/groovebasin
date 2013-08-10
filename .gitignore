@@ -1,10 +1,7 @@
-/node_modules/
-/.state.json
+/node_modules
 /run
 
 # not shared with .npmignore
 /public/app.js
 /public/views.js
 /public/app.css
-/server.js
-/lib/

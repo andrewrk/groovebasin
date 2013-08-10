@@ -23,7 +23,6 @@
     "zipstream": "~0.2.1",
     "express": "~3.0.0rc5",
     "temp": "~0.4.0",
-    "naught": "~0.2.2",
     "async": "~0.1.22",
     "superagent": "~0.9.5",
     "mkdirp": "~0.3.4",
@@ -39,14 +38,11 @@
     "stylus": "~0.29.0",
     "node-dev": "~0.2.8",
     "jspackage": "~0.4.9",
-    "watch": "~0.5.1",
-    "coco": "~0.8.2"
+    "watch": "0.5.1"
   },
   "scripts": {
-    "start": "naught start --ipc-file run/naught.ipc --log run/naught.log --stdout run/stdout.log --stderr run/stderr.log lib/server.js",
-    "stop": "naught stop run/naught.ipc",
-    "reload": "naught deploy run/naught.ipc",
-    "build": "npm install && coke build",
-    "dev": "npm install && coke dev"
+    "start": "node lib/server.js",
+    "build": "npm install && node ./task.js build",
+    "dev": "npm install && node ./task.js dev"
   }
 }

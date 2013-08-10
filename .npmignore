@@ -1,9 +1,4 @@
-/node_modules/
-/.state.json
+/node_modules
 /run
 
 # not shared with .gitignore
-/Cakefile
-/src/client
-/src/server
-/TODO

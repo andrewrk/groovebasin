@@ -4,6 +4,7 @@ High priority:
 ditch jspackage in favor of browserfy
 
 Eventually:
+refactor plugins to be like mineflayer
 ditch handlebars
 replace socket.io with https://github.com/einaros/ws
 finish converting mpd-specific protocol (named playlist support)

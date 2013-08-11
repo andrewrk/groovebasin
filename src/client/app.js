@@ -1,12 +1,26 @@
 //depend "handlebars.runtime" bare
 //depend "views" bare
+var Handlebars = window.Handlebars;
+
 //depend "util"
+var Util = window.Util;
+
 //depend "playerclient" bare
+var PlayerClient = window.PlayerClient;
+
 //depend "jquery-1.8.2.min" bare
 //depend "jquery-ui-1.8.24.custom.min" bare
+var $ = window.$;
+
 //depend "soundmanager2/soundmanager2-nodebug-jsmin" bare
+var soundManager = window.soundManager;
+
 //depend "fileuploader/fileuploader" bare
+var qq = window.qq;
+
 //depend "socket.io/socket.io.min" bare
+var io = window.io;
+
 var selection, BASE_TITLE, MARGIN, AUTO_EXPAND_LIMIT, ICON_COLLAPSED, ICON_EXPANDED, server_status, permissions, socket, mpd, user_is_seeking, user_is_volume_sliding, started_drag, abortDrag, clickTab, trying_to_stream, actually_streaming, streaming_buffering, my_user_id, chat_name_input_visible, LoadStatus, load_status, settings_ui, local_state, $document, $window, $pl_window, $left_window, $playlist_items, $dynamic_mode, $pl_btn_repeat, $stream_btn, $tabs, $upload_tab, $chat_tab, $library, $lib_filter, $track_slider, $nowplaying, $nowplaying_elapsed, $nowplaying_left, $vol_slider, $chat_user_list, $chat_list, $chat_user_id_span, $settings, $upload_by_url, $main_err_msg, $main_err_msg_text, $stored_playlists, $upload, $track_display, $chat_input, $chat_name_input, $chat_input_pane, $lib_header, $pl_header, keyboard_handlers;
 selection = {
   ids: {
@@ -105,8 +119,8 @@ selection = {
   },
   getPos: function(type, key){
     var val;
-    type == null && (type = this.type);
-    key == null && (key = this.cursor);
+    if (type == null) type = this.type;
+    if (key == null) key = this.cursor;
     if (this.isLibrary()) {
       val = {
         type: 'library',
@@ -246,7 +260,7 @@ selection = {
   decrementPos: function(pos){},
   toFiles: function(random){
     var this$ = this;
-    random == null && (random = false);
+    if (random == null) random = false;
     if (this.isLibrary()) {
       return libraryToFiles();
     } else if (this.isPlaylist()) {
@@ -621,9 +635,7 @@ function renderChat(){
       chats: server_status.chats
     }));
     scrollChatWindowToBottom();
-    $chat_user_id_span.text(chat_name_input_visible
-      ? ""
-      : getUserName() + ": ");
+    $chat_user_id_span.text(chat_name_input_visible ? "" : getUserName() + ": ");
   }
   $chat_tab.find("span").text("Chat" + chat_status_text);
 }
@@ -753,7 +765,7 @@ function refreshSelection(){
   }
   function fn$(){
     var results$ = [];
-    for (id in ids) {
+    for (var id in ids) {
       if (table[id] == null) {
         results$.push(id);
       }
@@ -955,7 +967,7 @@ function handleDeletePressed(shift){
     pos = mpd.playlist.item_table[selection.cursor].pos;
     mpd.removeIds((function(){
       var results$ = [];
-      for (id in selection.ids.playlist) {
+      for (var id in selection.ids.playlist) {
         results$.push(id);
       }
       return results$;
@@ -1053,7 +1065,7 @@ function nextRepeatState(){
     });
   }
 }
-keyboard_handlers = function(){
+keyboard_handlers = (function(){
   var handlers;
   function upDownHandler(event){
     var default_index, dir, next_pos;
@@ -1341,7 +1353,7 @@ keyboard_handlers = function(){
       }
     }
   };
-}();
+})();
 function removeContextMenu(){
   $('#menu').remove();
 }
@@ -1556,7 +1568,7 @@ function setUpPlaylistUi(){
             };
             mpd.moveIds((function(){
               var results$ = [];
-              for (id in selection.ids.playlist) {
+              for (var id in selection.ids.playlist) {
                 results$.push(id);
               }
               return results$;
@@ -2221,7 +2233,7 @@ $document.ready(function(){
     renderSettings();
     window._debug_server_status = server_status;
   });
-  mpd = PlayerClient(socket);
+  mpd = new PlayerClient(socket);
   mpd.on('libraryupdate', renderLibrary);
   mpd.on('playlistupdate', renderPlaylist);
   mpd.on('storedplaylistupdate', renderStoredPlaylists);

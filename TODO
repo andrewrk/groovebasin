@@ -1,20 +1,22 @@
 High priority:
-(andy) node-musicmetadata: get duration from tags
+(andy) get duration from mpd on playlist update
 (josh) diverge playerclient.js duplication
 ditch jspackage in favor of browserfy
 
 Eventually:
-refactor plugins to be like mineflayer
+fix the broken plugins
+eliminate the TODOs in the code
 ditch handlebars
 replace socket.io with https://github.com/einaros/ws
 finish converting mpd-specific protocol (named playlist support)
 persist current playlist
-ditch watch (prefer https://github.com/paulmillr/chokidar)
 work on node-musicmetadata and support more formats/songs (such as wma)
 use mpd.js https://github.com/superjoe30/mpd.js
 ditch mpd
 use diacritics module: https://github.com/superjoe30/diacritics
 consider using https://github.com/rvagg/node-levelup
+  - separate state from configuration
 ditch qq fileuploader 
 extract the skewed random song selection into a separate, tested module
 make dynamic mode work with version of mpd that is in ubuntu 0.16.5-1ubuntu4 (raspberry pi is 0.16.7-2)
+ditch watch (prefer https://github.com/paulmillr/chokidar)

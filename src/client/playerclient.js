@@ -1,6 +1,6 @@
 (function(){
-  var DIACRITICS_REMOVAL_MAP, PREFIXES_TO_STRIP, MPD_SENTINEL, __trim, __trimLeft, __trimRight, trim, next_id, ref$, EventEmitter, VARIOUS_ARTISTS_KEY, VARIOUS_ARTISTS_NAME, compareSortKeyAndId, PlayerClient, slice$ = [].slice;
-  DIACRITICS_REMOVAL_MAP = [
+  var ref$, EventEmitter, slice$ = [].slice;
+  var DIACRITICS_REMOVAL_MAP = [
     {
       base: 'a',
       regex: /[A\u0041\u24B6\uFF21\u00C0\u00C1\u00C2\u1EA6\u1EA4\u1EAA\u1EA8\u00C3\u0100\u0102\u1EB0\u1EAE\u1EB4\u1EB2\u0226\u01E0\u00C4\u01DE\u1EA2\u00C5\u01FA\u01CD\u0200\u0202\u1EA0\u1EAC\u1EB6\u1E00\u0104\u023A\u2C6F\u0061\u24D0\uFF41\u1E9A\u00E0\u00E1\u00E2\u1EA7\u1EA5\u1EAB\u1EA9\u00E3\u0101\u0103\u1EB1\u1EAF\u1EB5\u1EB3\u0227\u01E1\u00E4\u01DF\u1EA3\u00E5\u01FB\u01CE\u0201\u0203\u1EA1\u1EAD\u1EB7\u1E01\u0105\u2C65\u0250]/g
@@ -134,7 +134,7 @@
     }
     return str;
   }
-  PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/];
+  var PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/];
   function stripPrefixes(str){
     var i$, ref$, len$, regex;
     for (i$ = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i$ < len$; ++i$) {
@@ -144,14 +144,7 @@
     }
     return str;
   }
-  MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m;
-  trim = (__trim = String.prototype.trim) != null
-    ? function(text){
-      return __trim.call(text);
-    }
-    : (__trimLeft = /^\s+/, __trimRight = /\s+$/, function(text){
-      return text.replace(__trimLeft, "").replace(__trimRight, "");
-    });
+  var MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m;
   function elapsedToDate(elapsed){
     return new Date(new Date - elapsed * 1000);
   }
@@ -298,7 +291,7 @@
     }
     return false;
   }
-  next_id = 0;
+  var next_id = 0;
   function nextId(){
     return "id-" + next_id++;
   }
@@ -342,8 +335,8 @@
       track.search_tags = removeDiacritics([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"));
     }
   }
-  VARIOUS_ARTISTS_KEY = "VariousArtists";
-  VARIOUS_ARTISTS_NAME = "Various Artists";
+  var VARIOUS_ARTISTS_KEY = "VariousArtists";
+  var VARIOUS_ARTISTS_NAME = "Various Artists";
   function operatorCompare(a, b){
     if (a === b) {
       return 0;
@@ -367,8 +360,8 @@
       return 0;
     };
   }
-  compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
-  PlayerClient = (function(superclass){
+  var compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
+  var PlayerClient = (function(superclass){
     PlayerClient.displayName = 'PlayerClient';
     var prototype = extend$(PlayerClient, superclass).prototype, constructor = PlayerClient;
     function PlayerClient(socket){
@@ -434,15 +427,12 @@
     };
     prototype.updatePlaylist = function(callback){
       var this$ = this;
-      callback == null && (callback = noop);
+      callback = callback || noop;
       this.sendCommandName('playlistinfo', function(err, tracks){
-        var id, item;
-        if (err) {
-          return callback(err);
-        }
+        if (err) return callback(err);
         this$.clearPlaylist();
-        for (id in tracks) {
-          item = tracks[id];
+        for (var id in tracks) {
+          var item = tracks[id];
           this$.playlist.item_table[id] = {
             id: id,
             sort_key: item.sort_key,
@@ -549,7 +539,7 @@
     };
     prototype.updateStatus = function(callback){
       var this$ = this;
-      callback == null && (callback = noop);
+      callback = callback || noop;
       this.sendCommandName('status', function(err, o){
         var ref$;
         if (err) {
@@ -564,9 +554,7 @@
         this$.status.paused_time = o.paused_time;
       });
       this.sendCommandName('currentsong', function(err, id){
-        if (err) {
-          return callback(err);
-        }
+        if (err) return callback(err);
         if (id != null) {
           this$.status.current_item = this$.playlist.item_table[id];
           if (this$.status.current_item != null) {
@@ -592,7 +580,7 @@
     };
     prototype.search = function(query){
       var words, result, k, ref$, track, is_match;
-      query = trim(query);
+      query = query.trim();
       if (query.length === 0) {
         this.search_results = this.library;
         this.emit('libraryupdate');
@@ -877,12 +865,8 @@
     };
     prototype.seek = function(pos){
       pos = parseFloat(pos, 10);
-      if (pos < 0) {
-        pos = 0;
-      }
-      if (pos > this.status.time) {
-        pos = this.status.time;
-      }
+      if (pos < 0) pos = 0;
+      if (pos > this.status.time) pos = this.status.time;
       this.sendCommand({
         name: 'seek',
         pos: pos

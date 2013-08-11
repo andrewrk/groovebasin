@@ -21,8 +21,7 @@ var qq = window.qq;
 //depend "socket.io/socket.io.min" bare
 var io = window.io;
 
-var selection, BASE_TITLE, MARGIN, AUTO_EXPAND_LIMIT, ICON_COLLAPSED, ICON_EXPANDED, server_status, permissions, socket, mpd, user_is_seeking, user_is_volume_sliding, started_drag, abortDrag, clickTab, trying_to_stream, actually_streaming, streaming_buffering, my_user_id, chat_name_input_visible, LoadStatus, load_status, settings_ui, local_state, $document, $window, $pl_window, $left_window, $playlist_items, $dynamic_mode, $pl_btn_repeat, $stream_btn, $tabs, $upload_tab, $chat_tab, $library, $lib_filter, $track_slider, $nowplaying, $nowplaying_elapsed, $nowplaying_left, $vol_slider, $chat_user_list, $chat_list, $chat_user_id_span, $settings, $upload_by_url, $main_err_msg, $main_err_msg_text, $stored_playlists, $upload, $track_display, $chat_input, $chat_name_input, $chat_input_pane, $lib_header, $pl_header, keyboard_handlers;
-selection = {
+var selection = {
   ids: {
     playlist: {},
     artist: {},
@@ -382,38 +381,38 @@ selection = {
     return trackSetToFiles;
   }
 };
-BASE_TITLE = document.title;
-MARGIN = 10;
-AUTO_EXPAND_LIMIT = 20;
-ICON_COLLAPSED = 'ui-icon-triangle-1-e';
-ICON_EXPANDED = 'ui-icon-triangle-1-se';
-server_status = null;
-permissions = {};
-socket = null;
-mpd = null;
-user_is_seeking = false;
-user_is_volume_sliding = false;
-started_drag = false;
-abortDrag = function(){};
-clickTab = null;
-trying_to_stream = false;
-actually_streaming = false;
-streaming_buffering = false;
-my_user_id = null;
-chat_name_input_visible = false;
-LoadStatus = {
+var BASE_TITLE = document.title;
+var MARGIN = 10;
+var AUTO_EXPAND_LIMIT = 20;
+var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
+var ICON_EXPANDED = 'ui-icon-triangle-1-se';
+var server_status = null;
+var permissions = {};
+var socket = null;
+var mpd = null;
+var user_is_seeking = false;
+var user_is_volume_sliding = false;
+var started_drag = false;
+var abortDrag = function(){};
+var clickTab = null;
+var trying_to_stream = false;
+var actually_streaming = false;
+var streaming_buffering = false;
+var my_user_id = null;
+var chat_name_input_visible = false;
+var LoadStatus = {
   Init: 'Loading...',
   NoServer: 'Server is down.',
   GoodToGo: '[good to go]'
 };
-load_status = LoadStatus.Init;
-settings_ui = {
+var load_status = LoadStatus.Init;
+var settings_ui = {
   auth: {
     show_edit: false,
     password: ""
   }
 };
-local_state = {
+var local_state = {
   my_user_ids: {},
   user_name: null,
   lastfm: {
@@ -423,39 +422,39 @@ local_state = {
   },
   auth_password: null
 };
-$document = $(document);
-$window = $(window);
-$pl_window = $('#playlist-window');
-$left_window = $('#left-window');
-$playlist_items = $('#playlist-items');
-$dynamic_mode = $('#dynamic-mode');
-$pl_btn_repeat = $('#pl-btn-repeat');
-$stream_btn = $('#stream-btn');
-$tabs = $('#tabs');
-$upload_tab = $tabs.find('.upload-tab');
-$chat_tab = $tabs.find('.chat-tab');
-$library = $('#library');
-$lib_filter = $('#lib-filter');
-$track_slider = $('#track-slider');
-$nowplaying = $('#nowplaying');
-$nowplaying_elapsed = $nowplaying.find('.elapsed');
-$nowplaying_left = $nowplaying.find('.left');
-$vol_slider = $('#vol-slider');
-$chat_user_list = $('#chat-user-list');
-$chat_list = $('#chat-list');
-$chat_user_id_span = $('#user-id');
-$settings = $('#settings');
-$upload_by_url = $('#upload-by-url');
-$main_err_msg = $('#main-err-msg');
-$main_err_msg_text = $('#main-err-msg-text');
-$stored_playlists = $('#stored-playlists');
-$upload = $('#upload');
-$track_display = $('#track-display');
-$chat_input = $('#chat-input');
-$chat_name_input = $('#chat-name-input');
-$chat_input_pane = $('#chat-input-pane');
-$lib_header = $('#library-pane .window-header');
-$pl_header = $pl_window.find('#playlist .header');
+var $document = $(document);
+var $window = $(window);
+var $pl_window = $('#playlist-window');
+var $left_window = $('#left-window');
+var $playlist_items = $('#playlist-items');
+var $dynamic_mode = $('#dynamic-mode');
+var $pl_btn_repeat = $('#pl-btn-repeat');
+var $stream_btn = $('#stream-btn');
+var $tabs = $('#tabs');
+var $upload_tab = $tabs.find('.upload-tab');
+var $chat_tab = $tabs.find('.chat-tab');
+var $library = $('#library');
+var $lib_filter = $('#lib-filter');
+var $track_slider = $('#track-slider');
+var $nowplaying = $('#nowplaying');
+var $nowplaying_elapsed = $nowplaying.find('.elapsed');
+var $nowplaying_left = $nowplaying.find('.left');
+var $vol_slider = $('#vol-slider');
+var $chat_user_list = $('#chat-user-list');
+var $chat_list = $('#chat-list');
+var $chat_user_id_span = $('#user-id');
+var $settings = $('#settings');
+var $upload_by_url = $('#upload-by-url');
+var $main_err_msg = $('#main-err-msg');
+var $main_err_msg_text = $('#main-err-msg-text');
+var $stored_playlists = $('#stored-playlists');
+var $upload = $('#upload');
+var $track_display = $('#track-display');
+var $chat_input = $('#chat-input');
+var $chat_name_input = $('#chat-name-input');
+var $chat_input_pane = $('#chat-input-pane');
+var $lib_header = $('#library-pane .window-header');
+var $pl_header = $pl_window.find('#playlist .header');
 function saveLocalState(){
   localStorage.state = JSON.stringify(local_state);
 }
@@ -1065,7 +1064,7 @@ function nextRepeatState(){
     });
   }
 }
-keyboard_handlers = (function(){
+var keyboard_handlers = (function(){
   var handlers;
   function upDownHandler(event){
     var default_index, dir, next_pos;

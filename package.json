@@ -30,8 +30,9 @@
     "findit": "~0.1.2",
     "which": "~1.0.5",
     "osenv": "0.0.3",
-    "mutagen": "~1.0.0",
-    "walk": "~2.2.1"
+    "walkdir": "0.0.7",
+    "pend": "~1.1.0",
+    "musicmetadata-superjoe30": "~0.2.5"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

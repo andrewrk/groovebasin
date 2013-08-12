@@ -433,12 +433,14 @@
         this$.clearPlaylist();
         for (var id in tracks) {
           var item = tracks[id];
+          var track = this$.library.track_table[item.file];
+          track.time = item.time;
           this$.playlist.item_table[id] = {
             id: id,
             sort_key: item.sort_key,
             is_random: item.is_random,
-            track: this$.library.track_table[item.file],
-            playlist: this$.playlist
+            track: track,
+            playlist: this$.playlist,
           };
         }
         this$.refreshPlaylistList();

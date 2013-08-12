@@ -1,5 +1,5 @@
 High priority:
- * (andy) get duration from mpd on playlist update
+ * (andy) work on node-musicmetadata and support more formats/songs (such as wma)
 
 Before merging into master:
  * ditch jspackage in favor of browserfy
@@ -8,7 +8,6 @@ Before merging into master:
  * persist current playlist
  * consider using https://github.com/rvagg/node-levelup
    - separate state from configuration
- * work on node-musicmetadata and support more formats/songs (such as wma)
 
 Eventually:
  * eliminate the TODOs in the code

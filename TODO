@@ -2,6 +2,7 @@ High priority:
  * (andy) work on node-musicmetadata and support more formats/songs (such as wma)
 
 Before merging into master:
+ * library: even if we don't get tags from an audio file, we want it in the library
  * ditch jspackage in favor of browserfy
  * fix the broken plugins
  * finish converting mpd-specific protocol (named playlist support)

@@ -6,6 +6,11 @@ module.exports = PlayerClient;
 
 var ref$, slice$ = [].slice;
 var PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/];
+var next_id = 0;
+var VARIOUS_ARTISTS_KEY = "VariousArtists";
+var VARIOUS_ARTISTS_NAME = "Various Artists";
+var compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
+
 function stripPrefixes(str){
   var i$, ref$, len$, regex;
   for (i$ = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i$ < len$; ++i$) {
@@ -38,9 +43,8 @@ function sortableTitle(title){
   return stripPrefixes(formatSearchable(title));
 }
 function titleCompare(a, b){
-  var _a, _b;
-  _a = sortableTitle(a);
-  _b = sortableTitle(b);
+  var _a = sortableTitle(a);
+  var _b = sortableTitle(b);
   if (_a < _b) {
     return -1;
   } else if (_a > _b) {
@@ -56,9 +60,7 @@ function titleCompare(a, b){
   }
 }
 function noop(err){
-  if (err) {
-    throw err;
-  }
+  if (err) throw err;
 }
 function qEscape(str){
   return str.toString().replace(/"/g, '\\"');
@@ -85,17 +87,11 @@ function splitOnce(line, separator){
   return [line.substr(0, index), line.substr(index + separator.length)];
 }
 function parseWithSepField(msg, sep_field, skip_fields, flush){
-  var current_obj, i$, ref$, len$, line, ref1$, key, value;
+  var i$, ref$, len$, line, ref1$, key, value;
   if (msg === "") {
     return [];
   }
-  current_obj = null;
-  function flushCurrentObj(){
-    if (current_obj != null) {
-      flush(current_obj);
-    }
-    current_obj = {};
-  }
+  var current_obj = null;
   for (i$ = 0, len$ = (ref$ = msg.split("\n")).length; i$ < len$; ++i$) {
     line = ref$[i$];
     ref1$ = splitOnce(line, ': '), key = ref1$[0], value = ref1$[1];
@@ -108,6 +104,13 @@ function parseWithSepField(msg, sep_field, skip_fields, flush){
     current_obj[key] = value;
   }
   return flushCurrentObj();
+
+  function flushCurrentObj(){
+    if (current_obj != null) {
+      flush(current_obj);
+    }
+    current_obj = {};
+  }
 }
 function getOrCreate(key, table, initObjFunc){
   var result;
@@ -162,7 +165,6 @@ function moreThanOneKey(object){
   }
   return false;
 }
-var next_id = 0;
 function nextId(){
   return "id-" + next_id++;
 }
@@ -170,14 +172,18 @@ function addSearchTags(tracks){
   var i$, len$, track;
   for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
     track = tracks[i$];
-    track.search_tags = formatSearchable([track.artist_name, track.album_artist_name, track.album_name, track.name, track.file].join("\n"));
+    track.search_tags = formatSearchable([
+        track.artist_name,
+        track.album_artist_name,
+        track.album_name,
+        track.name,
+        track.file,
+    ].join("\n"));
   }
 }
 function formatSearchable(str) {
   return removeDiacritics(str).toLowerCase();
 }
-var VARIOUS_ARTISTS_KEY = "VariousArtists";
-var VARIOUS_ARTISTS_NAME = "Various Artists";
 function operatorCompare(a, b){
   if (a === b) {
     return 0;
@@ -201,7 +207,6 @@ function makeCompareProps(props){
     return 0;
   };
 }
-var compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
 
 util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
@@ -215,9 +220,6 @@ function PlayerClient(socket) {
     playlist: self.updatePlaylist.bind(self),
     player: self.updateStatus.bind(self),
     mixer: self.updateStatus.bind(self),
-    sticker: function(){
-      return self.emit('stickerupdate');
-    }
   };
   self.socket.on('PlayerResponse', function(data) {
     self.handleResponse(JSON.parse(data));
@@ -763,45 +765,6 @@ PlayerClient.prototype.scanFiles = function(files){
     return results$;
   }()));
 };
-PlayerClient.prototype.findStickers = function(dir, name, cb){
-  var this$ = this;
-  cb = cb || noop;
-  this.sendCommand("sticker find song \"" + qEscape(dir) + "\" \"" + qEscape(name) + "\"", function(err, msg){
-    var current_file, stickers, i$, ref$, len$, line, ref1$, name, value;
-    if (err) {
-      return cb(err);
-    }
-    current_file = null;
-    stickers = {};
-    for (i$ = 0, len$ = (ref$ = msg.split("\n")).length; i$ < len$; ++i$) {
-      line = ref$[i$];
-      ref1$ = splitOnce(line, ": "), name = ref1$[0], value = ref1$[1];
-      if (name === "file") {
-        current_file = value;
-      } else if (name === "sticker") {
-        if (current_file == null) {
-          return cb("protocol");
-        }
-        value = splitOnce(value, "=")[1];
-        stickers[current_file] = value;
-      }
-    }
-    cb(null, stickers);
-  });
-};
-PlayerClient.prototype.setStickers = function(files, name, value, cb){
-  var res$, i$, len$, file, cmds, this$ = this;
-  cb = cb || noop;
-  res$ = [];
-  for (i$ = 0, len$ = files.length; i$ < len$; ++i$) {
-    file = files[i$];
-    res$.push("sticker set song \"" + qEscape(file) + "\" \"" + qEscape(name) + "\" \"" + qEscape(value) + "\"");
-  }
-  cmds = res$;
-  this.sendCommands(cmds, function(err){
-    return cb(err);
-  });
-};
 PlayerClient.prototype.queueFilesInStoredPlaylist = function(files, stored_playlist_name){
   var file;
   this.sendCommands((function(){
@@ -841,11 +804,10 @@ PlayerClient.prototype.handleResponse = function(arg){
   handler(err, msg);
 };
 PlayerClient.prototype.handleStatus = function(systems){
-  var i$, len$, system, ref$, updateFunc;
-  for (i$ = 0, len$ = systems.length; i$ < len$; ++i$) {
-    system = systems[i$];
-    updateFunc = (ref$ = this.updateFuncs[system]) != null ? ref$ : noop;
-    updateFunc();
+  for (var i = 0; i < systems.length; i += 1) {
+    var system = systems[i];
+    var updateFunc = this.updateFuncs[system];
+    if (updateFunc) updateFunc();
   }
 };
 PlayerClient.prototype.clearPlaylist = function(){

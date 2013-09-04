@@ -1,9 +1,13 @@
 var fs = require("fs");
 var path = require("path");
 var watcher = require("watch");
+var watchify = require("watchify");
+var browserify = require("browserify");
 var util = require("util");
 var mkdirp = require("mkdirp");
 var spawn = require("child_process").spawn;
+
+var appOut = 'public/app.js';
 
 var tasks = {
   watch: watch,
@@ -19,13 +23,9 @@ function clean() {
 }
 
 function dev() {
-  mkdirp("lib", function(){
-    exec('touch', ["lib/server.js"], null, function(){
-      watch();
-      exec("node-dev", ["lib/server.js"], {
-        stdio: [process.stdin, process.stdout, process.stderr, 'ipc']
-      });
-    });
+  watch();
+  exec("node-dev", ["lib/server.js"], {
+    stdio: [process.stdin, process.stdout, process.stderr, 'ipc']
   });
 }
 
@@ -39,8 +39,7 @@ function exec(cmd, args, options, cb){
     stdio: 'inherit'
   };
   for (var k in options) {
-    var v = options[k];
-    opts[k] = v;
+    opts[k] = options[k];
   }
   var bin = spawn(cmd, args, opts);
   bin.on('exit', cb);
@@ -51,15 +50,13 @@ function handlebars(){
 }
 
 function build(watch){
-  var npm_args;
-  npm_args = watch ? ['run', 'dev'] : ['run', 'build'];
+  var npm_args = watch ? ['run', 'dev'] : ['run', 'build'];
   mkdirp('public', function(){
-    var args;
-    args = watch ? ['-w'] : [];
-    exec('jspackage', args.concat([
-        '-l', 'src/public/vendor',
-        '-l', 'public',
-        'src/client/app', 'public/app.js']));
+    var args = watch ? ['-w'] : [];
+    var compile = watch ? watchify : browserify;
+    var b = compile(path.resolve('src/client/app.js'));
+    if (watch) b.on('update', writeBundle);
+    writeBundle();
     exec('stylus', args.concat(['-o', 'public/', '-c', '--include-css', 'src/client/styles']));
     if (watch) {
       watcher.watchTree('src/client/views', {
@@ -70,6 +67,11 @@ function build(watch){
       });
     } else {
       handlebars();
+    }
+
+    function writeBundle() {
+      util.log("generated " + appOut);
+      b.bundle().pipe(fs.createWriteStream(appOut));
     }
   });
 }

@@ -35,14 +35,18 @@
     "musicmetadata-superjoe30": "~0.5.0",
     "zfill": "0.0.1",
     "mpd": "~1.0.2",
-    "requireindex": "~1.0.1"
+    "requireindex": "~1.0.1",
+    "mess": "~0.1.1",
+    "diacritics": "~1.0.0"
   },
   "devDependencies": {
     "handlebars": "1.0.7",
     "stylus": "~0.29.0",
     "node-dev": "~0.2.8",
-    "jspackage": "~0.4.9",
-    "watch": "0.5.1"
+    "jspackage": "~0.5.0",
+    "watch": "0.5.1",
+    "watchify": "~0.1.0",
+    "browserify": "~2.29.1"
   },
   "scripts": {
     "start": "node lib/server.js",

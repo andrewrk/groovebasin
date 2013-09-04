@@ -1,12 +1,17 @@
 High priority:
- * (andy) ditch jspackage in favor of browserfy
+ * (andy) fix broken plugin - delete
 
 Before merging into master:
- * fix the broken plugins
+ * fix broken plugin - upload
+   - while you're at it consider ditching qq fileuploader
+ * fix broken plugin - download
+ * fix broken plugin - lastfm
+ * fix broken plugin - dynamicmode
  * finish converting mpd-specific protocol (named playlist support)
  * persist current playlist
  * consider using https://github.com/rvagg/node-levelup
    - separate state from configuration
+ * fix the TODOs strewn about the code
 
 Eventually:
  * eliminate the TODOs in the code

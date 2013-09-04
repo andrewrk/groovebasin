@@ -32,7 +32,7 @@
     "osenv": "0.0.3",
     "walkdir": "0.0.7",
     "pend": "~1.1.0",
-    "musicmetadata-superjoe30": "~0.3.1",
+    "musicmetadata-superjoe30": "~0.5.0",
     "zfill": "0.0.1",
     "mpd": "~1.0.2",
     "requireindex": "~1.0.1"

@@ -1,9 +1,7 @@
 High priority:
- * (andy) work on node-musicmetadata and support more formats/songs (such as wma)
+ * (andy) ditch jspackage in favor of browserfy
 
 Before merging into master:
- * library: even if we don't get tags from an audio file, we want it in the library
- * ditch jspackage in favor of browserfy
  * fix the broken plugins
  * finish converting mpd-specific protocol (named playlist support)
  * persist current playlist
@@ -20,3 +18,4 @@ Eventually:
  * extract the skewed random song selection into a separate, tested module
  * make dynamic mode work with version of mpd that is in ubuntu 0.16.5-1ubuntu4 (raspberry pi is 0.16.7-2)
  * ditch watch (prefer https://github.com/paulmillr/chokidar)
+ * support aac files (see ~/music/Gareth* on andy's computer for example)

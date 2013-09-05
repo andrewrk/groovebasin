@@ -1,8 +1,9 @@
 High priority:
- * (andy) consider using https://github.com/rvagg/node-levelup
-   - separate state from configuration
+ * (andy) ditch mpd
 
 Before merging into master:
+ * consider using https://github.com/rvagg/node-levelup
+   - separate state from configuration
  * fix broken plugin - upload
    - while you're at it consider ditching qq fileuploader
  * fix broken plugin - delete
@@ -18,7 +19,6 @@ Eventually:
  * eliminate the TODOs in the code
  * ditch handlebars
  * replace socket.io with https://github.com/einaros/ws
- * ditch mpd
  * ditch qq fileuploader 
  * extract the skewed random song selection into a separate, tested module
  * make dynamic mode work with version of mpd that is in ubuntu 0.16.5-1ubuntu4 (raspberry pi is 0.16.7-2)

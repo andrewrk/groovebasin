@@ -6,7 +6,6 @@ var trying_to_stream = false;
 var actually_streaming = false;
 var streaming_buffering = false;
 var mpd = null;
-var socket = null;
 var port = null;
 var format = null;
 
@@ -89,9 +88,8 @@ function setUpUi() {
   $stream_btn.on('click', toggleStatus);
 }
 
-function init(mpd_, socket_) {
-  mpd = mpd_;
-  socket = socket_;
+function init(mpdInstance, socket) {
+  mpd = mpdInstance;
 
   soundManager.setup({
     url: "/vendor/soundmanager2/",

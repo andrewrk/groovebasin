@@ -23,24 +23,13 @@ var selection = {
   cursor: null,
   type: null,
   isLibrary: function(){
-    var ref$;
-    if (this.type == null) {
-      return false;
-    }
-    return (ref$ = this.type) === 'artist' || ref$ === 'album' || ref$ === 'track';
+    return this.type === 'artist' || this.type === 'album' || this.type === 'track';
   },
   isPlaylist: function(){
-    if (this.type == null) {
-      return false;
-    }
     return this.type === 'playlist';
   },
   isStoredPlaylist: function(){
-    var ref$;
-    if (this.type == null) {
-      return false;
-    }
-    return (ref$ = this.type) === 'stored_playlist' || ref$ === 'stored_playlist_item';
+    return this.type === 'stored_playlist' || this.type === 'stored_playlist_item';
   },
   clear: function(){
     this.ids.artist = {};
@@ -64,42 +53,30 @@ var selection = {
   isMulti: function(){
     var result, k;
     if (this.isLibrary()) {
-      result = -2;
+      result = 2;
       for (k in this.ids.artist) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       for (k in this.ids.album) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       for (k in this.ids.track) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       return false;
     } else if (this.isPlaylist()) {
-      result = -2;
+      result = 2;
       for (k in this.ids.playlist) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       return false;
     } else if (this.isStoredPlaylist()) {
-      result = -2;
+      result = 2;
       for (k in this.ids.stored_playlist) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       for (k in this.ids.stored_playlist_item) {
-        if (!++result) {
-          return true;
-        }
+        if (!--result) return true;
       }
       return false;
     } else {
@@ -130,6 +107,7 @@ var selection = {
           break;
         case 'artist':
           val.artist = mpd.search_results.artist_table[key];
+          break;
         }
       } else {
         val.artist = mpd.search_results.artists[0];
@@ -149,6 +127,7 @@ var selection = {
           break;
         case 'stored_playlist':
           val.stored_playlist = mpd.stored_playlist_table[key];
+          break;
         }
       } else {
         val.stored_playlist = mpd.stored_playlists[0];
@@ -169,9 +148,8 @@ var selection = {
     }
   },
   posEqual: function(pos1, pos2){
-    var arr1, arr2;
-    arr1 = this.posToArr(pos1);
-    arr2 = this.posToArr(pos2);
+    var arr1 = this.posToArr(pos1);
+    var arr2 = this.posToArr(pos2);
     return compareArrays(arr1, arr2) === 0;
   },
   posInBounds: function(pos){
@@ -513,14 +491,13 @@ function scrollThingToSelection($scroll_area, helpers){
   }
 }
 function downloadFiles(files){
-  var $form, i$, len$, file, $input;
-  $form = $(document.createElement('form'));
+  var $form = $(document.createElement('form'));
   $form.attr('action', "/download/custom");
   $form.attr('method', "post");
   $form.attr('target', "_blank");
-  for (i$ = 0, len$ = files.length; i$ < len$; ++i$) {
-    file = files[i$];
-    $input = $(document.createElement('input'));
+  for (var i = 0; i < files.length; i += 1) {
+    var file = files[i];
+    var $input = $(document.createElement('input'));
     $input.attr('type', 'hidden');
     $input.attr('name', 'file');
     $input.attr('value', file);
@@ -755,15 +732,14 @@ function refreshSelection(){
   }
 }
 function renderLibrary(){
-  var context, scroll_top, $artists, node_count;
-  context = {
+  var context = {
     artists: mpd.search_results.artists,
     empty_library_message: mpd.have_file_list_cache ? "No Results" : "loading..."
   };
-  scroll_top = $library.scrollTop();
+  var scroll_top = $library.scrollTop();
   $library.html(Handlebars.templates.library(context));
-  $artists = $library.children("ul").children("li");
-  node_count = $artists.length;
+  var $artists = $library.children("ul").children("li");
+  var node_count = $artists.length;
   function expandStuff($li_set){
     var i$, len$, li, $li, $ul, $sub_li_set, proposed_node_count;
     for (i$ = 0, len$ = $li_set.length; i$ < len$; ++i$) {
@@ -797,9 +773,7 @@ function getCurrentTrackPosition(){
 }
 function updateSliderPos(){
   var ref$, disabled, elapsed, time, slider_pos;
-  if (user_is_seeking) {
-    return;
-  }
+  if (user_is_seeking) return;
   if (mpd.status.current_item != null && ((ref$ = mpd.status.state) != null ? ref$ : "stop") !== "stop") {
     disabled = false;
     elapsed = getCurrentTrackPosition();

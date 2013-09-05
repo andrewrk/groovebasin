@@ -1,6 +1,5 @@
 var $ = window.$;
 var Handlebars = window.Handlebars;
-var soundManager = window.soundManager;
 var qq = window.qq;
 var io = window.io;
 
@@ -8,6 +7,7 @@ var shuffle = require('mess');
 var querystring = require('querystring');
 var zfill = require('zfill');
 var PlayerClient = require('./playerclient');
+var streaming = require('./streaming');
 
 
 
@@ -383,9 +383,6 @@ var user_is_volume_sliding = false;
 var started_drag = false;
 var abortDrag = function(){};
 var clickTab = null;
-var trying_to_stream = false;
-var actually_streaming = false;
-var streaming_buffering = false;
 var my_user_id = null;
 var chat_name_input_visible = false;
 var LoadStatus = {
@@ -417,7 +414,6 @@ var $left_window = $('#left-window');
 var $playlist_items = $('#playlist-items');
 var $dynamic_mode = $('#dynamic-mode');
 var $pl_btn_repeat = $('#pl-btn-repeat');
-var $stream_btn = $('#stream-btn');
 var $tabs = $('#tabs');
 var $upload_tab = $tabs.find('.upload-tab');
 var $chat_tab = $tabs.find('.chat-tab');
@@ -459,11 +455,8 @@ function getUserName(){
   return userIdToUserName(my_user_id);
 }
 function userIdToUserName(user_id){
-  var user_name;
-  if (server_status == null) {
-    return user_id;
-  }
-  user_name = server_status.user_names[user_id];
+  if (server_status == null) return user_id;
+  var user_name = server_status.user_names[user_id];
   return user_name != null ? user_name : user_id;
 }
 function setUserName(new_name){
@@ -564,7 +557,9 @@ function renderSettings(){
   }
   context = {
     lastfm: {
-      auth_url: "http://www.last.fm/api/auth/?api_key=" + escape(api_key) + "&cb=" + location.protocol + "//" + location.host + "/",
+      auth_url: "http://www.last.fm/api/auth/?api_key=" +
+        encodeURIComponent(api_key) + "&cb=" +
+        encodeURIComponent(location.protocol + "//" + location.host + "/"),
       username: local_state.lastfm.username,
       session_key: local_state.lastfm.session_key,
       scrobbling_on: local_state.lastfm.scrobbling_on
@@ -575,7 +570,7 @@ function renderSettings(){
       permissions: permissions
     },
     misc: {
-      stream_url: getStreamUrl()
+      stream_url: streaming.getUrl()
     }
   };
   $settings.html(Handlebars.templates.settings(context));
@@ -626,17 +621,16 @@ function renderChat(){
   }
   $chat_tab.find("span").text("Chat" + chat_status_text);
 }
-function renderStreamButton(){
-  var label;
-  label = trying_to_stream ? actually_streaming ? streaming_buffering ? "Stream: Buffering" : "Stream: On" : "Stream: Paused" : "Stream: Off";
-  $stream_btn.button("option", "disabled", (server_status != null ? server_status.stream_httpd_port : void 8) == null).button("option", "label", label).prop("checked", trying_to_stream).button("refresh");
-}
 function renderPlaylistButtons(){
-  var repeat_state;
-  $dynamic_mode.prop("checked", server_status != null && server_status.dynamic_mode ? true : false).button("option", "disabled", !(server_status != null && server_status.dynamic_mode_enabled)).button("refresh");
-  repeat_state = getRepeatStateName();
-  $pl_btn_repeat.button("option", "label", "Repeat: " + repeat_state).prop("checked", repeat_state !== 'Off').button("refresh");
-  renderStreamButton();
+  $dynamic_mode
+    .prop("checked", server_status != null && server_status.dynamic_mode ? true : false)
+    .button("option", "disabled", !(server_status != null && server_status.dynamic_mode_enabled))
+    .button("refresh");
+  var repeat_state = getRepeatStateName();
+  $pl_btn_repeat
+    .button("option", "label", "Repeat: " + repeat_state)
+    .prop("checked", repeat_state !== 'Off')
+    .button("refresh");
   $upload_tab.removeClass("ui-state-disabled");
   if (!(server_status != null && server_status.upload_enabled)) {
     $upload_tab.addClass("ui-state-disabled");
@@ -861,8 +855,7 @@ function renderNowPlaying(){
   }
 }
 function render(){
-  var hide_main_err;
-  hide_main_err = load_status === LoadStatus.GoodToGo;
+  var hide_main_err = load_status === LoadStatus.GoodToGo;
   $pl_window.toggle(hide_main_err);
   $left_window.toggle(hide_main_err);
   $nowplaying.toggle(hide_main_err);
@@ -881,9 +874,8 @@ function render(){
   handleResize();
 }
 function genericToggleExpansion($li, options){
-  var $div, $ul, old_class, new_class, ref$;
-  $div = $li.find("> div");
-  $ul = $li.find("> ul");
+  var $div = $li.find("> div");
+  var $ul = $li.find("> ul");
   if ($div.attr('data-type') === options.top_level_type) {
     if (!$li.data('cached')) {
       $li.data('cached', true);
@@ -893,10 +885,12 @@ function genericToggleExpansion($li, options){
     }
   }
   $ul.toggle();
-  old_class = ICON_EXPANDED;
-  new_class = ICON_COLLAPSED;
+  var old_class = ICON_EXPANDED;
+  var new_class = ICON_COLLAPSED;
   if ($ul.is(":visible")) {
-    ref$ = [old_class, new_class], new_class = ref$[0], old_class = ref$[1];
+    var tmp = old_class;
+    old_class = new_class;
+    new_class = tmp;
   }
   $div.find("div").removeClass(old_class).addClass(new_class);
 }
@@ -923,16 +917,15 @@ function toggleLibraryExpansion($li){
   });
 }
 function confirmDelete(files_list){
-  var list_text, song_text;
-  list_text = files_list.slice(0, 7).join("\n  ");
+  var list_text = files_list.slice(0, 7).join("\n  ");
   if (files_list.length > 7) {
     list_text += "\n  ...";
   }
-  song_text = files_list.length === 1 ? "song" : "songs";
+  var song_text = files_list.length === 1 ? "song" : "songs";
   return confirm("You are about to delete " + files_list.length + " " + song_text + " permanently:\n\n  " + list_text);
 }
 function handleDeletePressed(shift){
-  var files_list, res$, id, pos;
+  var files_list;
   if (selection.isLibrary()) {
     files_list = selection.toFiles();
     if (!confirmDelete(files_list)) {
@@ -941,17 +934,14 @@ function handleDeletePressed(shift){
     socket.emit('DeleteFromLibrary', JSON.stringify(files_list));
   } else if (selection.isPlaylist()) {
     if (shift) {
-      res$ = [];
-      for (id in selection.ids.playlist) {
-        res$.push(mpd.playlist.item_table[id].track.file);
+      files_list = [];
+      for (var id in selection.ids.playlist) {
+        files_list.push(mpd.playlist.item_table[id].track.file);
       }
-      files_list = res$;
-      if (!confirmDelete(files_list)) {
-        return;
-      }
+      if (!confirmDelete(files_list)) return;
       socket.emit('DeleteFromLibrary', JSON.stringify(files_list));
     }
-    pos = mpd.playlist.item_table[selection.cursor].pos;
+    var pos = mpd.playlist.item_table[selection.cursor].pos;
     mpd.removeIds((function(){
       var results$ = [];
       for (var id in selection.ids.playlist) {
@@ -968,46 +958,6 @@ function handleDeletePressed(shift){
     refreshSelection();
   }
 }
-function toggleStreamStatus(){
-  if ((server_status != null ? server_status.stream_httpd_port : void 8) == null) {
-    return;
-  }
-  trying_to_stream = !trying_to_stream;
-  renderStreamButton();
-  updateStreamingPlayer();
-  return false;
-}
-function getStreamUrl(){
-  var port, format;
-  port = server_status != null ? server_status.stream_httpd_port : void 8;
-  format = server_status.stream_httpd_format;
-  return location.protocol + "//" + location.hostname + ":" + port + "/stream." + format;
-}
-function updateStreamingPlayer(){
-  var should_stream, sound;
-  should_stream = trying_to_stream && mpd.status.state === "play";
-  if (actually_streaming === should_stream) {
-    return;
-  }
-  if (should_stream) {
-    soundManager.destroySound('stream');
-    sound = soundManager.createSound({
-      id: 'stream',
-      url: getStreamUrl(),
-      onbufferchange: function(){
-        streaming_buffering = sound.isBuffering;
-        renderStreamButton();
-      }
-    });
-    sound.play();
-    streaming_buffering = sound.isBuffering;
-  } else {
-    soundManager.destroySound('stream');
-    streaming_buffering = false;
-  }
-  actually_streaming = should_stream;
-  renderStreamButton();
-}
 function togglePlayback(){
   if (mpd.status.state === 'play') {
     mpd.pause();
@@ -1016,8 +966,7 @@ function togglePlayback(){
   }
 }
 function setDynamicMode(value){
-  var args;
-  args = {
+  var args = {
     dynamic_mode: value
   };
   socket.emit('DynamicMode', JSON.stringify(args));
@@ -1265,7 +1214,7 @@ var keyboard_handlers = (function(){
       ctrl: false,
       alt: false,
       shift: false,
-      handler: toggleStreamStatus
+      handler: streaming.toggleStatus
     },
     84: {
       ctrl: false,
@@ -1739,12 +1688,6 @@ function setUpNowPlayingUi(){
     }
   });
   setInterval(updateSliderPos, 100);
-  $stream_btn.button({
-    icons: {
-      primary: "ui-icon-signal-diag"
-    }
-  });
-  $stream_btn.on('click', toggleStreamStatus);
   function fn$(cls, action){
     $nowplaying.on('mousedown', "li." + cls, function(event){
       action();
@@ -2052,7 +1995,7 @@ function genericTreeUi($elem, options){
           context.track = mpd.stored_playlist_item_table[key].track;
         } else {
           context.download_type = type;
-          context.escaped_key = escape(key);
+          context.escaped_key = encodeURIComponent(key);
         }
       }
       $(Handlebars.templates.library_menu(context)).appendTo(document.body);
@@ -2163,13 +2106,6 @@ function handleResize(){
   $chat_list.height(tab_contents_height - $chat_user_list.height() - $chat_input_pane.height());
   $playlist_items.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
 }
-function initStreaming(){
-  soundManager.setup({
-    url: "/vendor/soundmanager2/",
-    flashVersion: 9,
-    debugMode: false
-  });
-}
 function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";
 }
@@ -2227,7 +2163,6 @@ $document.ready(function(){
     renderNowPlaying();
     renderPlaylistButtons();
     labelPlaylistItems();
-    updateStreamingPlayer();
   });
   mpd.on('chat', renderChat);
   socket.on('connect', function(){
@@ -2241,7 +2176,7 @@ $document.ready(function(){
   });
   setUpUi();
   initHandlebars();
-  initStreaming();
+  streaming.init(mpd, socket);
   render();
   $window.resize(handleResize);
   window._debug_mpd = mpd;

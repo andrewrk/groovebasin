@@ -819,8 +819,7 @@ PlayerClient.prototype.clearPlaylist = function(){
   };
 };
 PlayerClient.prototype.anticipatePlayId = function(track_id){
-  var item;
-  item = this.playlist.item_table[track_id];
+  var item = this.playlist.item_table[track_id];
   this.status.current_item = item;
   this.status.state = "play";
   this.status.time = item.track.time;

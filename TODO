@@ -1,16 +1,16 @@
 High priority:
- * (andy) fix broken plugin - upload
-   - while you're at it consider ditching qq fileuploader
+ * (andy) consider using https://github.com/rvagg/node-levelup
+   - separate state from configuration
 
 Before merging into master:
+ * fix broken plugin - upload
+   - while you're at it consider ditching qq fileuploader
  * fix broken plugin - delete
  * fix broken plugin - download
  * fix broken plugin - lastfm
  * fix broken plugin - dynamicmode
  * finish converting mpd-specific protocol (named playlist support)
  * persist current playlist
- * consider using https://github.com/rvagg/node-levelup
-   - separate state from configuration
  * fix the TODOs strewn about the code
  * support mpd protocol on a different port
 

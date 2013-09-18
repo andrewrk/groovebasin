@@ -5,12 +5,6 @@ No-nonsense music client and server for your home or office.
 Run it on a server connected to your main speakers. Guests can connect with
 their laptops, tablets, and phones, and play and share music.
 
-Depends on [mpd](http://musicpd.org) version 0.17+ for the backend. Some might
-call this project an mpd client. (Note, version 0.17 is only available from
-source as of writing this; see below instructions regarding mpd installation.)
-
-[Live demo](http://superjoe.zapto.org:16242/)
-
 ## Features
 
 * Lightning-fast, responsive UI. You can hardly tell that the music server is
@@ -29,15 +23,13 @@ source as of writing this; see below instructions regarding mpd installation.)
 
 ## Get Started
 
-Make sure you have [Node](http://nodejs.org) >=0.8.0 installed and
-[mpd](http://musicpd.org) version >=0.17.0 (see below) running, then:
+1. Make sure you have the latest stable [Node.js](http://nodejs.org) installed.
+2. Install [libgroove](https://github.com/superjoe30/libgroove).
 
 ```
 $ npm install --production groovebasin
 $ npm start groovebasin
 ```
-
-At this point, Groove Basin will issue warnings telling you what to do next.
 
 ## Screenshots
 
@@ -46,70 +38,19 @@ At this point, Groove Basin will issue warnings telling you what to do next.
 ![Keyboard shortcuts](http://superjoesoftware.com/temp/groove-basin-0.0.4-shortcuts.png)
 ![Last.fm Scrobbling](http://superjoesoftware.com/temp/groove-basin-0.0.4-lastfm.png)
 
-## Mpd
-
-Groove Basin depends on [mpd](http://musicpd.org) version 0.17+.
-
-To compile from source, start here
-
-```
-$ git clone git://git.musicpd.org/master/mpd.git
-```
-
-and follow mpd's instructions from there.
-
-### Configuration
-
-* `default_permissions` - Recommended to remove `admin` so that anonymous
-  users can't do nefarious things.
-
-* `password` - Recommended to add a password for yourself to give yourself `admin` permissions.
-
-   * `read` - allows reading the library, current playlist, and playback status.
-
-   * `add` - allows adding songs, loading playlists, and uploading songs. 
-
-   * `control` - allows controlling playback state and manipulating playlists.
-
-   * `admin` - allows updating the db, killing mpd, deleting songs from the
-     library, and updating song tags.
-
-* `audio_output` - Uncomment the "httpd" one and configure the port to enable
-  streaming. Recommended "vorbis" encoder for better browser support.
-
-* `sticker_file` - Groove Basin will not run without one set.
-
-* `gapless_mp3_playback` - "yes" recommended. <3 gapless playback.
-
-* `volume_normalization` - "yes" recommended. Replaygain scanners are not
-  implemented for all the formats that can be played back. Volume normalization
-  works on all formats.
-
-* `max_command_list_size` - "16384" recommended. You do not want mpd crashing
-  when you try to remove a ton of songs from the playlist at once.
-
-* `auto_update` - "yes" recommended. Required for uploaded songs to show up
-  in your library.
-
-## Configuring Groove Basin
+## Configuration
 
 Groove Basin is configured using environment variables. Available options
 and their defaults:
 
     HOST="0.0.0.0"
     PORT="16242"
-    MPD_CONF="/etc/mpd.conf"
     STATE_FILE=".state.json"
     NODE_ENV="dev"
     LASTFM_API_KEY=<not shown>
     LASTFM_SECRET=<not shown>
 
 ## Developing
-
-Install dependencies and run mpd as described in the Get Started section.
-
-Clone the repository using `git clone --recursive` or if you have
-already cloned, do `git submodule update --init --recursive`.
 
 ```
 $ npm run dev

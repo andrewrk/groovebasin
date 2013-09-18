@@ -21,5 +21,4 @@ Eventually:
  * replace socket.io with https://github.com/einaros/ws
  * ditch qq fileuploader 
  * extract the skewed random song selection into a separate, tested module
- * make dynamic mode work with version of mpd that is in ubuntu 0.16.5-1ubuntu4 (raspberry pi is 0.16.7-2)
  * ditch watch (prefer https://github.com/paulmillr/chokidar)

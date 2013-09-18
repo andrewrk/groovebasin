@@ -1,6 +1,6 @@
 {
   "name": "groovebasin",
-  "description": "No-nonsense music client and daemon based on mpd",
+  "description": "Web-based music server and client inspired by Amarok 1.4",
   "author": "Andrew Kelley <superjoe30@gmail.com>",
   "version": "0.2.0",
   "licenses": [
@@ -23,20 +23,17 @@
     "zipstream": "~0.2.1",
     "express": "~3.3.8",
     "temp": "~0.5.1",
-    "async": "~0.1.22",
     "superagent": "~0.15.4",
     "mkdirp": "~0.3.5",
     "mv": "0.0.5",
-    "which": "~1.0.5",
-    "osenv": "0.0.3",
     "walkdir": "0.0.7",
     "pend": "~1.1.0",
-    "musicmetadata-superjoe30": "~0.5.0",
     "zfill": "0.0.1",
-    "mpd": "~1.0.2",
     "requireindex": "~1.0.1",
     "mess": "~0.1.1",
-    "diacritics": "~1.0.0"
+    "diacritics": "~1.0.0",
+    "groove": "0.0.0",
+    "osenv": "0.0.3"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

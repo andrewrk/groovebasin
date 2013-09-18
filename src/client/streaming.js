@@ -5,7 +5,7 @@ exports.init = init;
 var trying_to_stream = false;
 var actually_streaming = false;
 var streaming_buffering = false;
-var mpd = null;
+var player = null;
 var port = null;
 var format = null;
 
@@ -57,7 +57,7 @@ function getUrl(){
 }
 
 function updatePlayer() {
-  var should_stream = trying_to_stream && mpd.status.state === "play";
+  var should_stream = trying_to_stream && player.status.state === "play";
   if (actually_streaming === should_stream) return;
   if (should_stream) {
     soundManager.destroySound('stream');
@@ -88,15 +88,15 @@ function setUpUi() {
   $stream_btn.on('click', toggleStatus);
 }
 
-function init(mpdInstance, socket) {
-  mpd = mpdInstance;
+function init(playerInstance, socket) {
+  player = playerInstance;
 
   soundManager.setup({
     url: "/vendor/soundmanager2/",
     flashVersion: 9,
     debugMode: false
   });
-  mpd.on('statusupdate', updatePlayer);
+  player.on('statusupdate', updatePlayer);
   socket.on('StreamInfo', function(info) {
     port = info.port;
     format = info.format;

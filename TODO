@@ -1,22 +1,20 @@
 High priority:
- * (andy) ditch mpd
+ * (andy) get playback working with libgroove
 
 Before merging into master:
- * consider using https://github.com/rvagg/node-levelup
-   - separate state from configuration
  * fix broken plugin - upload
    - while you're at it consider ditching qq fileuploader
  * fix broken plugin - delete
  * fix broken plugin - download
  * fix broken plugin - lastfm
  * fix broken plugin - dynamicmode
+ * fix broken plugin - chat
  * finish converting mpd-specific protocol (named playlist support)
  * persist current playlist
  * fix the TODOs strewn about the code
  * support mpd protocol on a different port
 
 Eventually:
- * eliminate the TODOs in the code
  * ditch handlebars
  * replace socket.io with https://github.com/einaros/ws
  * ditch qq fileuploader 

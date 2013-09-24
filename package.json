@@ -26,14 +26,16 @@
     "superagent": "~0.15.4",
     "mkdirp": "~0.3.5",
     "mv": "0.0.5",
-    "pend": "~1.1.0",
+    "pend": "~1.1.1",
     "zfill": "0.0.1",
     "requireindex": "~1.0.1",
     "mess": "~0.1.1",
     "diacritics": "~1.0.0",
     "groove": "0.0.3",
     "osenv": "0.0.3",
-    "walkdir": "0.0.7"
+    "level": "~0.16.0",
+    "findit": "~1.1.0",
+    "chokidar": "~0.6.3"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

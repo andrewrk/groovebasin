@@ -1,5 +1,5 @@
 /node_modules
-/run
+/groovebasin.db
 
 # not shared with .npmignore
 /public/app.js

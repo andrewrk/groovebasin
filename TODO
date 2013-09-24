@@ -1,7 +1,8 @@
 High priority:
- * (andy) get playback working with libgroove
+ * (andy) audio playback with libgroove
 
 Before merging into master:
+ * streaming with libgroove
  * fix broken plugin - upload
    - while you're at it consider ditching qq fileuploader
  * fix broken plugin - delete

@@ -629,10 +629,6 @@ function renderPlaylistButtons(){
     .button("option", "label", "Repeat: " + repeatModeName)
     .prop("checked", mpd.status.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
-  $upload_tab.removeClass("ui-state-disabled");
-  if (!(server_status != null && server_status.upload_enabled)) {
-    $upload_tab.addClass("ui-state-disabled");
-  }
 }
 function renderPlaylist(){
   var context = {
@@ -1690,9 +1686,6 @@ function setUpTabsUi(){
     }
   }
   clickTab = function(name){
-    if (name === 'upload' && !(server_status != null && server_status.upload_enabled)) {
-      return;
-    }
     unselectTabs();
     $tab(name).addClass('ui-state-active');
     $pane(name).show();

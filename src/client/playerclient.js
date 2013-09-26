@@ -186,9 +186,9 @@ PlayerClient.prototype.search = function(query){
   this.buildArtistAlbumTree(result, this.search_results = {});
   this.emit('libraryupdate');
   function fn$(){
-    var i$, ref$, len$, word;
-    for (i$ = 0, len$ = (ref$ = words).length; i$ < len$; ++i$) {
-      word = ref$[i$];
+    var i, ref$, len$, word;
+    for (i = 0, len$ = (ref$ = words).length; i < len$; ++i) {
+      word = ref$[i];
       if (track.search_tags.indexOf(word) === -1) {
         return false;
       }
@@ -247,7 +247,7 @@ PlayerClient.prototype.generateId = function(){
 };
 
 PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_random){
-  var ref$, items, i$, len$, file, sort_key, id;
+  var ref$, items, i, len$, file, sort_key, id;
   if (!files.length) {
     return;
   }
@@ -256,8 +256,8 @@ PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_r
     ref$ = this.getDefaultQueuePosition(), previous_key = ref$.previous_key, next_key = ref$.next_key;
   }
   items = {};
-  for (i$ = 0, len$ = files.length; i$ < len$; ++i$) {
-    file = files[i$];
+  for (i = 0, len$ = files.length; i < len$; ++i) {
+    file = files[i];
     sort_key = this.generateSortKey(previous_key, next_key);
     id = this.generateId();
     items[id] = {
@@ -282,18 +282,19 @@ PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_r
 };
 
 PlayerClient.prototype.queueFilesNext = function(files){
-  var ref$, previous_key, next_key, i$, len$, track;
-  previous_key = (ref$ = this.status.current_item) != null ? ref$.sort_key : void 8;
-  next_key = null;
-  for (i$ = 0, len$ = (ref$ = this.playlist.item_list).length; i$ < len$; ++i$) {
-    track = ref$[i$];
-    if (previous_key == null || track.sort_key > previous_key) {
-      if (next_key == null || track.sort_key < next_key) {
-        next_key = track.sort_key;
+  var curItem = this.status.current_item;
+  var prevKey = curItem && curItem.sort_key;
+  var nextKey = null;
+  var itemList = this.playlist.item_list;
+  for (var i = 0; i < itemList.length; ++i) {
+    var track = itemList[i];
+    if (prevKey == null || track.sort_key > prevKey) {
+      if (nextKey == null || track.sort_key < nextKey) {
+        nextKey = track.sort_key;
       }
     }
   }
-  this.queueFiles(files, previous_key, next_key);
+  this.queueFiles(files, prevKey, nextKey);
 };
 
 PlayerClient.prototype.clear = function(){
@@ -371,10 +372,10 @@ PlayerClient.prototype.playId = function(track_id){
 };
 
 PlayerClient.prototype.moveIds = function(track_ids, previous_key, next_key){
-  var res$, i$, len$, id, track, tracks, items, sort_key;
+  var res$, i, len$, id, track, tracks, items, sort_key;
   res$ = [];
-  for (i$ = 0, len$ = track_ids.length; i$ < len$; ++i$) {
-    id = track_ids[i$];
+  for (i = 0, len$ = track_ids.length; i < len$; ++i) {
+    id = track_ids[i];
     if ((track = this.playlist.item_table[id]) != null) {
       res$.push(track);
     }
@@ -382,8 +383,8 @@ PlayerClient.prototype.moveIds = function(track_ids, previous_key, next_key){
   tracks = res$;
   tracks.sort(compareSortKeyAndId);
   items = {};
-  for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
-    track = tracks[i$];
+  for (i = 0, len$ = tracks.length; i < len$; ++i) {
+    track = tracks[i];
     sort_key = this.generateSortKey(previous_key, next_key);
     items[id] = {
       sort_key: sort_key
@@ -400,13 +401,13 @@ PlayerClient.prototype.moveIds = function(track_ids, previous_key, next_key){
 };
 
 PlayerClient.prototype.shiftIds = function(track_id_set, offset){
-  var items, previous_key, next_key, i$, ref$, len$, track, sort_key;
+  var items, previous_key, next_key, i, ref$, len$, track, sort_key;
   items = {};
   previous_key = null;
   next_key = null;
   if (offset < 0) {
-    for (i$ = 0, len$ = (ref$ = this.playlist.item_list).length; i$ < len$; ++i$) {
-      track = ref$[i$];
+    for (i = 0, len$ = (ref$ = this.playlist.item_list).length; i < len$; ++i) {
+      track = ref$[i];
       if (track.id in track_id_set) {
         if (next_key == null) {
           continue;
@@ -421,8 +422,8 @@ PlayerClient.prototype.shiftIds = function(track_id_set, offset){
       next_key = track.sort_key;
     }
   } else {
-    for (i$ = (ref$ = this.playlist.item_list).length - 1; i$ >= 0; --i$) {
-      track = ref$[i$];
+    for (i = (ref$ = this.playlist.item_list).length - 1; i >= 0; --i) {
+      track = ref$[i];
       if (track.id in track_id_set) {
         if (previous_key == null) {
           continue;
@@ -446,13 +447,13 @@ PlayerClient.prototype.shiftIds = function(track_id_set, offset){
 };
 
 PlayerClient.prototype.removeIds = function(track_ids){
-  var ids, i$, len$, track_id, ref$, item;
+  var ids, i, len$, track_id, ref$, item;
   if (track_ids.length === 0) {
     return;
   }
   ids = [];
-  for (i$ = 0, len$ = track_ids.length; i$ < len$; ++i$) {
-    track_id = track_ids[i$];
+  for (i = 0, len$ = track_ids.length; i < len$; ++i) {
+    track_id = track_ids[i];
     if (((ref$ = this.status.current_item) != null ? ref$.id : void 8) === track_id) {
       this.status.current_item = null;
     }
@@ -570,11 +571,11 @@ PlayerClient.prototype.anticipateSkip = function(direction){
 
 PlayerClient.prototype.buildArtistAlbumTree = function(tracks, library){
   var ref$;
-  var i$, len$, track, album_key, album, artist_table, k, album_artists, i, ref1$, album_artist_name, artist_key, artist, various_artist;
+  var len$, track, album_key, album, artist_table, k, album_artists, i, ref1$, album_artist_name, artist_key, artist, various_artist;
   library.track_table = {};
   library.album_table = {};
-  for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
-    track = tracks[i$];
+  for (i = 0, len$ = tracks.length; i < len$; ++i) {
+    track = tracks[i];
     library.track_table[track.file] = track;
     album_key = albumKey(track);
     album = getOrCreate(album_key, library.album_table, fn$);
@@ -599,8 +600,8 @@ PlayerClient.prototype.buildArtistAlbumTree = function(tracks, library){
     if (moreThanOneKey(album_artists)) {
       album_artist_name = VARIOUS_ARTISTS_NAME;
       artist_key = VARIOUS_ARTISTS_KEY;
-      for (i$ = 0, len$ = (ref1$ = album.tracks).length; i$ < len$; ++i$) {
-        track = ref1$[i$];
+      for (i = 0, len$ = (ref1$ = album.tracks).length; i < len$; ++i) {
+        track = ref1$[i];
         track.artist_disambiguation = track.artist_name;
       }
     } else {
@@ -689,9 +690,9 @@ PlayerClient.prototype.resetServerState = function(){
 };
 
 function stripPrefixes(str){
-  var i$, ref$, len$, regex;
-  for (i$ = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i$ < len$; ++i$) {
-    regex = ref$[i$];
+  var i, ref$, len$, regex;
+  for (i = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i < len$; ++i) {
+    regex = ref$[i];
     str = str.replace(regex, '');
     break;
   }
@@ -789,9 +790,9 @@ function moreThanOneKey(object){
 }
 
 function addSearchTags(tracks){
-  var i$, len$, track;
-  for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
-    track = tracks[i$];
+  var i, len$, track;
+  for (i = 0, len$ = tracks.length; i < len$; ++i) {
+    track = tracks[i];
     track.search_tags = formatSearchable([
         track.artist_name,
         track.album_artist_name,
@@ -819,9 +820,9 @@ function operatorCompare(a, b){
 
 function makeCompareProps(props){
   return function(a, b){
-    var i$, ref$, len$, prop, result;
-    for (i$ = 0, len$ = (ref$ = props).length; i$ < len$; ++i$) {
-      prop = ref$[i$];
+    var i, ref$, len$, prop, result;
+    for (i = 0, len$ = (ref$ = props).length; i < len$; ++i) {
+      prop = ref$[i];
       result = operatorCompare(a[prop], b[prop]);
       if (result) {
         return result;

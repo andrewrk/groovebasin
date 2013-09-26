@@ -1,14 +1,15 @@
 High priority:
- * (andy) fix broken plugin - upload
+ * (andy) fix broken plugin - dynamicmode
 
 Before merging into master:
  * fix broken plugin - lastfm
- * fix broken plugin - dynamicmode
  * persist current playlist
  * fix the TODOs strewn about the code
  * support mpd protocol on a different port
  * sometimes queuing an album puts the tracks in the wrong order. I suspect client side bug
  * streaming with libgroove
+ * if you delete a song from the library that is on the current playlist, it
+   makes groove basin unable to load
 
 Eventually:
  * named playlist support
@@ -21,3 +22,7 @@ Eventually:
  * player: finer-grained updates. 'playlistUpdate' shouldn't be the only kind of update
    - also should utilize the player's 'delete' and 'update' events for library changes
  * player should notice when you delete a file while it is not running.
+ * implement auto-queue on upload.
+   - I think it should be done by the client. This would solve uploading an
+     album in the correct order, assuming the files are alphabetically sorted
+     by track number.

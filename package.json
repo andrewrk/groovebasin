@@ -40,9 +40,7 @@
     "handlebars": "1.0.7",
     "stylus": "~0.29.0",
     "node-dev": "~2.0.2",
-    "watch": "0.5.1",
-    "watchify": "~0.1.0",
-    "browserify": "~2.29.1"
+    "watchify": "~0.2.0"
   },
   "scripts": {
     "start": "node lib/server.js",

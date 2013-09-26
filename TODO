@@ -1,8 +1,7 @@
 High priority:
- * (andy) ditch watch (prefer https://github.com/paulmillr/chokidar)
+ * (andy) fix shuffle button
 
 Before merging into master:
- * fix shuffle button
  * fix volume
  * streaming with libgroove
  * fix broken plugin - upload

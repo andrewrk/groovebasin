@@ -1,8 +1,8 @@
 var fs = require("fs");
 var path = require("path");
-var watcher = require("watch");
+var chokidar = require("chokidar");
 var watchify = require("watchify");
-var browserify = require("browserify");
+var browserify = watchify.browserify;
 var util = require("util");
 var mkdirp = require("mkdirp");
 var spawn = require("child_process").spawn;
@@ -59,14 +59,20 @@ function build(watch){
     writeBundle();
     exec('stylus', args.concat(['-o', 'public/', '-c', '--include-css', 'src/client/styles']));
     if (watch) {
-      watcher.watchTree('src/client/views', {
-        ignoreDotFiles: true
-      }, function(){
-        handlebars();
-        util.log("generated public/views.js");
+      var watcher = chokidar.watch('src/client/views', {
+        ignored: isDotFile,
+        persistent: true,
       });
+      watcher.on('change', generateViews);
+      watcher.on('add', generateViews);
+      watcher.on('unlink', generateViews);
     } else {
       handlebars();
+    }
+
+    function generateViews() {
+      handlebars();
+      util.log("generated public/views.js");
     }
 
     function writeBundle() {
@@ -78,4 +84,9 @@ function build(watch){
 
 function watch(){
   build('w');
+}
+
+function isDotFile(fullPath) {
+  var basename = path.basename(fullPath);
+  return (/^\./).test(basename) || (/~$/).test(basename);
 }

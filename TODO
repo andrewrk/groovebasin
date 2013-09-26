@@ -1,5 +1,6 @@
 High priority:
- * (andy) fix volume
+ * (andy) empty track number instead of 0
+ * (andy) pressing prev at track 0 with repeat all should go to last track
 
 Before merging into master:
  * streaming with libgroove

@@ -38,18 +38,6 @@ function elapsedToDate(elapsed){
 function dateToElapsed(date){
   return (new Date() - date) / 1000;
 }
-function fromMpdVol(vol){
-  vol = parseInt(vol, 10);
-  if (vol < 0 || vol > 100) {
-    return null;
-  } else {
-    return vol / 100;
-  }
-}
-function toMpdVol(vol){
-  var ref$;
-  return (ref$ = 0 > (ref$ = Math.round(parseFloat(vol, 10) * 100)) ? 0 : ref$) < 100 ? ref$ : 100;
-}
 function sortableTitle(title){
   return stripPrefixes(formatSearchable(title));
 }
@@ -227,7 +215,6 @@ function PlayerClient(socket) {
   self.socket = socket;
   self.resetServerState();
   self.updateFuncs = {
-    stored_playlist: self.updateStoredPlaylists.bind(self),
     playlist: self.updatePlaylist.bind(self),
     player: self.updateStatus.bind(self),
     mixer: self.updateStatus.bind(self),
@@ -253,7 +240,6 @@ PlayerClient.prototype.handleConnectionStart = function(){
   this.updateLibrary(function(){
     this$.updateStatus();
     this$.updatePlaylist();
-    this$.updateStoredPlaylists();
   });
 };
 PlayerClient.prototype.updateLibrary = function(callback){
@@ -315,84 +301,7 @@ PlayerClient.prototype.updatePlaylist = function(callback){
     }
   });
 };
-PlayerClient.prototype.updateStoredPlaylists = function(callback){
-  var this$ = this;
-  callback = callback || noop;
-  this.sendCommand("listplaylists", function(err, msg){
-    var count, stored_playlist_table, stored_playlist_item_table;
-    if (err) {
-      return callback(err);
-    }
-    count = 0;
-    stored_playlist_table = {};
-    stored_playlist_item_table = {};
-    parseWithSepField(msg, 'playlist', {}, function(obj){
-      var name;
-      name = obj.playlist;
-      count += 1;
-      updateStoredPlaylist(name, function(err){
-        if (count == null) {
-          return;
-        }
-        if (err) {
-          count = null;
-          return callback(err);
-        }
-        count -= 1;
-        finishUp();
-      });
-    });
-    finishUp();
-    function finishUp(){
-      var res$, k, v, i, len$, playlist;
-      if (count === 0) {
-        this$.stored_playlist_table = stored_playlist_table;
-        this$.stored_playlist_item_table = stored_playlist_item_table;
-        res$ = [];
-        for (k in stored_playlist_table) {
-          v = stored_playlist_table[k];
-          res$.push(v);
-        }
-        this$.stored_playlists = res$;
-        this$.stored_playlists.sort(playlistComparator);
-        for (i = 0, len$ = (ref$ = this$.stored_playlists).length; i < len$; ++i) {
-          playlist = ref$[i];
-          playlist.pos = i;
-        }
-        callback();
-        return this$.emit('storedplaylistupdate');
-      }
-    }
-    function updateStoredPlaylist(name, callback){
-      this$.sendCommand("listplaylist \"" + qEscape(name) + "\"", function(err, msg){
-        var item_list, item_table, playlist;
-        if (err) {
-          return callback(err);
-        }
-        item_list = [];
-        item_table = {};
-        playlist = {
-          name: name,
-          item_list: item_list,
-          item_table: item_table
-        };
-        parseWithSepField(msg, 'file', {}, function(item){
-          item = {
-            track: this$.library.track_table[item.file],
-            pos: item_list.length,
-            id: nextId(),
-            playlist: playlist
-          };
-          item_list.push(item);
-          item_table[item.id] = item;
-          stored_playlist_item_table[item.id] = item;
-        });
-        stored_playlist_table[name] = playlist;
-        callback();
-      });
-    }
-  });
-};
+
 PlayerClient.prototype.updateStatus = function(callback){
   var this$ = this;
   callback = callback || noop;
@@ -434,6 +343,7 @@ PlayerClient.prototype.updateStatus = function(callback){
     }
   });
 };
+
 PlayerClient.prototype.search = function(query){
   query = query.trim();
   if (query.length === 0) {
@@ -469,6 +379,7 @@ PlayerClient.prototype.search = function(query){
     return true;
   }
 };
+
 PlayerClient.prototype.getDefaultQueuePosition = function(){
   var ref$, previous_key, next_key, start_pos, i, to$, track, sort_key;
   previous_key = (ref$ = this.status.current_item) != null ? ref$.sort_key : void 8;
@@ -488,6 +399,8 @@ PlayerClient.prototype.getDefaultQueuePosition = function(){
     next_key: next_key
   };
 };
+
+// TODO: use keese
 PlayerClient.prototype.generateSortKey = function(previous_key, next_key){
   if (previous_key != null) {
     if (next_key != null) {
@@ -503,18 +416,19 @@ PlayerClient.prototype.generateSortKey = function(previous_key, next_key){
     }
   }
 };
+
 PlayerClient.prototype.generateId = function(){
-  var result, _, shortHex, __;
-  result = "";
-  for (_ = 0; _ < 8; ++_) {
-    shortHex = (0 | Math.random() * 0x10000).toString(16);
-    for (__ = shortHex.length; __ < 4; ++__) {
+  var result = "";
+  for (var i = 0; i < 8; ++i) {
+    var shortHex = (0 | Math.random() * 0x10000).toString(16);
+    for (var j = shortHex.length; j < 4; ++j) {
       result += "0";
     }
     result += shortHex;
   }
   return result;
 };
+
 PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_random){
   var ref$, items, i$, len$, file, sort_key, id;
   if (!files.length) {
@@ -549,6 +463,7 @@ PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_r
   });
   this.emit('playlistupdate');
 };
+
 PlayerClient.prototype.queueFilesNext = function(files){
   var ref$, previous_key, next_key, i$, len$, track;
   previous_key = (ref$ = this.status.current_item) != null ? ref$.sort_key : void 8;
@@ -563,19 +478,23 @@ PlayerClient.prototype.queueFilesNext = function(files){
   }
   this.queueFiles(files, previous_key, next_key);
 };
+
 PlayerClient.prototype.clear = function(){
   this.sendCommandName('clear');
   this.clearPlaylist();
   this.emit('playlistupdate');
 };
+
 PlayerClient.prototype.shuffle = function(){
   this.sendCommandName('shuffle');
 };
+
 PlayerClient.prototype.stop = function(){
   this.sendCommandName('stop');
   this.status.state = "stop";
   this.emit('statusupdate');
 };
+
 PlayerClient.prototype.play = function(){
   this.sendCommandName('play');
   if (this.status.state === "pause") {
@@ -584,6 +503,7 @@ PlayerClient.prototype.play = function(){
     this.emit('statusupdate');
   }
 };
+
 PlayerClient.prototype.pause = function(){
   this.sendCommandName('pause');
   if (this.status.state === "play") {
@@ -621,6 +541,7 @@ PlayerClient.prototype.prev = function(){
   id = (ref$ = this.playlist.item_list[pos]) != null ? ref$.id : void 8;
   this.playId(id);
 };
+
 PlayerClient.prototype.playId = function(track_id){
   this.sendCommand({
     name: 'playid',
@@ -628,6 +549,7 @@ PlayerClient.prototype.playId = function(track_id){
   });
   this.anticipatePlayId(track_id);
 };
+
 PlayerClient.prototype.moveIds = function(track_ids, previous_key, next_key){
   var res$, i$, len$, id, track, tracks, items, sort_key;
   res$ = [];
@@ -656,6 +578,7 @@ PlayerClient.prototype.moveIds = function(track_ids, previous_key, next_key){
   });
   this.emit('playlistupdate');
 };
+
 PlayerClient.prototype.shiftIds = function(track_id_set, offset){
   var items, previous_key, next_key, i$, ref$, len$, track, sort_key;
   items = {};
@@ -701,6 +624,7 @@ PlayerClient.prototype.shiftIds = function(track_id_set, offset){
   });
   this.emit('playlistupdate');
 };
+
 PlayerClient.prototype.removeIds = function(track_ids){
   var ids, i$, len$, track_id, ref$, item;
   if (track_ids.length === 0) {
@@ -723,6 +647,7 @@ PlayerClient.prototype.removeIds = function(track_ids){
   });
   this.emit('playlistupdate');
 };
+
 PlayerClient.prototype.seek = function(pos){
   pos = parseFloat(pos, 10);
   if (pos < 0) pos = 0;
@@ -734,10 +659,13 @@ PlayerClient.prototype.seek = function(pos){
   this.status.track_start_date = elapsedToDate(pos);
   this.emit('statusupdate');
 };
+
 PlayerClient.prototype.setVolume = function(vol){
-  vol = toMpdVol(vol);
-  this.sendCommand("setvol " + vol);
-  this.status.volume = fromMpdVol(vol);
+  this.sendCommand({
+    name: "setvol",
+    vol: vol,
+  });
+  this.status.volume = vol;
   this.emit('statusupdate');
 };
 PlayerClient.prototype.changeStatus = function(arg$){
@@ -752,16 +680,6 @@ PlayerClient.prototype.changeStatus = function(arg$){
   });
   this.emit('statusupdate');
 };
-PlayerClient.prototype.getFileInfo = function(file, callback){
-  var this$ = this;
-  callback = callback || noop;
-  this.sendCommand("lsinfo \"" + qEscape(file) + "\"", function(err, track){
-    if (err) {
-      return callback(err);
-    }
-    callback(null, track);
-  });
-};
 PlayerClient.prototype.authenticate = function(password, callback){
   var this$ = this;
   callback = callback || noop;
@@ -771,17 +689,6 @@ PlayerClient.prototype.authenticate = function(password, callback){
   }, function(err){
     callback(err);
   });
-};
-PlayerClient.prototype.scanFiles = function(files){
-  var file;
-  this.sendCommands((function(){
-    var i$, ref$, len$, results$ = [];
-    for (i$ = 0, len$ = (ref$ = files).length; i$ < len$; ++i$) {
-      file = ref$[i$];
-      results$.push("update \"" + qEscape(file) + "\"");
-    }
-    return results$;
-  }()));
 };
 PlayerClient.prototype.queueFilesInStoredPlaylist = function(files, stored_playlist_name){
   var file;

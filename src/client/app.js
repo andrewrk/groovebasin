@@ -9,6 +9,7 @@ var zfill = require('zfill');
 var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 
+var chatState;
 
 
 var selection = {
@@ -361,7 +362,7 @@ var user_is_volume_sliding = false;
 var started_drag = false;
 var abortDrag = function(){};
 var clickTab = null;
-var my_user_id = null;
+var myUserId = null;
 var chat_name_input_visible = false;
 var LoadStatus = {
   Init: 'Loading...',
@@ -376,15 +377,15 @@ var settings_ui = {
     password: ""
   }
 };
-var local_state = {
-  my_user_ids: {},
-  user_name: null,
+var localState = {
+  myUserIds: {},
+  userName: null,
   lastfm: {
     username: null,
     session_key: null,
     scrobbling_on: false
   },
-  auth_password: null
+  authPassword: null
 };
 var $document = $(document);
 var $window = $(window);
@@ -403,8 +404,8 @@ var $nowplaying = $('#nowplaying');
 var $nowplaying_elapsed = $nowplaying.find('.elapsed');
 var $nowplaying_left = $nowplaying.find('.left');
 var $vol_slider = $('#vol-slider');
-var $chat_user_list = $('#chat-user-list');
-var $chat_list = $('#chat-list');
+var $chatUserList = $('#chat-user-list');
+var $chatList = $('#chat-list');
 var $chat_user_id_span = $('#user-id');
 var $settings = $('#settings');
 var $upload_by_url = $('#upload-by-url');
@@ -418,32 +419,49 @@ var $chat_name_input = $('#chat-name-input');
 var $chat_input_pane = $('#chat-input-pane');
 var $lib_header = $('#library-pane .window-header');
 var $pl_header = $pl_window.find('#playlist .header');
+
 function saveLocalState(){
-  localStorage.state = JSON.stringify(local_state);
+  localStorage.setItem('state', JSON.stringify(localState));
 }
-function loadLocalState(){
-  var state_string;
-  if ((state_string = localStorage.state) != null) {
-    local_state = JSON.parse(state_string);
+
+function loadLocalState() {
+  var stateString = localStorage.getItem('state');
+  if (!stateString) return;
+  var obj;
+  try {
+    obj = JSON.parse(stateString);
+  } catch (err) {
+    return;
+  }
+  // this makes sure it still works when we change the format of localState
+  for (var key in localState) {
+    if (obj[key] !== undefined) {
+      localState[key] = obj[key];
+    }
   }
 }
+
 function haveUserName(){
-  return (server_status != null ? server_status.user_names[my_user_id] : void 8) != null;
+  return !!(chatState && chatState.userNames[myUserId]);
 }
+
 function getUserName(){
-  return userIdToUserName(my_user_id);
+  return userIdToUserName(myUserId);
 }
-function userIdToUserName(user_id){
-  if (server_status == null) return user_id;
-  var user_name = server_status.user_names[user_id];
-  return user_name != null ? user_name : user_id;
+
+function userIdToUserName(userId) {
+  if (!chatState) return userId;
+  var userName = chatState.userNames[userId];
+  return userName || userId;
 }
-function setUserName(new_name){
-  new_name = $.trim(new_name);
-  local_state.user_name = new_name;
+
+function setUserName(newName) {
+  newName = newName.trim();
+  localState.userName = newName;
   saveLocalState();
-  socket.emit('SetUserName', new_name);
+  socket.emit('SetUserName', newName);
 }
+
 function scrollLibraryToSelection(){
   var helpers;
   if ((helpers = getSelHelpers()) == null) {
@@ -538,13 +556,13 @@ function renderSettings(){
       auth_url: "http://www.last.fm/api/auth/?api_key=" +
         encodeURIComponent(api_key) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/"),
-      username: local_state.lastfm.username,
-      session_key: local_state.lastfm.session_key,
-      scrobbling_on: local_state.lastfm.scrobbling_on
+      username: localState.lastfm.username,
+      session_key: localState.lastfm.session_key,
+      scrobbling_on: localState.lastfm.scrobbling_on
     },
     auth: {
-      password: local_state.auth_password,
-      show_edit: local_state.auth_password == null || settings_ui.auth.show_edit,
+      password: localState.authPassword,
+      show_edit: localState.authPassword == null || settings_ui.auth.show_edit,
       permissions: permissions
     },
     misc: {
@@ -561,44 +579,47 @@ function renderSettings(){
   $settings.find('#auth-password').val(settings_ui.auth.password);
 }
 function scrollChatWindowToBottom(){
-  $chat_list.scrollTop(1000000);
+  $chatList.scrollTop(1000000);
 }
-function renderChat(){
-  var chat_status_text, users, user_objects, i$, len$, user_id, user_name, class_, ref$, chat_object;
-  chat_status_text = "";
-  if ((users = server_status != null ? server_status.users : void 8) != null) {
-    user_objects = [];
-    for (i$ = 0, len$ = users.length; i$ < len$; ++i$) {
-      user_id = users[i$];
-      user_name = userIdToUserName(user_id);
-      if (user_name === '[server]') {
+
+function renderChat() {
+  var i;
+  var chatStatusText = "";
+  var users = chatState && chatState.users;
+  if (users) {
+    var userObjects = [];
+    for (i = 0; i < users.length; ++i) {
+      var userId = users[i];
+      var userName = userIdToUserName(userId);
+      if (userName === '[server]') {
         continue;
       }
-      class_ = user_id === my_user_id ? "chat-user-self" : "chat-user";
-      user_objects.push({
-        user_name: user_name,
+      var class_ = userId === myUserId ? "chat-user-self" : "chat-user";
+      userObjects.push({
+        userName: userName,
         "class": class_
       });
     }
-    if (user_objects.length > 1) {
-      chat_status_text = " (" + user_objects.length + ")";
+    if (userObjects.length > 1) {
+      chatStatusText = " (" + userObjects.length + ")";
     }
-    $chat_user_list.html(Handlebars.templates.chat_user_list({
-      users: user_objects
+    $chatUserList.html(Handlebars.templates.chat_user_list({
+      users: userObjects
     }));
-    for (i$ = 0, len$ = (ref$ = server_status.chats).length; i$ < len$; ++i$) {
-      chat_object = ref$[i$];
-      chat_object["class"] = local_state.my_user_ids[chat_object.user_id] != null ? "chat-user-self" : "chat-user";
-      chat_object.user_name = userIdToUserName(chat_object.user_id);
+    for (i = 0; i < chatState.chats.length; ++i) {
+      var chatObject = chatState.chats[i];
+      chatObject["class"] = localState.myUserIds[chatObject.userId] != null ? "chat-user-self" : "chat-user";
+      chatObject.userName = userIdToUserName(chatObject.userId);
     }
-    $chat_list.html(Handlebars.templates.chat_list({
-      chats: server_status.chats
+    $chatList.html(Handlebars.templates.chat_list({
+      chats: chatState.chats
     }));
     scrollChatWindowToBottom();
     $chat_user_id_span.text(chat_name_input_visible ? "" : getUserName() + ": ");
   }
-  $chat_tab.find("span").text("Chat" + chat_status_text);
+  $chat_tab.find("span").text("Chat" + chatStatusText);
 }
+
 function renderPlaylistButtons(){
   $dynamic_mode
     .prop("checked", server_status != null && server_status.dynamic_mode ? true : false)
@@ -1294,13 +1315,13 @@ function queueSelection(event){
 }
 function sendAuth(){
   var pass;
-  pass = local_state.auth_password;
+  pass = localState.authPassword;
   if (pass == null) {
     return;
   }
   mpd.authenticate(pass, function(err){
     if (err) {
-      local_state.auth_password = null;
+      localState.authPassword = null;
       saveLocalState();
     }
     renderSettings();
@@ -1310,7 +1331,7 @@ function settingsAuthSave(){
   var $text_box;
   settings_ui.auth.show_edit = false;
   $text_box = $('#auth-password');
-  local_state.auth_password = $text_box.val();
+  localState.authPassword = $text_box.val();
   saveLocalState();
   renderSettings();
   sendAuth();
@@ -1548,13 +1569,13 @@ function setUpChatUi(){
     }
   });
   $chat_input.on('keydown', function(event){
-    var message, new_user_name, NICK;
+    var message, newUserName, NICK;
     event.stopPropagation();
     if (event.which === 27) {
       $(event.target).blur();
       return false;
     } else if (event.which === 13) {
-      message = $.trim($(event.target).val());
+      message = $(event.target).val().trim();
       setTimeout(function(){
         $(event.target).val("");
       }, 0);
@@ -1562,14 +1583,14 @@ function setUpChatUi(){
         return false;
       }
       if (!haveUserName()) {
-        new_user_name = message;
+        newUserName = message;
       }
       NICK = "/nick ";
       if (message.substr(0, NICK.length) === NICK) {
-        new_user_name = message.substr(NICK.length);
+        newUserName = message.substring(0, NICK.length);
       }
-      if (new_user_name != null) {
-        setUserName(new_user_name);
+      if (newUserName != null) {
+        setUserName(newUserName);
         return false;
       }
       socket.emit('Chat', message);
@@ -1714,9 +1735,9 @@ function setUpUploadUi(){
 }
 function setUpSettingsUi(){
   $settings.on('click', '.signout', function(event){
-    local_state.lastfm.username = null;
-    local_state.lastfm.session_key = null;
-    local_state.lastfm.scrobbling_on = false;
+    localState.lastfm.username = null;
+    localState.lastfm.session_key = null;
+    localState.lastfm.scrobbling_on = false;
     saveLocalState();
     renderSettings();
     return false;
@@ -1726,15 +1747,15 @@ function setUpSettingsUi(){
     value = $(this).prop("checked");
     if (value) {
       msg = 'LastfmScrobblersAdd';
-      local_state.lastfm.scrobbling_on = true;
+      localState.lastfm.scrobbling_on = true;
     } else {
       msg = 'LastfmScrobblersRemove';
-      local_state.lastfm.scrobbling_on = false;
+      localState.lastfm.scrobbling_on = false;
     }
     saveLocalState();
     params = {
-      username: local_state.lastfm.username,
-      session_key: local_state.lastfm.session_key
+      username: localState.lastfm.username,
+      session_key: localState.lastfm.session_key
     };
     socket.emit(msg, JSON.stringify(params));
     renderSettings();
@@ -1745,10 +1766,10 @@ function setUpSettingsUi(){
     settings_ui.auth.show_edit = true;
     renderSettings();
     $text_box = $('#auth-password');
-    $text_box.focus().val((ref$ = local_state.auth_password) != null ? ref$ : "").select();
+    $text_box.focus().val((ref$ = localState.authPassword) != null ? ref$ : "").select();
   });
   $settings.on('click', '.auth-clear', function(event){
-    local_state.auth_password = null;
+    localState.authPassword = null;
     saveLocalState();
     settings_ui.auth.password = "";
     renderSettings();
@@ -2037,7 +2058,7 @@ function handleResize(){
   $library.height(MARGIN);
   $upload.height(MARGIN);
   $stored_playlists.height(MARGIN);
-  $chat_list.height(MARGIN);
+  $chatList.height(MARGIN);
   $playlist_items.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
   second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
@@ -2056,7 +2077,7 @@ function handleResize(){
   $library.height(tab_contents_height - $lib_header.height());
   $upload.height(tab_contents_height);
   $stored_playlists.height(tab_contents_height);
-  $chat_list.height(tab_contents_height - $chat_user_list.height() - $chat_input_pane.height());
+  $chatList.height(tab_contents_height - $chatUserList.height() - $chat_input_pane.height());
   $playlist_items.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
 }
 function refreshPage(){
@@ -2073,9 +2094,9 @@ $document.ready(function(){
     socket.on('LastfmGetSessionSuccess', function(data){
       var params;
       params = JSON.parse(data);
-      local_state.lastfm.username = params.session.name;
-      local_state.lastfm.session_key = params.session.key;
-      local_state.lastfm.scrobbling_on = false;
+      localState.lastfm.username = params.session.name;
+      localState.lastfm.session_key = params.session.key;
+      localState.lastfm.scrobbling_on = false;
       saveLocalState();
       refreshPage();
     });
@@ -2088,22 +2109,23 @@ $document.ready(function(){
     return;
   }
   socket.on('Identify', function(data){
-    var user_name;
-    my_user_id = data.toString();
-    local_state.my_user_ids[my_user_id] = 1;
+    myUserId = data.toString();
+    localState.myUserIds[myUserId] = 1;
     saveLocalState();
-    if ((user_name = local_state.user_name) != null) {
-      setUserName(user_name);
-    }
+    var userName = localState.userName;
+    if (userName) setUserName(userName);
   });
   socket.on('Permissions', function(data){
     permissions = JSON.parse(data.toString());
     renderSettings();
   });
+  socket.on('Chat', function(data) {
+    chatState = data;
+    renderChat();
+  });
   socket.on('Status', function(data){
     server_status = JSON.parse(data.toString());
     renderPlaylistButtons();
-    renderChat();
     labelPlaylistItems();
     renderSettings();
     window._debug_server_status = server_status;
@@ -2117,7 +2139,6 @@ $document.ready(function(){
     renderPlaylistButtons();
     labelPlaylistItems();
   });
-  mpd.on('chat', renderChat);
   socket.on('connect', function(){
     sendAuth();
     load_status = LoadStatus.GoodToGo;

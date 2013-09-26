@@ -60,12 +60,14 @@ function build(watch){
     exec('stylus', args.concat(['-o', 'public/', '-c', '--include-css', 'src/client/styles']));
     if (watch) {
       var watcher = chokidar.watch('src/client/views', {
+        ignoreInitial: true,
         ignored: isDotFile,
         persistent: true,
       });
       watcher.on('change', generateViews);
       watcher.on('add', generateViews);
       watcher.on('unlink', generateViews);
+      generateViews();
     } else {
       handlebars();
     }
@@ -76,8 +78,14 @@ function build(watch){
     }
 
     function writeBundle() {
-      util.log("generated " + appOut);
-      b.bundle().pipe(fs.createWriteStream(appOut));
+      var outStream = b.bundle();
+      outStream.on('error', function(err) {
+        util.log("error " + err.message);
+      });
+      outStream.on('close', function() {
+        util.log("generated " + appOut);
+      });
+      outStream.pipe(fs.createWriteStream(appOut));
     }
   });
 }

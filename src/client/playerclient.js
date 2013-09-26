@@ -15,9 +15,7 @@ module.exports = PlayerClient;
  *
  * */
 
-var ref$, slice$ = [].slice;
 var PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/];
-var next_id = 0;
 var VARIOUS_ARTISTS_KEY = "VariousArtists";
 var VARIOUS_ARTISTS_NAME = "Various Artists";
 var compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
@@ -535,6 +533,7 @@ PlayerClient.prototype.handleResponse = function(arg){
   delete this.response_handlers[callback_id];
   handler(err, msg);
 };
+
 PlayerClient.prototype.handleStatus = function(systems){
   for (var i = 0; i < systems.length; i += 1) {
     var system = systems[i];
@@ -542,6 +541,7 @@ PlayerClient.prototype.handleStatus = function(systems){
     if (updateFunc) updateFunc();
   }
 };
+
 PlayerClient.prototype.clearPlaylist = function(){
   this.playlist = {
     item_list: [],
@@ -550,6 +550,7 @@ PlayerClient.prototype.clearPlaylist = function(){
     name: null
   };
 };
+
 PlayerClient.prototype.anticipatePlayId = function(track_id){
   var item = this.playlist.item_table[track_id];
   this.status.current_item = item;
@@ -558,6 +559,7 @@ PlayerClient.prototype.anticipatePlayId = function(track_id){
   this.status.track_start_date = new Date();
   this.emit('statusupdate');
 };
+
 PlayerClient.prototype.anticipateSkip = function(direction){
   var ref$, next_item;
   next_item = this.playlist.item_list[((ref$ = this.status.current_item) != null ? ref$.pos : void 8) + direction];
@@ -565,7 +567,9 @@ PlayerClient.prototype.anticipateSkip = function(direction){
     this.anticipatePlayId(next_item.id);
   }
 };
+
 PlayerClient.prototype.buildArtistAlbumTree = function(tracks, library){
+  var ref$;
   var i$, len$, track, album_key, album, artist_table, k, album_artists, i, ref1$, album_artist_name, artist_key, artist, various_artist;
   library.track_table = {};
   library.album_table = {};
@@ -646,7 +650,9 @@ PlayerClient.prototype.buildArtistAlbumTree = function(tracks, library){
     };
   }
 };
+
 PlayerClient.prototype.refreshPlaylistList = function(){
+  var ref$;
   var id, item, i, len$;
   this.playlist.item_list = [];
   for (id in this.playlist.item_table) {
@@ -660,6 +666,7 @@ PlayerClient.prototype.refreshPlaylistList = function(){
     item.pos = i;
   }
 };
+
 PlayerClient.prototype.resetServerState = function(){
   this.buffer = "";
   this.response_handlers = {};
@@ -673,6 +680,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.last_query = "";
   this.clearPlaylist();
   this.status = {
+    repeat: 0,
     current_item: null
   };
   this.stored_playlist_table = {};
@@ -724,60 +732,6 @@ function noop(err){
   if (err) throw err;
 }
 
-function qEscape(str){
-  return str.toString().replace(/"/g, '\\"');
-}
-
-function sign(n){
-  if (n > 0) {
-    return 1;
-  } else if (n < 0) {
-    return -1;
-  } else {
-    return 0;
-  }
-}
-
-function parseMaybeUndefNumber(n){
-  n = parseInt(n, 10);
-  if (isNaN(n)) {
-    n = null;
-  }
-  return n;
-}
-
-function splitOnce(line, separator){
-  var index = line.indexOf(separator);
-  return [line.substr(0, index), line.substr(index + separator.length)];
-}
-
-function parseWithSepField(msg, sep_field, skip_fields, flush){
-  var i$, ref$, len$, line, ref1$, key, value;
-  if (msg === "") {
-    return [];
-  }
-  var current_obj = null;
-  for (i$ = 0, len$ = (ref$ = msg.split("\n")).length; i$ < len$; ++i$) {
-    line = ref$[i$];
-    ref1$ = splitOnce(line, ': '), key = ref1$[0], value = ref1$[1];
-    if (key in skip_fields) {
-      continue;
-    }
-    if (key === sep_field) {
-      flushCurrentObj();
-    }
-    current_obj[key] = value;
-  }
-  return flushCurrentObj();
-
-  function flushCurrentObj(){
-    if (current_obj != null) {
-      flush(current_obj);
-    }
-    current_obj = {};
-  }
-}
-
 function getOrCreate(key, table, initObjFunc){
   var result;
   result = table[key];
@@ -812,10 +766,6 @@ function artistComparator(a, b){
   return titleCompare(a.name, b.name);
 }
 
-function playlistComparator(a, b){
-  return titleCompare(a.name, b.name);
-}
-
 function albumKey(track){
   if (track.album_name) {
     return formatSearchable(track.album_name);
@@ -836,10 +786,6 @@ function moreThanOneKey(object){
     }
   }
   return false;
-}
-
-function nextId(){
-  return "id-" + next_id++;
 }
 
 function addSearchTags(tracks){

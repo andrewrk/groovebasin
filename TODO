@@ -1,21 +1,21 @@
 High priority:
- * (andy) empty track number instead of 0
+ * (andy) fix broken plugin - chat
 
 Before merging into master:
- * streaming with libgroove
  * fix broken plugin - upload
    - while you're at it consider ditching qq fileuploader
  * fix broken plugin - delete
  * fix broken plugin - download
  * fix broken plugin - lastfm
  * fix broken plugin - dynamicmode
- * fix broken plugin - chat
- * finish converting mpd-specific protocol (named playlist support)
  * persist current playlist
  * fix the TODOs strewn about the code
  * support mpd protocol on a different port
+ * sometimes queuing an album puts the tracks in the wrong order. I suspect client side bug
+ * streaming with libgroove
 
 Eventually:
+ * named playlist support
  * replaygain scan when a song enters library
  * automatically set track or album replaygain depending on nearby playlist items
  * ditch handlebars

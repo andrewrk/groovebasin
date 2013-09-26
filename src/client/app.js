@@ -368,6 +368,7 @@ var LoadStatus = {
   NoServer: 'Server is down.',
   GoodToGo: '[good to go]'
 };
+var repeatModeNames = ["Off", "All", "One"];
 var load_status = LoadStatus.Init;
 var settings_ui = {
   auth: {
@@ -603,10 +604,10 @@ function renderPlaylistButtons(){
     .prop("checked", server_status != null && server_status.dynamic_mode ? true : false)
     .button("option", "disabled", !(server_status != null && server_status.dynamic_mode_enabled))
     .button("refresh");
-  var repeat_state = getRepeatStateName();
+  var repeatModeName = repeatModeNames[mpd.status.repeat];
   $pl_btn_repeat
-    .button("option", "label", "Repeat: " + repeat_state)
-    .prop("checked", repeat_state !== 'Off')
+    .button("option", "label", "Repeat: " + repeatModeName)
+    .prop("checked", mpd.status.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
   $upload_tab.removeClass("ui-state-disabled");
   if (!(server_status != null && server_status.upload_enabled)) {
@@ -948,33 +949,11 @@ function setDynamicMode(value){
 function toggleDynamicMode(){
   setDynamicMode(!server_status.dynamic_mode);
 }
-function getRepeatStateName(){
-  if (!mpd.status.repeat) {
-    return "Off";
-  } else if (mpd.status.repeat && !mpd.status.single) {
-    return "All";
-  } else {
-    return "One";
-  }
-}
+
 function nextRepeatState(){
-  if (!mpd.status.repeat) {
-    mpd.changeStatus({
-      repeat: true,
-      single: true
-    });
-  } else if (mpd.status.repeat && !mpd.status.single) {
-    mpd.changeStatus({
-      repeat: false,
-      single: false
-    });
-  } else {
-    mpd.changeStatus({
-      repeat: true,
-      single: false
-    });
-  }
+  mpd.setRepeatMode((mpd.status.repeat + 1) % repeatModeNames.length);
 }
+
 var keyboard_handlers = (function(){
   var handlers;
   function upDownHandler(event){

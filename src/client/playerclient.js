@@ -22,190 +22,10 @@ var VARIOUS_ARTISTS_KEY = "VariousArtists";
 var VARIOUS_ARTISTS_NAME = "Various Artists";
 var compareSortKeyAndId = makeCompareProps(['sort_key', 'id']);
 
-function stripPrefixes(str){
-  var i$, ref$, len$, regex;
-  for (i$ = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i$ < len$; ++i$) {
-    regex = ref$[i$];
-    str = str.replace(regex, '');
-    break;
-  }
-  return str;
-}
-var MPD_SENTINEL = /^(OK|ACK|list_OK)(.*)$/m;
-function elapsedToDate(elapsed){
-  return new Date(new Date() - elapsed * 1000);
-}
-function dateToElapsed(date){
-  return (new Date() - date) / 1000;
-}
-function sortableTitle(title){
-  return stripPrefixes(formatSearchable(title));
-}
-function titleCompare(a, b){
-  var _a = sortableTitle(a);
-  var _b = sortableTitle(b);
-  if (_a < _b) {
-    return -1;
-  } else if (_a > _b) {
-    return 1;
-  } else {
-    if (a < b) {
-      return -1;
-    } else if (a > b) {
-      return 1;
-    } else {
-      return 0;
-    }
-  }
-}
-function noop(err){
-  if (err) throw err;
-}
-function qEscape(str){
-  return str.toString().replace(/"/g, '\\"');
-}
-function sign(n){
-  if (n > 0) {
-    return 1;
-  } else if (n < 0) {
-    return -1;
-  } else {
-    return 0;
-  }
-}
-function parseMaybeUndefNumber(n){
-  n = parseInt(n, 10);
-  if (isNaN(n)) {
-    n = null;
-  }
-  return n;
-}
-function splitOnce(line, separator){
-  var index;
-  index = line.indexOf(separator);
-  return [line.substr(0, index), line.substr(index + separator.length)];
-}
-function parseWithSepField(msg, sep_field, skip_fields, flush){
-  var i$, ref$, len$, line, ref1$, key, value;
-  if (msg === "") {
-    return [];
-  }
-  var current_obj = null;
-  for (i$ = 0, len$ = (ref$ = msg.split("\n")).length; i$ < len$; ++i$) {
-    line = ref$[i$];
-    ref1$ = splitOnce(line, ': '), key = ref1$[0], value = ref1$[1];
-    if (key in skip_fields) {
-      continue;
-    }
-    if (key === sep_field) {
-      flushCurrentObj();
-    }
-    current_obj[key] = value;
-  }
-  return flushCurrentObj();
 
-  function flushCurrentObj(){
-    if (current_obj != null) {
-      flush(current_obj);
-    }
-    current_obj = {};
-  }
-}
-function getOrCreate(key, table, initObjFunc){
-  var result;
-  result = table[key];
-  if (result == null) {
-    result = initObjFunc();
-    table[key] = result;
-  }
-  return result;
-}
-function trackComparator(a, b){
-  if (a.track < b.track) {
-    return -1;
-  } else if (a.track > b.track) {
-    return 1;
-  } else {
-    return titleCompare(a.name, b.name);
-  }
-}
-function albumComparator(a, b){
-  if (a.year < b.year) {
-    return -1;
-  } else if (a.year > b.year) {
-    return 1;
-  } else {
-    return titleCompare(a.name, b.name);
-  }
-}
-function artistComparator(a, b){
-  return titleCompare(a.name, b.name);
-}
-function playlistComparator(a, b){
-  return titleCompare(a.name, b.name);
-}
-function albumKey(track){
-  if (track.album_name) {
-    return formatSearchable(track.album_name);
-  } else {
-    return formatSearchable(track.album_artist_name);
-  }
-}
-function artistKey(artist_name){
-  return formatSearchable(artist_name);
-}
-function moreThanOneKey(object){
-  var count, k;
-  count = -2;
-  for (k in object) {
-    if (!++count) {
-      return true;
-    }
-  }
-  return false;
-}
-function nextId(){
-  return "id-" + next_id++;
-}
-function addSearchTags(tracks){
-  var i$, len$, track;
-  for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
-    track = tracks[i$];
-    track.search_tags = formatSearchable([
-        track.artist_name,
-        track.album_artist_name,
-        track.album_name,
-        track.name,
-        track.file,
-    ].join("\n"));
-  }
-}
-function formatSearchable(str) {
-  return removeDiacritics(str).toLowerCase();
-}
-function operatorCompare(a, b){
-  if (a === b) {
-    return 0;
-  }
-  if (a < b) {
-    return -1;
-  } else {
-    return 1;
-  }
-}
-function makeCompareProps(props){
-  return function(a, b){
-    var i$, ref$, len$, prop, result;
-    for (i$ = 0, len$ = (ref$ = props).length; i$ < len$; ++i$) {
-      prop = ref$[i$];
-      result = operatorCompare(a[prop], b[prop]);
-      if (result) {
-        return result;
-      }
-    }
-    return 0;
-  };
-}
+PlayerClient.REPEAT_OFF = 0;
+PlayerClient.REPEAT_ALL = 1;
+PlayerClient.REPEAT_ONE = 2;
 
 util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
@@ -313,7 +133,6 @@ PlayerClient.prototype.updateStatus = function(callback){
     ref$ = this$.status;
     ref$.volume = o.volume;
     ref$.repeat = o.repeat;
-    ref$.single = o.single;
     ref$.state = o.state;
     this$.status.track_start_date = o.track_start_date != null ? new Date(o.track_start_date) : null;
     this$.status.paused_time = o.paused_time;
@@ -519,7 +338,7 @@ PlayerClient.prototype.next = function(){
 
   // handle the case of Repeat All
   if (pos >= this.playlist.item_list.length &&
-      this.status.repeat && !this.status.single)
+      this.status.repeat === PlayerClient.REPEAT_ALL)
   {
     pos = 0;
   }
@@ -531,14 +350,17 @@ PlayerClient.prototype.next = function(){
 };
 
 PlayerClient.prototype.prev = function(){
-  var ref$, current_pos, pos, id;
-  current_pos = (ref$ = this.status.current_item) != null ? ref$.pos : void 8;
-  if (current_pos != null) {
-    pos = current_pos - 1;
-  } else {
+  var currentItem = this.status.current_item;
+  var pos = currentItem ? currentItem.pos - 1 : this.playlist.item_list.length - 1;
+
+  // handle case of Repeat All
+  if (pos < 0 && this.status.repeat === PlayerClient.REPEAT_ALL) {
     pos = this.playlist.item_list.length - 1;
   }
-  id = (ref$ = this.playlist.item_list[pos]) != null ? ref$.id : void 8;
+
+  var item = this.playlist.item_list[pos];
+  var id = item && item.id;
+
   this.playId(id);
 };
 
@@ -668,18 +490,16 @@ PlayerClient.prototype.setVolume = function(vol){
   this.status.volume = vol;
   this.emit('statusupdate');
 };
-PlayerClient.prototype.changeStatus = function(arg$){
-  var repeat, single;
-  repeat = arg$.repeat, single = arg$.single;
-  this.status.repeat = repeat;
-  this.status.single = single;
+
+PlayerClient.prototype.setRepeatMode = function(mode) {
+  this.status.repeat = mode;
   this.sendCommand({
     name: 'repeat',
-    repeat: repeat,
-    single: single
+    mode: mode,
   });
   this.emit('statusupdate');
 };
+
 PlayerClient.prototype.authenticate = function(password, callback){
   var this$ = this;
   callback = callback || noop;
@@ -690,28 +510,14 @@ PlayerClient.prototype.authenticate = function(password, callback){
     callback(err);
   });
 };
-PlayerClient.prototype.queueFilesInStoredPlaylist = function(files, stored_playlist_name){
-  var file;
-  this.sendCommands((function(){
-    var i$, ref$, len$, results$ = [];
-    for (i$ = 0, len$ = (ref$ = files).length; i$ < len$; ++i$) {
-      file = ref$[i$];
-      results$.push("playlistadd \"" + qEscape(stored_playlist_name) + "\" \"" + qEscape(file) + "\"");
-    }
-    return results$;
-  }()));
-};
-PlayerClient.prototype.sendCommands = function(command_list, callback){
-  callback = callback || noop;
-  if (command_list.length === 0) return;
-  this.sendCommand("command_list_begin\n" + command_list.join("\n") + "\ncommand_list_end", callback);
-};
+
 PlayerClient.prototype.sendCommandName = function(name, cb){
   cb = cb || noop;
   this.sendCommand({
     name: name
   }, cb);
 };
+
 PlayerClient.prototype.sendCommand = function(cmd, cb){
   cb = cb || noop;
   var callback_id = this.next_response_handler_id++;
@@ -721,6 +527,7 @@ PlayerClient.prototype.sendCommand = function(cmd, cb){
     callback_id: callback_id
   }));
 };
+
 PlayerClient.prototype.handleResponse = function(arg){
   var err, msg, callback_id, handler;
   err = arg.err, msg = arg.msg, callback_id = arg.callback_id;
@@ -872,3 +679,208 @@ PlayerClient.prototype.resetServerState = function(){
   this.stored_playlist_item_table = {};
   this.stored_playlists = [];
 };
+
+function stripPrefixes(str){
+  var i$, ref$, len$, regex;
+  for (i$ = 0, len$ = (ref$ = PREFIXES_TO_STRIP).length; i$ < len$; ++i$) {
+    regex = ref$[i$];
+    str = str.replace(regex, '');
+    break;
+  }
+  return str;
+}
+
+function elapsedToDate(elapsed){
+  return new Date(new Date() - elapsed * 1000);
+}
+
+function dateToElapsed(date){
+  return (new Date() - date) / 1000;
+}
+
+function sortableTitle(title){
+  return stripPrefixes(formatSearchable(title));
+}
+
+function titleCompare(a, b){
+  var _a = sortableTitle(a);
+  var _b = sortableTitle(b);
+  if (_a < _b) {
+    return -1;
+  } else if (_a > _b) {
+    return 1;
+  } else {
+    if (a < b) {
+      return -1;
+    } else if (a > b) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+}
+
+function noop(err){
+  if (err) throw err;
+}
+
+function qEscape(str){
+  return str.toString().replace(/"/g, '\\"');
+}
+
+function sign(n){
+  if (n > 0) {
+    return 1;
+  } else if (n < 0) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
+function parseMaybeUndefNumber(n){
+  n = parseInt(n, 10);
+  if (isNaN(n)) {
+    n = null;
+  }
+  return n;
+}
+
+function splitOnce(line, separator){
+  var index = line.indexOf(separator);
+  return [line.substr(0, index), line.substr(index + separator.length)];
+}
+
+function parseWithSepField(msg, sep_field, skip_fields, flush){
+  var i$, ref$, len$, line, ref1$, key, value;
+  if (msg === "") {
+    return [];
+  }
+  var current_obj = null;
+  for (i$ = 0, len$ = (ref$ = msg.split("\n")).length; i$ < len$; ++i$) {
+    line = ref$[i$];
+    ref1$ = splitOnce(line, ': '), key = ref1$[0], value = ref1$[1];
+    if (key in skip_fields) {
+      continue;
+    }
+    if (key === sep_field) {
+      flushCurrentObj();
+    }
+    current_obj[key] = value;
+  }
+  return flushCurrentObj();
+
+  function flushCurrentObj(){
+    if (current_obj != null) {
+      flush(current_obj);
+    }
+    current_obj = {};
+  }
+}
+
+function getOrCreate(key, table, initObjFunc){
+  var result;
+  result = table[key];
+  if (result == null) {
+    result = initObjFunc();
+    table[key] = result;
+  }
+  return result;
+}
+
+function trackComparator(a, b){
+  if (a.track < b.track) {
+    return -1;
+  } else if (a.track > b.track) {
+    return 1;
+  } else {
+    return titleCompare(a.name, b.name);
+  }
+}
+
+function albumComparator(a, b){
+  if (a.year < b.year) {
+    return -1;
+  } else if (a.year > b.year) {
+    return 1;
+  } else {
+    return titleCompare(a.name, b.name);
+  }
+}
+
+function artistComparator(a, b){
+  return titleCompare(a.name, b.name);
+}
+
+function playlistComparator(a, b){
+  return titleCompare(a.name, b.name);
+}
+
+function albumKey(track){
+  if (track.album_name) {
+    return formatSearchable(track.album_name);
+  } else {
+    return formatSearchable(track.album_artist_name);
+  }
+}
+
+function artistKey(artist_name){
+  return formatSearchable(artist_name);
+}
+
+function moreThanOneKey(object){
+  var count = -2;
+  for (var k in object) {
+    if (!++count) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function nextId(){
+  return "id-" + next_id++;
+}
+
+function addSearchTags(tracks){
+  var i$, len$, track;
+  for (i$ = 0, len$ = tracks.length; i$ < len$; ++i$) {
+    track = tracks[i$];
+    track.search_tags = formatSearchable([
+        track.artist_name,
+        track.album_artist_name,
+        track.album_name,
+        track.name,
+        track.file,
+    ].join("\n"));
+  }
+}
+
+function formatSearchable(str) {
+  return removeDiacritics(str).toLowerCase();
+}
+
+function operatorCompare(a, b){
+  if (a === b) {
+    return 0;
+  }
+  if (a < b) {
+    return -1;
+  } else {
+    return 1;
+  }
+}
+
+function makeCompareProps(props){
+  return function(a, b){
+    var i$, ref$, len$, prop, result;
+    for (i$ = 0, len$ = (ref$ = props).length; i$ < len$; ++i$) {
+      prop = ref$[i$];
+      result = operatorCompare(a[prop], b[prop]);
+      if (result) {
+        return result;
+      }
+    }
+    return 0;
+  };
+}

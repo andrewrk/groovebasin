@@ -4,6 +4,17 @@ var util = require('util');
 
 module.exports = PlayerClient;
 
+/*
+ * If you look at the code in this file and think to yourself "What the fuck?"
+ * This should clear it up:
+ * 
+ *   * This code was written in JavaScript, then converted to Coffee-Script,
+ *     then converted to satyr/coco, and then back to JavaScript (by using
+ *     the output of the coco compiler).
+ *   * This code used to use the MPD protocol, but that is no longer true.
+ *
+ * */
+
 var ref$, slice$ = [].slice;
 var PREFIXES_TO_STRIP = [/^\s*the\s+/, /^\s*a\s+/, /^\s*an\s+/];
 var next_id = 0;
@@ -581,17 +592,24 @@ PlayerClient.prototype.pause = function(){
     this.emit('statusupdate');
   }
 };
+
 PlayerClient.prototype.next = function(){
-  var ref$, current_pos, pos, id;
-  current_pos = (ref$ = this.status.current_item) != null ? ref$.pos : void 8;
-  if (current_pos != null) {
-    pos = current_pos + 1;
-  } else {
+  var currentItem = this.status.current_item;
+  var pos = currentItem ? currentItem.pos + 1 : 0;
+
+  // handle the case of Repeat All
+  if (pos >= this.playlist.item_list.length &&
+      this.status.repeat && !this.status.single)
+  {
     pos = 0;
   }
-  id = (ref$ = this.playlist.item_list[pos]) != null ? ref$.id : void 8;
+
+  var item = this.playlist.item_list[pos];
+  var id = item && item.id;
+
   this.playId(id);
 };
+
 PlayerClient.prototype.prev = function(){
   var ref$, current_pos, pos, id;
   current_pos = (ref$ = this.status.current_item) != null ? ref$.pos : void 8;

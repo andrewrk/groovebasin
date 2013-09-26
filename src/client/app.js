@@ -546,15 +546,13 @@ function getDragPosition(x, y){
   }
   return result;
 }
-function renderSettings(){
-  var api_key, context;
-  if ((api_key = server_status != null ? server_status.lastfm_api_key : void 8) == null) {
-    return;
-  }
-  context = {
+
+function renderSettings() {
+  var apiKey = ""; // TODO fix this when lastfm plugin is fixed
+  var context = {
     lastfm: {
       auth_url: "http://www.last.fm/api/auth/?api_key=" +
-        encodeURIComponent(api_key) + "&cb=" +
+        encodeURIComponent(apiKey) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/"),
       username: localState.lastfm.username,
       session_key: localState.lastfm.session_key,
@@ -578,6 +576,7 @@ function renderSettings(){
   $settings.find('.auth-clear').button();
   $settings.find('#auth-password').val(settings_ui.auth.password);
 }
+
 function scrollChatWindowToBottom(){
   $chatList.scrollTop(1000000);
 }
@@ -636,12 +635,10 @@ function renderPlaylistButtons(){
   }
 }
 function renderPlaylist(){
-  var context, scroll_top;
-  context = {
+  var context = {
     playlist: mpd.playlist.item_list,
-    server_status: server_status
   };
-  scroll_top = $playlist_items.scrollTop();
+  var scroll_top = $playlist_items.scrollTop();
   $playlist_items.html(Handlebars.templates.playlist(context));
   refreshSelection();
   labelPlaylistItems();
@@ -1313,12 +1310,10 @@ function queueSelection(event){
   }
   return false;
 }
-function sendAuth(){
-  var pass;
-  pass = localState.authPassword;
-  if (pass == null) {
-    return;
-  }
+
+function sendAuth() {
+  var pass = localState.authPassword;
+  if (!pass) return;
   mpd.authenticate(pass, function(err){
     if (err) {
       localState.authPassword = null;
@@ -1327,10 +1322,10 @@ function sendAuth(){
     renderSettings();
   });
 }
+
 function settingsAuthSave(){
-  var $text_box;
   settings_ui.auth.show_edit = false;
-  $text_box = $('#auth-password');
+  var $text_box = $('#auth-password');
   localState.authPassword = $text_box.val();
   saveLocalState();
   renderSettings();
@@ -1341,10 +1336,9 @@ function settingsAuthCancel(){
   renderSettings();
 }
 function performDrag(event, callbacks){
-  var start_drag_x, start_drag_y;
   abortDrag();
-  start_drag_x = event.pageX;
-  start_drag_y = event.pageY;
+  var start_drag_x = event.pageX;
+  var start_drag_y = event.pageY;
   abortDrag = function(){
     $document.off('mousemove', onDragMove).off('mouseup', onDragEnd);
     if (started_drag) {
@@ -1502,7 +1496,7 @@ function setUpPlaylistUi(){
         refreshSelection();
       }
       context = {
-        status: server_status,
+        downloadEnabled: false, // TODO this will change when download plugin is fixed
         permissions: permissions
       };
       if (selection.isMulti()) {
@@ -1957,7 +1951,7 @@ function genericTreeUi($elem, options){
         refreshSelection();
       }
       context = {
-        status: server_status,
+        downloadEnabled: false, // TODO change this when download plugin is fixed
         permissions: permissions
       };
       if (selection.isMulti()) {
@@ -2122,13 +2116,6 @@ $document.ready(function(){
   socket.on('Chat', function(data) {
     chatState = data;
     renderChat();
-  });
-  socket.on('Status', function(data){
-    server_status = JSON.parse(data.toString());
-    renderPlaylistButtons();
-    labelPlaylistItems();
-    renderSettings();
-    window._debug_server_status = server_status;
   });
   mpd = new PlayerClient(socket);
   mpd.on('libraryupdate', renderLibrary);

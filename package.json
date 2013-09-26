@@ -20,7 +20,6 @@
     "socket.io": "~0.9.10",
     "socket.io-client": "~0.9.11",
     "lastfm": "~0.9.0",
-    "zipstream": "~0.2.1",
     "express": "~3.3.8",
     "temp": "~0.5.1",
     "superagent": "~0.15.4",
@@ -34,7 +33,9 @@
     "groove": "0.0.9",
     "osenv": "0.0.3",
     "level": "~0.16.0",
-    "chokidar": "~0.6.3"
+    "chokidar": "~0.6.3",
+    "findit": "~1.1.0",
+    "archiver": "~0.4.9"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

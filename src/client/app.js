@@ -1496,7 +1496,7 @@ function setUpPlaylistUi(){
         refreshSelection();
       }
       context = {
-        downloadEnabled: false, // TODO this will change when download plugin is fixed
+        downloadEnabled: true,
         permissions: permissions
       };
       if (selection.isMulti()) {
@@ -1951,7 +1951,7 @@ function genericTreeUi($elem, options){
         refreshSelection();
       }
       context = {
-        downloadEnabled: false, // TODO change this when download plugin is fixed
+        downloadEnabled: true,
         permissions: permissions
       };
       if (selection.isMulti()) {
@@ -1962,8 +1962,7 @@ function genericTreeUi($elem, options){
         } else if (type === 'stored_playlist_item') {
           context.track = mpd.stored_playlist_item_table[key].track;
         } else {
-          context.download_type = type;
-          context.escaped_key = encodeURIComponent(key);
+          context.download_multi = true;
         }
       }
       $(Handlebars.templates.library_menu(context)).appendTo(document.body);

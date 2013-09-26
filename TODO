@@ -1,9 +1,7 @@
 High priority:
- * (andy) fix broken plugin - download
+ * (andy) fix broken plugin - upload
 
 Before merging into master:
- * fix broken plugin - upload
-   - while you're at it consider ditching qq fileuploader
  * fix broken plugin - lastfm
  * fix broken plugin - dynamicmode
  * persist current playlist

@@ -1,8 +1,7 @@
 High priority:
- * (andy) fix shuffle button
+ * (andy) fix volume
 
 Before merging into master:
- * fix volume
  * streaming with libgroove
  * fix broken plugin - upload
    - while you're at it consider ditching qq fileuploader

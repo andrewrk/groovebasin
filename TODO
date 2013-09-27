@@ -4,7 +4,6 @@ High priority:
 Before merging into master:
  * fix broken plugin - lastfm
  * persist current playlist
- * fix the TODOs strewn about the code
  * support mpd protocol on a different port
  * sometimes queuing an album puts the tracks in the wrong order. I suspect client side bug
  * streaming with libgroove
@@ -12,6 +11,8 @@ Before merging into master:
    makes groove basin unable to load
 
 Eventually:
+ * use keese
+ * src/client/app.js: separate plugins into separate files
  * named playlist support
  * replaygain scan when a song enters library
  * automatically set track or album replaygain depending on nearby playlist items
@@ -26,3 +27,5 @@ Eventually:
    - I think it should be done by the client. This would solve uploading an
      album in the correct order, assuming the files are alphabetically sorted
      by track number.
+ * all commands should be registered with player server and go through the
+   permissions framework. this includes plugins such as chat and dynamicmode

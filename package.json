@@ -35,7 +35,8 @@
     "chokidar": "~0.6.3",
     "findit": "~1.1.0",
     "archiver": "~0.4.9",
-    "temp": "~0.6.0"
+    "temp": "~0.6.0",
+    "uuid": "~1.4.1"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

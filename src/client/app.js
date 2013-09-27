@@ -10,6 +10,7 @@ var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 
 var chatState;
+var dynamicModeState = { on: false };
 
 
 var selection = {
@@ -242,16 +243,16 @@ var selection = {
       var track_set, key, file;
       track_set = {};
       function selRenderArtist(artist){
-        var i$, ref$, len$, album;
-        for (i$ = 0, len$ = (ref$ = artist.albums).length; i$ < len$; ++i$) {
-          album = ref$[i$];
+        var i, ref$, len$, album;
+        for (i = 0, len$ = (ref$ = artist.albums).length; i < len$; ++i) {
+          album = ref$[i];
           selRenderAlbum(album);
         }
       }
       function selRenderAlbum(album){
-        var i$, ref$, len$, track;
-        for (i$ = 0, len$ = (ref$ = album.tracks).length; i$ < len$; ++i$) {
-          track = ref$[i$];
+        var i, ref$, len$, track;
+        for (i = 0, len$ = (ref$ = album.tracks).length; i < len$; ++i) {
+          track = ref$[i];
           selRenderTrack(track);
         }
       }
@@ -291,9 +292,9 @@ var selection = {
       var track_set, key;
       track_set = {};
       function renderPlaylist(playlist){
-        var i$, ref$, len$, item;
-        for (i$ = 0, len$ = (ref$ = playlist.item_list).length; i$ < len$; ++i$) {
-          item = ref$[i$];
+        var i, ref$, len$, item;
+        for (i = 0, len$ = (ref$ = playlist.item_list).length; i < len$; ++i) {
+          item = ref$[i];
           renderPlaylistItem(item);
         }
       }
@@ -316,7 +317,7 @@ var selection = {
       return trackSetToFiles(track_set);
     }
     function trackSetToFiles(track_set){
-      var res$, file, files, pos, track_arr, i$, len$, track, results$ = [];
+      var res$, file, files, pos, track_arr, i, len$, track, results$ = [];
       if (random) {
         res$ = [];
         for (file in track_set) {
@@ -338,8 +339,8 @@ var selection = {
         track_arr.sort(function(a, b){
           return compareArrays(a.pos, b.pos);
         });
-        for (i$ = 0, len$ = track_arr.length; i$ < len$; ++i$) {
-          track = track_arr[i$];
+        for (i = 0, len$ = track_arr.length; i < len$; ++i) {
+          track = track_arr[i];
           results$.push(track.file);
         }
         return results$;
@@ -353,7 +354,6 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 20;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
-var server_status = null;
 var permissions = {};
 var socket = null;
 var mpd = null;
@@ -392,7 +392,7 @@ var $window = $(window);
 var $pl_window = $('#playlist-window');
 var $left_window = $('#left-window');
 var $playlist_items = $('#playlist-items');
-var $dynamic_mode = $('#dynamic-mode');
+var $dynamicMode = $('#dynamic-mode');
 var $pl_btn_repeat = $('#pl-btn-repeat');
 var $tabs = $('#tabs');
 var $upload_tab = $tabs.find('.upload-tab');
@@ -525,10 +525,10 @@ function downloadFiles(files){
   $form.submit();
 }
 function getDragPosition(x, y){
-  var result, i$, ref$, len$, item, $item, middle, track;
+  var result, i, ref$, len$, item, $item, middle, track;
   result = {};
-  for (i$ = 0, len$ = (ref$ = $playlist_items.find(".pl-item").get()).length; i$ < len$; ++i$) {
-    item = ref$[i$];
+  for (i = 0, len$ = (ref$ = $playlist_items.find(".pl-item").get()).length; i < len$; ++i) {
+    item = ref$[i];
     $item = $(item);
     middle = $item.offset().top + $item.height() / 2;
     track = mpd.playlist.item_table[$item.attr('data-id')];
@@ -620,9 +620,8 @@ function renderChat() {
 }
 
 function renderPlaylistButtons(){
-  $dynamic_mode
-    .prop("checked", server_status != null && server_status.dynamic_mode ? true : false)
-    .button("option", "disabled", !(server_status != null && server_status.dynamic_mode_enabled))
+  $dynamicMode
+    .prop("checked", dynamicModeState.on)
     .button("refresh");
   var repeatModeName = repeatModeNames[mpd.status.repeat];
   $pl_btn_repeat
@@ -650,27 +649,31 @@ function renderStoredPlaylists(){
   $stored_playlists.scrollTop(scroll_top);
   refreshSelection();
 }
-function labelPlaylistItems(){
-  var cur_item, pos, to$, ref$, id, i$, len$, item;
-  cur_item = mpd.status.current_item;
+
+function labelPlaylistItems() {
+  var item;
+  var curItem = mpd.status.current_item;
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old');
-  if (cur_item != null && (server_status != null && server_status.dynamic_mode)) {
-    for (pos = 0, to$ = cur_item.pos; pos < to$; ++pos) {
-      if ((id = (ref$ = mpd.playlist.item_list[pos]) != null ? ref$.id : void 8) != null) {
-        $("#playlist-track-" + id).addClass('old');
+  if (curItem != null && dynamicModeState.on) {
+    for (var pos = 0; pos < curItem.pos; ++pos) {
+      item = mpd.playlist.item_list[pos];
+      var itemId = item && item.id;
+      if (itemId != null) {
+        $("#playlist-track-" + itemId).addClass('old');
       }
     }
   }
-  for (i$ = 0, len$ = (ref$ = mpd.playlist.item_list).length; i$ < len$; ++i$) {
-    item = ref$[i$];
+  for (var i = 0; i < mpd.playlist.item_list.length; i += 1) {
+    item = mpd.playlist.item_list[i];
     if (item.is_random) {
       $("#playlist-track-" + item.id).addClass('random');
     }
   }
-  if (cur_item != null) {
-    $("#playlist-track-" + cur_item.id).addClass('current');
+  if (curItem != null) {
+    $("#playlist-track-" + curItem.id).addClass('current');
   }
 }
+
 function getSelHelpers(){
   var ref$;
   if ((mpd != null ? (ref$ = mpd.playlist) != null ? ref$.item_table : void 8 : void 8) == null) {
@@ -713,7 +716,7 @@ function getSelHelpers(){
   };
 }
 function refreshSelection(){
-  var helpers, sel_name, ref$, ids, table, $getDiv, i$, id, len$;
+  var helpers, sel_name, ref$, ids, table, $getDiv, i, id, len$;
   if ((helpers = getSelHelpers()) == null) {
     return;
   }
@@ -725,8 +728,8 @@ function refreshSelection(){
   }
   for (sel_name in helpers) {
     ref$ = helpers[sel_name], ids = ref$[0], table = ref$[1], $getDiv = ref$[2];
-    for (i$ = 0, len$ = (ref$ = (fn$())).length; i$ < len$; ++i$) {
-      id = ref$[i$];
+    for (i = 0, len$ = (ref$ = (fn$())).length; i < len$; ++i) {
+      id = ref$[i];
       delete ids[id];
     }
     for (id in ids) {
@@ -756,9 +759,9 @@ function renderLibrary(){
   var $artists = $library.children("ul").children("li");
   var node_count = $artists.length;
   function expandStuff($li_set){
-    var i$, len$, li, $li, $ul, $sub_li_set, proposed_node_count;
-    for (i$ = 0, len$ = $li_set.length; i$ < len$; ++i$) {
-      li = $li_set[i$];
+    var i, len$, li, $li, $ul, $sub_li_set, proposed_node_count;
+    for (i = 0, len$ = $li_set.length; i < len$; ++i) {
+      li = $li_set[i];
       $li = $(li);
       if (node_count >= AUTO_EXPAND_LIMIT) {
         return;
@@ -954,14 +957,14 @@ function togglePlayback(){
     mpd.play();
   }
 }
-function setDynamicMode(value){
-  var args = {
-    dynamic_mode: value
-  };
-  socket.emit('DynamicMode', JSON.stringify(args));
+
+function setDynamicMode(value) {
+  dynamicModeState.on = value;
+  socket.emit('DynamicMode', dynamicModeState);
 }
+
 function toggleDynamicMode(){
-  setDynamicMode(!server_status.dynamic_mode);
+  setDynamicMode(!dynamicModeState.on);
 }
 
 function nextRepeatState(){
@@ -1408,9 +1411,8 @@ function setUpPlaylistUi(){
   $pl_btn_repeat.on('click', function(){
     nextRepeatState();
   });
-  $dynamic_mode.on('click', function(){
-    var value;
-    value = $(this).prop("checked");
+  $dynamicMode.on('click', function(){
+    var value = $(this).prop("checked");
     setDynamicMode(value);
     return false;
   });
@@ -1660,7 +1662,7 @@ function setUpNowPlayingUi(){
   }
 }
 function setUpTabsUi(){
-  var tabs, i$, len$, tab;
+  var tabs, i, len$, tab;
   $tabs.on('mouseover', 'li', function(event){
     $(this).addClass('ui-state-hover');
   });
@@ -1678,10 +1680,10 @@ function setUpTabsUi(){
     return $tabs.find(tabSelector(tab_name));
   }
   function unselectTabs(){
-    var i$, ref$, len$, tab;
+    var i, ref$, len$, tab;
     $tabs.find('li').removeClass('ui-state-active');
-    for (i$ = 0, len$ = (ref$ = tabs).length; i$ < len$; ++i$) {
-      tab = ref$[i$];
+    for (i = 0, len$ = (ref$ = tabs).length; i < len$; ++i) {
+      tab = ref$[i];
       $pane(tab).hide();
     }
   }
@@ -1691,8 +1693,8 @@ function setUpTabsUi(){
     $pane(name).show();
     handleResize();
   };
-  for (i$ = 0, len$ = tabs.length; i$ < len$; ++i$) {
-    tab = tabs[i$];
+  for (i = 0, len$ = tabs.length; i < len$; ++i) {
+    tab = tabs[i];
     (fn$.call(this, tab));
   }
   function fn$(tab){
@@ -1784,7 +1786,7 @@ function setUpSettingsUi(){
 }
 function setUpLibraryUi(){
   $lib_filter.on('keydown', function(event){
-    var files, i$, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
+    var files, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
     event.stopPropagation();
     switch (event.which) {
     case 27:
@@ -1799,8 +1801,8 @@ function setUpLibraryUi(){
       return false;
     case 13:
       files = [];
-      for (i$ = 0, len$ = (ref$ = mpd.search_results.artists).length; i$ < len$; ++i$) {
-        artist = ref$[i$];
+      for (i = 0, len$ = (ref$ = mpd.search_results.artists).length; i < len$; ++i) {
+        artist = ref$[i];
         for (j$ = 0, len1$ = (ref1$ = artist.albums).length; j$ < len1$; ++j$) {
           album = ref1$[j$];
           for (k$ = 0, len2$ = (ref2$ = album.tracks).length; k$ < len2$; ++k$) {
@@ -2108,6 +2110,11 @@ $document.ready(function(){
   socket.on('Chat', function(data) {
     chatState = data;
     renderChat();
+  });
+  socket.on('DynamicMode', function(data) {
+    dynamicModeState = data;
+    renderPlaylistButtons();
+    renderPlaylist();
   });
   mpd = new PlayerClient(socket);
   mpd.on('libraryupdate', renderLibrary);

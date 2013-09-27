@@ -1,8 +1,7 @@
 High priority:
- * (andy) fix broken plugin - dynamicmode
+ * (andy) fix broken plugin - lastfm
 
 Before merging into master:
- * fix broken plugin - lastfm
  * persist current playlist
  * support mpd protocol on a different port
  * sometimes queuing an album puts the tracks in the wrong order. I suspect client side bug

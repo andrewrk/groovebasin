@@ -1,6 +1,7 @@
 var removeDiacritics = require('diacritics').remove;
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
+var uuid = require('uuid');
 
 module.exports = PlayerClient;
 
@@ -234,18 +235,6 @@ PlayerClient.prototype.generateSortKey = function(previous_key, next_key){
   }
 };
 
-PlayerClient.prototype.generateId = function(){
-  var result = "";
-  for (var i = 0; i < 8; ++i) {
-    var shortHex = (0 | Math.random() * 0x10000).toString(16);
-    for (var j = shortHex.length; j < 4; ++j) {
-      result += "0";
-    }
-    result += shortHex;
-  }
-  return result;
-};
-
 PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_random){
   var ref$, items, i, len$, file, sort_key, id;
   if (!files.length) {
@@ -259,7 +248,7 @@ PlayerClient.prototype.queueFiles = function(files, previous_key, next_key, is_r
   for (i = 0, len$ = files.length; i < len$; ++i) {
     file = files[i];
     sort_key = this.generateSortKey(previous_key, next_key);
-    id = this.generateId();
+    id = uuid();
     items[id] = {
       file: file,
       sort_key: sort_key,

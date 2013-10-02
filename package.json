@@ -29,7 +29,7 @@
     "requireindex": "~1.0.1",
     "mess": "~0.1.1",
     "diacritics": "~1.0.0",
-    "groove": "0.0.10",
+    "groove": "0.0.11",
     "osenv": "0.0.3",
     "level": "~0.16.0",
     "chokidar": "~0.6.3",

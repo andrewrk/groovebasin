@@ -1,5 +1,7 @@
 High priority:
  * (andy) fix broken plugin - lastfm
+ * (andy) replaygain scan when a song enters library
+ * (andy) automatically set track or album replaygain depending on nearby playlist items
 
 Before merging into master:
  * persist current playlist
@@ -13,8 +15,6 @@ Eventually:
  * use keese
  * src/client/app.js: separate plugins into separate files
  * named playlist support
- * replaygain scan when a song enters library
- * automatically set track or album replaygain depending on nearby playlist items
  * ditch handlebars
  * replace socket.io with https://github.com/einaros/ws
  * ditch qq fileuploader 

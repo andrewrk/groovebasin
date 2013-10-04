@@ -57,7 +57,7 @@ function getUrl(){
 }
 
 function updatePlayer() {
-  var should_stream = trying_to_stream && player.status.state === "play";
+  var should_stream = trying_to_stream && player.state === "play";
   if (actually_streaming === should_stream) return;
   if (should_stream) {
     soundManager.destroySound('stream');

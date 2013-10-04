@@ -1,6 +1,6 @@
-{{#if artists}}
+{{#if artistList}}
   <ul>
-    {{#artists}}
+    {{#artistList}}
       <li>
         <div class="clickable expandable" id="{{artistid key}}" data-key="{{key}}" data-type="artist">
           <div class="ui-icon ui-icon-triangle-1-e"></div>
@@ -8,11 +8,11 @@
         </div>
         <ul></ul>
       </li>
-    {{/artists}}
+    {{/artistList}}
   </ul>
 {{else}}
   <p class="ui-state-highlight ui-corner-all">
     <span class="ui-icon ui-icon-info"></span>
-    <strong>{{empty_library_message}}</strong>
+    <strong>{{emptyLibraryMessage}}</strong>
   </p>
 {{/if}}

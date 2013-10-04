@@ -11,7 +11,7 @@ their laptops, tablets, and phones, and play and share music.
   on another computer.
 
 * Dynamic playlist mode which automatically queues random songs, favoring
-  songs that have not been played recently.
+  songs that have not been queued recently.
 
 * Drag and drop upload. Drag and drop playlist editing. Rich keyboard
   shortcuts.
@@ -19,17 +19,19 @@ their laptops, tablets, and phones, and play and share music.
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
-* Last.fm scrobbling.
+* (currently broken) Last.fm scrobbling.
 
-## Get Started
+## Install
+
+Groove Basin is undergoing heavy restructuring. When this gets to a good
+checkpoint, we will cut a release. Until then, use these instructions to
+run from source:
 
 1. Make sure you have the latest stable [Node.js](http://nodejs.org) installed.
 2. Install [libgroove](https://github.com/superjoe30/libgroove).
-
-```
-$ npm install --production groovebasin
-$ npm start groovebasin
-```
+3. Clone the source.
+4. `npm run build`
+5. `npm start`
 
 ## Screenshots
 
@@ -40,15 +42,8 @@ $ npm start groovebasin
 
 ## Configuration
 
-Groove Basin is configured using environment variables. Available options
-and their defaults:
-
-    HOST="0.0.0.0"
-    PORT="16242"
-    STATE_FILE=".state.json"
-    NODE_ENV="dev"
-    LASTFM_API_KEY=<not shown>
-    LASTFM_SECRET=<not shown>
+When Groove Basin starts it will look for `config.js` in the current directory.
+If not found it creates one for you with default values.
 
 ## Developing
 

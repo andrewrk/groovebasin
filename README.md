@@ -1,9 +1,11 @@
 # Groove Basin
 
-No-nonsense music client and server for your home or office.
+Music player server with a web-based user interface inspired by Amarok 1.4.
 
-Run it on a server connected to your main speakers. Guests can connect with
-their laptops, tablets, and phones, and play and share music.
+Run it on a server (such as a 
+[Raspberry Pi](http://www.raspberrypi.org/)) connected to some speakers.
+Guests can control the music player by connecting with a laptop, tablet,
+or smart phone.
 
 Groove Basin is undergoing heavy restructuring. Some features are disabled
 while they are being rebuilt.

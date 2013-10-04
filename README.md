@@ -5,6 +5,9 @@ No-nonsense music client and server for your home or office.
 Run it on a server connected to your main speakers. Guests can connect with
 their laptops, tablets, and phones, and play and share music.
 
+Groove Basin is undergoing heavy restructuring. Some features are disabled
+while they are being rebuilt.
+
 ## Features
 
 * Lightning-fast, responsive UI. You can hardly tell that the music server is
@@ -16,7 +19,7 @@ their laptops, tablets, and phones, and play and share music.
 * Drag and drop upload. Drag and drop playlist editing. Rich keyboard
   shortcuts.
 
-* Streaming support. You can listen to your music library - or share it with
+* (currently broken) Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
 * (currently broken) Last.fm scrobbling.

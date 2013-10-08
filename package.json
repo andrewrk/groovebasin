@@ -37,7 +37,7 @@
     "archiver": "~0.4.9",
     "temp": "~0.6.0",
     "uuid": "~1.4.1",
-    "music-library-index": "0.0.2",
+    "music-library-index": "0.0.3",
     "keese": "~1.0.0"
   },
   "devDependencies": {

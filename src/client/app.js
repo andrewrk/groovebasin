@@ -362,7 +362,7 @@ var LoadStatus = {
   NoServer: 'Server is down.',
   GoodToGo: '[good to go]'
 };
-var repeatModeNames = ["Off", "All", "One"];
+var repeatModeNames = ["Off", "One", "All"];
 var load_status = LoadStatus.Init;
 var settings_ui = {
   auth: {

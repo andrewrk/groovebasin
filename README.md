@@ -7,6 +7,9 @@ Run it on a server (such as a
 Guests can control the music player by connecting with a laptop, tablet,
 or smart phone.
 
+Groove Basin works with your personal music library; not an external music
+service. Groove Basin will never support DRM content.
+
 Groove Basin is undergoing heavy restructuring. Some features are disabled
 while they are being rebuilt.
 

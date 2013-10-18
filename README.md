@@ -13,6 +13,8 @@ service. Groove Basin will never support DRM content.
 Groove Basin is undergoing heavy restructuring. Some features are disabled
 while they are being rebuilt.
 
+Live discussion in #libgroove on Freenode.
+
 ## Features
 
 * Lightning-fast, responsive UI. You can hardly tell that the music server is

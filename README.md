@@ -37,7 +37,8 @@ Groove Basin is undergoing heavy restructuring. When this gets to a good
 checkpoint, we will cut a release. Until then, use these instructions to
 run from source:
 
-1. Make sure you have the latest stable [Node.js](http://nodejs.org) installed.
+1. Install [Node.js](http://nodejs.org) v0.10.15 or greater. If you're using
+   Ubuntu 13.10 "Saucy Salamander" you can `sudo apt-get install nodejs`.
 2. Install [libgroove](https://github.com/superjoe30/libgroove).
 3. Clone the source.
 4. `npm run build`

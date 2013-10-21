@@ -1,4 +1,3 @@
-var removeDiacritics = require('diacritics').remove;
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 var uuid = require('uuid');

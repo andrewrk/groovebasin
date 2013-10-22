@@ -26,9 +26,9 @@ Live discussion in #libgroove on Freenode.
   shortcuts.
 
 * Lazy multi-core
-  [EBU R128 loudness scanning](http://tech.ebu.ch/loudness)(tags compatible
-  with [ReplayGain](http://en.wikipedia.org/wiki/Lazy_evaluation)) and automatic
-  switching between track and album mode.
+  [EBU R128 loudness scanning](http://tech.ebu.ch/loudness) (tags compatible
+  with [ReplayGain](http://wiki.hydrogenaudio.org/index.php?title=ReplayGain_1.0_specification))
+  and automatic switching between track and album mode.
 
 * (currently broken) Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.

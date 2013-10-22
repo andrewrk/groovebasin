@@ -17,14 +17,18 @@ Live discussion in #libgroove on Freenode.
 
 ## Features
 
-* Lightning-fast, responsive UI. You can hardly tell that the music server is
-  on another computer.
+* Fast, responsive UI. It feels like a desktop app, not a web app.
 
 * Dynamic playlist mode which automatically queues random songs, favoring
   songs that have not been queued recently.
 
 * Drag and drop upload. Drag and drop playlist editing. Rich keyboard
   shortcuts.
+
+* Lazy multi-core
+  [EBU R128 loudness scanning](http://tech.ebu.ch/loudness)(tags compatible
+  with [ReplayGain](http://en.wikipedia.org/wiki/Lazy_evaluation)) and automatic
+  switching between track and album mode.
 
 * (currently broken) Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.

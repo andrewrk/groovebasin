@@ -6,8 +6,6 @@ var trying_to_stream = false;
 var actually_streaming = false;
 var streaming_buffering = false;
 var player = null;
-var port = null;
-var format = null;
 
 var $ = window.$;
 var $stream_btn = $('#stream-btn');
@@ -32,7 +30,7 @@ function getButtonLabel() {
 }
 
 function getButtonDisabled() {
-  return port == null || format == null;
+  return false;
 }
 
 function renderStreamButton(){
@@ -45,7 +43,6 @@ function renderStreamButton(){
 }
 
 function toggleStatus() {
-  if (port == null || format == null) return;
   trying_to_stream = !trying_to_stream;
   renderStreamButton();
   updatePlayer();
@@ -53,7 +50,7 @@ function toggleStatus() {
 }
 
 function getUrl(){
-  return location.protocol + "//" + location.hostname + ":" + port + "/stream." + format;
+  return "/stream.ogg";
 }
 
 function updatePlayer() {
@@ -97,9 +94,5 @@ function init(playerInstance, socket) {
     debugMode: false
   });
   player.on('statusupdate', updatePlayer);
-  socket.on('StreamInfo', function(info) {
-    port = info.port;
-    format = info.format;
-  });
   setUpUi();
 }

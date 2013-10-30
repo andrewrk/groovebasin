@@ -50,7 +50,7 @@ function toggleStatus() {
 }
 
 function getUrl(){
-  return "/stream.ogg";
+  return "/stream.mp3";
 }
 
 function updatePlayer() {

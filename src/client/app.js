@@ -799,8 +799,18 @@ function updateSliderPos() {
   $nowplaying_left.html(formatTime(duration));
 }
 
+function renderVolumeSlider() {
+  if (user_is_volume_sliding) return;
+
+  var enabled = player.volume != null;
+  if (enabled) {
+    $vol_slider.slider('option', 'value', player.volume);
+  }
+  $vol_slider.slider('option', 'disabled', !enabled);
+}
+
 function renderNowPlaying(){
-  var ref$, track, track_display, state, toggle_icon, old_class, new_class, vol, enabled;
+  var ref$, track, track_display, state, toggle_icon, old_class, new_class;
   if ((track = (ref$ = player.currentItem) != null ? ref$.track : void 8) != null) {
     track_display = track.name + " - " + track.artistName;
     if (track.albumName.length) {
@@ -832,13 +842,7 @@ function renderNowPlaying(){
   $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class);
   $track_slider.slider("option", "disabled", state === "stop");
   updateSliderPos();
-  if (!user_is_volume_sliding) {
-    enabled = (vol = player.volume) != null;
-    if (enabled) {
-      $vol_slider.slider('option', 'value', vol);
-    }
-    $vol_slider.slider('option', 'disabled', !enabled);
-  }
+  renderVolumeSlider();
 }
 function render(){
   var hide_main_err = load_status === LoadStatus.GoodToGo;
@@ -2106,6 +2110,10 @@ $document.ready(function(){
   socket.on('Chat', function(data) {
     chatState = data;
     renderChat();
+  });
+  socket.on('volumeUpdate', function(vol) {
+    player.volume = vol;
+    renderVolumeSlider();
   });
   socket.on('DynamicMode', function(data) {
     dynamicModeState = data;

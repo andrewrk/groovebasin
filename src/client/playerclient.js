@@ -413,11 +413,13 @@ PlayerClient.prototype.seek = function(pos) {
 };
 
 PlayerClient.prototype.setVolume = function(vol){
+  if (vol > 1.0) vol = 1.0;
+  if (vol < 0.0) vol = 0.0;
+  this.volume = vol;
   this.sendCommand({
     name: "setvol",
-    vol: vol,
+    vol: this.volume,
   });
-  this.volume = vol;
   this.emit('statusupdate');
 };
 

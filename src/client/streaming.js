@@ -6,11 +6,10 @@ var trying_to_stream = false;
 var actually_streaming = false;
 var streaming_buffering = false;
 var player = null;
+var audio = null;
 
 var $ = window.$;
 var $stream_btn = $('#stream-btn');
-
-var soundManager = window.soundManager;
 
 
 function getButtonLabel() {
@@ -57,19 +56,14 @@ function updatePlayer() {
   var should_stream = trying_to_stream && player.state === "play";
   if (actually_streaming === should_stream) return;
   if (should_stream) {
-    soundManager.destroySound('stream');
-    var sound = soundManager.createSound({
-      id: 'stream',
-      url: getUrl(),
-      onbufferchange: function(){
-        streaming_buffering = sound.isBuffering;
-        renderStreamButton();
-      }
-    });
-    sound.play();
-    streaming_buffering = sound.isBuffering;
+    audio = new Audio(getUrl());
+    streaming_buffering = false;
+    audio.play();
   } else {
-    soundManager.destroySound('stream');
+    if (audio) {
+      audio.src = null;
+      audio = null;
+    }
     streaming_buffering = false;
   }
   actually_streaming = should_stream;
@@ -88,11 +82,6 @@ function setUpUi() {
 function init(playerInstance, socket) {
   player = playerInstance;
 
-  soundManager.setup({
-    url: "/vendor/soundmanager2/",
-    flashVersion: 9,
-    debugMode: false
-  });
   player.on('statusupdate', updatePlayer);
   setUpUi();
 }

@@ -6,7 +6,8 @@ var trying_to_stream = false;
 var actually_streaming = false;
 var streaming_buffering = false;
 var player = null;
-var audio = null;
+var audio = new Audio();
+audio.addEventListener('playing', onPlaying, false);
 
 var $ = window.$;
 var $stream_btn = $('#stream-btn');
@@ -52,18 +53,21 @@ function getUrl(){
   return "/stream.mp3";
 }
 
+function onPlaying() {
+  streaming_buffering = false;
+  renderStreamButton();
+}
+
 function updatePlayer() {
   var should_stream = trying_to_stream && player.state === "play";
   if (actually_streaming === should_stream) return;
   if (should_stream) {
-    audio = new Audio(getUrl());
-    streaming_buffering = false;
+    audio.src = getUrl();
+    audio.load();
     audio.play();
+    streaming_buffering = true;
   } else {
-    if (audio) {
-      audio.src = null;
-      audio = null;
-    }
+    audio.pause();
     streaming_buffering = false;
   }
   actually_streaming = should_stream;

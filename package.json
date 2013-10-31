@@ -28,7 +28,7 @@
     "zfill": "0.0.1",
     "requireindex": "~1.0.1",
     "mess": "~0.1.1",
-    "groove": "~1.1.0",
+    "groove": "~1.1.3",
     "osenv": "0.0.3",
     "level": "~0.16.0",
     "chokidar": "~0.6.3",

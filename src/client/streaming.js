@@ -2,21 +2,21 @@ exports.getUrl = getUrl;
 exports.toggleStatus = toggleStatus;
 exports.init = init;
 
-var trying_to_stream = false;
-var actually_streaming = false;
-var streaming_buffering = false;
+var tryingToStream = false;
+var actuallyStreaming = false;
+var stillBuffering = false;
 var player = null;
 var audio = new Audio();
 audio.addEventListener('playing', onPlaying, false);
 
 var $ = window.$;
-var $stream_btn = $('#stream-btn');
+var $streamBtn = $('#stream-btn');
 
 
 function getButtonLabel() {
-  if (trying_to_stream) {
-    if (actually_streaming) {
-      if (streaming_buffering) {
+  if (tryingToStream) {
+    if (actuallyStreaming) {
+      if (stillBuffering) {
         return "Stream: Buffering";
       } else {
         return "Stream: On";
@@ -35,15 +35,15 @@ function getButtonDisabled() {
 
 function renderStreamButton(){
   var label = getButtonLabel();
-  $stream_btn
+  $streamBtn
     .button("option", "disabled", getButtonDisabled())
     .button("option", "label", label)
-    .prop("checked", trying_to_stream)
+    .prop("checked", tryingToStream)
     .button("refresh");
 }
 
 function toggleStatus() {
-  trying_to_stream = !trying_to_stream;
+  tryingToStream = !tryingToStream;
   renderStreamButton();
   updatePlayer();
   return false;
@@ -54,33 +54,33 @@ function getUrl(){
 }
 
 function onPlaying() {
-  streaming_buffering = false;
+  stillBuffering = false;
   renderStreamButton();
 }
 
 function updatePlayer() {
-  var should_stream = trying_to_stream && player.state === "play";
-  if (actually_streaming === should_stream) return;
-  if (should_stream) {
+  var shouldStream = tryingToStream && player.state === "play";
+  if (actuallyStreaming === shouldStream) return;
+  if (shouldStream) {
     audio.src = getUrl();
     audio.load();
     audio.play();
-    streaming_buffering = true;
+    stillBuffering = true;
   } else {
     audio.pause();
-    streaming_buffering = false;
+    stillBuffering = false;
   }
-  actually_streaming = should_stream;
+  actuallyStreaming = shouldStream;
   renderStreamButton();
 }
 
 function setUpUi() {
-  $stream_btn.button({
+  $streamBtn.button({
     icons: {
       primary: "ui-icon-signal-diag"
     }
   });
-  $stream_btn.on('click', toggleStatus);
+  $streamBtn.on('click', toggleStatus);
 }
 
 function init(playerInstance, socket) {

@@ -909,7 +909,7 @@ function toggleLibraryExpansion($li){
 
 function confirmDelete(keysList) {
   var fileList = keysList.map(function(key) {
-    return player.trackTable[key].file;
+    return player.library.trackTable[key].file;
   });
   var listText = fileList.slice(0, 7).join("\n  ");
   if (fileList.length > 7) {

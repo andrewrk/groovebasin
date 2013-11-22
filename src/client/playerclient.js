@@ -54,6 +54,7 @@ function PlayerClient(socket) {
 PlayerClient.prototype.handleConnectionStart = function(){
   var self = this;
   this.updateLibrary(function(){
+    self.updateServerTime();
     self.updateStatus();
     self.updatePlaylist();
   });
@@ -114,6 +115,16 @@ PlayerClient.prototype.updatePlaylist = function(callback){
   });
 };
 
+PlayerClient.prototype.updateServerTime = function(callback) {
+  var self = this;
+  callback = callback || noop;
+  this.sendCommandName('whattimeisit', function(err, o){
+    if (err) return callback(err);
+    self.serverTimeOffset = new Date(o) - new Date();
+    callback();
+  });
+};
+
 PlayerClient.prototype.updateStatus = function(callback){
   var self = this;
   callback = callback || noop;
@@ -122,7 +133,7 @@ PlayerClient.prototype.updateStatus = function(callback){
     self.volume = o.volume;
     self.repeat = o.repeat;
     self.state = o.state;
-    self.trackStartDate = o.trackStartDate != null ? new Date(o.trackStartDate) : null;
+    self.trackStartDate = o.trackStartDate != null ? new Date(new Date(o.trackStartDate) - self.serverTimeOffset) : null;
     self.pausedTime = o.pausedTime;
   });
   this.sendCommandName('currentsong', function(err, id){

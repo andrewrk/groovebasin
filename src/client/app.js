@@ -2157,15 +2157,20 @@ function compareArrays(arr1, arr2) {
 }
 
 function formatTime(seconds) {
+  var sign = "";
+  if (seconds < 0) {
+    sign = "-";
+    seconds = -seconds;
+  }
   seconds = Math.floor(seconds);
   var minutes = Math.floor(seconds / 60);
   seconds -= minutes * 60;
   var hours = Math.floor(minutes / 60);
   minutes -= hours * 60;
   if (hours !== 0) {
-    return hours + ":" + zfill(minutes, 2) + ":" + zfill(seconds, 2);
+    return sign + hours + ":" + zfill(minutes, 2) + ":" + zfill(seconds, 2);
   } else {
-    return minutes + ":" + zfill(seconds, 2);
+    return sign + minutes + ":" + zfill(seconds, 2);
   }
 }
 

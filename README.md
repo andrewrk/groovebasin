@@ -3,9 +3,10 @@
 Music player server with a web-based user interface inspired by Amarok 1.4.
 
 Run it on a server (such as a 
-[Raspberry Pi](http://www.raspberrypi.org/)) connected to some speakers.
-Guests can control the music player by connecting with a laptop, tablet,
-or smart phone.
+[Raspberry Pi](http://www.raspberrypi.org/)) connected to some speakers
+in your home or office. Guests can control the music player by connecting
+with a laptop, tablet, or smart phone. Further, you can stream your music
+library remotely.
 
 Groove Basin works with your personal music library; not an external music
 service. Groove Basin will never support DRM content.
@@ -30,7 +31,7 @@ Live discussion in #libgroove on Freenode.
   with [ReplayGain](http://wiki.hydrogenaudio.org/index.php?title=ReplayGain_1.0_specification))
   and automatic switching between track and album mode.
 
-* (currently broken) Streaming support. You can listen to your music library - or share it with
+* Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
 * (currently broken) Last.fm scrobbling.

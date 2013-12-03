@@ -255,8 +255,11 @@ PlayerClient.prototype.shuffle = function(){
 
 PlayerClient.prototype.stop = function(){
   this.sendCommandName('stop');
-  this.state = "stop";
-  this.emit('statusupdate');
+  if (this.state === "play") {
+    this.pausedTime = 0;
+    this.state = "pause";
+    this.emit('statusupdate');
+  }
 };
 
 PlayerClient.prototype.play = function(){

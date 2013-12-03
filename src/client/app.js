@@ -785,7 +785,7 @@ function updateSliderPos() {
   if (user_is_seeking) return;
 
   var duration, disabled, elapsed, sliderPos;
-  if (player.currentItem != null && player.state && player.state !== "stop") {
+  if (player.currentItem != null && player.state != null) {
     disabled = false;
     elapsed = getCurrentTrackPosition();
     duration = player.currentItem.track.duration;
@@ -810,8 +810,12 @@ function renderVolumeSlider() {
 }
 
 function renderNowPlaying(){
-  var ref$, track, track_display, state, toggle_icon, old_class, new_class;
-  if ((track = (ref$ = player.currentItem) != null ? ref$.track : void 8) != null) {
+  var track = null;
+  if (player.currentItem != null) {
+    track = player.currentItem.track;
+  }
+  var track_display;
+  if (track != null) {
     track_display = track.name + " - " + track.artistName;
     if (track.albumName.length) {
       track_display += " - " + track.albumName;
@@ -832,15 +836,17 @@ function renderNowPlaying(){
     document.title = BASE_TITLE;
   }
   $track_display.html(track_display);
-  state = (ref$ = player.state) != null ? ref$ : "stop";
-  toggle_icon = {
-    play: ['ui-icon-play', 'ui-icon-pause'],
-    stop: ['ui-icon-pause', 'ui-icon-play'],
-    pause: ['ui-icon-pause', 'ui-icon-play']
-  };
-  ref$ = toggle_icon[state], old_class = ref$[0], new_class = ref$[1];
+  var old_class;
+  var new_class;
+  if (player.state === "play") {
+    old_class = 'ui-icon-play';
+    new_class = 'ui-icon-pause';
+  } else {
+    old_class = 'ui-icon-pause';
+    new_class = 'ui-icon-play';
+  }
   $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class);
-  $track_slider.slider("option", "disabled", state === "stop");
+  $track_slider.slider("option", "disabled", player.state == null);
   updateSliderPos();
   renderVolumeSlider();
 }
@@ -954,7 +960,7 @@ function handleDeletePressed(shift) {
   }
 }
 function togglePlayback(){
-  if (player.state === 'play') {
+  if (player.state === "play") {
     player.pause();
   } else {
     player.play();

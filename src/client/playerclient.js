@@ -132,7 +132,7 @@ PlayerClient.prototype.updateStatus = function(callback){
     if (err) return callback(err);
     self.volume = o.volume;
     self.repeat = o.repeat;
-    self.state = o.state;
+    self.isPlaying = o.isPlaying;
     self.trackStartDate = o.trackStartDate != null ? new Date(new Date(o.trackStartDate) - self.serverTimeOffset) : null;
     self.pausedTime = o.pausedTime;
   });
@@ -253,29 +253,29 @@ PlayerClient.prototype.shuffle = function(){
   this.sendCommandName('shuffle');
 };
 
-PlayerClient.prototype.stop = function(){
-  this.sendCommandName('stop');
-  if (this.state === "play") {
-    this.pausedTime = 0;
-    this.state = "pause";
+PlayerClient.prototype.play = function(){
+  this.sendCommandName('play');
+  if (this.isPlaying === false) {
+    this.trackStartDate = elapsedToDate(this.pausedTime);
+    this.isPlaying = true;
     this.emit('statusupdate');
   }
 };
 
-PlayerClient.prototype.play = function(){
-  this.sendCommandName('play');
-  if (this.state === "pause") {
-    this.trackStartDate = elapsedToDate(this.pausedTime);
-    this.state = "play";
+PlayerClient.prototype.stop = function(){
+  this.sendCommandName('stop');
+  if (this.isPlaying === true) {
+    this.pausedTime = 0;
+    this.isPlaying = false;
     this.emit('statusupdate');
   }
 };
 
 PlayerClient.prototype.pause = function(){
   this.sendCommandName('pause');
-  if (this.state === "play") {
+  if (this.isPlaying === true) {
     this.pausedTime = dateToElapsed(this.trackStartDate);
-    this.state = "pause";
+    this.isPlaying = false;
     this.emit('statusupdate');
   }
 };
@@ -502,7 +502,7 @@ PlayerClient.prototype.clearPlaylist = function(){
 PlayerClient.prototype.anticipatePlayId = function(trackId){
   var item = this.playlist.itemTable[trackId];
   this.currentItem = item;
-  this.state = "play";
+  this.isPlaying = true;
   this.duration = item.track.duration;
   this.trackStartDate = new Date();
   this.emit('statusupdate');

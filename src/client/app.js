@@ -774,7 +774,7 @@ function renderLibrary() {
   }
 }
 function getCurrentTrackPosition(){
-  if (player.trackStartDate != null && player.state === "play") {
+  if (player.trackStartDate != null && player.isPlaying === true) {
     return (new Date() - player.trackStartDate) / 1000;
   } else {
     return player.pausedTime;
@@ -785,7 +785,7 @@ function updateSliderPos() {
   if (user_is_seeking) return;
 
   var duration, disabled, elapsed, sliderPos;
-  if (player.currentItem != null && player.state != null) {
+  if (player.currentItem != null && player.isPlaying != null) {
     disabled = false;
     elapsed = getCurrentTrackPosition();
     duration = player.currentItem.track.duration;
@@ -838,7 +838,7 @@ function renderNowPlaying(){
   $track_display.html(track_display);
   var old_class;
   var new_class;
-  if (player.state === "play") {
+  if (player.isPlaying === true) {
     old_class = 'ui-icon-play';
     new_class = 'ui-icon-pause';
   } else {
@@ -846,7 +846,7 @@ function renderNowPlaying(){
     new_class = 'ui-icon-play';
   }
   $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class);
-  $track_slider.slider("option", "disabled", player.state == null);
+  $track_slider.slider("option", "disabled", player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
 }
@@ -960,10 +960,12 @@ function handleDeletePressed(shift) {
   }
 }
 function togglePlayback(){
-  if (player.state === "play") {
+  if (player.isPlaying === true) {
     player.pause();
-  } else {
+  } else if (player.isPlaying === false) {
     player.play();
+  } else {
+    // haven't received state from server yet
   }
 }
 

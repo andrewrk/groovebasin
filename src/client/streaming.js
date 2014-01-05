@@ -59,7 +59,7 @@ function onPlaying() {
 }
 
 function updatePlayer() {
-  var shouldStream = tryingToStream && player.state === "play";
+  var shouldStream = tryingToStream && player.isPlaying === true;
   if (actuallyStreaming === shouldStream) return;
   if (shouldStream) {
     audio.src = getUrl();

@@ -132,7 +132,7 @@ PlayerClient.prototype.updateStatus = function(callback){
     if (err) return callback(err);
     self.volume = o.volume;
     self.repeat = o.repeat;
-    self.state = o.state;
+    self.isPlaying = o.isPlaying;
     self.trackStartDate = o.trackStartDate != null ? new Date(new Date(o.trackStartDate) - self.serverTimeOffset) : null;
     self.pausedTime = o.pausedTime;
   });
@@ -253,26 +253,29 @@ PlayerClient.prototype.shuffle = function(){
   this.sendCommandName('shuffle');
 };
 
-PlayerClient.prototype.stop = function(){
-  this.sendCommandName('stop');
-  this.state = "stop";
-  this.emit('statusupdate');
-};
-
 PlayerClient.prototype.play = function(){
   this.sendCommandName('play');
-  if (this.state === "pause") {
+  if (this.isPlaying === false) {
     this.trackStartDate = elapsedToDate(this.pausedTime);
-    this.state = "play";
+    this.isPlaying = true;
+    this.emit('statusupdate');
+  }
+};
+
+PlayerClient.prototype.stop = function(){
+  this.sendCommandName('stop');
+  if (this.isPlaying === true) {
+    this.pausedTime = 0;
+    this.isPlaying = false;
     this.emit('statusupdate');
   }
 };
 
 PlayerClient.prototype.pause = function(){
   this.sendCommandName('pause');
-  if (this.state === "play") {
+  if (this.isPlaying === true) {
     this.pausedTime = dateToElapsed(this.trackStartDate);
-    this.state = "pause";
+    this.isPlaying = false;
     this.emit('statusupdate');
   }
 };
@@ -342,50 +345,73 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
   this.emit('playlistupdate');
 };
 
-PlayerClient.prototype.shiftIds = function(trackIdSet, offset){
-  var i;
-  var items = {};
-  var previousKey = null;
-  var nextKey = null;
+PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
+  // an example of shifting 5 items (a,c,f,g,i) "down":
+  // offset: +1, reverse: false, this -> way
+  // selection: *     *        *  *     *
+  //    before: a, b, c, d, e, f, g, h, i
+  //             \     \        \  \    |
+  //              \     \        \  \   |
+  //     after: b, a, d, c, e, h, f, g, i
+  // selection:    *     *        *  *  *
+  // (note that "i" does not move because it has no futher to go.)
+  //
+  // an alternate way to think about it: some items "leapfrog" backwards over the selected items.
+  // this ends up being much simpler to compute, and even more compact to communicate.
+  // selection: *     *        *  *     *
+  //    before: a, b, c, d, e, f, g, h, i
+  //              /     /        ___/
+  //             /     /        /
+  //     after: b, a, d, c, e, h, f, g, i
+  // selection:    *     *        *  *  *
+  // (note that the moved items are not the selected items)
   var itemList = this.playlist.itemList;
-  var track, sortKey;
-  if (offset < 0) {
-    for (i = 0; i < itemList.length; i += 1) {
-      track = itemList[i];
-      if (track.id in trackIdSet) {
-        if (nextKey == null) {
-          continue;
-        }
-        sortKey = keese(previousKey, nextKey);
-        items[track.id] = {
-          sortKey: sortKey
-        };
-        track.sortKey = sortKey;
-      }
-      previousKey = nextKey;
-      nextKey = track.sortKey;
+  var movedItems = {};
+  var reverse = offset === -1;
+  function getKeeseBetween(itemA, itemB) {
+    if (reverse) {
+      var tmp = itemA;
+      itemA = itemB;
+      itemB = tmp;
     }
-  } else {
-    for (i = itemList.length - 1; i >= 0; i -= 1) {
-      track = itemList[i];
-      if (track.id in trackIdSet) {
-        if (previousKey == null) {
-          continue;
+    var keyA = itemA == null ? null : itemA.sortKey;
+    var keyB = itemB == null ? null : itemB.sortKey;
+    return keese(keyA, keyB);
+  }
+  if (reverse) {
+    // to make this easier, just reverse the item list in place so we can write one iteration routine.
+    // note that we are editing our data model live! so don't forget to refresh it later.
+    itemList.reverse();
+  }
+  for (var i = itemList.length - 1; i >= 1; i--) {
+    var track = itemList[i];
+    if (!(track.id in trackIdSet) && (itemList[i - 1].id in trackIdSet)) {
+      // this one needs to move backwards (e.g. found "h" is not selected, and "g" is selected)
+      i--; // e.g. g
+      i--; // e.g. f
+      while (true) {
+        if (i < 0) {
+          // fell off the end (or beginning) of the list
+          track.sortKey = getKeeseBetween(null, itemList[0]);
+          break;
         }
-        sortKey = keese(previousKey, nextKey);
-        items[track.id] = {
-          sortKey: sortKey
-        };
-        track.sortKey = sortKey;
+        if (!(itemList[i].id in trackIdSet)) {
+          // this is where it goes (e.g. found "d" is not selected)
+          track.sortKey = getKeeseBetween(itemList[i], itemList[i + 1]);
+          break;
+        }
+        i--;
       }
-      nextKey = previousKey;
-      previousKey = track.sortKey;
+      movedItems[track.id] = {sortKey: track.sortKey};
+      i++;
     }
   }
+  // we may have reversed the table and adjusted all the sort keys, so we need to refresh this.
   this.refreshPlaylistList();
+
   this.sendCommand({
     name: 'move',
-    items: items
+    items: movedItems,
   });
   this.emit('playlistupdate');
 };
@@ -499,7 +525,7 @@ PlayerClient.prototype.clearPlaylist = function(){
 PlayerClient.prototype.anticipatePlayId = function(trackId){
   var item = this.playlist.itemTable[trackId];
   this.currentItem = item;
-  this.state = "play";
+  this.isPlaying = true;
   this.duration = item.track.duration;
   this.trackStartDate = new Date();
   this.emit('statusupdate');

@@ -43,7 +43,7 @@ checkpoint, we will cut a release. Until then, use these instructions to
 run from source:
 
 1. Make sure you have the latest stable [Node.js](http://nodejs.org) installed.
-2. Install [libgroove](https://github.com/superjoe30/libgroove).
+2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source.
 4. `npm run build`
 5. `npm start`
@@ -75,7 +75,7 @@ $ npm run dev
   * improve build and development setup
   * update style to not resize on selection. closes #23
   * better connection error messages. closes #21
-  * separate [mpd.js](https://github.com/superjoe30/mpd.js) into an open source module. closes #25
+  * separate [mpd.js](https://github.com/andrewrk/mpd.js) into an open source module. closes #25
   * fix dynamicmode; use higher level sticker api. closes #22
   * search uses ascii folding so that 'jonsi' matches 'Jónsi'. closes #29
   * server restarts if it crashes

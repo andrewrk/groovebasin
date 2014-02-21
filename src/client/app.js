@@ -356,6 +356,7 @@ var started_drag = false;
 var abortDrag = function(){};
 var clickTab = null;
 var myUserId = null;
+var lastFmApiKey = null;
 var chat_name_input_visible = false;
 var LoadStatus = {
   Init: 'Loading...',
@@ -542,11 +543,10 @@ function getDragPosition(x, y){
 }
 
 function renderSettings() {
-  var apiKey = ""; // TODO fix this when lastfm plugin is fixed
   var context = {
     lastfm: {
       auth_url: "http://www.last.fm/api/auth/?api_key=" +
-        encodeURIComponent(apiKey) + "&cb=" +
+        encodeURIComponent(lastFmApiKey) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/"),
       username: localState.lastfm.username,
       session_key: localState.lastfm.session_key,
@@ -1741,21 +1741,21 @@ function setUpSettingsUi(){
     return false;
   });
   $settings.on('click', '#toggle-scrobble', function(event){
-    var value, msg, params;
-    value = $(this).prop("checked");
+    var msg;
+    var value = $(this).prop("checked");
     if (value) {
-      msg = 'LastfmScrobblersAdd';
+      msg = 'LastFmScrobblersAdd';
       localState.lastfm.scrobbling_on = true;
     } else {
-      msg = 'LastfmScrobblersRemove';
+      msg = 'LastFmScrobblersRemove';
       localState.lastfm.scrobbling_on = false;
     }
     saveLocalState();
-    params = {
+    var params = {
       username: localState.lastfm.username,
       session_key: localState.lastfm.session_key
     };
-    socket.emit(msg, JSON.stringify(params));
+    socket.emit(msg, params);
     renderSettings();
     return false;
   });
@@ -2080,30 +2080,30 @@ function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";
 }
 window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf";
+
 $document.ready(function(){
-  var ref$, token;
   loadLocalState();
   socket = io.connect();
   var queryObj = querystring.parse(location.search.substring(1));
   if (queryObj.token) {
-    socket.emit('LastfmGetSession', queryObj.token);
-    socket.on('LastfmGetSessionSuccess', function(data){
-      var params;
-      params = JSON.parse(data);
+    socket.emit('LastFmGetSession', queryObj.token);
+    socket.on('LastFmGetSessionSuccess', function(params){
       localState.lastfm.username = params.session.name;
       localState.lastfm.session_key = params.session.key;
       localState.lastfm.scrobbling_on = false;
       saveLocalState();
       refreshPage();
     });
-    socket.on('LastfmGetSessionError', function(data){
-      var params;
-      params = JSON.parse(data);
-      alert("Error authenticating: " + params.message);
+    socket.on('LastFmGetSessionError', function(message){
+      alert("Error authenticating: " + message);
       refreshPage();
     });
     return;
   }
+  socket.on('LastFmApiKey', function(data) {
+    lastFmApiKey = data;
+    renderSettings();
+  });
   socket.on('Identify', function(data){
     myUserId = data.toString();
     localState.myUserIds[myUserId] = 1;

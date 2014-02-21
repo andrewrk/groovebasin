@@ -34,7 +34,7 @@ Live discussion in #libgroove on Freenode.
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
-* (currently broken) Last.fm scrobbling.
+* Last.fm scrobbling.
 
 ## Install
 

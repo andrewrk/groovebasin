@@ -1086,6 +1086,22 @@ var keyboard_handlers = (function(){
       }
     }
   }
+  var volumeDownHandler = {
+      ctrl: false,
+      alt: false,
+      shift: null,
+      handler: function(){
+        player.setVolume(player.volume - 0.10);
+      }
+  };
+  var volumeUpHandler = {
+      ctrl: false,
+      alt: false,
+      shift: null,
+      handler: function(){
+        player.setVolume(player.volume + 0.10);
+      }
+  };
   return handlers = {
     13: {
       ctrl: false,
@@ -1155,6 +1171,7 @@ var keyboard_handlers = (function(){
         handleDeletePressed(event.shiftKey);
       }
     },
+    61: volumeUpHandler,
     67: {
       ctrl: false,
       alt: false,
@@ -1215,14 +1232,8 @@ var keyboard_handlers = (function(){
         $upload_by_url.focus().select();
       }
     },
-    187: {
-      ctrl: false,
-      alt: false,
-      shift: null,
-      handler: function(){
-        player.setVolume(player.volume + 0.10);
-      }
-    },
+    173: volumeDownHandler,
+    187: volumeUpHandler,
     188: {
       ctrl: false,
       alt: false,
@@ -1231,14 +1242,7 @@ var keyboard_handlers = (function(){
         player.prev();
       }
     },
-    189: {
-      ctrl: false,
-      alt: false,
-      shift: null,
-      handler: function(){
-        player.setVolume(player.volume - 0.10);
-      }
-    },
+    189: volumeDownHandler,
     190: {
       ctrl: false,
       alt: false,
@@ -1271,6 +1275,7 @@ var keyboard_handlers = (function(){
     }
   };
 })();
+
 function removeContextMenu(){
   $('#menu').remove();
 }

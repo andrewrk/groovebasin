@@ -1080,9 +1080,9 @@ var keyboard_handlers = (function(){
           player.prev();
         }
       } else if (event.shiftKey) {
-        player.seek(getCurrentTrackPosition() + dir * player.duration * 0.10);
+        player.seek(null, getCurrentTrackPosition() + dir * player.duration * 0.10);
       } else {
-        player.seek(getCurrentTrackPosition() + dir * 10);
+        player.seek(null, getCurrentTrackPosition() + dir * 10);
       }
     }
   }
@@ -1109,7 +1109,7 @@ var keyboard_handlers = (function(){
       shift: null,
       handler: function(event){
         if (selection.isPlaylist()) {
-          player.playId(selection.cursor);
+          player.seek(selection.cursor, 0);
         } else if (selection.isLibrary()) {
           queueSelection(event);
         }
@@ -1433,7 +1433,7 @@ function setUpPlaylistUi(){
   });
   $playlist_items.on('dblclick', '.pl-item', function(event){
     var trackId = $(this).attr('data-id');
-    player.playId(trackId);
+    player.seek(trackId, 0);
   });
   $playlist_items.on('contextmenu', function(event){
     return event.altKey;
@@ -1636,7 +1636,7 @@ function setUpNowPlayingUi(){
       if (event.originalEvent == null) {
         return;
       }
-      player.seek(ui.value * player.duration);
+      player.seek(null, ui.value * player.duration);
     },
     slide: function(event, ui){
       updateSliderUi(ui.value);

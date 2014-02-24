@@ -293,7 +293,7 @@ PlayerClient.prototype.next = function(){
   var item = this.playlist.itemList[index];
   var id = item && item.id;
 
-  this.playId(id);
+  this.seek(id, 0);
 };
 
 PlayerClient.prototype.prev = function(){
@@ -307,15 +307,7 @@ PlayerClient.prototype.prev = function(){
   var item = this.playlist.itemList[index];
   var id = item && item.id;
 
-  this.playId(id);
-};
-
-PlayerClient.prototype.playId = function(trackId){
-  this.sendCommand({
-    name: 'playid',
-    trackId: trackId
-  });
-  this.anticipatePlayId(trackId);
+  this.seek(id, 0);
 };
 
 PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
@@ -437,14 +429,19 @@ PlayerClient.prototype.removeIds = function(trackIds){
   this.emit('playlistupdate');
 };
 
-PlayerClient.prototype.seek = function(pos) {
-  pos = parseFloat(pos, 10);
+PlayerClient.prototype.seek = function(id, pos) {
+  pos = parseFloat(pos || 0, 10);
+  var item = id ? this.playlist.itemTable[id] : this.currentItem;
   if (pos < 0) pos = 0;
-  if (pos > this.duration) pos = this.duration;
+  if (pos > item.duration) pos = item.duration;
   this.sendCommand({
     name: 'seek',
+    id: id,
     pos: pos,
   });
+  this.currentItem = item;
+  this.isPlaying = true;
+  this.duration = item.track.duration;
   this.trackStartDate = elapsedToDate(pos);
   this.emit('statusupdate');
 };

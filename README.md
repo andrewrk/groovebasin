@@ -36,6 +36,8 @@ Live discussion in #libgroove on Freenode.
 
 * Last.fm scrobbling.
 
+* (work in progress) Supports the MPD protocol
+
 ## Install
 
 Groove Basin is undergoing heavy restructuring. When this gets to a good

@@ -436,7 +436,7 @@ PlayerClient.prototype.seek = function(id, pos) {
   if (pos > item.duration) pos = item.duration;
   this.sendCommand({
     name: 'seek',
-    id: id,
+    id: item.id,
     pos: pos,
   });
   this.currentItem = item;

@@ -971,7 +971,7 @@ function togglePlayback(){
 
 function setDynamicMode(value) {
   dynamicModeState.on = value;
-  socket.emit('DynamicMode', dynamicModeState);
+  player.sendCommand({name: 'dynamicMode', value: dynamicModeState});
 }
 
 function toggleDynamicMode(){
@@ -2128,7 +2128,7 @@ $document.ready(function(){
     player.volume = vol;
     renderVolumeSlider();
   });
-  socket.on('DynamicMode', function(data) {
+  socket.on('dynamicMode', function(data) {
     dynamicModeState = data;
     renderPlaylistButtons();
     renderPlaylist();

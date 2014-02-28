@@ -58,6 +58,13 @@ function onPlaying() {
   renderStreamButton();
 }
 
+function clearBuffer() {
+  tryingToStream = !tryingToStream;
+  updatePlayer();
+  tryingToStream = !tryingToStream;
+  updatePlayer();
+}
+
 function updatePlayer() {
   var shouldStream = tryingToStream && player.isPlaying === true;
   if (actuallyStreaming === shouldStream) return;
@@ -87,5 +94,6 @@ function init(playerInstance, socket) {
   player = playerInstance;
 
   player.on('statusupdate', updatePlayer);
+  socket.on('seek', clearBuffer);
   setUpUi();
 }

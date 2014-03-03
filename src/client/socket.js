@@ -14,7 +14,7 @@ function Socket() {
     var host = window.document.location.host;
     var pathname = window.document.location.pathname;
     var match = host.match(/^(.+):(\d+)$/);
-    var port = match ? parseInt(match[2], 10) : 443;
+    var port = match ? parseInt(match[2], 10) : 80;
     var hostName = match ? match[1] : host;
     var wsUrl = 'ws://' + hostName + ':' + port + pathname;
     self.ws = new WebSocket(wsUrl);

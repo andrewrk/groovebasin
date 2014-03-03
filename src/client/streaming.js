@@ -59,10 +59,12 @@ function onPlaying() {
 }
 
 function clearBuffer() {
-  tryingToStream = !tryingToStream;
-  updatePlayer();
-  tryingToStream = !tryingToStream;
-  updatePlayer();
+  if (tryingToStream) {
+    tryingToStream = !tryingToStream;
+    updatePlayer();
+    tryingToStream = !tryingToStream;
+    updatePlayer();
+  }
 }
 
 function updatePlayer() {
@@ -93,7 +95,7 @@ function setUpUi() {
 function init(playerInstance, socket) {
   player = playerInstance;
 
-  player.on('statusupdate', updatePlayer);
+  player.on('currentTrack', updatePlayer);
   socket.on('seek', clearBuffer);
   setUpUi();
 }

@@ -3,19 +3,9 @@ var util = require('util');
 var uuid = require('uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
+var jsondiffpatch = require('jsondiffpatch');
 
 module.exports = PlayerClient;
-
-/*
- * If you look at the code in this file and think to yourself "What the fuck?"
- * This should clear it up:
- * 
- *   * This code was written in JavaScript, then converted to Coffee-Script,
- *     then converted to satyr/coco, and then back to JavaScript (by using
- *     the output of the coco compiler).
- *   * This code used to use the MPD protocol, but that is no longer true.
- *
- * */
 
 var compareSortKeyAndId = makeCompareProps(['sortKey', 'id']);
 
@@ -27,140 +17,123 @@ util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
   EventEmitter.call(this);
 
+  window.__debug_PlayerClient = this;
+
   var self = this;
   self.socket = socket;
+  self.serverTimeOffset = 0;
+  self.serverTrackStartDate = null;
+  self.playlistFromServer = undefined;
+  self.playlistFromServerVersion = null;
+  self.libraryFromServer = undefined;
+  self.libraryFromServerVersion = null;
   self.resetServerState();
-  self.updateFuncs = {
-    playlist: self.updatePlaylist.bind(self),
-    player: self.updateStatus.bind(self),
-    mixer: self.updateStatus.bind(self),
-  };
-  self.socket.on('PlayerResponse', function(data) {
-    self.handleResponse(JSON.parse(data));
-  });
-  self.socket.on('PlayerStatus', function(data) {
-    self.handleStatus(JSON.parse(data));
-  });
   self.socket.on('disconnect', function() {
     self.resetServerState();
   });
-  if (self.socket.socket.connected) {
+  if (self.socket.isConnected) {
     self.handleConnectionStart();
   } else {
     self.socket.on('connect', self.handleConnectionStart.bind(self));
   }
-}
-
-PlayerClient.prototype.handleConnectionStart = function(){
-  var self = this;
-  this.updateLibrary(function(){
-    self.updateServerTime();
-    self.updateStatus();
-    self.updatePlaylist();
+  self.socket.on('time', function(o) {
+    self.serverTimeOffset = new Date(o) - new Date();
+    self.updateTrackStartDate();
+    self.emit('statusupdate');
   });
-};
+  self.socket.on('volume', function(volume) {
+    self.volume = volume;
+    self.emit('statusupdate');
+  });
+  self.socket.on('repeat', function(repeat) {
+    self.repeat = repeat;
+    self.emit('statusupdate');
+  });
 
-PlayerClient.prototype.updateLibrary = function(callback){
-  var self = this;
-  callback = callback || noop;
-  this.sendCommandName('listallinfo', function(err, trackTable){
-    if (err) return callback(err);
+  self.socket.on('currentTrack', function(o) {
+    self.isPlaying = o.isPlaying;
+    self.serverTrackStartDate = o.trackStartDate && new Date(o.trackStartDate);
+    self.pausedTime = o.pausedTime;
+    self.currentItemId = o.currentItemId;
+    self.updateTrackStartDate();
+    self.updateCurrentItem();
+    self.emit('statusupdate');
+    self.emit('currentTrack');
+  });
+
+  self.socket.on('playlist', function(o) {
+    if (o.reset) self.playlistFromServer = undefined;
+    self.playlistFromServer = jsondiffpatch.patch(self.playlistFromServer, o.delta);
+    deleteUndefineds(self.playlistFromServer);
+    self.playlistFromServerVersion = o.version;
+    self.updatePlaylistIndex();
+    self.emit('playlistupdate');
+  });
+
+  self.socket.on('library', function(o) {
+    if (o.reset) self.libraryFromServer = undefined;
+    self.libraryFromServer = jsondiffpatch.patch(self.libraryFromServer, o.delta);
+    deleteUndefineds(self.libraryFromServer);
+    self.libraryFromServerVersion = o.version;
     self.library.clear();
-    for (var key in trackTable) {
-      var track = trackTable[key];
+    for (var key in self.libraryFromServer) {
+      var track = self.libraryFromServer[key];
       self.library.addTrack(track);
     }
     self.library.rebuild();
+    self.updatePlaylistIndex();
     self.haveFileListCache = true;
     var lastQuery = self.lastQuery;
     self.lastQuery = null;
     self.search(lastQuery);
-    callback();
   });
+
+  function deleteUndefineds(o) {
+    for (var key in o) {
+      if (o[key] === undefined) delete o[key];
+    }
+  }
+}
+
+PlayerClient.prototype.handleConnectionStart = function(){
+  this.sendCommand('subscribe', {name: 'volume'});
+  this.sendCommand('subscribe', {name: 'repeat'});
+  this.sendCommand('subscribe', {name: 'currentTrack'});
+  this.sendCommand('subscribe', {
+    name: 'playlist',
+    delta: true,
+    version: this.playlistFromServerVersion,
+  });
+  this.sendCommand('subscribe', { name: 'library', delta: true, });
 };
 
-PlayerClient.prototype.updatePlaylist = function(callback){
-  var self = this;
-  callback = callback || noop;
-  this.sendCommandName('playlistinfo', function(err, tracks){
-    if (err) return callback(err);
-    self.clearPlaylist();
-    for (var id in tracks) {
-      var item = tracks[id];
-      var track = self.library.trackTable[item.key];
-      self.playlist.itemTable[id] = {
-        id: id,
-        sortKey: item.sortKey,
-        isRandom: item.isRandom,
-        track: track,
-        playlist: self.playlist,
-      };
-    }
-    self.refreshPlaylistList();
-    if (self.currentItem != null) {
-      self.currentItem = self.playlist.itemTable[self.currentItem.id];
-    }
-    if (self.currentItem != null) {
-      self.emit('playlistupdate');
-      callback();
-    } else {
-      self.updateStatus(function(err){
-        if (err) {
-          return callback(err);
-        }
-        self.emit('playlistupdate');
-        callback();
-      });
-    }
-  });
+PlayerClient.prototype.updateTrackStartDate = function() {
+  this.trackStartDate = (this.serverTrackStartDate != null) ?
+    new Date(new Date(this.serverTrackStartDate) - this.serverTimeOffset) : null;
+}
+
+PlayerClient.prototype.updateCurrentItem = function() {
+  this.currentItem = (this.currentItemId != null) ?
+    this.playlist.itemTable[this.currentItemId] : null;
 };
 
-PlayerClient.prototype.updateServerTime = function(callback) {
-  var self = this;
-  callback = callback || noop;
-  this.sendCommandName('whattimeisit', function(err, o){
-    if (err) return callback(err);
-    self.serverTimeOffset = new Date(o) - new Date();
-    callback();
-  });
-};
-
-PlayerClient.prototype.updateStatus = function(callback){
-  var self = this;
-  callback = callback || noop;
-  this.sendCommandName('status', function(err, o){
-    if (err) return callback(err);
-    self.volume = o.volume;
-    self.repeat = o.repeat;
-    self.isPlaying = o.isPlaying;
-    self.trackStartDate = o.trackStartDate != null ? new Date(new Date(o.trackStartDate) - self.serverTimeOffset) : null;
-    self.pausedTime = o.pausedTime;
-  });
-  this.sendCommandName('currentsong', function(err, id){
-    if (err) return callback(err);
-    if (id != null) {
-      self.currentItem = self.playlist.itemTable[id];
-      if (self.currentItem != null) {
-        self.duration = self.currentItem.track.duration;
-        self.emit('statusupdate');
-        callback();
-      } else {
-        self.currentItem = null;
-        self.updatePlaylist(function(err){
-          if (err) {
-            return callback(err);
-          }
-          self.emit('statusupdate');
-          callback();
-        });
-      }
-    } else {
-      self.currentItem = null;
-      callback();
-      self.emit('statusupdate');
-    }
-  });
-};
+PlayerClient.prototype.updatePlaylistIndex = function() {
+  this.clearPlaylist();
+  if (!this.playlistFromServer) return;
+  for (var id in this.playlistFromServer) {
+    var item = this.playlistFromServer[id];
+    var track = this.library.trackTable[item.key];
+    this.playlist.itemTable[id] = {
+      id: id,
+      sortKey: item.sortKey,
+      isRandom: item.isRandom,
+      track: track,
+      playlist: this.playlist,
+    };
+  }
+  this.refreshPlaylistList();
+  this.updateCurrentItem();
+}
 
 PlayerClient.prototype.search = function(query) {
   query = query.trim();
@@ -172,6 +145,7 @@ PlayerClient.prototype.search = function(query) {
   this.lastQuery = query;
   this.searchResults = this.library.search(query);
   this.emit('libraryupdate');
+  this.emit('playlistupdate');
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {
@@ -221,10 +195,7 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
     previousKey = sortKey;
   }
   this.refreshPlaylistList();
-  this.sendCommand({
-    name: 'addid',
-    items: items,
-  });
+  this.sendCommand('addid', items);
   this.emit('playlistupdate');
 };
 
@@ -244,17 +215,17 @@ PlayerClient.prototype.queueTracksNext = function(keys) {
 };
 
 PlayerClient.prototype.clear = function(){
-  this.sendCommandName('clear');
+  this.sendCommand('clear');
   this.clearPlaylist();
   this.emit('playlistupdate');
 };
 
 PlayerClient.prototype.shuffle = function(){
-  this.sendCommandName('shuffle');
+  this.sendCommand('shuffle');
 };
 
 PlayerClient.prototype.play = function(){
-  this.sendCommandName('play');
+  this.sendCommand('play');
   if (this.isPlaying === false) {
     this.trackStartDate = elapsedToDate(this.pausedTime);
     this.isPlaying = true;
@@ -263,7 +234,7 @@ PlayerClient.prototype.play = function(){
 };
 
 PlayerClient.prototype.stop = function(){
-  this.sendCommandName('stop');
+  this.sendCommand('stop');
   if (this.isPlaying === true) {
     this.pausedTime = 0;
     this.isPlaying = false;
@@ -272,7 +243,7 @@ PlayerClient.prototype.stop = function(){
 };
 
 PlayerClient.prototype.pause = function(){
-  this.sendCommandName('pause');
+  this.sendCommand('pause');
   if (this.isPlaying === true) {
     this.pausedTime = dateToElapsed(this.trackStartDate);
     this.isPlaying = false;
@@ -330,10 +301,7 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
     previousKey = sortKey;
   }
   this.refreshPlaylistList();
-  this.sendCommand({
-    name: 'move',
-    items: items,
-  });
+  this.sendCommand('move', items);
   this.emit('playlistupdate');
 };
 
@@ -401,10 +369,7 @@ PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
   // we may have reversed the table and adjusted all the sort keys, so we need to refresh this.
   this.refreshPlaylistList();
 
-  this.sendCommand({
-    name: 'move',
-    items: movedItems,
-  });
+  this.sendCommand('move', movedItems);
   this.emit('playlistupdate');
 };
 
@@ -415,6 +380,7 @@ PlayerClient.prototype.removeIds = function(trackIds){
     var trackId = trackIds[i];
     var currentId = this.currentItem && this.currentItem.id;
     if (currentId === trackId) {
+      this.currentItemId = null;
       this.currentItem = null;
     }
     ids.push(trackId);
@@ -422,10 +388,7 @@ PlayerClient.prototype.removeIds = function(trackIds){
     delete this.playlist.itemTable[item.id];
     this.refreshPlaylistList();
   }
-  this.sendCommand({
-    name: 'deleteid',
-    ids: ids
-  });
+  this.sendCommand('deleteid', ids);
   this.emit('playlistupdate');
 };
 
@@ -434,12 +397,12 @@ PlayerClient.prototype.seek = function(id, pos) {
   var item = id ? this.playlist.itemTable[id] : this.currentItem;
   if (pos < 0) pos = 0;
   if (pos > item.duration) pos = item.duration;
-  this.sendCommand({
-    name: 'seek',
+  this.sendCommand('seek', {
     id: item.id,
     pos: pos,
   });
   this.currentItem = item;
+  this.currentItemId = item.id;
   this.isPlaying = true;
   this.duration = item.track.duration;
   this.trackStartDate = elapsedToDate(pos);
@@ -450,64 +413,18 @@ PlayerClient.prototype.setVolume = function(vol){
   if (vol > 1.0) vol = 1.0;
   if (vol < 0.0) vol = 0.0;
   this.volume = vol;
-  this.sendCommand({
-    name: "setvol",
-    vol: this.volume,
-  });
+  this.sendCommand('setvol', this.volume);
   this.emit('statusupdate');
 };
 
 PlayerClient.prototype.setRepeatMode = function(mode) {
   this.repeat = mode;
-  this.sendCommand({
-    name: 'repeat',
-    mode: mode,
-  });
+  this.sendCommand('repeat', mode);
   this.emit('statusupdate');
 };
 
-PlayerClient.prototype.authenticate = function(password, callback){
-  callback = callback || noop;
-  this.sendCommand({
-    name: 'password',
-    password: password
-  }, function(err){
-    callback(err);
-  });
-};
-
-PlayerClient.prototype.sendCommandName = function(name, cb){
-  cb = cb || noop;
-  this.sendCommand({
-    name: name
-  }, cb);
-};
-
-PlayerClient.prototype.sendCommand = function(cmd, cb){
-  cb = cb || noop;
-  var callbackId = this.nextResponseHandlerId++;
-  this.responseHandlers[callbackId] = cb;
-  this.socket.emit('request', JSON.stringify({
-    cmd: cmd,
-    callbackId: callbackId
-  }));
-};
-
-PlayerClient.prototype.handleResponse = function(arg){
-  var err = arg.err;
-  var msg = arg.msg;
-  var callbackId = arg.callbackId;
-  var handler = this.responseHandlers[callbackId];
-  delete this.responseHandlers[callbackId];
-  handler(err, msg);
-};
-
-PlayerClient.prototype.handleStatus = function(systems){
-  for (var i = 0; i < systems.length; i += 1) {
-    var system = systems[i];
-    var updateFunc = this.updateFuncs[system];
-    if (updateFunc) updateFunc();
-  }
+PlayerClient.prototype.sendCommand = function(name, args) {
+  this.socket.send(name, args);
 };
 
 PlayerClient.prototype.clearPlaylist = function(){
@@ -522,6 +439,7 @@ PlayerClient.prototype.clearPlaylist = function(){
 PlayerClient.prototype.anticipatePlayId = function(trackId){
   var item = this.playlist.itemTable[trackId];
   this.currentItem = item;
+  this.currentItemId = item.id;
   this.isPlaying = true;
   this.duration = item.track.duration;
   this.trackStartDate = new Date();
@@ -551,8 +469,6 @@ PlayerClient.prototype.refreshPlaylistList = function(){
 };
 
 PlayerClient.prototype.resetServerState = function(){
-  this.responseHandlers = {};
-  this.nextResponseHandlerId = 0;
   this.haveFileListCache = false;
   this.library = new MusicLibraryIndex({
     searchFields: MusicLibraryIndex.defaultSearchFields.concat('file'),
@@ -562,6 +478,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.clearPlaylist();
   this.repeat = 0;
   this.currentItem = null;
+  this.currentItemId = null;
 
   this.stored_playlist_table = {};
   this.stored_playlist_item_table = {};

@@ -1,16 +1,16 @@
 var $ = window.$;
 var Handlebars = window.Handlebars;
 var qq = window.qq;
-var io = window.io;
 
 var shuffle = require('mess');
 var querystring = require('querystring');
 var zfill = require('zfill');
 var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
+var Socket = require('./socket');
 
 var chatState;
-var dynamicModeState = { on: false };
+var dynamicModeOn = false;
 
 
 var selection = {
@@ -453,7 +453,7 @@ function setUserName(newName) {
   newName = newName.trim();
   localState.userName = newName;
   saveLocalState();
-  socket.emit('SetUserName', newName);
+  socket.send('SetUserName', newName);
 }
 
 function scrollLibraryToSelection(){
@@ -479,7 +479,10 @@ function scrollThingToSelection($scroll_area, helpers){
   top_pos = null;
   bottom_pos = null;
   for (sel_name in helpers) {
-    ref$ = helpers[sel_name], ids = ref$[0], table = ref$[1], $getDiv = ref$[2];
+    ref$ = helpers[sel_name];
+    ids = ref$[0];
+    table = ref$[1];
+    $getDiv = ref$[2];
     for (id in ids) {
       item_top = ($div = $getDiv(id)).offset().top;
       item_bottom = item_top + $div.height();
@@ -615,7 +618,7 @@ function renderChat() {
 
 function renderPlaylistButtons(){
   $dynamicMode
-    .prop("checked", dynamicModeState.on)
+    .prop("checked", dynamicModeOn)
     .button("refresh");
   var repeatModeName = repeatModeNames[player.repeat];
   $pl_btn_repeat
@@ -647,7 +650,7 @@ function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
   $playlist_items.find(".pl-item").removeClass('current').removeClass('old');
-  if (curItem != null && dynamicModeState.on) {
+  if (curItem != null && dynamicModeOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.playlist.itemList[index];
       var itemId = item && item.id;
@@ -720,7 +723,10 @@ function refreshSelection(){
     return;
   }
   for (sel_name in helpers) {
-    ref$ = helpers[sel_name], ids = ref$[0], table = ref$[1], $getDiv = ref$[2];
+    ref$ = helpers[sel_name];
+    ids = ref$[0];
+    table = ref$[1];
+    $getDiv = ref$[2];
     for (i = 0, len$ = (ref$ = (fn$())).length; i < len$; ++i) {
       id = ref$[i];
       delete ids[id];
@@ -785,7 +791,7 @@ function updateSliderPos() {
   if (user_is_seeking) return;
 
   var duration, disabled, elapsed, sliderPos;
-  if (player.currentItem != null && player.isPlaying != null) {
+  if (player.currentItem && player.isPlaying != null && player.currentItem.track) {
     disabled = false;
     elapsed = getCurrentTrackPosition();
     duration = player.currentItem.track.duration;
@@ -932,7 +938,7 @@ function handleDeletePressed(shift) {
     if (!confirmDelete(keysList)) {
       return;
     }
-    socket.emit('DeleteFromLibrary', keysList);
+    socket.send('deleteTracks', keysList);
   } else if (selection.isPlaylist()) {
     if (shift) {
       keysList = [];
@@ -940,7 +946,7 @@ function handleDeletePressed(shift) {
         keysList.push(player.playlist.itemTable[id].track.key);
       }
       if (!confirmDelete(keysList)) return;
-      socket.emit('DeleteFromLibrary', keysList);
+      socket.send('deleteTracks', keysList);
     }
     var index = player.playlist.itemTable[selection.cursor].index;
     player.removeIds((function(){
@@ -964,18 +970,17 @@ function togglePlayback(){
     player.pause();
   } else if (player.isPlaying === false) {
     player.play();
-  } else {
-    // haven't received state from server yet
   }
+  // else we haven't received state from server yet
 }
 
 function setDynamicMode(value) {
-  dynamicModeState.on = value;
-  player.sendCommand({name: 'dynamicMode', value: dynamicModeState});
+  dynamicModeOn = value;
+  player.sendCommand('dynamicModeOn', dynamicModeOn);
 }
 
 function toggleDynamicMode(){
-  setDynamicMode(!dynamicModeState.on);
+  setDynamicMode(!dynamicModeOn);
 }
 
 function nextRepeatState(){
@@ -1045,13 +1050,16 @@ var keyboard_handlers = (function(){
     }
   }
   function leftRightHandler(event){
-    var dir, helpers, ref$, ids, table, $getDiv, selected_item, is_expanded_funcs, is_expanded, $li, cursor_pos;
-    dir = event.which === 37 ? -1 : 1;
+    var helpers, ref$, ids, table, $getDiv, selected_item, is_expanded_funcs, is_expanded, $li, cursor_pos;
+    var dir = event.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
       if (!(helpers = getSelHelpers())) {
         return;
       }
-      ref$ = helpers[selection.type], ids = ref$[0], table = ref$[1], $getDiv = ref$[2];
+      ref$ = helpers[selection.type];
+      ids = ref$[0];
+      table = ref$[1];
+      $getDiv = ref$[2];
       selected_item = table[selection.cursor];
       is_expanded_funcs = {
         artist: isArtistExpanded,
@@ -1080,7 +1088,8 @@ var keyboard_handlers = (function(){
           player.prev();
         }
       } else if (event.shiftKey) {
-        player.seek(null, getCurrentTrackPosition() + dir * player.duration * 0.10);
+        if (!player.currentItem) return;
+        player.seek(null, getCurrentTrackPosition() + dir * player.currentItem.track.duration * 0.10);
       } else {
         player.seek(null, getCurrentTrackPosition() + dir * 10);
       }
@@ -1328,13 +1337,7 @@ function queueSelection(event){
 function sendAuth() {
   var pass = localState.authPassword;
   if (!pass) return;
-  player.authenticate(pass, function(err){
-    if (err) {
-      localState.authPassword = null;
-      saveLocalState();
-    }
-    renderSettings();
-  });
+  socket.send('password', pass);
 }
 
 function settingsAuthSave(){
@@ -1345,10 +1348,12 @@ function settingsAuthSave(){
   renderSettings();
   sendAuth();
 }
+
 function settingsAuthCancel(){
   settings_ui.auth.show_edit = false;
   renderSettings();
 }
+
 function performDrag(event, callbacks){
   abortDrag();
   var start_drag_x = event.pageX;
@@ -1394,6 +1399,7 @@ function performDrag(event, callbacks){
   $document.on('mousemove', onDragMove).on('mouseup', onDragEnd);
   onDragMove(event);
 }
+
 function setUpGenericUi(){
   $document.on('mouseover', '.hoverable', function(event){
     $(this).addClass("ui-state-hover");
@@ -1416,6 +1422,7 @@ function setUpGenericUi(){
     return true;
   });
 }
+
 function setUpPlaylistUi(){
   $pl_window.on('click', 'button.clear', function(){
     player.clear();
@@ -1550,6 +1557,7 @@ function setUpPlaylistUi(){
     return false;
   });
 }
+
 function setUpChatUi(){
   $chat_user_id_span.on('click', function(event){
     $chat_input.attr("disabled", "disabled");
@@ -1599,16 +1607,17 @@ function setUpChatUi(){
         setUserName(newUserName);
         return false;
       }
-      socket.emit('Chat', message);
+      socket.send('Chat', message);
       return false;
     }
   });
 }
+
 function updateSliderUi(value){
-  var percent;
-  percent = value * 100;
+  var percent = value * 100;
   $track_slider.css('background-size', percent + "% 100%");
 }
+
 function setUpNowPlayingUi(){
   var actions, cls, action;
   actions = {
@@ -1636,11 +1645,13 @@ function setUpNowPlayingUi(){
       if (event.originalEvent == null) {
         return;
       }
-      player.seek(null, ui.value * player.duration);
+      if (!player.currentItem) return;
+      player.seek(null, ui.value * player.currentItem.track.duration);
     },
     slide: function(event, ui){
       updateSliderUi(ui.value);
-      $nowplaying_elapsed.html(formatTime(ui.value * player.duration));
+      if (!player.currentItem) return;
+      $nowplaying_elapsed.html(formatTime(ui.value * player.currentItem.track.duration));
     },
     start: function(event, ui){
       user_is_seeking = true;
@@ -1675,6 +1686,7 @@ function setUpNowPlayingUi(){
     });
   }
 }
+
 function setUpTabsUi(){
   var tabs, i, len$, tab;
   $tabs.on('mouseover', 'li', function(event){
@@ -1717,6 +1729,7 @@ function setUpTabsUi(){
     });
   }
 }
+
 function setUpUploadUi(){
   var uploader;
   uploader = new qq.FileUploader({
@@ -1725,17 +1738,17 @@ function setUpUploadUi(){
     encoding: 'multipart'
   });
   $upload_by_url.on('keydown', function(event){
-    var url;
     event.stopPropagation();
     if (event.which === 27) {
       $upload_by_url.val("").blur();
     } else if (event.which === 13) {
-      url = $upload_by_url.val();
+      var url = $upload_by_url.val();
       $upload_by_url.val("").blur();
-      socket.emit('ImportTrackUrl', url);
+      socket.send('importUrl', url);
     }
   });
 }
+
 function setUpSettingsUi(){
   $settings.on('click', '.signout', function(event){
     localState.lastfm.username = null;
@@ -1760,7 +1773,7 @@ function setUpSettingsUi(){
       username: localState.lastfm.username,
       session_key: localState.lastfm.session_key
     };
-    socket.emit(msg, params);
+    socket.send(msg, params);
     renderSettings();
     return false;
   });
@@ -1859,6 +1872,7 @@ function setUpLibraryUi(){
     }
   });
 }
+
 function setUpStoredPlaylistsUi(){
   genericTreeUi($stored_playlists, {
     toggleExpansion: togglePlaylistExpansion,
@@ -1867,6 +1881,7 @@ function setUpStoredPlaylistsUi(){
     }
   });
 }
+
 function genericTreeUi($elem, options){
   $elem.on('mousedown', 'div.expandable > div.ui-icon', function(event){
     options.toggleExpansion($(this).closest('li'));
@@ -1911,7 +1926,9 @@ function genericTreeUi($elem, options){
           new_arr = selection.posToArr(new_pos);
           old_arr = selection.posToArr(old_pos);
           if (compareArrays(old_arr, new_arr) > 0) {
-            ref$ = [new_pos, old_pos], old_pos = ref$[0], new_pos = ref$[1];
+            ref$ = [new_pos, old_pos];
+            old_pos = ref$[0];
+            new_pos = ref$[1];
           }
           while (selection.posInBounds(old_pos)) {
             selection.selectPos(old_pos);
@@ -2084,14 +2101,15 @@ function handleResize(){
 function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";
 }
-window.WEB_SOCKET_SWF_LOCATION = "/vendor/socket.io/WebSocketMain.swf";
 
 $document.ready(function(){
   loadLocalState();
-  socket = io.connect();
+  socket = new Socket();
   var queryObj = querystring.parse(location.search.substring(1));
   if (queryObj.token) {
-    socket.emit('LastFmGetSession', queryObj.token);
+    socket.on('connect', function() {
+      socket.send('LastFmGetSession', queryObj.token);
+    });
     socket.on('LastFmGetSessionSuccess', function(params){
       localState.lastfm.username = params.session.name;
       localState.lastfm.session_key = params.session.key;
@@ -2116,8 +2134,8 @@ $document.ready(function(){
     var userName = localState.userName;
     if (userName) setUserName(userName);
   });
-  socket.on('Permissions', function(data){
-    permissions = JSON.parse(data.toString());
+  socket.on('permissions', function(data){
+    permissions = data;
     renderSettings();
   });
   socket.on('Chat', function(data) {
@@ -2128,8 +2146,8 @@ $document.ready(function(){
     player.volume = vol;
     renderVolumeSlider();
   });
-  socket.on('dynamicMode', function(data) {
-    dynamicModeState = data;
+  socket.on('dynamicModeOn', function(data) {
+    dynamicModeOn = data;
     renderPlaylistButtons();
     renderPlaylist();
   });
@@ -2143,6 +2161,7 @@ $document.ready(function(){
     labelPlaylistItems();
   });
   socket.on('connect', function(){
+    socket.send('subscribe', {name: 'dynamicModeOn'});
     sendAuth();
     load_status = LoadStatus.GoodToGo;
     render();

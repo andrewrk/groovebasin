@@ -67,6 +67,7 @@ function PlayerClient(socket) {
     deleteUndefineds(self.playlistFromServer);
     self.playlistFromServerVersion = o.version;
     self.updatePlaylistIndex();
+    self.emit('statusupdate');
     self.emit('playlistupdate');
   });
 
@@ -146,6 +147,7 @@ PlayerClient.prototype.search = function(query) {
   this.searchResults = this.library.search(query);
   this.emit('libraryupdate');
   this.emit('playlistupdate');
+  this.emit('statusupdate');
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {

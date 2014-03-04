@@ -1,0 +1,5 @@
+#!/bin/bash
+mkdir -p public
+./node_modules/.bin/stylus -o public/ -c --include-css src/client/styles
+./node_modules/.bin/browserify src/client/app.js --outfile public/app.js
+./node_modules/.bin/handlebars -f public/views.js src/client/views/

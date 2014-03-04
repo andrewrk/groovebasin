@@ -47,7 +47,7 @@
   },
   "scripts": {
     "start": "node lib/server.js",
-    "build": "npm install && node ./build.js",
+    "build": "npm install && ./build",
     "dev": "npm run build && npm start"
   }
 }

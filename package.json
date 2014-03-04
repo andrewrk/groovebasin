@@ -43,13 +43,11 @@
   "devDependencies": {
     "handlebars": "1.0.7",
     "stylus": "~0.29.0",
-    "node-dev": "~2.0.2",
-    "chokidar": "~0.6.3",
-    "watchify": "~0.2.0"
+    "browserify": "~3.32.0"
   },
   "scripts": {
     "start": "node lib/server.js",
-    "build": "npm install && node ./task.js build",
-    "dev": "npm install && node ./task.js dev"
+    "build": "npm install && node ./build.js",
+    "dev": "npm run build && npm start"
   }
 }

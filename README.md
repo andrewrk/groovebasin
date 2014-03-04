@@ -30,13 +30,22 @@ Live discussion in #libgroove on Freenode.
   [EBU R128 loudness scanning](http://tech.ebu.ch/loudness) (tags compatible
   with [ReplayGain](http://wiki.hydrogenaudio.org/index.php?title=ReplayGain_1.0_specification))
   and automatic switching between track and album mode.
+  ["Loudness Zen"](http://www.youtube.com/watch?v=iuEtQqC-Sqo)
 
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
-* Last.fm scrobbling.
+* MPD protocol support. This means you already have a selection of
+  [clients](http://mpd.wikia.com/wiki/Clients) which integrate with Groove Basin.
+  For example [MPDroid](https://play.google.com/store/apps/details?id=com.namelessdev.mpdroid).
 
-* (work in progress) Supports the MPD protocol
+* [Last.fm](http://www.last.fm/) scrobbling.
+
+* File system monitoring. Add songs anywhere inside your music directory and
+  they instantly appear in your library in real time.
+
+* Supports GrooveBasin Protocol on the same port as MPD Protocol - just use the
+  `protocolupgrade` command to upgrade.
 
 ## Install
 
@@ -44,7 +53,7 @@ Groove Basin is undergoing heavy restructuring. When this gets to a good
 checkpoint, we will cut a release. Until then, use these instructions to
 run from source:
 
-1. Make sure you have the latest stable [Node.js](http://nodejs.org) installed.
+1. Install [Node.js](http://nodejs.org) v0.10.x.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source.
 4. `npm run build`
@@ -67,6 +76,9 @@ If not found it creates one for you with default values.
 ```
 $ npm run dev
 ```
+
+This will install dependencies, build generated files, and then start the
+sever. It is up to you to restart it when you modify assets or server files.
 
 ## Release Notes
 

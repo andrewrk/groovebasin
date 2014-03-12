@@ -457,48 +457,46 @@ function setUserName(newName) {
 }
 
 function scrollLibraryToSelection(){
-  var helpers;
-  if ((helpers = getSelHelpers()) == null) {
-    return;
-  }
+  var helpers = getSelHelpers();
+  if (helpers == null) return;
   delete helpers.playlist;
   scrollThingToSelection($library, helpers);
 }
+
 function scrollPlaylistToSelection(){
-  var helpers;
-  if ((helpers = getSelHelpers()) == null) {
-    return;
-  }
+  var helpers = getSelHelpers();
+  if (helpers == null) return;
   delete helpers.track;
   delete helpers.artist;
   delete helpers.album;
   scrollThingToSelection($playlist_items, helpers);
 }
+
 function scrollThingToSelection($scroll_area, helpers){
-  var top_pos, bottom_pos, sel_name, ref$, ids, table, $getDiv, id, $div, item_top, item_bottom, scroll_area_top, selection_top, selection_bottom, scroll_amt;
-  top_pos = null;
-  bottom_pos = null;
-  for (sel_name in helpers) {
-    ref$ = helpers[sel_name];
-    ids = ref$[0];
-    table = ref$[1];
-    $getDiv = ref$[2];
-    for (id in ids) {
-      item_top = ($div = $getDiv(id)).offset().top;
-      item_bottom = item_top + $div.height();
-      if (top_pos == null || item_top < top_pos) {
-        top_pos = item_top;
+  var ref$, $div;
+  var topPos = null;
+  var bottomPos = null;
+  for (var selName in helpers) {
+    ref$ = helpers[selName];
+    var ids = ref$[0];
+    var table = ref$[1];
+    var $getDiv = ref$[2];
+    for (var id in ids) {
+      var itemTop = ($div = $getDiv(id)).offset().top;
+      var itemBottom = itemTop + $div.height();
+      if (topPos == null || itemTop < topPos) {
+        topPos = itemTop;
       }
-      if (bottom_pos == null || item_bottom > bottom_pos) {
-        bottom_pos = item_bottom;
+      if (bottomPos == null || itemBottom > bottomPos) {
+        bottomPos = itemBottom;
       }
     }
   }
-  if (top_pos != null) {
-    scroll_area_top = $scroll_area.offset().top;
-    selection_top = top_pos - scroll_area_top;
-    selection_bottom = bottom_pos - scroll_area_top - $scroll_area.height();
-    scroll_amt = $scroll_area.scrollTop();
+  if (topPos != null) {
+    var scroll_area_top = $scroll_area.offset().top;
+    var selection_top = topPos - scroll_area_top;
+    var selection_bottom = bottomPos - scroll_area_top - $scroll_area.height();
+    var scroll_amt = $scroll_area.scrollTop();
     if (selection_top < 0) {
       return $scroll_area.scrollTop(scroll_amt + selection_top);
     } else if (selection_bottom > 0) {
@@ -522,14 +520,15 @@ function downloadKeys(keys) {
   }
   $form.submit();
 }
+
 function getDragPosition(x, y){
-  var result, i, ref$, len$, item, $item, middle, track;
-  result = {};
-  for (i = 0, len$ = (ref$ = $playlist_items.find(".pl-item").get()).length; i < len$; ++i) {
-    item = ref$[i];
-    $item = $(item);
-    middle = $item.offset().top + $item.height() / 2;
-    track = player.playlist.itemTable[$item.attr('data-id')];
+  var ref$;
+  var result = {};
+  for (var i = 0, len$ = (ref$ = $playlist_items.find(".pl-item").get()).length; i < len$; ++i) {
+    var item = ref$[i];
+    var $item = $(item);
+    var middle = $item.offset().top + $item.height() / 2;
+    var track = player.playlist.itemTable[$item.attr('data-id')];
     if (middle < y) {
       if (result.previous_key == null || track.sortKey > result.previous_key) {
         result.$previous = $item;
@@ -626,6 +625,7 @@ function renderPlaylistButtons(){
     .prop("checked", player.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
 }
+
 function renderPlaylist(){
   var context = {
     playlist: player.playlist.itemList,
@@ -636,6 +636,7 @@ function renderPlaylist(){
   labelPlaylistItems();
   $playlist_items.scrollTop(scrollTop);
 }
+
 function renderStoredPlaylists(){
   var context = {
     stored_playlists: player.stored_playlists
@@ -711,23 +712,23 @@ function getSelHelpers(){
     ]
   };
 }
+
 function refreshSelection(){
-  var helpers, sel_name, ref$, ids, table, $getDiv, i, id, len$;
-  if ((helpers = getSelHelpers()) == null) {
-    return;
-  }
+  var ref$, id;
+  var helpers = getSelHelpers();
+  if (helpers == null) return;
   $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor');
   $library.find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) {
     return;
   }
-  for (sel_name in helpers) {
+  for (var sel_name in helpers) {
     ref$ = helpers[sel_name];
-    ids = ref$[0];
-    table = ref$[1];
-    $getDiv = ref$[2];
-    for (i = 0, len$ = (ref$ = (fn$())).length; i < len$; ++i) {
+    var ids = ref$[0];
+    var table = ref$[1];
+    var $getDiv = ref$[2];
+    for (var i = 0, len$ = (ref$ = (fn$())).length; i < len$; ++i) {
       id = ref$[i];
       delete ids[id];
     }
@@ -748,6 +749,7 @@ function refreshSelection(){
     return results$;
   }
 }
+
 function renderLibrary() {
   var context = {
     artistList: player.searchResults.artistList,
@@ -779,6 +781,7 @@ function renderLibrary() {
     }
   }
 }
+
 function getCurrentTrackPosition(){
   if (player.trackStartDate != null && player.isPlaying === true) {
     return (new Date() - player.trackStartDate) / 1000;
@@ -856,6 +859,7 @@ function renderNowPlaying(){
   updateSliderPos();
   renderVolumeSlider();
 }
+
 function render(){
   var hide_main_err = load_status === LoadStatus.GoodToGo;
   $pl_window.toggle(hide_main_err);
@@ -875,6 +879,7 @@ function render(){
   renderSettings();
   handleResize();
 }
+
 function genericToggleExpansion($li, options){
   var $div = $li.find("> div");
   var $ul = $li.find("> ul");
@@ -896,6 +901,7 @@ function genericToggleExpansion($li, options){
   }
   $div.find("div").removeClass(old_class).addClass(new_class);
 }
+
 function togglePlaylistExpansion($li){
   genericToggleExpansion($li, {
     top_level_type: 'stored_playlist',
@@ -907,6 +913,7 @@ function togglePlaylistExpansion($li){
     }
   });
 }
+
 function toggleLibraryExpansion($li){
   return genericToggleExpansion($li, {
     top_level_type: 'artist',
@@ -965,6 +972,7 @@ function handleDeletePressed(shift) {
     refreshSelection();
   }
 }
+
 function togglePlayback(){
   if (player.isPlaying === true) {
     player.pause();
@@ -1811,6 +1819,7 @@ function setUpSettingsUi(){
     settings_ui.auth.password = $(this).val();
   });
 }
+
 function setUpLibraryUi(){
   $lib_filter.on('keydown', function(event){
     var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
@@ -2069,7 +2078,6 @@ function initHandlebars(){
   });
 }
 function handleResize(){
-  var second_layer_top, tab_contents_height;
   $nowplaying.width(MARGIN);
   $pl_window.height(MARGIN);
   $left_window.height(MARGIN);
@@ -2079,7 +2087,7 @@ function handleResize(){
   $chatList.height(MARGIN);
   $playlist_items.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
-  second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
+  var second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
   $left_window.offset({
     left: MARGIN,
     top: second_layer_top
@@ -2091,7 +2099,7 @@ function handleResize(){
   $pl_window.width($window.width() - $pl_window.offset().left - MARGIN);
   $left_window.height($window.height() - $left_window.offset().top);
   $pl_window.height($left_window.height() - MARGIN);
-  tab_contents_height = $left_window.height() - $tabs.height() - MARGIN;
+  var tab_contents_height = $left_window.height() - $tabs.height() - MARGIN;
   $library.height(tab_contents_height - $lib_header.height());
   $upload.height(tab_contents_height);
   $stored_playlists.height(tab_contents_height);

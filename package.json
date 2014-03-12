@@ -32,7 +32,7 @@
     "findit": "~1.1.1",
     "archiver": "~0.4.9",
     "uuid": "~1.4.1",
-    "music-library-index": "0.0.4",
+    "music-library-index": "^1.0.0",
     "keese": "~1.0.0",
     "temp": "~0.7.0",
     "connect-multiparty": "~1.0.3",

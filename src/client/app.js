@@ -1454,7 +1454,7 @@ function setUpPlaylistUi(){
     return event.altKey;
   });
   $playlist_items.on('mousedown', '.pl-item', function(event){
-    var trackId, skip_drag, old_pos, new_pos, i, context, $menu;
+    var trackId, skip_drag, context, $menu;
     if (started_drag) {
       return true;
     }
@@ -1472,9 +1472,14 @@ function setUpPlaylistUi(){
           selection.clear();
         }
         if (event.shiftKey) {
-          old_pos = selection.cursor != null ? player.playlist.itemTable[selection.cursor].index : 0;
-          new_pos = player.playlist.itemTable[trackId].index;
-          for (i = old_pos; i <= new_pos; ++i) {
+          var min_pos = selection.cursor != null ? player.playlist.itemTable[selection.cursor].index : 0;
+          var max_pos = player.playlist.itemTable[trackId].index;
+          if (max_pos < min_pos) {
+            var tmp = min_pos;
+            min_pos = max_pos;
+            max_pos = tmp;
+          }
+          for (var i = min_pos; i <= max_pos; i++) {
             selection.ids.playlist[player.playlist.itemList[i].id] = true;
           }
         } else if (event.ctrlKey) {

@@ -97,6 +97,7 @@ function PlayerClient(socket) {
 }
 
 PlayerClient.prototype.handleConnectionStart = function(){
+  this.sendCommand('subscribe', { name: 'library', delta: true, });
   this.sendCommand('subscribe', {name: 'volume'});
   this.sendCommand('subscribe', {name: 'repeat'});
   this.sendCommand('subscribe', {name: 'currentTrack'});
@@ -105,7 +106,6 @@ PlayerClient.prototype.handleConnectionStart = function(){
     delta: true,
     version: this.playlistFromServerVersion,
   });
-  this.sendCommand('subscribe', { name: 'library', delta: true, });
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {

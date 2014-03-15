@@ -38,7 +38,7 @@
 
 
     // The Good Parts.
-    "asi"           : true,  // Tolerate Automatic Semicolon Insertion (no semicolons).
+    "asi"           : false,  // Tolerate Automatic Semicolon Insertion (no semicolons).
     "laxbreak"      : false,   // Tolerate unsafe line breaks e.g. `return [\n] x` without semicolons.
     "laxcomma"      : true,
     "bitwise"       : false,   // Prohibit bitwise operators (&, |, ^, etc.).

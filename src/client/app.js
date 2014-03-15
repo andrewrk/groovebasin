@@ -955,19 +955,20 @@ function handleDeletePressed(shift) {
       if (!confirmDelete(keysList)) return;
       socket.send('deleteTracks', keysList);
     }
-    var index = player.playlist.itemTable[selection.cursor].index;
-    player.removeIds((function(){
-      var results$ = [];
-      for (var id in selection.ids.playlist) {
-        results$.push(id);
+    var sortKey = player.playlist.itemTable[selection.cursor].sortKey;
+    player.removeIds(Object.keys(selection.ids.playlist));
+    var item = null;
+    for (var i = 0; i < player.playlist.itemList.length; i++) {
+      item = player.playlist.itemList[i];
+      if (item.sortKey > sortKey) {
+        // select the very next one
+        break;
       }
-      return results$;
-    }()));
-    if (index >= player.playlist.itemList.length) {
-      index = player.playlist.itemList.length - 1;
+      // if we deleted the last item, select the new last item.
     }
-    if (index > -1) {
-      selection.selectOnly('playlist', player.playlist.itemList[index].id);
+    // if there's no items, select nothing.
+    if (item != null) {
+      selection.selectOnly('playlist', item.id);
     }
     refreshSelection();
   }

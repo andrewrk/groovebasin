@@ -9,7 +9,6 @@ var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 var Socket = require('./socket');
 
-var chatState;
 var dynamicModeOn = false;
 
 
@@ -357,7 +356,6 @@ var abortDrag = function(){};
 var clickTab = null;
 var myUserId = null;
 var lastFmApiKey = null;
-var chat_name_input_visible = false;
 var LoadStatus = {
   Init: 'Loading...',
   NoServer: 'Server is down.',
@@ -390,7 +388,6 @@ var $dynamicMode = $('#dynamic-mode');
 var $pl_btn_repeat = $('#pl-btn-repeat');
 var $tabs = $('#tabs');
 var $upload_tab = $tabs.find('.upload-tab');
-var $chat_tab = $tabs.find('.chat-tab');
 var $library = $('#library');
 var $lib_filter = $('#lib-filter');
 var $track_slider = $('#track-slider');
@@ -398,9 +395,6 @@ var $nowplaying = $('#nowplaying');
 var $nowplaying_elapsed = $nowplaying.find('.elapsed');
 var $nowplaying_left = $nowplaying.find('.left');
 var $vol_slider = $('#vol-slider');
-var $chatUserList = $('#chat-user-list');
-var $chatList = $('#chat-list');
-var $chat_user_id_span = $('#user-id');
 var $settings = $('#settings');
 var $upload_by_url = $('#upload-by-url');
 var $main_err_msg = $('#main-err-msg');
@@ -408,9 +402,6 @@ var $main_err_msg_text = $('#main-err-msg-text');
 var $stored_playlists = $('#stored-playlists');
 var $upload = $('#upload');
 var $track_display = $('#track-display');
-var $chat_input = $('#chat-input');
-var $chat_name_input = $('#chat-name-input');
-var $chat_input_pane = $('#chat-input-pane');
 var $lib_header = $('#library-pane .window-header');
 var $pl_header = $pl_window.find('#playlist .header');
 
@@ -433,27 +424,6 @@ function loadLocalState() {
       localState[key] = obj[key];
     }
   }
-}
-
-function haveUserName(){
-  return !!(chatState && chatState.userNames[myUserId]);
-}
-
-function getUserName(){
-  return userIdToUserName(myUserId);
-}
-
-function userIdToUserName(userId) {
-  if (!chatState) return userId;
-  var userName = chatState.userNames[userId];
-  return userName || userId;
-}
-
-function setUserName(newName) {
-  newName = newName.trim();
-  localState.userName = newName;
-  saveLocalState();
-  socket.send('SetUserName', newName);
 }
 
 function scrollLibraryToSelection(){
@@ -571,48 +541,6 @@ function renderSettings() {
   $settings.find('.auth-edit').button();
   $settings.find('.auth-clear').button();
   $settings.find('#auth-password').val(settings_ui.auth.password);
-}
-
-function scrollChatWindowToBottom(){
-  $chatList.scrollTop(1000000);
-}
-
-function renderChat() {
-  var i;
-  var chatStatusText = "";
-  var users = chatState && chatState.users;
-  if (users) {
-    var userObjects = [];
-    for (i = 0; i < users.length; ++i) {
-      var userId = users[i];
-      var userName = userIdToUserName(userId);
-      if (userName === '[server]') {
-        continue;
-      }
-      var class_ = userId === myUserId ? "chat-user-self" : "chat-user";
-      userObjects.push({
-        userName: userName,
-        "class": class_
-      });
-    }
-    if (userObjects.length > 1) {
-      chatStatusText = " (" + userObjects.length + ")";
-    }
-    $chatUserList.html(Handlebars.templates.chat_user_list({
-      users: userObjects
-    }));
-    for (i = 0; i < chatState.chats.length; ++i) {
-      var chatObject = chatState.chats[i];
-      chatObject["class"] = localState.myUserIds[chatObject.userId] != null ? "chat-user-self" : "chat-user";
-      chatObject.userName = userIdToUserName(chatObject.userId);
-    }
-    $chatList.html(Handlebars.templates.chat_list({
-      chats: chatState.chats
-    }));
-    scrollChatWindowToBottom();
-    $chat_user_id_span.text(chat_name_input_visible ? "" : getUserName() + ": ");
-  }
-  $chat_tab.find("span").text("Chat" + chatStatusText);
 }
 
 function renderPlaylistButtons(){
@@ -875,7 +803,6 @@ function render(){
   renderPlaylistButtons();
   renderLibrary();
   renderNowPlaying();
-  renderChat();
   renderSettings();
   handleResize();
 }
@@ -1232,15 +1159,6 @@ var keyboard_handlers = (function(){
       shift: false,
       handler: streaming.toggleStatus
     },
-    84: {
-      ctrl: false,
-      alt: false,
-      shift: false,
-      handler: function(){
-        clickTab('chat');
-        $chat_input.focus().select();
-      }
-    },
     85: {
       ctrl: false,
       alt: false,
@@ -1572,61 +1490,6 @@ function setUpPlaylistUi(){
   });
 }
 
-function setUpChatUi(){
-  $chat_user_id_span.on('click', function(event){
-    $chat_input.attr("disabled", "disabled");
-    chat_name_input_visible = true;
-    $chat_name_input.show().val("").focus().select();
-    renderChat();
-  });
-  $chat_name_input.on('keydown', function(event){
-    var done;
-    event.stopPropagation();
-    if (event.which === 27) {
-      done = true;
-    } else if (event.which === 13) {
-      done = true;
-      setUserName($(event.target).val());
-    }
-    if (done) {
-      chat_name_input_visible = false;
-      $chat_name_input.hide();
-      $chat_input.removeAttr("disabled").focus().select();
-      renderChat();
-      return false;
-    }
-  });
-  $chat_input.on('keydown', function(event){
-    var message, newUserName, NICK;
-    event.stopPropagation();
-    if (event.which === 27) {
-      $(event.target).blur();
-      return false;
-    } else if (event.which === 13) {
-      message = $(event.target).val().trim();
-      setTimeout(function(){
-        $(event.target).val("");
-      }, 0);
-      if (message === "") {
-        return false;
-      }
-      if (!haveUserName()) {
-        newUserName = message;
-      }
-      NICK = "/nick ";
-      if (message.substr(0, NICK.length) === NICK) {
-        newUserName = message.substring(0, NICK.length);
-      }
-      if (newUserName != null) {
-        setUserName(newUserName);
-        return false;
-      }
-      socket.send('Chat', message);
-      return false;
-    }
-  });
-}
-
 function updateSliderUi(value){
   var percent = value * 100;
   $track_slider.css('background-size', percent + "% 100%");
@@ -1709,7 +1572,7 @@ function setUpTabsUi(){
   $tabs.on('mouseout', 'li', function(event){
     $(this).removeClass('ui-state-hover');
   });
-  tabs = ['library', 'stored-playlists', 'upload', 'chat', 'settings'];
+  tabs = ['library', 'upload', 'settings'];
   function tabSelector(tab_name){
     return "li." + tab_name + "-tab";
   }
@@ -2059,7 +1922,6 @@ function setUpUi(){
   setUpPlaylistUi();
   setUpLibraryUi();
   setUpStoredPlaylistsUi();
-  setUpChatUi();
   setUpNowPlayingUi();
   setUpTabsUi();
   setUpUploadUi();
@@ -2089,8 +1951,6 @@ function handleResize(){
   $left_window.height(MARGIN);
   $library.height(MARGIN);
   $upload.height(MARGIN);
-  $stored_playlists.height(MARGIN);
-  $chatList.height(MARGIN);
   $playlist_items.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
   var second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
@@ -2108,8 +1968,6 @@ function handleResize(){
   var tab_contents_height = $left_window.height() - $tabs.height() - MARGIN;
   $library.height(tab_contents_height - $lib_header.height());
   $upload.height(tab_contents_height);
-  $stored_playlists.height(tab_contents_height);
-  $chatList.height(tab_contents_height - $chatUserList.height() - $chat_input_pane.height());
   $playlist_items.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
 }
 function refreshPage(){
@@ -2141,20 +1999,9 @@ $document.ready(function(){
     lastFmApiKey = data;
     renderSettings();
   });
-  socket.on('Identify', function(data){
-    myUserId = data.toString();
-    localState.myUserIds[myUserId] = 1;
-    saveLocalState();
-    var userName = localState.userName;
-    if (userName) setUserName(userName);
-  });
   socket.on('permissions', function(data){
     permissions = data;
     renderSettings();
-  });
-  socket.on('Chat', function(data) {
-    chatState = data;
-    renderChat();
   });
   socket.on('volumeUpdate', function(vol) {
     player.volume = vol;

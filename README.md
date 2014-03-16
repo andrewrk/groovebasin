@@ -11,9 +11,6 @@ library remotely.
 Groove Basin works with your personal music library; not an external music
 service. Groove Basin will never support DRM content.
 
-Groove Basin is undergoing heavy restructuring. Some features are disabled
-while they are being rebuilt.
-
 Live discussion in #libgroove on Freenode.
 
 ## Features
@@ -44,14 +41,10 @@ Live discussion in #libgroove on Freenode.
 * File system monitoring. Add songs anywhere inside your music directory and
   they instantly appear in your library in real time.
 
-* Supports GrooveBasin Protocol on the same port as MPD Protocol - just use the
+* Supports GrooveBasin Protocol on the same port as MPD Protocol - use the
   `protocolupgrade` command to upgrade.
 
 ## Install
-
-Groove Basin is undergoing heavy restructuring. When this gets to a good
-checkpoint, we will cut a release. Until then, use these instructions to
-run from source:
 
 1. Install [Node.js](http://nodejs.org) v0.10.x.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
@@ -81,6 +74,53 @@ This will install dependencies, build generated files, and then start the
 sever. It is up to you to restart it when you modify assets or server files.
 
 ## Release Notes
+
+### 1.0.0 (Mar 15 2014)
+
+* Andrew Kelley:
+  * Remove dependency on MPD. Groove Basin now works independently of MPD.
+    It uses [libgroove](https://github.com/andrewrk/libgroove) for audio
+    playback and streaming support.
+  * Support MPD protocol on (default) port 6600. Groove Basin now functions as
+    an MPD server.
+  * Fix regression for handling unknown artist/album
+  * Fix playlist to display artist name
+  * Plug upload security hole
+  * Groove Basin is no longer written in coco. Hopefully this will enable more
+    code contributions.
+  * Simpler config file that can survive new version releases.
+  * Simpler and more efficient protocol between client and server.
+  * Pressing prev on first track with repeat all on goes to end
+  * Automatic loudness detection (ReplayGain) using EBU R128.
+    - Lazy playlist scanning.
+    - Automatic switching between album and track mode.
+    - Takes advantage of multi-core systems.
+  * Faster rebuilding of album table index
+  * HTTP audio stream buffers much more quickly and flushes the buffer on seek.
+  * Fix volume ui going higher than 1.0.
+  * Fix changing volume not showing up on other clients.
+  * Native html5 audio streaming instead of soundmanager 2
+  * Streaming shows when it is buffering
+  * add meta charset=utf8 to index.html.
+  * fix volume keyboard shortcuts in firefox.
+  * Watches music library for updates and quickly updates library.
+  * Route dynamicmode through permissions framework
+  * Better default password generation
+  * web ui: fix current track not displayed sometimes
+  * upgrade jquery and jquery ui to latest stable. Fixes some UI glitches.
+  * static assets are gzipped and held permanently in memory. Makes the
+    web interface load faster.
+  * player: set "don't cache this" headers on stream
+  * Remove chat. It's not quite ready yet. Chat will be reimplemented better
+    in a future release.
+  * Remove stored playlist stub from UI. Stored playlists will be reimplemented
+    better in a future release.
+* Josh Wolfe:
+  * Converting the code to not use MPD
+  * fix multiselect shiftIds
+  * deleting library items removes them from the queue as well.
+  * fix shift click going up in the queue
+  * after deleting tracks, select the next one, not some random one.
 
 ### 0.2.0 (Oct 16 2012)
 

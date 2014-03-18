@@ -75,6 +75,14 @@ sever. It is up to you to restart it when you modify assets or server files.
 
 ## Release Notes
 
+### 1.0.1 (Mar 18 2014)
+
+* Andrew Kelley:
+  * Fix race condition when removing tracks from playlist. Closes #160
+  * Default import path includes artist directory.
+  * Also recognize "TCMP" ID3 tag as compilation album flag
+  * Fix Last.fm authentication
+
 ### 1.0.0 (Mar 15 2014)
 
 * Andrew Kelley:

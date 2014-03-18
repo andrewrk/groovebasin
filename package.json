@@ -38,7 +38,7 @@
     "connect-multiparty": "~1.0.3",
     "ws": "~0.4.31",
     "jsondiffpatch": "~0.1.4",
-    "connect-static": "^1.0.2"
+    "connect-static": "^1.1.0"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

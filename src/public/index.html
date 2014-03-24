@@ -57,7 +57,12 @@
     <div id="upload-pane" class="ui-widget-content ui-corner-all" style="display: none">
       <div id="upload">
         <input id="upload-by-url" type="text" placeholder="Paste URL here">
-        <div id="upload-widget"></div>
+        <div id="upload-widget">
+          <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
+        </div>
+        <div>
+          Automatically queue uploads: <input type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
+        </div>
       </div>
     </div>
     <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
@@ -93,7 +98,6 @@
   </div>
   <script src="vendor/jquery-2.1.0.min.js"></script>
   <script src="vendor/jquery-ui-1.10.4.custom.min.js"></script>
-  <script src="vendor/fileuploader/fileuploader.js"></script>
   <script src="vendor/handlebars.runtime.js"></script>
   <script src="views.js"></script>
   <script src="app.js"></script>

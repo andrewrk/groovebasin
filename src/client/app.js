@@ -1,6 +1,5 @@
 var $ = window.$;
 var Handlebars = window.Handlebars;
-var qq = window.qq;
 
 var shuffle = require('mess');
 var querystring = require('querystring');
@@ -8,9 +7,9 @@ var zfill = require('zfill');
 var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 var Socket = require('./socket');
+var uuid = require('uuid');
 
 var dynamicModeOn = false;
-
 
 var selection = {
   ids: {
@@ -377,7 +376,8 @@ var localState = {
     session_key: null,
     scrobbling_on: false
   },
-  authPassword: null
+  authPassword: null,
+  autoQueueUploads: true,
 };
 var $document = $(document);
 var $window = $(window);
@@ -396,7 +396,7 @@ var $nowplaying_elapsed = $nowplaying.find('.elapsed');
 var $nowplaying_left = $nowplaying.find('.left');
 var $vol_slider = $('#vol-slider');
 var $settings = $('#settings');
-var $upload_by_url = $('#upload-by-url');
+var $uploadByUrl = $('#upload-by-url');
 var $main_err_msg = $('#main-err-msg');
 var $main_err_msg_text = $('#main-err-msg-text');
 var $stored_playlists = $('#stored-playlists');
@@ -404,6 +404,9 @@ var $upload = $('#upload');
 var $track_display = $('#track-display');
 var $lib_header = $('#library-pane .window-header');
 var $pl_header = $pl_window.find('#playlist .header');
+var $autoQueueUploads = $('#auto-queue-uploads');
+var uploadInput = document.getElementById("upload-input");
+var $uploadWidget = $("#upload-widget");
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -1165,7 +1168,7 @@ var keyboard_handlers = (function(){
       shift: false,
       handler: function(){
         clickTab('upload');
-        $upload_by_url.focus().select();
+        $uploadByUrl.focus().select();
       }
     },
     173: volumeDownHandler,
@@ -1607,23 +1610,106 @@ function setUpTabsUi(){
   }
 }
 
+function uploadFiles(files) {
+  if (files.length === 0) return;
+
+  var formData = new FormData();
+
+  for (var i = 0; i < files.length; i += 1) {
+    var file = files[i];
+    formData.append("file", file);
+  }
+  formData.append("autoQueue", localState.autoQueueUploads);
+
+  var $progressBar = $('<div></div>');
+  $progressBar.progressbar();
+  var $cancelBtn = $('<button>Cancel</button>');
+  $cancelBtn.on('click', onCancel);
+
+  $uploadWidget.append($progressBar);
+  $uploadWidget.append($cancelBtn);
+
+  var req = new XMLHttpRequest();
+  req.upload.addEventListener('progress', onProgress, false);
+  req.addEventListener('load', onLoad, false);
+  req.open('POST', '/upload');
+  req.send(formData);
+  uploadInput.value = null;
+
+  function onProgress(e) {
+    if (!e.lengthComputable) return;
+    var progress = e.loaded / e.total;
+    $progressBar.progressbar("option", "value", progress * 100);
+  }
+
+  function onLoad(e) {
+    if (localState.autoQueueUploads) {
+      var keys = JSON.parse(this.response);
+      player.queueTracks(keys);
+    }
+    cleanup();
+  }
+
+  function onCancel() {
+    req.abort();
+    cleanup();
+  }
+
+  function cleanup() {
+    $progressBar.remove();
+    $cancelBtn.remove();
+  }
+}
+
+function setAutoUploadBtnState() {
+  $autoQueueUploads
+    .button('option', 'label', localState.autoQueueUploads ? 'On' : 'Off')
+    .prop('checked', localState.autoQueueUploads)
+    .button('refresh');
+}
+
 function setUpUploadUi(){
-  var uploader;
-  uploader = new qq.FileUploader({
-    element: document.getElementById("upload-widget"),
-    action: '/upload',
-    encoding: 'multipart'
+  $autoQueueUploads.button({ label: "..." });
+  setAutoUploadBtnState();
+  $autoQueueUploads.on('click', function(event) {
+    var value = $(this).prop('checked');
+    localState.autoQueueUploads = value;
+    saveLocalState();
+    setAutoUploadBtnState();
   });
-  $upload_by_url.on('keydown', function(event){
+  uploadInput.addEventListener('change', onChange, false);
+
+  function onChange(e) {
+    uploadFiles(this.files);
+  }
+
+  $uploadByUrl.on('keydown', function(event){
     event.stopPropagation();
     if (event.which === 27) {
-      $upload_by_url.val("").blur();
+      $uploadByUrl.val("").blur();
     } else if (event.which === 13) {
-      var url = $upload_by_url.val();
-      $upload_by_url.val("").blur();
-      socket.send('importUrl', url);
+      importUrl();
     }
   });
+
+  function importUrl() {
+    var url = $uploadByUrl.val();
+    var id = uuid();
+    $uploadByUrl.val("").blur();
+    socket.on('importUrl', onImportUrl);
+    socket.send('importUrl', {
+      url: url,
+      id: id,
+    });
+
+    function onImportUrl(args) {
+      if (args.id !== id) return;
+      socket.removeListener('importUrl', onImportUrl);
+      if (localState.autoQueueUploads) {
+        player.queueTracks([args.key]);
+      }
+    }
+  }
 }
 
 function setUpSettingsUi(){

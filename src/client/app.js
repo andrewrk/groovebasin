@@ -670,7 +670,17 @@ function refreshSelection() {
       helper.$getDiv(id).addClass('selected');
     }
     if (selection.cursor != null && slection_type === selection.type) {
-      helper.$getDiv(selection.cursor).addClass('cursor');
+      if (helper.ids[selection.cursor] != null) {
+        helper.$getDiv(selection.cursor).addClass('cursor');
+      } else {
+        // server just deleted our current cursor item.
+        // select another of our ids randomly, if we have any.
+        selection.cursor = Object.keys(helper.ids)[0];
+        if (selection.cursor == null) {
+          // no selected items
+          selection.fullClear();
+        }
+      }
     }
   }
 }
@@ -970,6 +980,7 @@ var keyboard_handlers = (function(){
         }
         selection.ids[selection.type][selection.cursor] = true;
       } else {
+        if (player.playlist.itemList.length === 0) return;
         selection.selectOnly('playlist', player.playlist.itemList[default_index].id);
       }
       refreshSelection();

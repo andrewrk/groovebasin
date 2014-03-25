@@ -773,7 +773,7 @@ function renderLibrary() {
       divDom.setAttribute('id', artistId(artist.key));
       divDom.setAttribute('data-key', artist.key);
       var spanDom = divDom.children[1];
-      spanDom.innerText = artistDisplayName(artist.name);
+      spanDom.textContent = artistDisplayName(artist.name);
       var ulDom = domItem.children[1];
       while (ulDom.firstChild) {
         ulDom.removeChild(ulDom.firstChild);
@@ -1873,7 +1873,7 @@ function updateLastFmSettingsUi() {
   }
   settingsLastFmUserDom.setAttribute('href', "http://last.fm/user/" +
       encodeURIComponent(localState.lastfm.username));
-  settingsLastFmUserDom.innerText = localState.lastfm.username;
+  settingsLastFmUserDom.textContent = localState.lastfm.username;
   var authUrl = "http://www.last.fm/api/auth/?api_key=" +
         encodeURIComponent(lastFmApiKey) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/");
@@ -1890,7 +1890,7 @@ function updateSettingsAuthUi() {
   $settingsShowPassword.toggle(!showEdit);
   $settingsAuthCancel.toggle(!!localState.authPassword);
   $authPassword.val(localState.authPassword);
-  passwordDisplayDom.innerText = localState.authPassword;
+  passwordDisplayDom.textContent = localState.authPassword;
   $authPermRead.toggle(!!permissions.read);
   $authPermAdd.toggle(!!permissions.add);
   $authPermControl.toggle(!!permissions.control);

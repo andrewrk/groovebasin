@@ -821,18 +821,6 @@ function genericToggleExpansion($li, options){
   $div.find("div").removeClass(old_class).addClass(new_class);
 }
 
-function togglePlaylistExpansion($li){
-  genericToggleExpansion($li, {
-    top_level_type: 'stored_playlist',
-    template: Handlebars.templates.playlist_items,
-    context: function(key){
-      return {
-        itemList: player.stored_playlist_table[key].itemList
-      };
-    }
-  });
-}
-
 function toggleLibraryExpansion($li){
   return genericToggleExpansion($li, {
     top_level_type: 'artist',
@@ -1954,15 +1942,6 @@ function setUpLibraryUi(){
   });
 }
 
-function setUpStoredPlaylistsUi(){
-  genericTreeUi($stored_playlists, {
-    toggleExpansion: togglePlaylistExpansion,
-    isSelectionOwner: function(){
-      return selection.isStoredPlaylist();
-    }
-  });
-}
-
 function genericTreeUi($elem, options){
   $elem.on('mousedown', 'div.expandable > div.ui-icon', function(event){
     options.toggleExpansion($(this).closest('li'));
@@ -2091,7 +2070,6 @@ function setUpUi(){
   setUpGenericUi();
   setUpPlaylistUi();
   setUpLibraryUi();
-  setUpStoredPlaylistsUi();
   setUpNowPlayingUi();
   setUpTabsUi();
   setUpUploadUi();

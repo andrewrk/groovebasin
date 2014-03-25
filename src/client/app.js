@@ -426,6 +426,8 @@ var $settingsLastFmOut = $('#settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
+var $playlistMenu = $('#menu-playlist');
+var $libraryMenu = $('#menu-library');
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -1058,10 +1060,7 @@ var keyboard_handlers = (function(){
           abortDrag();
           return;
         }
-        if ($('#menu').get().length > 0) {
-          removeContextMenu();
-          return;
-        }
+        if (removeContextMenu()) return;
         selection.fullClear();
         refreshSelection();
       },
@@ -1226,9 +1225,18 @@ var keyboard_handlers = (function(){
   };
 })();
 
-function removeContextMenu(){
-  $('#menu').remove();
+function removeContextMenu() {
+  if ($playlistMenu.is(":visible")) {
+    $playlistMenu.hide();
+    return true;
+  }
+  if ($libraryMenu.is(":visible")) {
+    $libraryMenu.hide();
+    return true;
+  }
+  return false;
 }
+
 function isArtistExpanded(artist){
   var $li;
   $li = $("#lib-artist-" + toHtmlId(artist.key)).closest("li");
@@ -1396,7 +1404,7 @@ function setUpPlaylistUi(){
     return event.altKey;
   });
   $playlist_items.on('mousedown', '.pl-item', function(event){
-    var trackId, skip_drag, context, $menu;
+    var trackId, skip_drag;
     if (started_drag) {
       return true;
     }
@@ -1465,48 +1473,56 @@ function setUpPlaylistUi(){
         selection.selectOnly('playlist', trackId);
         refreshSelection();
       }
-      context = {
-        downloadEnabled: true,
-        permissions: permissions
-      };
-      if (selection.isMulti()) {
-        context.download_multi = true;
+      if (!selection.isMulti()) {
+        var item = player.playlist.itemTable[trackId];
+        $playlistMenu.find('.download').attr('href', 'library/' + item.track.file);
       } else {
-        context.item = player.playlist.itemTable[trackId];
+        $playlistMenu.find('.download').attr('href', '#');
       }
-      $(Handlebars.templates.playlist_menu(context)).appendTo(document.body);
-      $menu = $('#menu');
-      $menu.offset({
+      $playlistMenu.show().offset({
         left: event.pageX + 1,
         top: event.pageY + 1
       });
-      $menu.on('mousedown', function(){
-        return false;
-      });
-      $menu.on('click', '.remove', function(){
-        handleDeletePressed(false);
-        removeContextMenu();
-        return false;
-      });
-      $menu.on('click', '.download', function(){
-        removeContextMenu();
-        return true;
-      });
-      $menu.on('click', '.download-multi', function(){
-        removeContextMenu();
-        downloadKeys(selection.toTrackKeys());
-        return false;
-      });
-      return $menu.on('click', '.delete', function(){
-        handleDeletePressed(true);
-        removeContextMenu();
-        return false;
-      });
+      if (!permissions.admin) {
+        $playlistMenu.find('.delete')
+          .addClass('ui-state-disabled')
+          .attr('title', "Insufficient privileges. See Settings.");
+      } else {
+        $playlistMenu.find('.delete')
+          .removeClass('ui-state-disabled')
+          .attr('title', '');
+      }
     }
   });
   $playlist_items.on('mousedown', function(){
     return false;
   });
+  $playlistMenu.menu();
+  $playlistMenu.on('mousedown', function(){
+    return false;
+  });
+  $playlistMenu.on('click', '.remove', function(){
+    handleDeletePressed(false);
+    removeContextMenu();
+    return false;
+  });
+  $playlistMenu.on('click', '.download', function(){
+    removeContextMenu();
+
+    if (selection.isMulti()) {
+      downloadKeys(selection.toTrackKeys());
+      return false;
+    }
+
+    return true;
+  });
+  $playlistMenu.on('click', '.delete', function(){
+    if (!permissions.admin) return false;
+    handleDeletePressed(true);
+    removeContextMenu();
+    return false;
+  });
+
 }
 
 function updateSliderUi(value){
@@ -1896,6 +1912,46 @@ function setUpLibraryUi(){
       return selection.isLibrary();
     }
   });
+  $libraryMenu.menu();
+  $libraryMenu.on('mousedown', function(){
+    return false;
+  });
+  $libraryMenu.on('click', '.queue', function(){
+    player.queueTracks(selection.toTrackKeys());
+    removeContextMenu();
+    return false;
+  });
+  $libraryMenu.on('click', '.queue-next', function(){
+    player.queueTracksNext(selection.toTrackKeys());
+    removeContextMenu();
+    return false;
+  });
+  $libraryMenu.on('click', '.queue-random', function(){
+    player.queueTracks(selection.toTrackKeys(true));
+    removeContextMenu();
+    return false;
+  });
+  $libraryMenu.on('click', '.queue-next-random', function(){
+    player.queueTracksNext(selection.toTrackKeys(true));
+    removeContextMenu();
+    return false;
+  });
+  $libraryMenu.on('click', '.download', function(){
+    removeContextMenu();
+
+    if (selection.isMulti()) {
+      downloadKeys(selection.toTrackKeys());
+      return false;
+    }
+
+    return true;
+  });
+  $libraryMenu.on('click', '.delete', function(){
+    if (!permissions.admin) return false;
+    handleDeletePressed(true);
+    removeContextMenu();
+    return false;
+  });
 }
 
 function setUpStoredPlaylistsUi(){
@@ -1993,71 +2049,38 @@ function genericTreeUi($elem, options){
       }
     }
     function rightMouseDown(event){
-      var context, $menu;
       event.preventDefault();
       removeContextMenu();
       if (!options.isSelectionOwner() || selection.ids[type][key] == null) {
         selection.selectOnly(type, key);
         refreshSelection();
       }
-      context = {
-        downloadEnabled: true,
-        permissions: permissions
-      };
-      if (selection.isMulti()) {
-        context.download_multi = true;
-      } else {
+      var track = null;
+      if (!selection.isMulti()) {
         if (type === 'track') {
-          context.track = player.searchResults.trackTable[key];
+          track = player.searchResults.trackTable[key];
         } else if (type === 'stored_playlist_item') {
-          context.track = player.stored_playlist_item_table[key].track;
-        } else {
-          context.download_multi = true;
+          track = player.stored_playlist_item_table[key].track;
         }
       }
-      $(Handlebars.templates.library_menu(context)).appendTo(document.body);
-      $menu = $('#menu');
-      $menu.offset({
+      if (track) {
+        $libraryMenu.find('.download').attr('href', 'library/' + track.file);
+      } else {
+        $libraryMenu.find('.download').attr('href', '#');
+      }
+      $libraryMenu.show().offset({
         left: event.pageX + 1,
         top: event.pageY + 1
       });
-      $menu.on('mousedown', function(){
-        return false;
-      });
-      $menu.on('click', '.queue', function(){
-        player.queueTracks(selection.toTrackKeys());
-        removeContextMenu();
-        return false;
-      });
-      $menu.on('click', '.queue-next', function(){
-        player.queueTracksNext(selection.toTrackKeys());
-        removeContextMenu();
-        return false;
-      });
-      $menu.on('click', '.queue-random', function(){
-        player.queueTracks(selection.toTrackKeys(true));
-        removeContextMenu();
-        return false;
-      });
-      $menu.on('click', '.queue-next-random', function(){
-        player.queueTracksNext(selection.toTrackKeys(true));
-        removeContextMenu();
-        return false;
-      });
-      $menu.on('click', '.download', function(){
-        removeContextMenu();
-        return true;
-      });
-      $menu.on('click', '.download-multi', function(){
-        removeContextMenu();
-        downloadKeys(selection.toTrackKeys());
-        return false;
-      });
-      $menu.on('click', '.delete', function(){
-        handleDeletePressed(true);
-        removeContextMenu();
-        return false;
-      });
+      if (!permissions.admin) {
+        $libraryMenu.find('.delete')
+          .addClass('ui-state-disabled')
+          .attr('title', "Insufficient privileges. See Settings.");
+      } else {
+        $libraryMenu.find('.delete')
+          .removeClass('ui-state-disabled')
+          .attr('title', '');
+      }
     }
   });
   $elem.on('mousedown', function(){

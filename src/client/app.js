@@ -915,7 +915,7 @@ var keyboard_handlers = (function(){
       default_index = 0;
       dir = 1;
     }
-    if (event.ctrlKey) {
+    if (event.altKey) {
       if (selection.isPlaylist()) {
         player.shiftIds(selection.ids.playlist, dir);
       }
@@ -926,10 +926,10 @@ var keyboard_handlers = (function(){
           return;
         }
         selection.cursor = player.playlist.itemList[next_pos].id;
-        if (!event.shiftKey) {
+        if (!event.ctrlKey) {
           selection.clear();
+          selection.ids.playlist[selection.cursor] = true;
         }
-        selection.ids.playlist[selection.cursor] = true;
       } else if (selection.isLibrary()) {
         next_pos = selection.getPos();
         if (dir > 0) {
@@ -1077,7 +1077,7 @@ var keyboard_handlers = (function(){
     // Up
     38: {
       ctrl: null,
-      alt: false,
+      alt: null,
       shift: null,
       handler: upDownHandler,
     },
@@ -1091,7 +1091,7 @@ var keyboard_handlers = (function(){
     // Down
     40: {
       ctrl: null,
-      alt: false,
+      alt: null,
       shift: null,
       handler: upDownHandler,
     },

@@ -425,6 +425,7 @@ var $settingsLastFmIn = $('#settings-lastfm-in');
 var $settingsLastFmOut = $('#settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
+var $shortcuts = $('#shortcuts');
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -1207,8 +1208,7 @@ var keyboard_handlers = (function(){
       shift: null,
       handler: function(event){
         if (event.shiftKey) {
-          $(Handlebars.templates.shortcuts()).appendTo(document.body);
-          $('#shortcuts').dialog({
+          $shortcuts.dialog({
             modal: true,
             title: "Keyboard Shortcuts",
             minWidth: 600,

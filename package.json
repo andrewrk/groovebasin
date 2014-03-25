@@ -35,10 +35,10 @@
     "music-library-index": "^1.1.0",
     "keese": "~1.0.0",
     "temp": "~0.7.0",
-    "connect-multiparty": "~1.0.3",
     "ws": "~0.4.31",
     "jsondiffpatch": "~0.1.4",
-    "connect-static": "^1.1.0"
+    "connect-static": "^1.1.0",
+    "multiparty": "^3.2.3"
   },
   "devDependencies": {
     "handlebars": "1.0.7",

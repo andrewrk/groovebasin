@@ -1619,7 +1619,6 @@ function uploadFiles(files) {
     var file = files[i];
     formData.append("file", file);
   }
-  formData.append("autoQueue", localState.autoQueueUploads);
 
   var $progressBar = $('<div></div>');
   $progressBar.progressbar();
@@ -1645,7 +1644,8 @@ function uploadFiles(files) {
   function onLoad(e) {
     if (localState.autoQueueUploads) {
       var keys = JSON.parse(this.response);
-      player.queueTracks(keys);
+      // sort them the same way the library is sorted
+      player.queueTracks(player.sortKeys(keys));
     }
     cleanup();
   }

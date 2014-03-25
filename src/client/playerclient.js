@@ -111,7 +111,7 @@ PlayerClient.prototype.handleConnectionStart = function(){
 PlayerClient.prototype.updateTrackStartDate = function() {
   this.trackStartDate = (this.serverTrackStartDate != null) ?
     new Date(new Date(this.serverTrackStartDate) - this.serverTimeOffset) : null;
-}
+};
 
 PlayerClient.prototype.updateCurrentItem = function() {
   this.currentItem = (this.currentItemId != null) ?
@@ -134,7 +134,7 @@ PlayerClient.prototype.updatePlaylistIndex = function() {
   }
   this.refreshPlaylistList();
   this.updateCurrentItem();
-}
+};
 
 PlayerClient.prototype.search = function(query) {
   query = query.trim();
@@ -468,6 +468,26 @@ PlayerClient.prototype.refreshPlaylistList = function(){
     item = this.playlist.itemList[i];
     item.index = i;
   }
+};
+
+// sort keys according to how they appear in the library
+PlayerClient.prototype.sortKeys = function(keys) {
+  var realLib = this.library;
+  var lib = new MusicLibraryIndex();
+  keys.forEach(function(key) {
+    var track = realLib.trackTable[key];
+    if (track) lib.addTrack(track);
+  });
+  lib.rebuild();
+  var results = [];
+  lib.artistList.forEach(function(artist) {
+    artist.albumList.forEach(function(album) {
+      album.trackList.forEach(function(track) {
+        results.push(track.key);
+      });
+    });
+  });
+  return results;
 };
 
 PlayerClient.prototype.resetServerState = function(){

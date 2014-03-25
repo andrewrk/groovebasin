@@ -651,9 +651,7 @@ function refreshSelection() {
       helper.$getDiv(id).addClass('selected');
     }
     if (selection.cursor != null && slection_type === selection.type) {
-      if (helper.ids[selection.cursor] != null) {
-        helper.$getDiv(selection.cursor).addClass('cursor');
-      } else {
+      if (player.playlist.itemTable[selection.cursor] == null) {
         // server just deleted our current cursor item.
         // select another of our ids randomly, if we have any.
         selection.cursor = Object.keys(helper.ids)[0];
@@ -661,6 +659,9 @@ function refreshSelection() {
           // no selected items
           selection.fullClear();
         }
+      }
+      if (selection.cursor != null) {
+        helper.$getDiv(selection.cursor).addClass('cursor');
       }
     }
   }
@@ -916,9 +917,11 @@ var keyboard_handlers = (function(){
   function upDownHandler(event){
     var default_index, dir, next_pos;
     if (event.which === 38) {
+      // up
       default_index = player.playlist.itemList.length - 1;
       dir = -1;
     } else {
+      // down
       default_index = 0;
       dir = 1;
     }
@@ -1043,7 +1046,7 @@ var keyboard_handlers = (function(){
           queueSelection(event);
         }
         return false;
-      }
+      },
     },
     // Escape
     27: {
@@ -1061,42 +1064,49 @@ var keyboard_handlers = (function(){
         }
         selection.fullClear();
         refreshSelection();
-      }
+      },
     },
     // Space
     32: {
-      ctrl: false,
+      ctrl: null,
       alt: false,
       shift: false,
-      handler: togglePlayback
+      handler: function() {
+        if (event.ctrlKey) {
+          toggleSelectionUnderCursor();
+          refreshSelection();
+        } else {
+          togglePlayback();
+        }
+      },
     },
     // Left
     37: {
       ctrl: null,
       alt: false,
       shift: null,
-      handler: leftRightHandler
+      handler: leftRightHandler,
     },
     // Up
     38: {
       ctrl: null,
       alt: false,
       shift: null,
-      handler: upDownHandler
+      handler: upDownHandler,
     },
     // Right
     39: {
       ctrl: null,
       alt: false,
       shift: null,
-      handler: leftRightHandler
+      handler: leftRightHandler,
     },
     // Down
     40: {
       ctrl: null,
       alt: false,
       shift: null,
-      handler: upDownHandler
+      handler: upDownHandler,
     },
     // Delete
     46: {
@@ -1105,7 +1115,7 @@ var keyboard_handlers = (function(){
       shift: null,
       handler: function(event){
         handleDeletePressed(event.shiftKey);
-      }
+      },
     },
     // =
     61: volumeUpHandler,
@@ -1116,14 +1126,14 @@ var keyboard_handlers = (function(){
       shift: true,
       handler: function(){
         player.clear();
-      }
+      },
     },
     // d
     68: {
       ctrl: false,
       alt: false,
       shift: false,
-      handler: toggleDynamicMode
+      handler: toggleDynamicMode,
     },
     // S
     72: {
@@ -1132,7 +1142,7 @@ var keyboard_handlers = (function(){
       shift: true,
       handler: function(){
         player.shuffle();
-      }
+      },
     },
     // l
     76: {
@@ -1141,7 +1151,7 @@ var keyboard_handlers = (function(){
       shift: false,
       handler: function(){
         clickTab('library');
-      }
+      },
     },
     // r
     82: {
@@ -1165,7 +1175,7 @@ var keyboard_handlers = (function(){
       handler: function(){
         clickTab('upload');
         $uploadByUrl.focus().select();
-      }
+      },
     },
     // - maybe?
     173: volumeDownHandler,
@@ -1178,7 +1188,7 @@ var keyboard_handlers = (function(){
       shift: null,
       handler: function(){
         player.prev();
-      }
+      },
     },
     // _ maybe?
     189: volumeDownHandler,
@@ -1189,7 +1199,7 @@ var keyboard_handlers = (function(){
       shift: null,
       handler: function(){
         player.next();
-      }
+      },
     },
     // ?
     191: {
@@ -1211,8 +1221,8 @@ var keyboard_handlers = (function(){
           clickTab('library');
           $lib_filter.focus().select();
         }
-      }
-    }
+      },
+    },
   };
 })();
 
@@ -1263,6 +1273,15 @@ function queueSelection(event){
     player.queueTracks(keys);
   }
   return false;
+}
+
+function toggleSelectionUnderCursor() {
+  var trackId = selection.cursor;
+  if (selection.ids.playlist[trackId] != null) {
+    delete selection.ids.playlist[trackId];
+  } else {
+    selection.ids.playlist[trackId] = true;
+  }
 }
 
 function sendAuth() {
@@ -1344,12 +1363,13 @@ function setUpGenericUi(){
     refreshSelection();
   });
   $document.on('keydown', function(event){
-    var handler;
-    if ((handler = keyboard_handlers[event.which]) != null && (handler.ctrl == null || handler.ctrl === event.ctrlKey) && (handler.alt == null || handler.alt === event.altKey) && (handler.shift == null || handler.shift === event.shiftKey)) {
-      handler.handler(event);
-      return false;
-    }
-    return true;
+    var handler = keyboard_handlers[event.which];
+    if (handler == null) return true;
+    if (handler.ctrl  != null && handler.ctrl  !== event.ctrlKey)  return true;
+    if (handler.alt   != null && handler.alt   !== event.altKey)   return true;
+    if (handler.shift != null && handler.shift !== event.shiftKey) return true;
+    handler.handler(event);
+    return false;
   });
 }
 
@@ -1405,12 +1425,8 @@ function setUpPlaylistUi(){
             selection.ids.playlist[player.playlist.itemList[i].id] = true;
           }
         } else if (event.ctrlKey) {
-          if (selection.ids.playlist[trackId] != null) {
-            delete selection.ids.playlist[trackId];
-          } else {
-            selection.ids.playlist[trackId] = true;
-          }
           selection.cursor = trackId;
+          toggleSelectionUnderCursor();
         }
       } else if (selection.ids.playlist[trackId] == null) {
         selection.selectOnly('playlist', trackId);

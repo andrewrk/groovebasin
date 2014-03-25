@@ -640,8 +640,8 @@ function refreshSelection() {
   $library         .find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
-  for (var slection_type in helpers) {
-    var helper = helpers[slection_type];
+  for (var selection_type in helpers) {
+    var helper = helpers[selection_type];
     var id;
     // clean out stale ids
     for (id in helper.ids) {
@@ -652,8 +652,9 @@ function refreshSelection() {
     for (id in helper.ids) {
       helper.$getDiv(id).addClass('selected');
     }
-    if (selection.cursor != null && slection_type === selection.type) {
-      if (player.playlist.itemTable[selection.cursor] == null) {
+    if (selection.cursor != null && selection_type === selection.type) {
+      var validIds = getValidIds(selection_type);
+      if (validIds[selection.cursor] == null) {
         // server just deleted our current cursor item.
         // select another of our ids randomly, if we have any.
         selection.cursor = Object.keys(helper.ids)[0];
@@ -667,6 +668,15 @@ function refreshSelection() {
       }
     }
   }
+}
+function getValidIds(selection_type) {
+  switch (selection_type) {
+    case 'playlist': return player.playlist.itemTable;
+    case 'artist':   return player.library.artistTable;
+    case 'album':    return player.library.albumTable;
+    case 'track':    return player.library.trackTable;
+  }
+  throw new Error("BadSelectionType");
 }
 
 function renderLibrary() {
@@ -940,7 +950,7 @@ var keyboard_handlers = (function(){
         if (next_pos.artist == null) {
           return;
         }
-        if (!event.shiftKey) {
+        if (!event.ctrlKey) {
           selection.clear();
         }
         if (next_pos.track != null) {
@@ -953,7 +963,9 @@ var keyboard_handlers = (function(){
           selection.type = 'artist';
           selection.cursor = next_pos.artist.key;
         }
-        selection.ids[selection.type][selection.cursor] = true;
+        if (!event.ctrlKey) {
+          selection.ids[selection.type][selection.cursor] = true;
+        }
       } else {
         if (player.playlist.itemList.length === 0) return;
         selection.selectOnly('playlist', player.playlist.itemList[default_index].id);
@@ -1272,11 +1284,12 @@ function queueSelection(event){
 }
 
 function toggleSelectionUnderCursor() {
-  var trackId = selection.cursor;
-  if (selection.ids.playlist[trackId] != null) {
-    delete selection.ids.playlist[trackId];
+  var key = selection.cursor;
+  var type = selection.type;
+  if (selection.ids[type][key] != null) {
+    delete selection.ids[type][key];
   } else {
-    selection.ids.playlist[trackId] = true;
+    selection.ids[type][key] = true;
   }
 }
 

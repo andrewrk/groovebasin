@@ -21,6 +21,7 @@ var selection = {
     stored_playlist_item: {}
   },
   cursor: null,
+  rangeSelectAnchor: null,
   type: null,
   isLibrary: function(){
     return this.type === 'artist' || this.type === 'album' || this.type === 'track';
@@ -43,12 +44,14 @@ var selection = {
     this.clear();
     this.type = null;
     this.cursor = null;
+    this.rangeSelectAnchor = null;
   },
   selectOnly: function(sel_name, key){
     this.clear();
     this.type = sel_name;
     this.ids[sel_name][key] = true;
     this.cursor = key;
+    this.rangeSelectAnchor = key;
   },
   isMulti: function(){
     var result, k;
@@ -658,6 +661,7 @@ function refreshSelection() {
         // server just deleted our current cursor item.
         // select another of our ids randomly, if we have any.
         selection.cursor = Object.keys(helper.ids)[0];
+        selection.rangeSelectAnchor = selection.cursor;
         if (selection.cursor == null) {
           // no selected items
           selection.fullClear();
@@ -936,9 +940,17 @@ var keyboard_handlers = (function(){
           return;
         }
         selection.cursor = player.playlist.itemList[next_pos].id;
-        if (!event.ctrlKey) {
+        if (!event.ctrlKey && !event.shiftKey) {
+          // single select
           selection.clear();
           selection.ids.playlist[selection.cursor] = true;
+          selection.rangeSelectAnchor = selection.cursor;
+        } else if (!event.ctrlKey && event.shiftKey) {
+          // range select
+          selectPlaylistRange();
+        } else {
+          // ghost selection
+          selection.rangeSelectAnchor = selection.cursor;
         }
       } else if (selection.isLibrary()) {
         next_pos = selection.getPos();
@@ -1293,6 +1305,22 @@ function toggleSelectionUnderCursor() {
   }
 }
 
+function selectPlaylistRange() {
+  selection.clear();
+  var anchor = selection.rangeSelectAnchor;
+  if (anchor == null) anchor = selection.cursor;
+  var min_pos = player.playlist.itemTable[anchor].index;
+  var max_pos = player.playlist.itemTable[selection.cursor].index;
+  if (max_pos < min_pos) {
+    var tmp = min_pos;
+    min_pos = max_pos;
+    max_pos = tmp;
+  }
+  for (var i = min_pos; i <= max_pos; i++) {
+    selection.ids.playlist[player.playlist.itemList[i].id] = true;
+  }
+}
+
 function sendAuth() {
   var pass = localState.authPassword;
   if (!pass) return;
@@ -1420,21 +1448,13 @@ function setUpPlaylistUi(){
       } else if (event.ctrlKey || event.shiftKey) {
         skip_drag = true;
         if (event.shiftKey && !event.ctrlKey) {
-          selection.clear();
-        }
-        if (event.shiftKey) {
-          var min_pos = selection.cursor != null ? player.playlist.itemTable[selection.cursor].index : 0;
-          var max_pos = player.playlist.itemTable[trackId].index;
-          if (max_pos < min_pos) {
-            var tmp = min_pos;
-            min_pos = max_pos;
-            max_pos = tmp;
-          }
-          for (var i = min_pos; i <= max_pos; i++) {
-            selection.ids.playlist[player.playlist.itemList[i].id] = true;
-          }
-        } else if (event.ctrlKey) {
+          // range select click
           selection.cursor = trackId;
+          selectPlaylistRange();
+        } else if (!event.shiftKey && event.ctrlKey) {
+          // individual item selection toggle
+          selection.cursor = trackId;
+          selection.rangeSelectAnchor = trackId;
           toggleSelectionUnderCursor();
         }
       } else if (selection.ids.playlist[trackId] == null) {

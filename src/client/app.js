@@ -406,6 +406,25 @@ var $pl_header = $pl_window.find('#playlist .header');
 var $autoQueueUploads = $('#auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var $uploadWidget = $("#upload-widget");
+var $settingsEditPassword = $('#settings-edit-password');
+var $settingsShowPassword = $('#settings-show-password');
+var $settingsAuthCancel = $('#settings-auth-cancel');
+var $settingsAuthSave = $('#settings-auth-save');
+var $settingsAuthEdit = $('#settings-auth-edit');
+var $settingsAuthClear = $('#settings-auth-clear');
+var passwordDisplayDom = document.getElementById('password-display');
+var streamUrlDom = document.getElementById('settings-stream-url');
+var $authPermRead = $('#auth-perm-read');
+var $authPermAdd = $('#auth-perm-add');
+var $authPermControl = $('#auth-perm-control');
+var $authPermAdmin = $('#auth-perm-admin');
+var $lastFmSignOut = $('#lastfm-sign-out');
+var $authPassword = $('#auth-password');
+var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
+var $settingsLastFmIn = $('#settings-lastfm-in');
+var $settingsLastFmOut = $('#settings-lastfm-out');
+var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
+var $toggleScrobble = $('#toggle-scrobble');
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -511,35 +530,6 @@ function getDragPosition(x, y){
     }
   }
   return result;
-}
-
-function renderSettings() {
-  var context = {
-    lastfm: {
-      auth_url: "http://www.last.fm/api/auth/?api_key=" +
-        encodeURIComponent(lastFmApiKey) + "&cb=" +
-        encodeURIComponent(location.protocol + "//" + location.host + "/"),
-      username: localState.lastfm.username,
-      session_key: localState.lastfm.session_key,
-      scrobbling_on: localState.lastfm.scrobbling_on
-    },
-    auth: {
-      password: localState.authPassword,
-      show_edit: localState.authPassword == null || settings_ui.auth.show_edit,
-      permissions: permissions
-    },
-    misc: {
-      stream_url: streaming.getUrl()
-    }
-  };
-  $settings.html(Handlebars.templates.settings(context));
-  $settings.find('.signout').button();
-  $settings.find('#toggle-scrobble').button();
-  $settings.find('.auth-cancel').button();
-  $settings.find('.auth-save').button();
-  $settings.find('.auth-edit').button();
-  $settings.find('.auth-clear').button();
-  $settings.find('#auth-password').val(settings_ui.auth.password);
 }
 
 function renderPlaylistButtons(){
@@ -810,7 +800,8 @@ function render(){
   renderPlaylistButtons();
   renderLibrary();
   renderNowPlaying();
-  renderSettings();
+  updateSettingsAuthUi();
+  updateLastFmSettingsUi();
   handleResize();
 }
 
@@ -1292,16 +1283,15 @@ function sendAuth() {
 
 function settingsAuthSave(){
   settings_ui.auth.show_edit = false;
-  var $text_box = $('#auth-password');
-  localState.authPassword = $text_box.val();
+  localState.authPassword = $authPassword.val();
   saveLocalState();
-  renderSettings();
+  updateSettingsAuthUi();
   sendAuth();
 }
 
 function settingsAuthCancel(){
   settings_ui.auth.show_edit = false;
-  renderSettings();
+  updateSettingsAuthUi();
 }
 
 function performDrag(event, callbacks){
@@ -1732,16 +1722,63 @@ function setUpUploadUi(){
   }
 }
 
+function updateLastFmApiKey(key) {
+  lastFmApiKey = key;
+  updateLastFmSettingsUi();
+}
+
+function updateLastFmSettingsUi() {
+  if (localState.lastfm.username) {
+    $settingsLastFmIn.show();
+    $settingsLastFmOut.hide();
+  } else {
+    $settingsLastFmIn.hide();
+    $settingsLastFmOut.show();
+  }
+  settingsLastFmUserDom.setAttribute('href', "http://last.fm/user/" +
+      encodeURIComponent(localState.lastfm.username));
+  settingsLastFmUserDom.innerText = localState.lastfm.username;
+  var authUrl = "http://www.last.fm/api/auth/?api_key=" +
+        encodeURIComponent(lastFmApiKey) + "&cb=" +
+        encodeURIComponent(location.protocol + "//" + location.host + "/");
+  lastFmAuthUrlDom.setAttribute('href', authUrl);
+  $toggleScrobble
+    .button('option', 'label', localState.lastfm.scrobbling_on ? 'On' : 'Off')
+    .prop('checked', localState.lastfm.scrobbling_on)
+    .button('refresh');
+}
+
+function updateSettingsAuthUi() {
+  var showEdit = !!(localState.authPassword == null || settings_ui.auth.show_edit);
+  $settingsEditPassword.toggle(showEdit);
+  $settingsShowPassword.toggle(!showEdit);
+  $settingsAuthCancel.toggle(!!localState.authPassword);
+  $authPassword.val(localState.authPassword);
+  passwordDisplayDom.innerText = localState.authPassword;
+  $authPermRead.toggle(!!permissions.read);
+  $authPermAdd.toggle(!!permissions.add);
+  $authPermControl.toggle(!!permissions.control);
+  $authPermAdmin.toggle(!!permissions.admin);
+  streamUrlDom.setAttribute('href', streaming.getUrl());
+}
+
 function setUpSettingsUi(){
-  $settings.on('click', '.signout', function(event){
+  $toggleScrobble.button();
+  $lastFmSignOut.button();
+  $settingsAuthCancel.button();
+  $settingsAuthSave.button();
+  $settingsAuthEdit.button();
+  $settingsAuthClear.button();
+
+  $lastFmSignOut.on('click', function(event) {
     localState.lastfm.username = null;
     localState.lastfm.session_key = null;
     localState.lastfm.scrobbling_on = false;
     saveLocalState();
-    renderSettings();
+    updateLastFmSettingsUi();
     return false;
   });
-  $settings.on('click', '#toggle-scrobble', function(event){
+  $toggleScrobble.on('click', function(event) {
     var msg;
     var value = $(this).prop("checked");
     if (value) {
@@ -1757,41 +1794,39 @@ function setUpSettingsUi(){
       session_key: localState.lastfm.session_key
     };
     socket.send(msg, params);
-    renderSettings();
-    return false;
+    updateLastFmSettingsUi();
   });
-  $settings.on('click', '.auth-edit', function(event){
-    var $text_box, ref$;
+  $settingsAuthEdit.on('click', function(event) {
     settings_ui.auth.show_edit = true;
-    renderSettings();
-    $text_box = $('#auth-password');
-    $text_box.focus().val((ref$ = localState.authPassword) != null ? ref$ : "").select();
+    updateSettingsAuthUi();
+    $authPassword
+      .focus()
+      .val(localState.authPassword || "")
+      .select();
   });
-  $settings.on('click', '.auth-clear', function(event){
+  $settingsAuthClear.on('click', function(event) {
     localState.authPassword = null;
     saveLocalState();
     settings_ui.auth.password = "";
-    renderSettings();
+    updateSettingsAuthUi();
   });
-  $settings.on('click', '.auth-save', function(event){
+  $settingsAuthSave.on('click', function(event){
     settingsAuthSave();
   });
-  $settings.on('click', '.auth-cancel', function(event){
+  $settingsAuthCancel.on('click', function(event) {
     settingsAuthCancel();
   });
-  $settings.on('keydown', '#auth-password', function(event){
-    var $text_box;
-    $text_box = $(this);
+  $authPassword.on('keydown', function(event) {
     event.stopPropagation();
-    settings_ui.auth.password = $text_box.val();
+    settings_ui.auth.password = $authPassword.val();
     if (event.which === 27) {
       settingsAuthCancel();
     } else if (event.which === 13) {
       settingsAuthSave();
     }
   });
-  $settings.on('keyup', '#auth-password', function(event){
-    settings_ui.auth.password = $(this).val();
+  $authPassword.on('keyup', function(event) {
+    settings_ui.auth.password = $authPassword.val();
   });
 }
 
@@ -2101,13 +2136,10 @@ $document.ready(function(){
     });
     return;
   }
-  socket.on('LastFmApiKey', function(data) {
-    lastFmApiKey = data;
-    renderSettings();
-  });
+  socket.on('LastFmApiKey', updateLastFmApiKey);
   socket.on('permissions', function(data){
     permissions = data;
-    renderSettings();
+    updateSettingsAuthUi();
   });
   socket.on('volumeUpdate', function(vol) {
     player.volume = vol;

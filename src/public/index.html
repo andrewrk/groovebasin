@@ -67,6 +67,52 @@
     </div>
     <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
       <div id="settings">
+        <div class="section">
+          <h1>Authentication</h1>
+          <div id="settings-edit-password">
+            <input type="text" id="auth-password" placeholder="password" />
+            <button id="settings-auth-save">Save</button>
+            <button id="settings-auth-cancel">Cancel</button>
+          </div>
+          <div id="settings-show-password">
+            Using password <em id="password-display">...</em>
+            <button id="settings-auth-edit">Edit</button>
+            <button id="settings-auth-clear">Clear</button>
+          </div>
+          <h2>Permissions</h2>
+          <ul>
+            <li id="auth-perm-read">Reading the library, current playlist, and playback status</li>
+            <li id="auth-perm-add">Adding songs, loading playlists, and uploading songs.</li>
+            <li id="auth-perm-control">Control playback state, and manipulate playlists.</li>
+            <li id="auth-perm-admin">Deleting songs, updating tags, organizing library.</li>
+          </ul>
+        </div>
+        <div class="section">
+          <h1>Last.fm</h1>
+          <div id="settings-lastfm-in">
+            <p>
+              Authenticated as
+              <a id="settings-lastfm-user" href="#">...</a>.
+              <button id="lastfm-sign-out">Sign out</button>
+            </p>
+            <p>
+              Scrobbling is
+              <input type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
+            </p>
+          </div>
+          <div id="settings-lastfm-out">
+            <p>
+              <a id="lastfm-auth-url" href="#">Authenticate with Last.fm</a>
+            </p>
+          </div>
+        </div>
+        <div class="section">
+          <h1>About</h1>
+          <ul>
+            <li><a id="settings-stream-url" href="#">Stream URL</a></li>
+            <li><a href="http://github.com/andrewrk/groovebasin">GrooveBasin on GitHub</a></li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>

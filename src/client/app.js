@@ -552,11 +552,30 @@ function renderPlaylistButtons(){
 function renderPlaylist(){
   var itemList = player.playlist.itemList || [];
   var scrollTop = $playlistItems.scrollTop();
-  var $domItems = $playlistItems.children();
+
+  // add the missing dom entries
+  var i;
+  var playlistItemsDom = $playlistItems.get(0);
+  for (i = playlistItemsDom.childElementCount; i < itemList.length; i += 1) {
+    $playlistItems.append(
+      '<div class="pl-item">' +
+        '<span class="track"></span>' +
+        '<span class="title"></span>' +
+        '<span class="artist"></span>' +
+        '<span class="album"></span>' +
+        '<span class="time"></span>' +
+      '</div>');
+  }
+  // remove the extra dom entries
+  var domItem;
+  while (itemList.length < playlistItemsDom.childElementCount) {
+    playlistItemsDom.removeChild(playlistItemsDom.lastChild);
+  }
 
   // overwrite existing dom entries
-  var i, item, track;
-  for (i = 0; i < $domItems.length; i += 1) {
+  var $domItems = $playlistItems.children();
+  var item, track;
+  for (i = 0; i < itemList.length; i += 1) {
     var $domItem = $($domItems[i]);
     item = itemList[i];
     if (item) {
@@ -571,19 +590,6 @@ function renderPlaylist(){
     } else {
       $domItem.remove();
     }
-  }
-  // add new dom entries
-  for (; i < itemList.length; i += 1) {
-    item = itemList[i];
-    track = item.track;
-    $playlistItems.append(
-      '<div class="pl-item" id="playlist-track-' + item.id + '" data-id="' + item.id + '">' +
-        '<span class="track">' + track.track + '</span>' +
-        '<span class="title">' + track.name + '</span>' +
-        '<span class="artist">' + track.artistName + '</span>' +
-        '<span class="album">' + track.albumName + '</span>' +
-        '<span class="time">' + formatTime(track.duration) + '</span>' +
-      '</div>');
   }
 
   refreshSelection();
@@ -714,13 +720,66 @@ function getValidIds(selection_type) {
   throw new Error("BadSelectionType");
 }
 
+var $emptyLibraryMessage = $('#empty-library-message');
+var $libraryNoItems = $('#library-no-items');
+var $libraryArtists = $('#library-artists');
+
+function artistId(s) {
+  return "lib-artist-" + toHtmlId(s);
+}
+
+function artistDisplayName(name) {
+  return name || '[Unknown Artist]';
+}
+
 function renderLibrary() {
-  var context = {
-    artistList: player.searchResults.artistList,
-    emptyLibraryMessage: player.haveFileListCache ? "No Results" : "loading..."
-  };
+  var artistList = player.searchResults.artistList || [];
   var scrollTop = $library.scrollTop();
-  $library.html(Handlebars.templates.library(context));
+
+  $emptyLibraryMessage.text(player.haveFileListCache ? "No Results" : "loading...");
+  $libraryNoItems.toggle(!artistList.length);
+
+  // add the missing dom entries
+  var i;
+  var artistListDom = $libraryArtists.get(0);
+  for (i = artistListDom.childElementCount; i < artistList.length; i += 1) {
+    $libraryArtists.append(
+      '<li>' +
+        '<div class="clickable expandable" data-type="artist">' +
+          '<div class="ui-icon ui-icon-triangle-1-e"></div>' +
+          '<span></span>' +
+        '</div>' +
+        '<ul></ul>' +
+      '</li>');
+  }
+  // remove the extra dom entries
+  var domItem;
+  while (artistList.length < artistListDom.childElementCount) {
+    artistListDom.removeChild(artistListDom.lastChild);
+  }
+
+  // overwrite existing dom entries
+  var artist;
+  var $domItems = $libraryArtists.children();
+  for (i = 0; i < artistList.length; i += 1) {
+    domItem = $domItems[i];
+    artist = artistList[i];
+    if (artist) {
+      $(domItem).data('cached', false);
+      var divDom = domItem.children[0];
+      divDom.setAttribute('id', artistId(artist.key));
+      divDom.setAttribute('data-key', artist.key);
+      var spanDom = divDom.children[1];
+      spanDom.innerText = artistDisplayName(artist.name);
+      var ulDom = domItem.children[1];
+      while (ulDom.firstChild) {
+        ulDom.removeChild(ulDom.firstChild);
+      }
+    } else {
+      domItem.parentNode.removeChild(domItem);
+    }
+  }
+
   var $artists = $library.children("ul").children("li");
   var nodeCount = $artists.length;
   expandStuff($artists);
@@ -2140,7 +2199,6 @@ function setUpUi(){
   setUpSettingsUi();
 }
 function initHandlebars(){
-  Handlebars.registerHelper('time', formatTime);
   Handlebars.registerHelper('artistid', function(s){
     return "lib-artist-" + toHtmlId(s);
   });
@@ -2149,12 +2207,6 @@ function initHandlebars(){
   });
   Handlebars.registerHelper('trackid', function(s){
     return "lib-track-" + toHtmlId(s);
-  });
-  Handlebars.registerHelper('storedplaylistid', function(s){
-    return "stored-pl-pl-" + toHtmlId(s);
-  });
-  Handlebars.registerHelper('storedplaylistitemid', function(s){
-    return "stored-pl-item-" + toHtmlId(s);
   });
 }
 function handleResize(){

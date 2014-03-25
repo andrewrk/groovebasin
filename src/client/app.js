@@ -84,9 +84,9 @@ var selection = {
     }
   },
   getPos: function(type, key){
-    var val;
     if (type == null) type = this.type;
     if (key == null) key = this.cursor;
+    var val;
     if (this.isLibrary()) {
       val = {
         type: 'library',
@@ -96,23 +96,22 @@ var selection = {
       };
       if (key != null) {
         switch (type) {
-        case 'track':
-          val.track = player.searchResults.trackTable[key];
-          val.album = val.track.album;
-          val.artist = val.album.artist;
-          break;
-        case 'album':
-          val.album = player.searchResults.albumTable[key];
-          val.artist = val.album.artist;
-          break;
-        case 'artist':
-          val.artist = player.searchResults.artistTable[key];
-          break;
+          case 'track':
+            val.track = player.searchResults.trackTable[key];
+            val.album = val.track.album;
+            val.artist = val.album.artist;
+            break;
+          case 'album':
+            val.album = player.searchResults.albumTable[key];
+            val.artist = val.album.artist;
+            break;
+          case 'artist':
+            val.artist = player.searchResults.artistTable[key];
+            break;
         }
       } else {
         val.artist = player.searchResults.artistList[0];
       }
-      return val;
     } else if (this.isStoredPlaylist()) {
       val = {
         type: 'stored_playlist',
@@ -121,21 +120,21 @@ var selection = {
       };
       if (key != null) {
         switch (type) {
-        case 'stored_playlist_item':
-          val.stored_playlist_item = player.stored_playlist_item_table[key];
-          val.stored_playlist = val.stored_playlist_item.playlist;
-          break;
-        case 'stored_playlist':
-          val.stored_playlist = player.stored_playlist_table[key];
-          break;
+          case 'stored_playlist_item':
+            val.stored_playlist_item = player.stored_playlist_item_table[key];
+            val.stored_playlist = val.stored_playlist_item.playlist;
+            break;
+          case 'stored_playlist':
+            val.stored_playlist = player.stored_playlist_table[key];
+            break;
         }
       } else {
         val.stored_playlist = player.stored_playlists[0];
       }
-      return val;
     } else {
       throw new Error("NothingSelected");
     }
+    return val;
   },
   posToArr: function(pos){
     var ref$;
@@ -430,14 +429,14 @@ function loadLocalState() {
 }
 
 function scrollLibraryToSelection(){
-  var helpers = getSelHelpers();
+  var helpers = getSelectionHelpers();
   if (helpers == null) return;
   delete helpers.playlist;
   scrollThingToSelection($library, helpers);
 }
 
 function scrollPlaylistToSelection(){
-  var helpers = getSelHelpers();
+  var helpers = getSelectionHelpers();
   if (helpers == null) return;
   delete helpers.track;
   delete helpers.artist;
@@ -446,16 +445,13 @@ function scrollPlaylistToSelection(){
 }
 
 function scrollThingToSelection($scroll_area, helpers){
-  var ref$, $div;
   var topPos = null;
   var bottomPos = null;
   for (var selName in helpers) {
-    ref$ = helpers[selName];
-    var ids = ref$[0];
-    var table = ref$[1];
-    var $getDiv = ref$[2];
-    for (var id in ids) {
-      var itemTop = ($div = $getDiv(id)).offset().top;
+    var helper = helpers[selName];
+    for (var id in helper.ids) {
+      var $div = helper.$getDiv(id);
+      var itemTop = $div.offset().top;
       var itemBottom = itemTop + $div.height();
       if (topPos == null || itemTop < topPos) {
         topPos = itemTop;
@@ -602,82 +598,80 @@ function labelPlaylistItems() {
   }
 }
 
-function getSelHelpers(){
-  var ref$;
-  if ((player != null ? (ref$ = player.playlist) != null ? ref$.itemTable : void 8 : void 8) == null) {
-    return null;
-  }
-  if ((player != null ? (ref$ = player.searchResults) != null ? ref$.artistTable : void 8 : void 8) == null) {
-    return null;
-  }
+function getSelectionHelpers(){
+  if (player == null) return null;
+  if (player.playlist == null) return null;
+  if (player.playlist.itemTable == null) return null;
+  if (player.searchResults == null) return null;
+  if (player.searchResults.artistTable == null) return null;
   return {
-    playlist: [
-      selection.ids.playlist, player.playlist.itemTable, function(id){
+    playlist: {
+      ids: selection.ids.playlist,
+      table: player.playlist.itemTable,
+      $getDiv: function(id){
         return $("#playlist-track-" + id);
-      }
-    ],
-    artist: [
-      selection.ids.artist, player.searchResults.artistTable, function(id){
+      },
+    },
+    artist: {
+      ids: selection.ids.artist,
+      table: player.searchResults.artistTable,
+      $getDiv: function(id){
         return $("#lib-artist-" + toHtmlId(id));
-      }
-    ],
-    album: [
-      selection.ids.album, player.searchResults.albumTable, function(id){
+      },
+    },
+    album: {
+      ids: selection.ids.album,
+      table: player.searchResults.albumTable,
+      $getDiv: function(id){
         return $("#lib-album-" + toHtmlId(id));
-      }
-    ],
-    track: [
-      selection.ids.track, player.searchResults.trackTable, function(id){
+      },
+    },
+    track: {
+      ids: selection.ids.track,
+      table: player.searchResults.trackTable,
+      $getDiv: function(id){
         return $("#lib-track-" + toHtmlId(id));
-      }
-    ],
-    stored_playlist: [
-      selection.ids.stored_playlist, player.stored_playlist_table, function(id){
+      },
+    },
+    stored_playlist: {
+      ids: selection.ids.stored_playlist,
+      table: player.stored_playlist_table,
+      $getDiv: function(id){
         return $("#stored-pl-pl-" + toHtmlId(id));
-      }
-    ],
-    stored_playlist_item: [
-      selection.ids.stored_playlist_item, player.stored_playlist_item_table, function(id){
+      },
+    },
+    stored_playlist_item: {
+      ids: selection.ids.stored_playlist_item,
+      table: player.stored_playlist_item_table,
+      $getDiv: function(id){
         return $("#stored-pl-item-" + toHtmlId(id));
-      }
-    ]
+      },
+    },
   };
 }
 
-function refreshSelection(){
-  var ref$, id;
-  var helpers = getSelHelpers();
+function refreshSelection() {
+  var helpers = getSelectionHelpers();
   if (helpers == null) return;
-  $playlist_items.find(".pl-item").removeClass('selected').removeClass('cursor');
-  $library.find(".clickable").removeClass('selected').removeClass('cursor');
+  $playlist_items  .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
+  $library         .find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
-  if (selection.type == null) {
-    return;
-  }
-  for (var sel_name in helpers) {
-    ref$ = helpers[sel_name];
-    var ids = ref$[0];
-    var table = ref$[1];
-    var $getDiv = ref$[2];
-    for (var i = 0, len$ = (ref$ = (fn$())).length; i < len$; ++i) {
-      id = ref$[i];
-      delete ids[id];
-    }
-    for (id in ids) {
-      $getDiv(id).addClass('selected');
-    }
-    if (selection.cursor != null && sel_name === selection.type) {
-      $getDiv(selection.cursor).addClass('cursor');
-    }
-  }
-  function fn$(){
-    var results$ = [];
-    for (var id in ids) {
-      if (table[id] == null) {
-        results$.push(id);
+  if (selection.type == null) return;
+  for (var slection_type in helpers) {
+    var helper = helpers[slection_type];
+    var id;
+    // clean out stale ids
+    for (id in helper.ids) {
+      if (helper.table[id] == null) {
+        delete helper.ids[id];
       }
     }
-    return results$;
+    for (id in helper.ids) {
+      helper.$getDiv(id).addClass('selected');
+    }
+    if (selection.cursor != null && slection_type === selection.type) {
+      helper.$getDiv(selection.cursor).addClass('cursor');
+    }
   }
 }
 
@@ -927,7 +921,6 @@ function nextRepeatState(){
 }
 
 var keyboard_handlers = (function(){
-  var handlers;
   function upDownHandler(event){
     var default_index, dir, next_pos;
     if (event.which === 38) {
@@ -989,27 +982,21 @@ var keyboard_handlers = (function(){
     }
   }
   function leftRightHandler(event){
-    var helpers, ref$, ids, table, $getDiv, selected_item, is_expanded_funcs, is_expanded, $li, cursor_pos;
     var dir = event.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
-      if (!(helpers = getSelHelpers())) {
-        return;
-      }
-      ref$ = helpers[selection.type];
-      ids = ref$[0];
-      table = ref$[1];
-      $getDiv = ref$[2];
-      selected_item = table[selection.cursor];
-      is_expanded_funcs = {
+      var helpers = getSelectionHelpers();
+      if (helpers == null) return;
+      var helper = helpers[selection.type];
+      var selected_item = helper.table[selection.cursor];
+      var is_expanded_funcs = {
         artist: isArtistExpanded,
         album: isAlbumExpanded,
         track: function(){
           return true;
         }
       };
-      is_expanded = is_expanded_funcs[selection.type](selected_item);
-      $li = $getDiv(selection.cursor).closest("li");
-      cursor_pos = selection.getPos();
+      var is_expanded = is_expanded_funcs[selection.type](selected_item);
+      var $li = helper.$getDiv(selection.cursor).closest("li");
       if (dir > 0) {
         if (!is_expanded) {
           toggleLibraryExpansion($li);
@@ -1050,7 +1037,8 @@ var keyboard_handlers = (function(){
         player.setVolume(player.volume + 0.10);
       }
   };
-  return handlers = {
+  return {
+    // Enter
     13: {
       ctrl: false,
       alt: null,
@@ -1064,6 +1052,7 @@ var keyboard_handlers = (function(){
         return false;
       }
     },
+    // Escape
     27: {
       ctrl: false,
       alt: false,
@@ -1081,36 +1070,42 @@ var keyboard_handlers = (function(){
         refreshSelection();
       }
     },
+    // Space
     32: {
       ctrl: false,
       alt: false,
       shift: false,
       handler: togglePlayback
     },
+    // Left
     37: {
       ctrl: null,
       alt: false,
       shift: null,
       handler: leftRightHandler
     },
+    // Up
     38: {
       ctrl: null,
       alt: false,
       shift: null,
       handler: upDownHandler
     },
+    // Right
     39: {
       ctrl: null,
       alt: false,
       shift: null,
       handler: leftRightHandler
     },
+    // Down
     40: {
       ctrl: null,
       alt: false,
       shift: null,
       handler: upDownHandler
     },
+    // Delete
     46: {
       ctrl: false,
       alt: false,
@@ -1119,7 +1114,9 @@ var keyboard_handlers = (function(){
         handleDeletePressed(event.shiftKey);
       }
     },
+    // =
     61: volumeUpHandler,
+    // C
     67: {
       ctrl: false,
       alt: false,
@@ -1128,12 +1125,14 @@ var keyboard_handlers = (function(){
         player.clear();
       }
     },
+    // d
     68: {
       ctrl: false,
       alt: false,
       shift: false,
       handler: toggleDynamicMode
     },
+    // S
     72: {
       ctrl: false,
       alt: false,
@@ -1142,6 +1141,7 @@ var keyboard_handlers = (function(){
         player.shuffle();
       }
     },
+    // l
     76: {
       ctrl: false,
       alt: false,
@@ -1150,18 +1150,21 @@ var keyboard_handlers = (function(){
         clickTab('library');
       }
     },
+    // r
     82: {
       ctrl: false,
       alt: false,
       shift: false,
       handler: nextRepeatState
     },
+    // s
     83: {
       ctrl: false,
       alt: false,
       shift: false,
       handler: streaming.toggleStatus
     },
+    // u
     85: {
       ctrl: false,
       alt: false,
@@ -1171,8 +1174,11 @@ var keyboard_handlers = (function(){
         $uploadByUrl.focus().select();
       }
     },
+    // - maybe?
     173: volumeDownHandler,
+    // +
     187: volumeUpHandler,
+    // , <
     188: {
       ctrl: false,
       alt: false,
@@ -1181,7 +1187,9 @@ var keyboard_handlers = (function(){
         player.prev();
       }
     },
+    // _ maybe?
     189: volumeDownHandler,
+    // . >
     190: {
       ctrl: false,
       alt: false,
@@ -1190,6 +1198,7 @@ var keyboard_handlers = (function(){
         player.next();
       }
     },
+    // ?
     191: {
       ctrl: false,
       alt: false,

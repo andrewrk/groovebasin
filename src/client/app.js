@@ -600,7 +600,10 @@ function renderPlaylist(){
 function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
-  $playlistItems.find(".pl-item").removeClass('current').removeClass('old');
+  $playlistItems.find(".pl-item")
+    .removeClass('current')
+    .removeClass('old')
+    .removeClass('random');
   if (curItem != null && dynamicModeOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.playlist.itemList[index];

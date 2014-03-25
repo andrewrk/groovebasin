@@ -385,7 +385,7 @@ var $document = $(document);
 var $window = $(window);
 var $pl_window = $('#playlist-window');
 var $left_window = $('#left-window');
-var $playlist_items = $('#playlist-items');
+var $playlistItems = $('#playlist-items');
 var $dynamicMode = $('#dynamic-mode');
 var $pl_btn_repeat = $('#pl-btn-repeat');
 var $tabs = $('#tabs');
@@ -466,7 +466,7 @@ function scrollPlaylistToSelection(){
   delete helpers.track;
   delete helpers.artist;
   delete helpers.album;
-  scrollThingToSelection($playlist_items, helpers);
+  scrollThingToSelection($playlistItems, helpers);
 }
 
 function scrollThingToSelection($scroll_area, helpers){
@@ -518,7 +518,7 @@ function downloadKeys(keys) {
 function getDragPosition(x, y){
   var ref$;
   var result = {};
-  for (var i = 0, len$ = (ref$ = $playlist_items.find(".pl-item").get()).length; i < len$; ++i) {
+  for (var i = 0, len$ = (ref$ = $playlistItems.find(".pl-item").get()).length; i < len$; ++i) {
     var item = ref$[i];
     var $item = $(item);
     var middle = $item.offset().top + $item.height() / 2;
@@ -550,20 +550,51 @@ function renderPlaylistButtons(){
 }
 
 function renderPlaylist(){
-  var context = {
-    playlist: player.playlist.itemList,
-  };
-  var scrollTop = $playlist_items.scrollTop();
-  $playlist_items.html(Handlebars.templates.playlist(context));
+  var itemList = player.playlist.itemList || [];
+  var scrollTop = $playlistItems.scrollTop();
+  var $domItems = $playlistItems.children();
+
+  // overwrite existing dom entries
+  var i, item, track;
+  for (i = 0; i < $domItems.length; i += 1) {
+    var $domItem = $($domItems[i]);
+    item = itemList[i];
+    if (item) {
+      $domItem.attr('id', 'playlist-track-' + item.id);
+      $domItem.attr('data-id', item.id);
+      track = item.track;
+      $domItem.find('.track').text(track.track);
+      $domItem.find('.title').text(track.name);
+      $domItem.find('.artist').text(track.artistName);
+      $domItem.find('.album').text(track.albumName);
+      $domItem.find('.time').text(formatTime(track.duration));
+    } else {
+      $domItem.remove();
+    }
+  }
+  // add new dom entries
+  for (; i < itemList.length; i += 1) {
+    item = itemList[i];
+    track = item.track;
+    $playlistItems.append(
+      '<div class="pl-item" id="playlist-track-' + item.id + '" data-id="' + item.id + '">' +
+        '<span class="track">' + track.track + '</span>' +
+        '<span class="title">' + track.name + '</span>' +
+        '<span class="artist">' + track.artistName + '</span>' +
+        '<span class="album">' + track.albumName + '</span>' +
+        '<span class="time">' + formatTime(track.duration) + '</span>' +
+      '</div>');
+  }
+
   refreshSelection();
   labelPlaylistItems();
-  $playlist_items.scrollTop(scrollTop);
+  $playlistItems.scrollTop(scrollTop);
 }
 
 function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
-  $playlist_items.find(".pl-item").removeClass('current').removeClass('old');
+  $playlistItems.find(".pl-item").removeClass('current').removeClass('old');
   if (curItem != null && dynamicModeOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.playlist.itemList[index];
@@ -639,7 +670,7 @@ function getSelectionHelpers(){
 function refreshSelection() {
   var helpers = getSelectionHelpers();
   if (helpers == null) return;
-  $playlist_items  .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
+  $playlistItems  .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
   $library         .find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
@@ -1347,7 +1378,7 @@ function performDrag(event, callbacks){
   abortDrag = function(){
     $document.off('mousemove', onDragMove).off('mouseup', onDragEnd);
     if (started_drag) {
-      $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+      $playlistItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
       started_drag = false;
     }
     abortDrag = function(){};
@@ -1364,7 +1395,7 @@ function performDrag(event, callbacks){
       }
     }
     result = getDragPosition(event.pageX, event.pageY);
-    $playlist_items.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+    $playlistItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
     if (result.$next != null) {
       result.$next.addClass("border-top");
     } else if (result.$previous != null) {
@@ -1425,14 +1456,14 @@ function setUpPlaylistUi(){
     setDynamicMode(value);
     return false;
   });
-  $playlist_items.on('dblclick', '.pl-item', function(event){
+  $playlistItems.on('dblclick', '.pl-item', function(event){
     var trackId = $(this).attr('data-id');
     player.seek(trackId, 0);
   });
-  $playlist_items.on('contextmenu', function(event){
+  $playlistItems.on('contextmenu', function(event){
     return event.altKey;
   });
-  $playlist_items.on('mousedown', '.pl-item', function(event){
+  $playlistItems.on('mousedown', '.pl-item', function(event){
     var trackId, skip_drag;
     if (started_drag) {
       return true;
@@ -1515,7 +1546,7 @@ function setUpPlaylistUi(){
       }
     }
   });
-  $playlist_items.on('mousedown', function(){
+  $playlistItems.on('mousedown', function(){
     return false;
   });
   $playlistMenu.menu();
@@ -2132,7 +2163,7 @@ function handleResize(){
   $left_window.height(MARGIN);
   $library.height(MARGIN);
   $upload.height(MARGIN);
-  $playlist_items.height(MARGIN);
+  $playlistItems.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
   var second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
   $left_window.offset({
@@ -2149,7 +2180,7 @@ function handleResize(){
   var tab_contents_height = $left_window.height() - $tabs.height() - MARGIN;
   $library.height(tab_contents_height - $lib_header.height());
   $upload.height(tab_contents_height);
-  $playlist_items.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
+  $playlistItems.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
 }
 function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";

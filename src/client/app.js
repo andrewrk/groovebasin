@@ -555,16 +555,6 @@ function renderPlaylist(){
   $playlist_items.scrollTop(scrollTop);
 }
 
-function renderStoredPlaylists(){
-  var context = {
-    stored_playlists: player.stored_playlists
-  };
-  var scrollTop = $stored_playlists.scrollTop();
-  $stored_playlists.html(Handlebars.templates.stored_playlists(context));
-  $stored_playlists.scrollTop(scrollTop);
-  refreshSelection();
-}
-
 function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
@@ -2153,7 +2143,6 @@ $document.ready(function(){
   player = new PlayerClient(socket);
   player.on('libraryupdate', renderLibrary);
   player.on('playlistupdate', renderPlaylist);
-  player.on('storedplaylistupdate', renderStoredPlaylists);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderPlaylistButtons();

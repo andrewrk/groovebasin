@@ -578,18 +578,14 @@ function renderPlaylist(){
   for (i = 0; i < itemList.length; i += 1) {
     var $domItem = $($domItems[i]);
     item = itemList[i];
-    if (item) {
-      $domItem.attr('id', 'playlist-track-' + item.id);
-      $domItem.attr('data-id', item.id);
-      track = item.track;
-      $domItem.find('.track').text(track.track);
-      $domItem.find('.title').text(track.name);
-      $domItem.find('.artist').text(track.artistName);
-      $domItem.find('.album').text(track.albumName);
-      $domItem.find('.time').text(formatTime(track.duration));
-    } else {
-      $domItem.remove();
-    }
+    $domItem.attr('id', 'playlist-track-' + item.id);
+    $domItem.attr('data-id', item.id);
+    track = item.track;
+    $domItem.find('.track').text(track.track);
+    $domItem.find('.title').text(track.name);
+    $domItem.find('.artist').text(track.artistName);
+    $domItem.find('.album').text(track.albumName);
+    $domItem.find('.time').text(formatTime(track.duration));
   }
 
   refreshSelection();
@@ -749,7 +745,7 @@ function renderLibrary() {
     $libraryArtists.append(
       '<li>' +
         '<div class="clickable expandable" data-type="artist">' +
-          '<div class="ui-icon ui-icon-triangle-1-e"></div>' +
+          '<div class="ui-icon"></div>' +
           '<span></span>' +
         '</div>' +
         '<ul></ul>' +
@@ -767,19 +763,19 @@ function renderLibrary() {
   for (i = 0; i < artistList.length; i += 1) {
     domItem = $domItems[i];
     artist = artistList[i];
-    if (artist) {
-      $(domItem).data('cached', false);
-      var divDom = domItem.children[0];
-      divDom.setAttribute('id', artistId(artist.key));
-      divDom.setAttribute('data-key', artist.key);
-      var spanDom = divDom.children[1];
-      spanDom.textContent = artistDisplayName(artist.name);
-      var ulDom = domItem.children[1];
-      while (ulDom.firstChild) {
-        ulDom.removeChild(ulDom.firstChild);
-      }
-    } else {
-      domItem.parentNode.removeChild(domItem);
+    $(domItem).data('cached', false);
+    var divDom = domItem.children[0];
+    divDom.setAttribute('id', artistId(artist.key));
+    divDom.setAttribute('data-key', artist.key);
+    var iconDom = divDom.children[0];
+    $(iconDom)
+      .addClass(ICON_COLLAPSED)
+      .removeClass(ICON_EXPANDED);
+    var spanDom = divDom.children[1];
+    spanDom.textContent = artistDisplayName(artist.name);
+    var ulDom = domItem.children[1];
+    while (ulDom.firstChild) {
+      ulDom.removeChild(ulDom.firstChild);
     }
   }
 

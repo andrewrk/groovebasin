@@ -1,5 +1,4 @@
 var $ = window.$;
-var Handlebars = window.Handlebars;
 
 var shuffle = require('mess');
 var querystring = require('querystring');
@@ -902,13 +901,61 @@ function render(){
   handleResize();
 }
 
-function genericToggleExpansion($li, options){
+function renderArtist($ul, albumList) {
+  albumList.forEach(function(album) {
+    $ul.append(
+      '<li>' +
+        '<div class="clickable expandable" data-type="album">' +
+          '<div class="ui-icon ui-icon-triangle-1-e"></div>' +
+          '<span></span>' +
+        '</div>' +
+        '<ul style="display: none;"></ul>' +
+      '</li>');
+    var liDom = $ul.get(0).lastChild;
+    var divDom = liDom.children[0];
+    divDom.setAttribute('id', toAlbumId(album.key));
+    divDom.setAttribute('data-key', album.key);
+    var spanDom = divDom.children[1];
+    spanDom.textContent = album.name || '[Unknown Album]';
+
+    var artistUlDom = liDom.children[1];
+    var $artistUlDom = $(artistUlDom);
+    album.trackList.forEach(function(track) {
+      $artistUlDom.append(
+        '<li>' +
+          '<div class="clickable" data-type="track">' +
+            '<span></span>' +
+          '</div>' +
+        '</li>');
+      var trackLiDom = artistUlDom.lastChild;
+      var trackDivDom = trackLiDom.children[0];
+      trackDivDom.setAttribute('id', toTrackId(track.key));
+      trackDivDom.setAttribute('data-key', track.key);
+      var trackSpanDom = trackDivDom.children[0];
+      var caption = "";
+      if (track.track) {
+        caption += track.track + ". ";
+      }
+      if (track.compilation) {
+        caption += track.artistName + " - ";
+      }
+      caption += track.name;
+      trackSpanDom.textContent = caption;
+    });
+  });
+}
+
+function toggleLibraryExpansion($li){
   var $div = $li.find("> div");
   var $ul = $li.find("> ul");
-  if ($div.attr('data-type') === options.top_level_type) {
+  if ($div.attr('data-type') === 'artist') {
     if (!$li.data('cached')) {
       $li.data('cached', true);
-      $ul.html(options.template(options.context($div.attr('data-key'))));
+      var artistKey = $div.attr('data-key');
+      var albumList = player.searchResults.artistTable[artistKey].albumList;
+
+      renderArtist($ul, albumList);
+
       $ul.toggle();
       refreshSelection();
     }
@@ -922,18 +969,6 @@ function genericToggleExpansion($li, options){
     new_class = tmp;
   }
   $div.find("div").removeClass(old_class).addClass(new_class);
-}
-
-function toggleLibraryExpansion($li){
-  return genericToggleExpansion($li, {
-    top_level_type: 'artist',
-    template: Handlebars.templates.albums,
-    context: function(key){
-      return {
-        albumList: player.searchResults.artistTable[key].albumList
-      };
-    }
-  });
 }
 
 function confirmDelete(keysList) {
@@ -2197,17 +2232,15 @@ function setUpUi(){
   setUpUploadUi();
   setUpSettingsUi();
 }
-function initHandlebars(){
-  Handlebars.registerHelper('artistid', function(s){
-    return "lib-artist-" + toHtmlId(s);
-  });
-  Handlebars.registerHelper('albumid', function(s){
-    return "lib-album-" + toHtmlId(s);
-  });
-  Handlebars.registerHelper('trackid', function(s){
-    return "lib-track-" + toHtmlId(s);
-  });
+
+function toAlbumId(s) {
+  return "lib-album-" + toHtmlId(s);
 }
+
+function toTrackId(s) {
+  return "lib-track-" + toHtmlId(s);
+}
+
 function handleResize(){
   $nowplaying.width(MARGIN);
   $pl_window.height(MARGIN);
@@ -2291,7 +2324,6 @@ $document.ready(function(){
     render();
   });
   setUpUi();
-  initHandlebars();
   streaming.init(player, socket);
   render();
   $window.resize(handleResize);

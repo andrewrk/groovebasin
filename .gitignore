@@ -4,5 +4,4 @@
 
 # not shared with .npmignore
 /public/app.js
-/public/views.js
 /public/app.css

@@ -41,7 +41,6 @@
     "multiparty": "^3.2.3"
   },
   "devDependencies": {
-    "handlebars": "1.0.7",
     "stylus": "^0.42.3",
     "browserify": "~3.32.0"
   },

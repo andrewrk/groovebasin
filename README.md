@@ -73,6 +73,15 @@ $ npm run dev
 This will install dependencies, build generated files, and then start the
 sever. It is up to you to restart it when you modify assets or server files.
 
+### Roadmap
+
+ 1. Tag Editing
+ 2. Music library organization
+ 3. Accoustid Integration
+ 4. Playlists
+ 5. User accounts / permissions rehaul
+ 6. Event history / chat
+
 ## Release Notes
 
 ### 1.0.1 (Mar 18 2014)

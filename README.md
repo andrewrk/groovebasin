@@ -34,7 +34,7 @@ Live discussion in #libgroove on Freenode.
 
 * MPD protocol support. This means you already have a selection of
   [clients](http://mpd.wikia.com/wiki/Clients) which integrate with Groove Basin.
-  For example [MPDroid](https://play.google.com/store/apps/details?id=com.namelessdev.mpdroid).
+  For example [MPDroid](https://github.com/abarisain/dmix).
 
 * [Last.fm](http://www.last.fm/) scrobbling.
 
@@ -81,6 +81,7 @@ sever. It is up to you to restart it when you modify assets or server files.
  4. Playlists
  5. User accounts / permissions rehaul
  6. Event history / chat
+ 7. Finalize GrooveBasin protocol spec
 
 ## Release Notes
 

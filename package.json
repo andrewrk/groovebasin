@@ -34,7 +34,6 @@
     "uuid": "~1.4.1",
     "music-library-index": "^1.1.0",
     "keese": "~1.0.0",
-    "temp": "~0.7.0",
     "ws": "~0.4.31",
     "jsondiffpatch": "~0.1.4",
     "connect-static": "^1.1.0",

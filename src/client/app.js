@@ -1620,7 +1620,7 @@ function setUpPlaylistUi(){
       }
       if (!selection.isMulti()) {
         var item = player.playlist.itemTable[trackId];
-        $playlistMenu.find('.download').attr('href', 'library/' + item.track.file);
+        $playlistMenu.find('.download').attr('href', 'library/' + encodeURI(item.track.file));
       } else {
         $playlistMenu.find('.download').attr('href', '#');
       }
@@ -2201,7 +2201,7 @@ function genericTreeUi($elem, options){
         }
       }
       if (track) {
-        $libraryMenu.find('.download').attr('href', 'library/' + track.file);
+        $libraryMenu.find('.download').attr('href', 'library/' + encodeURI(track.file));
       } else {
         $libraryMenu.find('.download').attr('href', '#');
       }

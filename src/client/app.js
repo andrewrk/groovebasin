@@ -1882,6 +1882,7 @@ function setUpUploadUi(){
     function onImportUrl(args) {
       if (args.id !== id) return;
       socket.removeListener('importUrl', onImportUrl);
+      if (!args.key) return;
       if (localState.autoQueueUploads) {
         player.queueTracks([args.key]);
       }

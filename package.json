@@ -37,7 +37,8 @@
     "ws": "~0.4.31",
     "jsondiffpatch": "~0.1.4",
     "connect-static": "^1.1.0",
-    "multiparty": "^3.2.3"
+    "multiparty": "^3.2.3",
+    "ytdl": "^0.2.2"
   },
   "devDependencies": {
     "stylus": "^0.42.3",

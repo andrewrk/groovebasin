@@ -21,6 +21,7 @@ var selection = {
   },
   cursor: null,
   rangeSelectAnchor: null,
+  rangeSelectAnchorType: null,
   type: null,
   isLibrary: function(){
     return this.type === 'artist' || this.type === 'album' || this.type === 'track';
@@ -44,6 +45,7 @@ var selection = {
     this.type = null;
     this.cursor = null;
     this.rangeSelectAnchor = null;
+    this.rangeSelectAnchorType = null;
   },
   selectOnly: function(sel_name, key){
     this.clear();
@@ -51,6 +53,7 @@ var selection = {
     this.ids[sel_name][key] = true;
     this.cursor = key;
     this.rangeSelectAnchor = key;
+    this.rangeSelectAnchorType = sel_name;
   },
   isMulti: function(){
     var result, k;
@@ -697,6 +700,7 @@ function refreshSelection() {
         // select another of our ids randomly, if we have any.
         selection.cursor = Object.keys(helper.ids)[0];
         selection.rangeSelectAnchor = selection.cursor;
+        selection.rangeSelectAnchorType = selection_type;
         if (selection.cursor == null) {
           // no selected items
           selection.fullClear();
@@ -1069,12 +1073,14 @@ var keyboard_handlers = (function(){
           selection.clear();
           selection.ids.playlist[selection.cursor] = true;
           selection.rangeSelectAnchor = selection.cursor;
+          selection.rangeSelectAnchorType = selection.type;
         } else if (!event.ctrlKey && event.shiftKey) {
           // range select
           selectPlaylistRange();
         } else {
           // ghost selection
           selection.rangeSelectAnchor = selection.cursor;
+          selection.rangeSelectAnchorType = selection.type;
         }
       } else if (selection.isLibrary()) {
         next_pos = selection.getPos();
@@ -1086,9 +1092,6 @@ var keyboard_handlers = (function(){
         if (next_pos.artist == null) {
           return;
         }
-        if (!event.ctrlKey) {
-          selection.clear();
-        }
         if (next_pos.track != null) {
           selection.type = 'track';
           selection.cursor = next_pos.track.key;
@@ -1099,8 +1102,16 @@ var keyboard_handlers = (function(){
           selection.type = 'artist';
           selection.cursor = next_pos.artist.key;
         }
-        if (!event.ctrlKey) {
-          selection.ids[selection.type][selection.cursor] = true;
+        if (!event.ctrlKey && !event.shiftKey) {
+          // single select
+          selection.selectOnly(selection.type, selection.cursor);
+        } else if (!event.ctrlKey && event.shiftKey) {
+          // range select
+          selectTreeRange();
+        } else {
+          // ghost selection
+          selection.rangeSelectAnchor = selection.cursor;
+          selection.rangeSelectAnchorType = selection.type;
         }
       } else {
         if (player.playlist.itemList.length === 0) return;
@@ -1444,6 +1455,23 @@ function selectPlaylistRange() {
     selection.ids.playlist[player.playlist.itemList[i].id] = true;
   }
 }
+function selectTreeRange() {
+  selection.clear();
+  var old_pos = selection.getPos(selection.rangeSelectAnchorType, selection.rangeSelectAnchor);
+  var new_pos = selection.getPos(selection.type, selection.cursor);
+  if (compareArrays(selection.posToArr(old_pos), selection.posToArr(new_pos)) > 0) {
+    var tmp = old_pos;
+    old_pos = new_pos;
+    new_pos = tmp;
+  }
+  while (selection.posInBounds(old_pos)) {
+    selection.selectPos(old_pos);
+    if (selection.posEqual(old_pos, new_pos)) {
+      break;
+    }
+    selection.incrementPos(old_pos);
+  }
+}
 
 function sendAuth() {
   var pass = localState.authPassword;
@@ -1579,6 +1607,7 @@ function setUpPlaylistUi(){
           // individual item selection toggle
           selection.cursor = trackId;
           selection.rangeSelectAnchor = trackId;
+          selection.rangeSelectAnchorType = selection.type;
           toggleSelectionUnderCursor();
         }
       } else if (selection.ids.playlist[trackId] == null) {
@@ -1599,7 +1628,7 @@ function setUpPlaylistUi(){
                 results$.push(id);
               }
               return results$;
-            }()), result.previous_key, result.next_key);
+            })(), result.previous_key, result.next_key);
           },
           cancel: function(){
             selection.selectOnly('playlist', trackId);
@@ -2113,11 +2142,10 @@ function genericTreeUi($elem, options){
     return event.altKey;
   });
   $elem.on('mousedown', '.clickable', function(event){
-    var $this, type, key;
     $(document.activeElement).blur();
-    $this = $(this);
-    type = $this.attr('data-type');
-    key = $this.attr('data-key');
+    var $this = $(this);
+    var type = $this.attr('data-type');
+    var key = $this.attr('data-key');
     if (event.which === 1) {
       leftMouseDown(event);
     } else if (event.which === 3) {
@@ -2127,42 +2155,21 @@ function genericTreeUi($elem, options){
       rightMouseDown(event);
     }
     function leftMouseDown(event){
-      var skip_drag, old_pos, new_pos, new_arr, old_arr, ref$;
       event.preventDefault();
       removeContextMenu();
-      skip_drag = false;
+      var skip_drag = false;
       if (!options.isSelectionOwner()) {
         selection.selectOnly(type, key);
       } else if (event.ctrlKey || event.shiftKey) {
         skip_drag = true;
-        if (event.shiftKey && !event.ctrlKey) {
-          selection.clear();
-        }
-        if (event.shiftKey) {
-          old_pos = selection.getPos(selection.type, selection.cursor);
-          new_pos = selection.getPos(type, key);
-          new_arr = selection.posToArr(new_pos);
-          old_arr = selection.posToArr(old_pos);
-          if (compareArrays(old_arr, new_arr) > 0) {
-            ref$ = [new_pos, old_pos];
-            old_pos = ref$[0];
-            new_pos = ref$[1];
-          }
-          while (selection.posInBounds(old_pos)) {
-            selection.selectPos(old_pos);
-            if (selection.posEqual(old_pos, new_pos)) {
-              break;
-            }
-            selection.incrementPos(old_pos);
-          }
+        selection.cursor = key;
+        selection.type = type;
+        if (!event.shiftKey && !event.ctrlKey) {
+          selection.selectOnly(type, key);
+        } else if (event.shiftKey) {
+          selectTreeRange();
         } else if (event.ctrlKey) {
-          if (selection.ids[type][key] != null) {
-            delete selection.ids[type][key];
-          } else {
-            selection.ids[type][key] = true;
-          }
-          selection.cursor = key;
-          selection.type = type;
+          toggleSelectionUnderCursor();
         }
       } else if (selection.ids[type][key] == null) {
         selection.selectOnly(type, key);

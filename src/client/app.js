@@ -583,10 +583,10 @@ function renderPlaylist(){
     $domItem.attr('id', 'playlist-track-' + item.id);
     $domItem.attr('data-id', item.id);
     track = item.track;
-    $domItem.find('.track').text(track.track);
-    $domItem.find('.title').text(track.name);
-    $domItem.find('.artist').text(track.artistName);
-    $domItem.find('.album').text(track.albumName);
+    $domItem.find('.track').text(track.track || "");
+    $domItem.find('.title').text(track.name || "");
+    $domItem.find('.artist').text(track.artistName || "");
+    $domItem.find('.album').text(track.albumName || "");
     $domItem.find('.time').text(formatTime(track.duration));
   }
 
@@ -2349,6 +2349,7 @@ function compareArrays(arr1, arr2) {
 }
 
 function formatTime(seconds) {
+  if (seconds == null) return "";
   var sign = "";
   if (seconds < 0) {
     sign = "-";

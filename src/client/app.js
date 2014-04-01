@@ -777,6 +777,7 @@ function renderLibrary() {
     var spanDom = divDom.children[1];
     spanDom.textContent = artistDisplayName(artist.name);
     var ulDom = domItem.children[1];
+    ulDom.style.display = 'block';
     while (ulDom.firstChild) {
       ulDom.removeChild(ulDom.firstChild);
     }

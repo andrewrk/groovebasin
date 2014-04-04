@@ -49,8 +49,9 @@ Live discussion in #libgroove on Freenode.
 1. Install [Node.js](http://nodejs.org) v0.10.x.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source.
-4. `npm run build`
-5. `npm start`
+4. `npm install`
+5. `npm run build`
+6. `npm start`
 
 ## Screenshots
 

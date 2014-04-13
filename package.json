@@ -32,7 +32,7 @@
     "findit": "~1.1.1",
     "archiver": "^0.6.1",
     "uuid": "~1.4.1",
-    "music-library-index": "^1.1.0",
+    "music-library-index": "^1.1.1",
     "keese": "~1.0.0",
     "ws": "~0.4.31",
     "jsondiffpatch": "~0.1.4",

@@ -198,8 +198,13 @@ var selection = {
         if (isAlbumExpanded(pos.album)) {
           pos.track = pos.album.trackList[0];
         } else {
-          pos.artist = player.searchResults.artistList[pos.artist.index + 1];
-          pos.album = null;
+          var nextAlbum = pos.artist.albumList[pos.album.index + 1];
+          if (nextAlbum) {
+            pos.album = nextAlbum;
+          } else {
+            pos.artist = player.searchResults.artistList[pos.artist.index + 1];
+            pos.album = null;
+          }
         }
       } else if (pos.artist != null) {
         if (isArtistExpanded(pos.artist)) {
@@ -713,6 +718,7 @@ function refreshSelection() {
     }
   }
 }
+
 function getValidIds(selection_type) {
   switch (selection_type) {
     case 'playlist': return player.playlist.itemTable;
@@ -1047,9 +1053,9 @@ function nextRepeatState(){
   player.setRepeatMode((player.repeat + 1) % repeatModeNames.length);
 }
 
-var keyboard_handlers = (function(){
+var keyboardHandlers = (function(){
   function upDownHandler(event){
-    var default_index, dir, next_pos;
+    var default_index, dir, nextPos;
     if (event.which === 38) {
       // up
       default_index = player.playlist.itemList.length - 1;
@@ -1065,11 +1071,11 @@ var keyboard_handlers = (function(){
       }
     } else {
       if (selection.isPlaylist()) {
-        next_pos = player.playlist.itemTable[selection.cursor].index + dir;
-        if (next_pos < 0 || next_pos >= player.playlist.itemList.length) {
+        nextPos = player.playlist.itemTable[selection.cursor].index + dir;
+        if (nextPos < 0 || nextPos >= player.playlist.itemList.length) {
           return;
         }
-        selection.cursor = player.playlist.itemList[next_pos].id;
+        selection.cursor = player.playlist.itemList[nextPos].id;
         if (!event.ctrlKey && !event.shiftKey) {
           // single select
           selection.clear();
@@ -1085,24 +1091,22 @@ var keyboard_handlers = (function(){
           selection.rangeSelectAnchorType = selection.type;
         }
       } else if (selection.isLibrary()) {
-        next_pos = selection.getPos();
+        nextPos = selection.getPos();
         if (dir > 0) {
-          selection.incrementPos(next_pos);
+          selection.incrementPos(nextPos);
         } else {
-          prevLibPos(next_pos);
+          prevLibPos(nextPos);
         }
-        if (next_pos.artist == null) {
-          return;
-        }
-        if (next_pos.track != null) {
+        if (nextPos.artist == null) return;
+        if (nextPos.track != null) {
           selection.type = 'track';
-          selection.cursor = next_pos.track.key;
-        } else if (next_pos.album != null) {
+          selection.cursor = nextPos.track.key;
+        } else if (nextPos.album != null) {
           selection.type = 'album';
-          selection.cursor = next_pos.album.key;
+          selection.cursor = nextPos.album.key;
         } else {
           selection.type = 'artist';
-          selection.cursor = next_pos.artist.key;
+          selection.cursor = nextPos.artist.key;
         }
         if (!event.ctrlKey && !event.shiftKey) {
           // single select
@@ -1121,12 +1125,8 @@ var keyboard_handlers = (function(){
       }
       refreshSelection();
     }
-    if (selection.isPlaylist()) {
-      scrollPlaylistToSelection();
-    }
-    if (selection.isLibrary()) {
-      scrollLibraryToSelection();
-    }
+    if (selection.isPlaylist()) scrollPlaylistToSelection();
+    if (selection.isLibrary()) scrollLibraryToSelection();
   }
   function leftRightHandler(event){
     var dir = event.which === 37 ? -1 : 1;
@@ -1395,29 +1395,28 @@ function isArtistExpanded(artist){
   return $li.find("> ul").is(":visible");
 }
 function isAlbumExpanded(album){
-  var $li;
-  $li = $("#lib-album-" + toHtmlId(album.key)).closest("li");
+  var $li = $("#lib-album-" + toHtmlId(album.key)).closest("li");
   return $li.find("> ul").is(":visible");
 }
 function isStoredPlaylistExpanded(stored_playlist){
-  var $li;
-  $li = $("#stored-pl-pl-" + toHtmlId(stored_playlist.name)).closest("li");
+  var $li = $("#stored-pl-pl-" + toHtmlId(stored_playlist.name)).closest("li");
   return $li.find("> ul").is(":visible");
 }
-function prevLibPos(lib_pos){
-  if (lib_pos.track != null) {
-    lib_pos.track = lib_pos.track.album.trackList[lib_pos.track.index - 1];
-  } else if (lib_pos.album != null) {
-    lib_pos.album = lib_pos.artist.albumList[lib_pos.album.index - 1];
-    if (lib_pos.album != null && isAlbumExpanded(lib_pos.album)) {
-      lib_pos.track = lib_pos.album.trackList[lib_pos.album.trackList.length - 1];
+
+function prevLibPos(libPos){
+  if (libPos.track != null) {
+    libPos.track = libPos.track.album.trackList[libPos.track.index - 1];
+  } else if (libPos.album != null) {
+    libPos.album = libPos.artist.albumList[libPos.album.index - 1];
+    if (libPos.album != null && isAlbumExpanded(libPos.album)) {
+      libPos.track = libPos.album.trackList[libPos.album.trackList.length - 1];
     }
-  } else if (lib_pos.artist != null) {
-    lib_pos.artist = player.searchResults.artistList[lib_pos.artist.index - 1];
-    if (lib_pos.artist != null && isArtistExpanded(lib_pos.artist)) {
-      lib_pos.album = lib_pos.artist.albumList[lib_pos.artist.albumList.length - 1];
-      if (lib_pos.album != null && isAlbumExpanded(lib_pos.album)) {
-        lib_pos.track = lib_pos.album.trackList[lib_pos.album.trackList.length - 1];
+  } else if (libPos.artist != null) {
+    libPos.artist = player.searchResults.artistList[libPos.artist.index - 1];
+    if (libPos.artist != null && isArtistExpanded(libPos.artist)) {
+      libPos.album = libPos.artist.albumList[libPos.artist.albumList.length - 1];
+      if (libPos.album != null && isAlbumExpanded(libPos.album)) {
+        libPos.track = libPos.album.trackList[libPos.album.trackList.length - 1];
       }
     }
   }
@@ -1557,7 +1556,7 @@ function setUpGenericUi(){
     event.stopPropagation();
   });
   $document.on('keydown', function(event){
-    var handler = keyboard_handlers[event.which];
+    var handler = keyboardHandlers[event.which];
     if (handler == null) return true;
     if (handler.ctrl  != null && handler.ctrl  !== event.ctrlKey)  return true;
     if (handler.alt   != null && handler.alt   !== event.altKey)   return true;
@@ -1640,9 +1639,7 @@ function setUpPlaylistUi(){
         });
       }
     } else if (event.which === 3) {
-      if (event.altKey) {
-        return;
-      }
+      if (event.altKey) return;
       event.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');

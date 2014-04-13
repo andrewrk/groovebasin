@@ -431,6 +431,7 @@ var $settingsLastFmOut = $('#settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
+var $editTagsDialog = $('#edit-tags');
 var $playlistMenu = $('#menu-playlist');
 var $libraryMenu = $('#menu-library');
 
@@ -1361,7 +1362,7 @@ var keyboard_handlers = (function(){
             minWidth: 600,
             height: $document.height() - 40,
             close: function(){
-              $('#shortcuts').remove();
+              $shortcuts.remove();
             }
           });
         } else {
@@ -1696,19 +1697,34 @@ function onDeleteContextMenu() {
 }
 function onEditTagsContextMenu() {
   if (!permissions.admin) return false;
-  editTags();
+  showEditTags(selection.toTrackKeys());
   removeContextMenu();
   return false;
 }
-function editTags() {
-  var trackKeys = selection.toTrackKeys();
-  var cmd = {};
-  trackKeys.forEach(function(trackKey) {
-    cmd[trackKey] = {
-      name: player.library.trackTable[trackKey].name + "_lol",
-    };
+function showEditTags(trackKeys) {
+  $editTagsDialog.dialog({
+    modal: true,
+    title: "Edit Tags",
+    minWidth: 600,
+    height: $document.height() - 40,
+    close: function() {
+      $editTagsDialog.remove();
+    }
   });
-  player.sendCommand('updateTags', cmd);
+  var track = player.library.trackTable[trackKeys[0]];
+  var $editTrackName = $("#edit-track-name").val(track.name);
+  var $editArtist = $("#edit-artist").val(track.artistName);
+  var $editAlbum = $("#edit-album").val(track.albumName);
+  $("#edit-tags-ok").on('click', function() {
+    var cmd = {};
+    cmd[track.key] = {
+      name: $editTrackName.val(),
+      artistName: $editArtist.val(),
+      albumName: $editAlbum.val(),
+    };
+    player.sendCommand('updateTags', cmd);
+    $editTagsDialog.remove();
+  });
 }
 
 function updateSliderUi(value){

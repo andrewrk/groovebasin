@@ -1562,6 +1562,9 @@ function setUpGenericUi(){
     handler.handler(event);
     return false;
   });
+  $editTagsDialog.find("input").on("keydown", function(event) {
+    event.stopPropagation();
+  });
 }
 
 function setUpPlaylistUi(){
@@ -1691,14 +1694,14 @@ function onDownloadContextMenu() {
 }
 function onDeleteContextMenu() {
   if (!permissions.admin) return false;
-  handleDeletePressed(true);
   removeContextMenu();
+  handleDeletePressed(true);
   return false;
 }
 function onEditTagsContextMenu() {
   if (!permissions.admin) return false;
-  showEditTags(selection.toTrackKeys());
   removeContextMenu();
+  showEditTags(selection.toTrackKeys());
   return false;
 }
 function showEditTags(trackKeys) {

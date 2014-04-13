@@ -47,13 +47,13 @@ var selection = {
     this.rangeSelectAnchor = null;
     this.rangeSelectAnchorType = null;
   },
-  selectOnly: function(sel_name, key){
+  selectOnly: function(selName, key){
     this.clear();
-    this.type = sel_name;
-    this.ids[sel_name][key] = true;
+    this.type = selName;
+    this.ids[selName][key] = true;
     this.cursor = key;
     this.rangeSelectAnchor = key;
-    this.rangeSelectAnchorType = sel_name;
+    this.rangeSelectAnchorType = selName;
   },
   isMulti: function(){
     var result, k;

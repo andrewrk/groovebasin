@@ -1552,9 +1552,6 @@ function setUpGenericUi(){
     selection.type = null;
     refreshSelection();
   });
-  $editTagsDialog.find("input").on("keydown", function(event) {
-    event.stopPropagation();
-  });
   $document.on('keydown', function(event){
     var handler = keyboardHandlers[event.which];
     if (handler == null) return true;
@@ -1693,44 +1690,121 @@ function onDeleteContextMenu() {
   handleDeletePressed(true);
   return false;
 }
+var editTagsTrackKeys = null;
 function onEditTagsContextMenu() {
   if (!permissions.admin) return false;
   removeContextMenu();
-  showEditTags(selection.toTrackKeys());
+  editTagsTrackKeys = selection.toTrackKeys();
+  showEditTags();
   return false;
 }
-function showEditTags(trackKeys) {
+var EDITABLE_PROPS = {
+  name: 'string',
+  artistName: 'string',
+  albumArtistName: 'string',
+  albumName: 'string',
+  compilation: 'boolean',
+  track: 'integer',
+  trackCount: 'integer',
+  disc: 'integer',
+  discCount: 'integer',
+  year: 'integer',
+  genre: 'string',
+  composerName: 'string',
+  performerName: 'string',
+};
+var EDIT_TAG_TYPES = {
+  'string': {
+    get: function(domItem) {
+      return domItem.value;
+    },
+    set: function(domItem, value) {
+      domItem.value = value || "";
+    },
+  },
+  'integer': {
+    get: function(domItem) {
+      var n = parseInt(domItem.value, 10);
+      if (isNaN(n)) return null;
+      return n;
+    },
+    set: function(domItem, value) {
+      domItem.value = value == null ? "" : value;
+    },
+  },
+  'boolean': {
+    get: function(domItem) {
+      return domItem.checked;
+    },
+    set: function(domItem, value) {
+      domItem.checked = !!value;
+    },
+  },
+};
+function showEditTags() {
   $editTagsDialog.dialog({
     modal: true,
     title: "Edit Tags",
     minWidth: 800,
     height: $document.height() - 40,
-    close: function() {
-      $editTagsDialog.remove();
+  });
+  for (var propName in EDITABLE_PROPS) {
+    var type = EDITABLE_PROPS[propName];
+    var setter = EDIT_TAG_TYPES[type].set;
+    var domItem = document.getElementById('edit-tag-' + propName);
+    var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
+    var commonValue = null;
+    var consistent = true;
+    for (var i = 0; i < editTagsTrackKeys.length; i += 1) {
+      var key = editTagsTrackKeys[i];
+      var track = player.library.trackTable[key];
+      var value = track[propName];
+      if (propName === 'genre') {
+        console.log("genre", JSON.stringify(value));
+      }
+      if (commonValue == null) {
+        commonValue = value;
+      } else if (commonValue !== value) {
+        consistent = false;
+        break;
+      }
+    }
+    multiCheckBoxDom.checked = consistent;
+    setter(domItem, consistent ? commonValue : null);
+  }
+}
+
+function setUpEditTagsUi() {
+  $editTagsDialog.find("input").on("keydown", function(event) {
+    event.stopPropagation();
+    if (event.which === 27) {
+      $editTagsDialog.dialog('close');
+    } else if (event.which === 13) {
+      onTagsOk();
     }
   });
-  var track = player.library.trackTable[trackKeys[0]];
-  EDITABLE_PROPS.forEach(function(prop) {
-    $("#edit-tag-" + prop).val(track[prop]);
-  });
-  $("#edit-tags-ok").on('click', function() {
+  $("#edit-tags-ok").on('click', onTagsOk);
+
+  function onTagsOk() {
     var cmd = {};
-    var props = cmd[track.key] = {};
-    EDITABLE_PROPS.forEach(function(prop) {
-      props[prop] = $("#edit-tag-" + prop).val();
-    });
+    for (var i = 0; i < editTagsTrackKeys.length; i += 1) {
+      var key = editTagsTrackKeys[i];
+      var track = player.library.trackTable[key];
+      var props = cmd[track.key] = {};
+      for (var propName in EDITABLE_PROPS) {
+        var type = EDITABLE_PROPS[propName];
+        var getter = EDIT_TAG_TYPES[type].get;
+        var domItem = document.getElementById('edit-tag-' + propName);
+        var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
+        if (multiCheckBoxDom.checked) {
+          props[propName] = getter(domItem);
+        }
+      }
+    }
     player.sendCommand('updateTags', cmd);
-    $editTagsDialog.remove();
-  });
+    $editTagsDialog.dialog('close');
+  }
 }
-var EDITABLE_PROPS = [
-  'name', 'artistName', 'albumArtistName',
-  'albumName', 'compilation', 'track', 'trackCount',
-  'disc', 'discCount', 'year', 'genre',
-  'composerName', 'performerName'
-];
-
-
 
 function updateSliderUi(value){
   var percent = value * 100;
@@ -2262,6 +2336,7 @@ function setUpUi(){
   setUpTabsUi();
   setUpUploadUi();
   setUpSettingsUi();
+  setUpEditTagsUi();
 }
 
 function toAlbumId(s) {

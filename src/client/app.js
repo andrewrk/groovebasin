@@ -1553,6 +1553,9 @@ function setUpGenericUi(){
     selection.type = null;
     refreshSelection();
   });
+  $editTagsDialog.find("input").on("keydown", function(event) {
+    event.stopPropagation();
+  });
   $document.on('keydown', function(event){
     var handler = keyboard_handlers[event.which];
     if (handler == null) return true;
@@ -1561,9 +1564,6 @@ function setUpGenericUi(){
     if (handler.shift != null && handler.shift !== event.shiftKey) return true;
     handler.handler(event);
     return false;
-  });
-  $editTagsDialog.find("input").on("keydown", function(event) {
-    event.stopPropagation();
   });
 }
 

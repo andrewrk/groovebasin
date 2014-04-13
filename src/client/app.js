@@ -1705,27 +1705,34 @@ function showEditTags(trackKeys) {
   $editTagsDialog.dialog({
     modal: true,
     title: "Edit Tags",
-    minWidth: 600,
+    minWidth: 800,
     height: $document.height() - 40,
     close: function() {
       $editTagsDialog.remove();
     }
   });
   var track = player.library.trackTable[trackKeys[0]];
-  var $editTrackName = $("#edit-track-name").val(track.name);
-  var $editArtist = $("#edit-artist").val(track.artistName);
-  var $editAlbum = $("#edit-album").val(track.albumName);
+  EDITABLE_PROPS.forEach(function(prop) {
+    $("#edit-tag-" + prop).val(track[prop]);
+  });
   $("#edit-tags-ok").on('click', function() {
     var cmd = {};
-    cmd[track.key] = {
-      name: $editTrackName.val(),
-      artistName: $editArtist.val(),
-      albumName: $editAlbum.val(),
-    };
+    var props = cmd[track.key] = {};
+    EDITABLE_PROPS.forEach(function(prop) {
+      props[prop] = $("#edit-tag-" + prop).val();
+    });
     player.sendCommand('updateTags', cmd);
     $editTagsDialog.remove();
   });
 }
+var EDITABLE_PROPS = [
+  'name', 'artistName', 'albumArtistName',
+  'albumName', 'compilation', 'track', 'trackCount',
+  'disc', 'discCount', 'year', 'genre',
+  'composerName', 'performerName'
+];
+
+
 
 function updateSliderUi(value){
   var percent = value * 100;

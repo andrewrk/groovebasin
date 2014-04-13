@@ -1590,20 +1590,18 @@ function setUpPlaylistUi(){
     return event.altKey;
   });
   $playlistItems.on('mousedown', '.pl-item', function(event){
-    var trackId, skip_drag;
-    if (started_drag) {
-      return true;
-    }
+    var trackId, skipDrag;
+    if (started_drag) return true;
     $(document.activeElement).blur();
     if (event.which === 1) {
       event.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
-      skip_drag = false;
+      skipDrag = false;
       if (!selection.isPlaylist()) {
         selection.selectOnly('playlist', trackId);
       } else if (event.ctrlKey || event.shiftKey) {
-        skip_drag = true;
+        skipDrag = true;
         if (event.shiftKey && !event.ctrlKey) {
           // range select click
           selection.cursor = trackId;
@@ -1619,7 +1617,7 @@ function setUpPlaylistUi(){
         selection.selectOnly('playlist', trackId);
       }
       refreshSelection();
-      if (!skip_drag) {
+      if (!skipDrag) {
         return performDrag(event, {
           complete: function(result, event){
             var delta, id;
@@ -2182,11 +2180,11 @@ function genericTreeUi($elem, options){
     function leftMouseDown(event){
       event.preventDefault();
       removeContextMenu();
-      var skip_drag = false;
+      var skipDrag = false;
       if (!options.isSelectionOwner()) {
         selection.selectOnly(type, key);
       } else if (event.ctrlKey || event.shiftKey) {
-        skip_drag = true;
+        skipDrag = true;
         selection.cursor = key;
         selection.type = type;
         if (!event.shiftKey && !event.ctrlKey) {
@@ -2200,7 +2198,7 @@ function genericTreeUi($elem, options){
         selection.selectOnly(type, key);
       }
       refreshSelection();
-      if (!skip_drag) {
+      if (!skipDrag) {
         performDrag(event, {
           complete: function(result, event){
             var delta = {

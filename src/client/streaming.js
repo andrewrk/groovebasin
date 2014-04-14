@@ -12,6 +12,11 @@ audio.addEventListener('playing', onPlaying, false);
 var $ = window.$;
 var $streamBtn = $('#stream-btn');
 
+document.getElementById('stream-btn-label').addEventListener('mousedown', onLabelDown, false);
+
+function onLabelDown(event) {
+  event.stopPropagation();
+}
 
 function getButtonLabel() {
   if (tryingToStream) {
@@ -29,14 +34,9 @@ function getButtonLabel() {
   }
 }
 
-function getButtonDisabled() {
-  return false;
-}
-
 function renderStreamButton(){
   var label = getButtonLabel();
   $streamBtn
-    .button("option", "disabled", getButtonDisabled())
     .button("option", "label", label)
     .prop("checked", tryingToStream)
     .button("refresh");

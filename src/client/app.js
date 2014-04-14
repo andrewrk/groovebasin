@@ -357,8 +357,8 @@ var ICON_EXPANDED = 'ui-icon-triangle-1-se';
 var permissions = {};
 var socket = null;
 var player = null;
-var user_is_seeking = false;
-var user_is_volume_sliding = false;
+var userIsSeeking = false;
+var userIsVolumeSliding = false;
 var started_drag = false;
 var abortDrag = function(){};
 var clickTab = null;
@@ -399,11 +399,11 @@ var $tabs = $('#tabs');
 var $upload_tab = $tabs.find('.upload-tab');
 var $library = $('#library');
 var $lib_filter = $('#lib-filter');
-var $track_slider = $('#track-slider');
+var $trackSlider = $('#track-slider');
 var $nowplaying = $('#nowplaying');
 var $nowplaying_elapsed = $nowplaying.find('.elapsed');
 var $nowplaying_left = $nowplaying.find('.left');
-var $vol_slider = $('#vol-slider');
+var $volSlider = $('#vol-slider');
 var $settings = $('#settings');
 var $uploadByUrl = $('#upload-by-url');
 var $main_err_msg = $('#main-err-msg');
@@ -824,7 +824,7 @@ function getCurrentTrackPosition(){
 }
 
 function updateSliderPos() {
-  if (user_is_seeking) return;
+  if (userIsSeeking) return;
 
   var duration, disabled, elapsed, sliderPos;
   if (player.currentItem && player.isPlaying != null && player.currentItem.track) {
@@ -836,19 +836,19 @@ function updateSliderPos() {
     disabled = true;
     elapsed = duration = sliderPos = 0;
   }
-  $track_slider.slider("option", "disabled", disabled).slider("option", "value", sliderPos);
+  $trackSlider.slider("option", "disabled", disabled).slider("option", "value", sliderPos);
   $nowplaying_elapsed.html(formatTime(elapsed));
   $nowplaying_left.html(formatTime(duration));
 }
 
 function renderVolumeSlider() {
-  if (user_is_volume_sliding) return;
+  if (userIsVolumeSliding) return;
 
   var enabled = player.volume != null;
   if (enabled) {
-    $vol_slider.slider('option', 'value', player.volume);
+    $volSlider.slider('option', 'value', player.volume);
   }
-  $vol_slider.slider('option', 'disabled', !enabled);
+  $volSlider.slider('option', 'disabled', !enabled);
 }
 
 function renderNowPlaying(){
@@ -888,7 +888,7 @@ function renderNowPlaying(){
     new_class = 'ui-icon-play';
   }
   $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class);
-  $track_slider.slider("option", "disabled", player.isPlaying == null);
+  $trackSlider.slider("option", "disabled", player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
 }
@@ -1544,10 +1544,10 @@ function setUpGenericUi(){
   $document.on('mouseout', '.hoverable', function(event){
     $(this).removeClass("ui-state-hover");
   });
-  $(".jquery-button").button();
+  $(".jquery-button").button().on('click', blur);
   $document.on('mousedown', function(){
     removeContextMenu();
-    selection.type = null;
+    selection.fullClear();
     refreshSelection();
   });
   $document.on('keydown', function(event){
@@ -1567,21 +1567,33 @@ function setUpGenericUi(){
   });
 }
 
+function blur() {
+  $(this).blur();
+}
+
+var dynamicModeLabel = document.getElementById('dynamic-mode-label');
+var plBtnRepeatLabel = document.getElementById('pl-btn-repeat-label');
 function setUpPlaylistUi(){
-  $pl_window.on('click', 'button.clear', function(){
+  $pl_window.on('click', 'button.clear', function(event){
     player.clear();
   });
+  $pl_window.on('mousedown', 'button.clear', stopPropagation);
+
   $pl_window.on('click', 'button.shuffle', function(){
     player.shuffle();
   });
-  $pl_btn_repeat.on('click', function(){
-    nextRepeatState();
-  });
+  $pl_window.on('mousedown', 'button.shuffle', stopPropagation);
+
+  $pl_btn_repeat.on('click', nextRepeatState);
+  plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
+
   $dynamicMode.on('click', function(){
     var value = $(this).prop("checked");
     setDynamicMode(value);
     return false;
   });
+  dynamicModeLabel.addEventListener('mousedown', stopPropagation, false);
+
   $playlistItems.on('dblclick', '.pl-item', function(event){
     var trackId = $(this).attr('data-id');
     player.seek(trackId, 0);
@@ -1676,6 +1688,10 @@ function setUpPlaylistUi(){
   $playlistMenu.on('click', '.download', onDownloadContextMenu);
   $playlistMenu.on('click', '.delete', onDeleteContextMenu);
   $playlistMenu.on('click', '.edit-tags', onEditTagsContextMenu);
+}
+
+function stopPropagation(event) {
+  event.stopPropagation();
 }
 
 function onDownloadContextMenu() {
@@ -1924,12 +1940,11 @@ function setUpEditTagsUi() {
 
 function updateSliderUi(value){
   var percent = value * 100;
-  $track_slider.css('background-size', percent + "% 100%");
+  $trackSlider.css('background-size', percent + "% 100%");
 }
 
 function setUpNowPlayingUi(){
-  var actions, cls, action;
-  actions = {
+  var actions = {
     toggle: togglePlayback,
     prev: function(){
       player.prev();
@@ -1941,11 +1956,11 @@ function setUpNowPlayingUi(){
       player.stop();
     }
   };
-  for (cls in actions) {
-    action = actions[cls];
-    (fn$.call(this, cls, action));
+  for (var cls in actions) {
+    var action = actions[cls];
+    setUpMouseDownListener(cls, action);
   }
-  $track_slider.slider({
+  $trackSlider.slider({
     step: 0.0001,
     min: 0,
     max: 1,
@@ -1963,32 +1978,30 @@ function setUpNowPlayingUi(){
       $nowplaying_elapsed.html(formatTime(ui.value * player.currentItem.track.duration));
     },
     start: function(event, ui){
-      user_is_seeking = true;
+      userIsSeeking = true;
     },
     stop: function(event, ui){
-      user_is_seeking = false;
+      userIsSeeking = false;
     }
   });
   function setVol(event, ui){
-    if (event.originalEvent == null) {
-      return;
-    }
+    if (event.originalEvent == null) return;
     player.setVolume(ui.value);
   }
-  $vol_slider.slider({
+  $volSlider.slider({
     step: 0.01,
     min: 0,
     max: 1,
     change: setVol,
     start: function(event, ui){
-      user_is_volume_sliding = true;
+      userIsVolumeSliding = true;
     },
     stop: function(event, ui){
-      user_is_volume_sliding = false;
+      userIsVolumeSliding = false;
     }
   });
   setInterval(updateSliderPos, 100);
-  function fn$(cls, action){
+  function setUpMouseDownListener(cls, action){
     $nowplaying.on('mousedown', "li." + cls, function(event){
       action();
       return false;

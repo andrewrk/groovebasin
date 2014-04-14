@@ -28,7 +28,7 @@
       <span class="ui-icon ui-icon-volume-on"></span>
     </div>
     <div id="more-playback-btns">
-      <input type="checkbox" id="stream-btn"><label for="stream-btn">Stream</label>
+      <input class="jquery-button" type="checkbox" id="stream-btn"><label id="stream-btn-label" for="stream-btn">Stream</label>
     </div>
     <h1 id="track-display"></h1>
     <div id="track-slider"></div>
@@ -67,7 +67,7 @@
           <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
         </div>
         <div>
-          Automatically queue uploads: <input type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
+          Automatically queue uploads: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
         </div>
       </div>
     </div>
@@ -103,7 +103,7 @@
             </p>
             <p>
               Scrobbling is
-              <input type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
+              <input class="jquery-button" type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
             </p>
           </div>
           <div id="settings-lastfm-out">
@@ -126,8 +126,8 @@
     <div class="window-header">
       <button class="jquery-button clear">Clear</button>
       <button class="jquery-button shuffle">Shuffle</button>
-      <input class="jquery-button" type="checkbox" id="dynamic-mode"><label for="dynamic-mode">Dynamic Mode</label>
-      <input class="jquery-button" type="checkbox" id="pl-btn-repeat"><label for="pl-btn-repeat">Repeat: Off</label>
+      <input class="jquery-button" type="checkbox" id="dynamic-mode"><label id="dynamic-mode-label" for="dynamic-mode">Dynamic Mode</label>
+      <input class="jquery-button" type="checkbox" id="pl-btn-repeat"><label id="pl-btn-repeat-label" for="pl-btn-repeat">Repeat: Off</label>
     </div>
     <div id="playlist">
       <div class="header">

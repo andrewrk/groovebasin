@@ -1843,7 +1843,7 @@ function setUpEditTagsUi() {
     if (event.which === 27) {
       $editTagsDialog.dialog('close');
     } else if (event.which === 13) {
-      onTagsOk();
+      saveAndClose();
     }
   });
   for (var propName in EDITABLE_PROPS) {
@@ -1864,7 +1864,8 @@ function setUpEditTagsUi() {
       multiCheckBoxDom.checked = true;
     };
   }
-  $("#edit-tags-ok").on('click', onTagsOk);
+  $("#edit-tags-ok").on('click', saveAndClose);
+  $("#edit-tags-cancel").on('click', closeDialog);
   perDom.addEventListener('click', updateEditTagsUi, false);
   nextDom.addEventListener('click', saveAndNext, false);
   prevDom.addEventListener('click', saveAndPrev, false);
@@ -1906,8 +1907,12 @@ function setUpEditTagsUi() {
     player.sendCommand('updateTags', cmd);
   }
 
-  function onTagsOk() {
+  function saveAndClose() {
     save();
+    closeDialog();
+  }
+
+  function closeDialog() {
     $editTagsDialog.dialog('close');
   }
 }

@@ -1055,15 +1055,20 @@ function nextRepeatState(){
 
 var keyboardHandlers = (function(){
   function upDownHandler(event){
-    var default_index, dir, nextPos;
+    var defaultIndex, dir, nextPos;
     if (event.which === 38) {
       // up
-      default_index = player.playlist.itemList.length - 1;
+      defaultIndex = player.currentItem ? player.currentItem.index - 1 : player.playlist.itemList.length - 1;
       dir = -1;
     } else {
       // down
-      default_index = 0;
+      defaultIndex = player.currentItem ? player.currentItem.index + 1 : 0;
       dir = 1;
+    }
+    if (defaultIndex >= player.playlist.itemList.length) {
+      defaultIndex = player.playlist.itemList.length - 1;
+    } else if (defaultIndex < 0) {
+      defaultIndex = 0;
     }
     if (event.altKey) {
       if (selection.isPlaylist()) {
@@ -1121,7 +1126,7 @@ var keyboardHandlers = (function(){
         }
       } else {
         if (player.playlist.itemList.length === 0) return;
-        selection.selectOnly('playlist', player.playlist.itemList[default_index].id);
+        selection.selectOnly('playlist', player.playlist.itemList[defaultIndex].id);
       }
       refreshSelection();
     }

@@ -1361,10 +1361,8 @@ var keyboardHandlers = (function(){
             title: "Keyboard Shortcuts",
             minWidth: 600,
             height: $document.height() - 40,
-            close: function(){
-              $shortcuts.remove();
-            }
           });
+          $shortcuts.focus();
         } else {
           clickTab('library');
           $lib_filter.focus().select();
@@ -1560,6 +1558,12 @@ function setUpGenericUi(){
     if (handler.shift != null && handler.shift !== event.shiftKey) return true;
     handler.handler(event);
     return false;
+  });
+  $shortcuts.on('keydown', function(event) {
+    event.stopPropagation();
+    if (event.which === 27) {
+      $shortcuts.dialog('close');
+    }
   });
 }
 
@@ -1790,6 +1794,7 @@ var perDom = document.getElementById('edit-tags-per');
 var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
+var editTagsFocusDom = document.getElementById('edit-tag-name');
 function updateEditTagsUi() {
   var multiple = editTagsTrackKeys.length > 1;
   prevDom.disabled = !perDom.checked || editTagsTrackIndex === 0;
@@ -1834,9 +1839,9 @@ function showEditTags() {
   });
   perDom.checked = false;
   updateEditTagsUi();
+  editTagsFocusDom.focus();
 }
 
-var editTagsFocusDom = document.getElementById('edit-tag-name');
 function setUpEditTagsUi() {
   $editTagsDialog.find("input").on("keydown", function(event) {
     event.stopPropagation();

@@ -291,48 +291,57 @@
   </div>
   <div id="edit-tags" style="display: none">
     <input type="checkbox" id="edit-tag-multi-name">
-    <label>Title: <input id="edit-tag-name"></label><br>
+    <label accesskey="i">T<span class="accesskey">i</span>tle: <input id="edit-tag-name"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-track">
-    <label>Track Number: <input id="edit-tag-track"></label><br>
+    <label accesskey="k">Trac<span class="accesskey">k</span> Number: <input id="edit-tag-track"></label><br>
+
+    <input type="checkbox" id="edit-tag-multi-file">
+    <label>Filename: <input id="edit-tag-file"></label><br>
     <hr>
 
     <input type="checkbox" id="edit-tag-multi-artistName">
-    <label>Artist: <input id="edit-tag-artistName"></label><br>
+    <label accesskey="a"><span class="accesskey">A</span>rtist: <input id="edit-tag-artistName"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-composerName">
-    <label>Composer: <input id="edit-tag-composerName"></label><br>
+    <label accesskey="c"><span class="accesskey">C</span>omposer: <input id="edit-tag-composerName"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-performerName">
     <label>Performer: <input id="edit-tag-performerName"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-genre">
-    <label>Genre: <input id="edit-tag-genre"></label><br>
+    <label accesskey="g"><span class="accesskey">G</span>enre: <input id="edit-tag-genre"></label><br>
     <hr>
 
     <input type="checkbox" id="edit-tag-multi-albumName">
-    <label>Album: <input id="edit-tag-albumName"></label><br>
+    <label accesskey="b">Al<span class="accesskey">b</span>um: <input id="edit-tag-albumName"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-albumArtistName">
     <label>Album Artist: <input id="edit-tag-albumArtistName"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-trackCount">
-    <label>Track Count: <input id="edit-tag-trackCount"</label><br>
+    <label>Track Count: <input id="edit-tag-trackCount"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-year">
-    <label>Year: <input id="edit-tag-year"</label><br>
+    <label accesskey="y"><span class="accesskey">Y</span>ear: <input id="edit-tag-year"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-disc">
-    <label>Disc Number: <input id="edit-tag-disc"</label><br>
+    <label accesskey="d"><span class="accesskey">D</span>isc Number: <input id="edit-tag-disc"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-discCount">
-    <label>Disc Count: <input id="edit-tag-discCount"</label><br>
+    <label>Disc Count: <input id="edit-tag-discCount"></label><br>
 
     <input type="checkbox" id="edit-tag-multi-compilation">
-    <label>Compilation: <input type="checkbox" id="edit-tag-compilation"></label><br>
+    <label accesskey="m">Co<span class="accesskey">m</span>pilation: <input type="checkbox" id="edit-tag-compilation"></label><br>
     <hr>
 
-    <input id="edit-tags-ok" type="button" value="OK">
+    <div style="float: right">
+      <button id="edit-tags-ok" accesskey="v">Sa<span class="accesskey">v</span>e &amp; Close</button>
+      <button id="edit-tags-cancel">Cancel</button>
+    </div>
+    <button id="edit-tags-prev" type="button" accesskey="p"><span class="accesskey">P</span>revious</button>
+    <button id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
+    <label accesskey="r" id="edit-tags-per-label"><input id="edit-tags-per" type="checkbox">Pe<span class="accesskey">r</span> Track</label>
   </div>
   <ul id="menu-playlist" style="display: none">
     <li><a href="#" class="remove">Remove</a></li>

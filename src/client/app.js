@@ -1691,27 +1691,72 @@ function onDeleteContextMenu() {
   return false;
 }
 var editTagsTrackKeys = null;
+var editTagsTrackIndex = null;
 function onEditTagsContextMenu() {
   if (!permissions.admin) return false;
   removeContextMenu();
   editTagsTrackKeys = selection.toTrackKeys();
+  editTagsTrackIndex = 0;
   showEditTags();
   return false;
 }
 var EDITABLE_PROPS = {
-  name: 'string',
-  artistName: 'string',
-  albumArtistName: 'string',
-  albumName: 'string',
-  compilation: 'boolean',
-  track: 'integer',
-  trackCount: 'integer',
-  disc: 'integer',
-  discCount: 'integer',
-  year: 'integer',
-  genre: 'string',
-  composerName: 'string',
-  performerName: 'string',
+  name: {
+    type: 'string',
+    write: true,
+  },
+  artistName: {
+    type: 'string',
+    write: true,
+  },
+  albumArtistName: {
+    type: 'string',
+    write: true,
+  },
+  albumName: {
+    type: 'string',
+    write: true,
+  },
+  compilation: {
+    type: 'boolean',
+    write: true,
+  },
+  track: {
+    type: 'integer',
+    write: true,
+  },
+  trackCount: {
+    type: 'integer',
+    write: true,
+  },
+  disc: {
+    type: 'integer',
+    write: true,
+  },
+  discCount: {
+    type: 'integer',
+    write: true,
+  },
+  year: {
+    type: 'integer',
+    write: true,
+  },
+  genre: {
+    type: 'string',
+    write: true,
+  },
+  composerName: {
+    type: 'string',
+    write: true,
+  },
+  performerName: {
+    type: 'string',
+    write: true,
+  },
+  file: {
+    type: 'string',
+    write: false,
+  },
 };
 var EDIT_TAG_TYPES = {
   'string': {
@@ -1741,27 +1786,34 @@ var EDIT_TAG_TYPES = {
     },
   },
 };
-function showEditTags() {
-  $editTagsDialog.dialog({
-    modal: true,
-    title: "Edit Tags",
-    minWidth: 800,
-    height: $document.height() - 40,
-  });
+var perDom = document.getElementById('edit-tags-per');
+var perLabelDom = document.getElementById('edit-tags-per-label');
+var prevDom = document.getElementById('edit-tags-prev');
+var nextDom = document.getElementById('edit-tags-next');
+function updateEditTagsUi() {
+  var multiple = editTagsTrackKeys.length > 1;
+  prevDom.disabled = !perDom.checked || editTagsTrackIndex === 0;
+  nextDom.disabled = !perDom.checked || (editTagsTrackIndex === editTagsTrackKeys.length - 1);
+  prevDom.style.visibility = multiple ? 'visible' : 'hidden';
+  nextDom.style.visibility = multiple ? 'visible' : 'hidden';
+  perLabelDom.style.visibility = multiple ? 'visible' : 'hidden';
+  var multiCheckBoxVisible = multiple && !perDom.checked;
+  var trackKeysToUse = perDom.checked ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
+
   for (var propName in EDITABLE_PROPS) {
-    var type = EDITABLE_PROPS[propName];
+    var propInfo = EDITABLE_PROPS[propName];
+    var type = propInfo.type;
     var setter = EDIT_TAG_TYPES[type].set;
     var domItem = document.getElementById('edit-tag-' + propName);
+    domItem.disabled = !propInfo.write;
     var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
+    multiCheckBoxDom.style.visibility = (multiCheckBoxVisible && propInfo.write) ? 'visible' : 'hidden';
     var commonValue = null;
     var consistent = true;
-    for (var i = 0; i < editTagsTrackKeys.length; i += 1) {
-      var key = editTagsTrackKeys[i];
+    for (var i = 0; i < trackKeysToUse.length; i += 1) {
+      var key = trackKeysToUse[i];
       var track = player.library.trackTable[key];
       var value = track[propName];
-      if (propName === 'genre') {
-        console.log("genre", JSON.stringify(value));
-      }
       if (commonValue == null) {
         commonValue = value;
       } else if (commonValue !== value) {
@@ -1773,7 +1825,18 @@ function showEditTags() {
     setter(domItem, consistent ? commonValue : null);
   }
 }
+function showEditTags() {
+  $editTagsDialog.dialog({
+    modal: true,
+    title: "Edit Tags",
+    minWidth: 800,
+    height: $document.height() - 40,
+  });
+  perDom.checked = false;
+  updateEditTagsUi();
+}
 
+var editTagsFocusDom = document.getElementById('edit-tag-name');
 function setUpEditTagsUi() {
   $editTagsDialog.find("input").on("keydown", function(event) {
     event.stopPropagation();
@@ -1783,25 +1846,68 @@ function setUpEditTagsUi() {
       onTagsOk();
     }
   });
-  $("#edit-tags-ok").on('click', onTagsOk);
+  for (var propName in EDITABLE_PROPS) {
+    var domItem = document.getElementById('edit-tag-' + propName);
+    var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
+    var listener = createChangeListener(multiCheckBoxDom);
+    domItem.addEventListener('change', listener, false);
+    domItem.addEventListener('keypress', listener, false);
+    domItem.addEventListener('focus', onFocus, false);
+  }
 
-  function onTagsOk() {
+  function onFocus(event) {
+    editTagsFocusDom = event.target;
+  }
+
+  function createChangeListener(multiCheckBoxDom) {
+    return function() {
+      multiCheckBoxDom.checked = true;
+    };
+  }
+  $("#edit-tags-ok").on('click', onTagsOk);
+  perDom.addEventListener('click', updateEditTagsUi, false);
+  nextDom.addEventListener('click', saveAndNext, false);
+  prevDom.addEventListener('click', saveAndPrev, false);
+
+  function saveAndMoveOn(dir) {
+    save();
+    editTagsTrackIndex += dir;
+    updateEditTagsUi();
+    editTagsFocusDom.focus();
+    editTagsFocusDom.select();
+  }
+
+  function saveAndNext() {
+    saveAndMoveOn(1);
+  }
+
+  function saveAndPrev() {
+    saveAndMoveOn(-1);
+  }
+
+  function save() {
+    var trackKeysToUse = perDom.checked ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
     var cmd = {};
-    for (var i = 0; i < editTagsTrackKeys.length; i += 1) {
-      var key = editTagsTrackKeys[i];
+    for (var i = 0; i < trackKeysToUse.length; i += 1) {
+      var key = trackKeysToUse[i];
       var track = player.library.trackTable[key];
       var props = cmd[track.key] = {};
       for (var propName in EDITABLE_PROPS) {
-        var type = EDITABLE_PROPS[propName];
+        var propInfo = EDITABLE_PROPS[propName];
+        var type = propInfo.type;
         var getter = EDIT_TAG_TYPES[type].get;
         var domItem = document.getElementById('edit-tag-' + propName);
         var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
-        if (multiCheckBoxDom.checked) {
+        if (multiCheckBoxDom.checked && propInfo.write) {
           props[propName] = getter(domItem);
         }
       }
     }
     player.sendCommand('updateTags', cmd);
+  }
+
+  function onTagsOk() {
+    save();
     $editTagsDialog.dialog('close');
   }
 }

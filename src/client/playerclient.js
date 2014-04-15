@@ -10,8 +10,8 @@ module.exports = PlayerClient;
 var compareSortKeyAndId = makeCompareProps(['sortKey', 'id']);
 
 PlayerClient.REPEAT_OFF = 0;
-PlayerClient.REPEAT_ALL = 1;
-PlayerClient.REPEAT_ONE = 2;
+PlayerClient.REPEAT_ONE = 1;
+PlayerClient.REPEAT_ALL = 2;
 
 util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {

@@ -11,7 +11,7 @@ library remotely.
 Groove Basin works with your personal music library; not an external music
 service. Groove Basin will never support DRM content.
 
-Live discussion in #libgroove on Freenode.
+Try out the [live demo](http://demo.groovebasin.com/).
 
 ## Features
 
@@ -72,6 +72,11 @@ $ npm run dev
 
 This will install dependencies, build generated files, and then start the
 sever. It is up to you to restart it when you modify assets or server files.
+
+### Community
+
+Pull requests, feature requests, and bug reports are welcome! Live discussion
+in #libgroove on Freenode.
 
 ### Roadmap
 

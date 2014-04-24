@@ -45,7 +45,7 @@ body
       list-style none outside none
       margin 2px
       padding 4px
-  
+
   h1
     letter-spacing 0.1em
     margin-top 8px
@@ -138,7 +138,7 @@ body
 
     div.cursor
       text-decoration underline
-  
+
 #lib-filter
   margin 4px
   width 175px
@@ -214,7 +214,7 @@ body
 
   div.selected
     selected-div()
-  
+
   div.current
     border 1px solid #096AC8
     background-color #292929
@@ -250,6 +250,15 @@ body
 .ui-menu
   width: 240px
   font-size: 1em
+
+#menu-library .ui-state-disabled.ui-state-focus,
+#menu-playlist .ui-state-disabled.ui-state-focus
+  margin: .3em -1px .2em
+
+#menu-library .menu-item-last.ui-state-disabled.ui-state-focus,
+#menu-playlist .menu-item-last.ui-state-disabled.ui-state-focus
+  margin: 5px -1px .2em
+  height: 23px
 
 #shortcuts
   h1

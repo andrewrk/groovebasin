@@ -2,7 +2,7 @@
 
 Music player server with a web-based user interface inspired by Amarok 1.4.
 
-Run it on a server (such as a 
+Run it on a server (such as a 512MB
 [Raspberry Pi](http://www.raspberrypi.org/)) connected to some speakers
 in your home or office. Guests can control the music player by connecting
 with a laptop, tablet, or smart phone. Further, you can stream your music

@@ -825,6 +825,7 @@ function getCurrentTrackPosition(){
 
 function updateSliderPos() {
   if (userIsSeeking) return;
+  if (streaming.currentlyBuffering()) return;
 
   var duration, disabled, elapsed, sliderPos;
   if (player.currentItem && player.isPlaying != null && player.currentItem.track) {

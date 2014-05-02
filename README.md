@@ -76,6 +76,13 @@ $ npm run dev
 This will install dependencies, build generated files, and then start the
 sever. It is up to you to restart it when you modify assets or server files.
 
+## Dependencies
+
+The `npm run build` might fail if you system does not contain the following dependencies : 
+
+ * [g++](http://gcc.gnu.org/). On ubuntu, this is as simple as running
+   ```sudo apt-get install g++``` 
+
 ### Community
 
 Pull requests, feature requests, and bug reports are welcome! Live discussion

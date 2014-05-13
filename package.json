@@ -26,7 +26,7 @@
     "zfill": "0.0.1",
     "requireindex": "^1.1.0",
     "mess": "~0.1.1",
-    "groove": "~1.4.1",
+    "groove": "^2.0.0",
     "osenv": "0.0.3",
     "level": "^0.18.0",
     "findit": "~1.1.1",

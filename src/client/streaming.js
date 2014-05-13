@@ -77,6 +77,8 @@ function updatePlayer() {
     stillBuffering = true;
   } else {
     audio.pause();
+    audio.src = "";
+    audio.load();
     stillBuffering = false;
   }
   actuallyStreaming = shouldStream;

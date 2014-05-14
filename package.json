@@ -26,7 +26,7 @@
     "zfill": "0.0.1",
     "requireindex": "^1.1.0",
     "mess": "~0.1.1",
-    "groove": "^2.0.0",
+    "groove": "^2.1.0",
     "osenv": "0.0.3",
     "level": "^0.18.0",
     "findit": "~1.1.1",
@@ -40,7 +40,8 @@
     "multiparty": "^3.2.4",
     "ytdl": "^0.2.4",
     "serve-static": "^1.0.3",
-    "body-parser": "^1.0.1"
+    "body-parser": "^1.0.1",
+    "semver": "^2.3.0"
   },
   "devDependencies": {
     "stylus": "^0.42.3",

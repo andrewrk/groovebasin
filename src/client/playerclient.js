@@ -61,7 +61,7 @@ function PlayerClient(socket) {
     self.emit('currentTrack');
   });
 
-  self.socket.on('playlist', function(o) {
+  self.socket.on('queue', function(o) {
     if (o.reset) self.playlistFromServer = undefined;
     self.playlistFromServer = jsondiffpatch.patch(self.playlistFromServer, o.delta);
     deleteUndefineds(self.playlistFromServer);
@@ -114,7 +114,7 @@ PlayerClient.prototype.handleConnectionStart = function(){
   this.sendCommand('subscribe', {name: 'repeat'});
   this.sendCommand('subscribe', {name: 'currentTrack'});
   this.sendCommand('subscribe', {
-    name: 'playlist',
+    name: 'queue',
     delta: true,
     version: this.playlistFromServerVersion,
   });

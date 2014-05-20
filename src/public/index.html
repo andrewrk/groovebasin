@@ -39,9 +39,10 @@
   <div id="left-window" style="display: none">
     <div id="tabs" class="ui-widget ui-corner-all">
       <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
-        <li class="ui-state-default ui-corner-top ui-state-active library-tab"><span>Library</span></li>
-        <li class="ui-state-default ui-corner-top upload-tab"><span>Upload</span></li>
-        <li class="ui-state-default ui-corner-top settings-tab"><span>Settings</span></li>
+        <li id="library-tab" class="hoverable ui-state-default ui-corner-top ui-state-active"><span>Library</span></li>
+        <li id="upload-tab" class="hoverable ui-state-default ui-corner-top"><span>Upload</span></li>
+        <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top"><span>Playlists</span></li>
+        <li id="settings-tab" class="hoverable ui-state-default ui-corner-top"><span>Settings</span></li>
       </ul>
     </div>
     <div id="library-pane" class="ui-widget-content ui-corner-all">
@@ -69,6 +70,11 @@
         <div>
           Automatically queue uploads: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
         </div>
+      </div>
+    </div>
+    <div id="playlists-pane" class="ui-widget-content ui-corner-all" style="display: none">
+      <button id="new-playlist-btn">New Playlist</button>
+      <div id="playlists-list">
       </div>
     </div>
     <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">

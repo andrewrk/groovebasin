@@ -1208,6 +1208,7 @@ var keyboardHandlers = (function(){
       handler: function(event){
         if (selection.isPlaylist()) {
           player.seek(selection.cursor, 0);
+          player.play();
         } else if (selection.isLibrary()) {
           queueSelection(event);
         }
@@ -1612,6 +1613,7 @@ function setUpPlaylistUi(){
   $playlistItems.on('dblclick', '.pl-item', function(event){
     var trackId = $(this).attr('data-id');
     player.seek(trackId, 0);
+    player.play();
   });
   $playlistItems.on('contextmenu', function(event){
     return event.altKey;

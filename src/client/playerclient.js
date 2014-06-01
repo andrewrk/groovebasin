@@ -406,19 +406,23 @@ PlayerClient.prototype.removeIds = function(trackIds){
 };
 
 PlayerClient.prototype.seek = function(id, pos) {
-  pos = parseFloat(pos || 0, 10);
+  pos = parseFloat(pos || 0);
   var item = id ? this.playlist.itemTable[id] : this.currentItem;
+  if (item == null) return;
   if (pos < 0) pos = 0;
-  if (pos > item.duration) pos = item.duration;
+  if (pos > item.track.duration) pos = item.track.duration;
   this.sendCommand('seek', {
     id: item.id,
     pos: pos,
   });
   this.currentItem = item;
   this.currentItemId = item.id;
-  this.isPlaying = true;
   this.duration = item.track.duration;
-  this.trackStartDate = elapsedToDate(pos);
+  if (this.isPlaying) {
+    this.trackStartDate = elapsedToDate(pos);
+  } else {
+    this.pausedTime = pos;
+  }
   this.emit('statusupdate');
 };
 
@@ -447,23 +451,6 @@ PlayerClient.prototype.clearPlaylist = function(){
     index: null,
     name: null
   };
-};
-
-PlayerClient.prototype.anticipatePlayId = function(trackId){
-  var item = this.playlist.itemTable[trackId];
-  this.currentItem = item;
-  this.currentItemId = item.id;
-  this.isPlaying = true;
-  this.duration = item.track.duration;
-  this.trackStartDate = new Date();
-  this.emit('statusupdate');
-};
-
-PlayerClient.prototype.anticipateSkip = function(direction) {
-  if (this.currentItem) {
-    var nextItem = this.playlist.itemList[this.currentItem.index + direction];
-    if (nextItem) this.anticipatePlayId(nextItem.id);
-  }
 };
 
 PlayerClient.prototype.refreshPlaylistList = function(){

@@ -51,7 +51,7 @@ Try out the [live demo](http://demo.groovebasin.com/).
    also choose  to use [Chris Lea's PPA](https://launchpad.net/~chris-lea/+archive/node.js/)
    or compile from source.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
-3. Clone the source.
+3. Clone the source and cd to it.
 4. `npm run build`
 5. `npm start`
 

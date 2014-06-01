@@ -69,19 +69,20 @@ function clearBuffer() {
 
 function updatePlayer() {
   var shouldStream = tryingToStream && player.isPlaying === true;
-  if (actuallyStreaming === shouldStream) return;
-  if (shouldStream) {
-    audio.src = getUrl();
-    audio.load();
-    audio.play();
-    stillBuffering = true;
-  } else {
-    audio.pause();
-    audio.src = "";
-    audio.load();
-    stillBuffering = false;
+  if (actuallyStreaming !== shouldStream) {
+    if (shouldStream) {
+      audio.src = getUrl();
+      audio.load();
+      audio.play();
+      stillBuffering = true;
+    } else {
+      audio.pause();
+      audio.src = "";
+      audio.load();
+      stillBuffering = false;
+    }
+    actuallyStreaming = shouldStream;
   }
-  actuallyStreaming = shouldStream;
   renderStreamButton();
 }
 

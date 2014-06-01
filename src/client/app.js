@@ -11,6 +11,8 @@ var uuid = require('uuid');
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
 
+var downloadMenuZipName = null;
+
 var selection = {
   ids: {
     playlist: {},
@@ -509,7 +511,7 @@ function scrollThingToSelection($scroll_area, helpers){
   }
 }
 
-function downloadKeys(keys) {
+function downloadKeys(keys, zipName) {
   var $form = $(document.createElement('form'));
   $form.attr('action', "/download/custom");
   $form.attr('method', "post");
@@ -522,6 +524,12 @@ function downloadKeys(keys) {
     $input.attr('value', key);
     $form.append($input);
   }
+  var $zipNameInput = $(document.createElement('input'));
+  $zipNameInput.attr('type', 'hidden');
+  $zipNameInput.attr('name', 'zipName');
+  $zipNameInput.attr('value', zipName);
+  $form.append($zipNameInput);
+
   $form.submit();
 }
 
@@ -1669,8 +1677,10 @@ function setUpPlaylistUi(){
       }
       if (!selection.isMulti()) {
         var item = player.playlist.itemTable[trackId];
+        downloadMenuZipName = null;
         $playlistMenu.find('.download').attr('href', 'library/' + encodeURI(item.track.file));
       } else {
+        downloadMenuZipName = "songs";
         $playlistMenu.find('.download').attr('href', '#');
       }
       $playlistMenu.show().offset({
@@ -1704,8 +1714,8 @@ function stopPropagation(event) {
 function onDownloadContextMenu() {
   removeContextMenu();
 
-  if (selection.isMulti()) {
-    downloadKeys(selection.toTrackKeys());
+  if (downloadMenuZipName) {
+    downloadKeys(selection.toTrackKeys(), downloadMenuZipName);
     return false;
   }
 
@@ -2451,8 +2461,10 @@ function genericTreeUi($elem, options){
         }
       }
       if (track) {
+        downloadMenuZipName = null;
         $libraryMenu.find('.download').attr('href', 'library/' + encodeURI(track.file));
       } else {
+        downloadMenuZipName = zipNameForSelCursor();
         $libraryMenu.find('.download').attr('href', '#');
       }
       $libraryMenu.show().offset({
@@ -2466,6 +2478,18 @@ function genericTreeUi($elem, options){
     return false;
   });
 }
+
+function zipNameForSelCursor() {
+  switch (selection.type) {
+    case 'artist':
+      return player.library.artistTable[selection.cursor].name;
+    case 'album':
+      return player.library.albumTable[selection.cursor].name;
+    default:
+      throw new Error("bad selection cursor type: " + selection.type);
+  }
+}
+
 function updateAdminActions($menu) {
   if (!permissions.admin) {
     $menu.find('.delete,.edit-tags')

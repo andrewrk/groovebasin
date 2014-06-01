@@ -144,7 +144,7 @@ PlayerClient.prototype.search = function(query) {
   }
   // Wait for user to finish typing. When something new is added before
   // the timer completes: reset.
-  self.searchTimer = setTimeout(doSearch, 50);
+  self.searchTimer = setTimeout(doSearch, 100);
 
   function doSearch() {
     query = query.trim();

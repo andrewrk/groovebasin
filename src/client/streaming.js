@@ -1,6 +1,7 @@
 exports.getUrl = getUrl;
 exports.toggleStatus = toggleStatus;
 exports.init = init;
+exports.currentlyBuffering = currentlyBuffering;
 
 var tryingToStream = false;
 var actuallyStreaming = false;
@@ -16,6 +17,10 @@ document.getElementById('stream-btn-label').addEventListener('mousedown', onLabe
 
 function onLabelDown(event) {
   event.stopPropagation();
+}
+
+function currentlyBuffering() {
+  return tryingToStream && actuallyStreaming && stillBuffering;
 }
 
 function getButtonLabel() {

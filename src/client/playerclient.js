@@ -138,23 +138,27 @@ PlayerClient.prototype.updatePlaylistIndex = function() {
 };
 
 PlayerClient.prototype.search = function(query) {
-  if (this.searchTimer != null)
-    clearTimeout(this.searchTimer);
+  var self = this;
+  if (self.searchTimer != null) {
+    clearTimeout(self.searchTimer);
+  }
   // Wait for user to finish typing. When something new is added before
-  //  the timer completes: reset.
-  this.searchTimer = setTimeout((function() {
+  // the timer completes: reset.
+  self.searchTimer = setTimeout(doSearch, 50);
+
+  function doSearch() {
     query = query.trim();
 
     var words = query.split(/\s+/);
     query = words.join(" ");
-    if (query === this.lastQuery) return;
+    if (query === self.lastQuery) return;
 
-    this.lastQuery = query;
-    this.searchResults = this.library.search(query);
-    this.emit('libraryupdate');
-    this.emit('playlistupdate');
-    this.emit('statusupdate');
-  }).bind(this), 300);
+    self.lastQuery = query;
+    self.searchResults = self.library.search(query);
+    self.emit('libraryupdate');
+    self.emit('playlistupdate');
+    self.emit('statusupdate');
+  }
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {

@@ -27,6 +27,7 @@ function PlayerClient(socket) {
   self.playlistFromServerVersion = null;
   self.libraryFromServer = undefined;
   self.libraryFromServerVersion = null;
+  self.searchTimer = null;
   self.resetServerState();
   self.socket.on('disconnect', function() {
     self.resetServerState();
@@ -137,17 +138,23 @@ PlayerClient.prototype.updatePlaylistIndex = function() {
 };
 
 PlayerClient.prototype.search = function(query) {
-  query = query.trim();
+  if (this.searchTimer != null)
+    clearTimeout(this.searchTimer);
+  // Wait for user to finish typing. When something new is added before
+  //  the timer completes: reset.
+  this.searchTimer = setTimeout((function() {
+    query = query.trim();
 
-  var words = query.split(/\s+/);
-  query = words.join(" ");
-  if (query === this.lastQuery) return;
+    var words = query.split(/\s+/);
+    query = words.join(" ");
+    if (query === this.lastQuery) return;
 
-  this.lastQuery = query;
-  this.searchResults = this.library.search(query);
-  this.emit('libraryupdate');
-  this.emit('playlistupdate');
-  this.emit('statusupdate');
+    this.lastQuery = query;
+    this.searchResults = this.library.search(query);
+    this.emit('libraryupdate');
+    this.emit('playlistupdate');
+    this.emit('statusupdate');
+  }).bind(this), 300);
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {

@@ -992,7 +992,7 @@ function toggleLibraryExpansion($li){
   $div.find("div").removeClass(old_class).addClass(new_class);
 }
 
-function confirmDelete(keysList) {
+function maybeDeleteTracks(keysList) {
   var fileList = keysList.map(function(key) {
     return player.library.trackTable[key].file;
   });
@@ -1001,25 +1001,24 @@ function confirmDelete(keysList) {
     listText += "\n  ...";
   }
   var songText = fileList.length === 1 ? "song" : "songs";
-  return confirm("You are about to delete " + fileList.length + " " + songText + " permanently:\n\n  " + listText);
+  var message = "You are about to delete " + fileList.length + " " + songText + " permanently:\n\n  " + listText;
+  if (!confirm(message)) return false;
+  socket.send('deleteTracks', keysList);
+  return true;
 }
 
 function handleDeletePressed(shift) {
   var keysList;
   if (selection.isLibrary()) {
     keysList = selection.toTrackKeys();
-    if (!confirmDelete(keysList)) {
-      return;
-    }
-    socket.send('deleteTracks', keysList);
+    maybeDeleteTracks(keysList);
   } else if (selection.isPlaylist()) {
     if (shift) {
       keysList = [];
       for (var id in selection.ids.playlist) {
         keysList.push(player.playlist.itemTable[id].track.key);
       }
-      if (!confirmDelete(keysList)) return;
-      socket.send('deleteTracks', keysList);
+      if (!maybeDeleteTracks(keysList)) return;
     }
     var sortKey = player.playlist.itemTable[selection.cursor].sortKey;
     player.removeIds(Object.keys(selection.ids.playlist));
@@ -2298,7 +2297,7 @@ function setUpLibraryUi(){
     var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
     event.stopPropagation();
     switch (event.which) {
-    case 27:
+    case 27: // Escape
       if ($(event.target).val().length === 0) {
         $(event.target).blur();
       } else {
@@ -2308,7 +2307,7 @@ function setUpLibraryUi(){
         }, 0);
       }
       return false;
-    case 13:
+    case 13: // Enter
       keys = [];
       for (i = 0, len$ = (ref$ = player.searchResults.artistList).length; i < len$; ++i) {
         artist = ref$[i];

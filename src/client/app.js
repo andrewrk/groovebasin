@@ -2292,6 +2292,19 @@ function setUpSettingsUi(){
   });
 }
 
+var searchTimer = null;
+function ensureSearchHappensSoon() {
+  if (searchTimer != null) {
+    clearTimeout(searchTimer);
+  }
+  // give the user a small timeout between key presses to finish typing.
+  // otherwise, we might be bogged down displaying the search results for "a" or the like.
+  searchTimer = setTimeout(function() {
+    player.search($lib_filter.val());
+    searchTimer = null;
+  }, 100);
+}
+
 function setUpLibraryUi(){
   $lib_filter.on('keydown', function(event){
     var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
@@ -2302,8 +2315,10 @@ function setUpLibraryUi(){
         $(event.target).blur();
       } else {
         setTimeout(function(){
-          $(event.target).val("");
-          player.search("");
+          $lib_filter.val("");
+          // queue up a search refresh now, because if the user holds Escape,
+          // it will blur the search box, and we won't get a keyup for Escape.
+          ensureSearchHappensSoon();
         }, 0);
       }
       return false;
@@ -2344,7 +2359,7 @@ function setUpLibraryUi(){
     }
   });
   $lib_filter.on('keyup', function(event){
-    player.search($(event.target).val());
+    ensureSearchHappensSoon();
   });
   genericTreeUi($library, {
     toggleExpansion: toggleLibraryExpansion,

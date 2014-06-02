@@ -425,7 +425,6 @@ var $settingsAuthCancel = $('#settings-auth-cancel');
 var $settingsAuthSave = $('#settings-auth-save');
 var $settingsAuthEdit = $('#settings-auth-edit');
 var $settingsAuthClear = $('#settings-auth-clear');
-var passwordDisplayDom = document.getElementById('password-display');
 var streamUrlDom = document.getElementById('settings-stream-url');
 var $authPermRead = $('#auth-perm-read');
 var $authPermAdd = $('#auth-perm-add');
@@ -2205,8 +2204,7 @@ function updateSettingsAuthUi() {
   $settingsEditPassword.toggle(showEdit);
   $settingsShowPassword.toggle(!showEdit);
   $settingsAuthCancel.toggle(!!localState.authPassword);
-  $authPassword.val(localState.authPassword);
-  passwordDisplayDom.textContent = localState.authPassword;
+  $authPassword.val("");
   $authPermRead.toggle(!!permissions.read);
   $authPermAdd.toggle(!!permissions.add);
   $authPermControl.toggle(!!permissions.control);
@@ -2266,7 +2264,7 @@ function setUpSettingsUi(){
     updateSettingsAuthUi();
     $authPassword
       .focus()
-      .val(localState.authPassword || "")
+      .val("")
       .select();
   });
   $settingsAuthClear.on('click', function(event) {

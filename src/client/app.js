@@ -1003,7 +1003,7 @@ function maybeDeleteTracks(keysList) {
   var songText = fileList.length === 1 ? "song" : "songs";
   var message = "You are about to delete " + fileList.length + " " + songText + " permanently:\n\n  " + listText;
   if (!confirm(message)) return false;
-  socket.send('deleteTracks', keysList);
+  player.deleteTracks(keysList);
   return true;
 }
 

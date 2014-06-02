@@ -394,6 +394,17 @@ PlayerClient.prototype.removeIds = function(trackIds){
   this.emit('playlistupdate');
 };
 
+PlayerClient.prototype.deleteTracks = function(keysList) {
+  this.sendCommand('deleteTracks', keysList);
+  [this.library, this.searchResults].forEach(function(lib) {
+    keysList.forEach(function(key) {
+      lib.removeTrack(key);
+    });
+    lib.rebuild();
+  });
+  this.emit('libraryupdate');
+};
+
 PlayerClient.prototype.seek = function(id, pos) {
   pos = parseFloat(pos || 0);
   var item = id ? this.playlist.itemTable[id] : this.currentItem;

@@ -30,7 +30,7 @@
     "mess": "~0.1.1",
     "mkdirp": "~0.3.5",
     "multiparty": "^3.2.4",
-    "music-library-index": "^1.1.1",
+    "music-library-index": "^1.2.0",
     "mv": "~2.0.0",
     "osenv": "0.0.3",
     "pend": "~1.1.1",

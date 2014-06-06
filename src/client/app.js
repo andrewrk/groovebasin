@@ -2499,6 +2499,8 @@ function zipNameForSelCursor() {
       return player.library.artistTable[selection.cursor].name;
     case 'album':
       return player.library.albumTable[selection.cursor].name;
+    case 'track':
+      return "songs";
     default:
       throw new Error("bad selection cursor type: " + selection.type);
   }

@@ -27,6 +27,8 @@ function PlayerClient(socket) {
   self.playlistFromServerVersion = null;
   self.libraryFromServer = undefined;
   self.libraryFromServerVersion = null;
+  self.scanningFromServer = undefined;
+  self.scanningFromServerVersion = null;
   self.resetServerState();
   self.socket.on('disconnect', function() {
     self.resetServerState();
@@ -89,6 +91,14 @@ function PlayerClient(socket) {
     self.search(lastQuery);
   });
 
+  self.socket.on('scanning', function(o) {
+    if (o.reset) self.scanningFromServer = undefined;
+    self.scanningFromServer = jsondiffpatch.patch(self.scanningFromServer, o.delta);
+    deleteUndefineds(self.scanningFromServer);
+    self.scanningFromServerVersion = o.version;
+    self.emit('scanningUpdate');
+  });
+
   function deleteUndefineds(o) {
     for (var key in o) {
       if (o[key] === undefined) delete o[key];
@@ -97,7 +107,11 @@ function PlayerClient(socket) {
 }
 
 PlayerClient.prototype.handleConnectionStart = function(){
-  this.sendCommand('subscribe', { name: 'library', delta: true, });
+  this.sendCommand('subscribe', {
+    name: 'library',
+    delta: true,
+    version: this.libraryFromServerVersion,
+  });
   this.sendCommand('subscribe', {name: 'volume'});
   this.sendCommand('subscribe', {name: 'repeat'});
   this.sendCommand('subscribe', {name: 'currentTrack'});
@@ -105,6 +119,11 @@ PlayerClient.prototype.handleConnectionStart = function(){
     name: 'playlist',
     delta: true,
     version: this.playlistFromServerVersion,
+  });
+  this.sendCommand('subscribe', {
+    name: 'scanning',
+    delta: true,
+    version: this.scanningFromServerVersion,
   });
 };
 
@@ -134,6 +153,11 @@ PlayerClient.prototype.updatePlaylistIndex = function() {
   }
   this.refreshPlaylistList();
   this.updateCurrentItem();
+};
+
+PlayerClient.prototype.isScanning = function(track) {
+  var scanInfo = this.scanningFromServer && this.scanningFromServer[track.key];
+  return scanInfo && (!scanInfo.fingerprintDone || !scanInfo.loudnessDone);
 };
 
 PlayerClient.prototype.search = function(query) {

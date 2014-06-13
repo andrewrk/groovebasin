@@ -602,7 +602,8 @@ function renderPlaylist(){
     $domItem.find('.title').text(track.name || "");
     $domItem.find('.artist').text(track.artistName || "");
     $domItem.find('.album').text(track.albumName || "");
-    $domItem.find('.time').text(formatTime(track.duration));
+    var timeText = player.isScanning(track) ? "scan" : formatTime(track.duration);
+    $domItem.find('.time').text(timeText);
   }
 
   refreshSelection();
@@ -2607,6 +2608,7 @@ $document.ready(function(){
   player = new PlayerClient(socket);
   player.on('libraryupdate', renderLibrary);
   player.on('playlistupdate', renderPlaylist);
+  player.on('scanningUpdate', renderPlaylist);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderPlaylistButtons();

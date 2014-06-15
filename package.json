@@ -23,7 +23,7 @@
     "cookies": "^0.4.1",
     "express": "^4.0.0",
     "findit": "~1.1.1",
-    "groove": "^2.2.0",
+    "groove": "^2.2.1",
     "jsondiffpatch": "~0.1.4",
     "keese": "~1.0.0",
     "lastfm": "~0.9.0",

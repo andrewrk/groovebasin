@@ -2596,6 +2596,9 @@ $document.ready(function(){
     permissions = data;
     updateSettingsAuthUi();
   });
+  socket.on('token', function(token) {
+    document.cookie = "token=" + token + "; path=/";
+  });
   socket.on('volumeUpdate', function(vol) {
     player.volume = vol;
     renderVolumeSlider();

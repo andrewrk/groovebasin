@@ -1,4 +1,4 @@
-# Groove Basin
+# ![Groove Basin](http://groovebasin.com.s3.amazonaws.com/img/logo.png)
 
 Music player server with a web-based user interface inspired by Amarok 1.4.
 

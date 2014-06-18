@@ -751,6 +751,28 @@ function artistDisplayName(name) {
   return name || '[Unknown Artist]';
 }
 
+var renderLibraryInterval = 100;
+var renderLibraryTimeout = null;
+var renderLibraryWanted = false;
+
+function checkRenderLibrary() {
+  renderLibraryTimeout = null;
+  if (renderLibraryWanted) {
+    ensureRenderLibraryHappensSoon();
+  }
+}
+
+function ensureRenderLibraryHappensSoon() {
+  if (renderLibraryTimeout) {
+    renderLibraryWanted = true;
+    return;
+  }
+
+  renderLibrary();
+  renderLibraryWanted = false;
+  renderLibraryTimeout = setTimeout(checkRenderLibrary, renderLibraryInterval);
+}
+
 function renderLibrary() {
   var artistList = player.searchResults.artistList || [];
   var scrollTop = $library.scrollTop();
@@ -2609,7 +2631,7 @@ $document.ready(function(){
     renderPlaylist();
   });
   player = new PlayerClient(socket);
-  player.on('libraryupdate', renderLibrary);
+  player.on('libraryupdate', ensureRenderLibraryHappensSoon);
   player.on('playlistupdate', renderPlaylist);
   player.on('scanningUpdate', renderPlaylist);
   player.on('statusupdate', function(){

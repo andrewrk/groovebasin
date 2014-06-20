@@ -79,6 +79,11 @@ sever. It is up to you to restart it when you modify assets or server files.
 Pull requests, feature requests, and bug reports are welcome! Live discussion
 in #libgroove on Freenode.
 
+#### Articles
+
+ * [My Quest to Build the Ultimate Music Player](http://andrewkelley.me/post/quest-build-ultimate-music-player.html)
+ * [Turn Your Raspberry Pi into a Music Player Server](http://andrewkelley.me/post/raspberry-pi-music-player-server.html)
+
 ### Roadmap
 
  1. Tag Editing

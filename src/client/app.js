@@ -751,26 +751,32 @@ function artistDisplayName(name) {
   return name || '[Unknown Artist]';
 }
 
-var renderLibraryInterval = 100;
-var renderLibraryTimeout = null;
-var renderLibraryWanted = false;
+var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
+var triggerRenderPlaylist = makeRenderCall(renderPlaylist, 100);
 
-function checkRenderLibrary() {
-  renderLibraryTimeout = null;
-  if (renderLibraryWanted) {
-    ensureRenderLibraryHappensSoon();
+function makeRenderCall(renderFn, interval) {
+  var renderTimeout = null;
+  var renderWanted = false;
+
+  return ensureRenderHappensSoon;
+
+  function ensureRenderHappensSoon() {
+    if (renderTimeout) {
+      renderWanted = true;
+      return;
+    }
+
+    renderFn();
+    renderWanted = false;
+    renderTimeout = setTimeout(checkRender, interval);
   }
-}
 
-function ensureRenderLibraryHappensSoon() {
-  if (renderLibraryTimeout) {
-    renderLibraryWanted = true;
-    return;
+  function checkRender() {
+    renderTimeout = null;
+    if (renderWanted) {
+      ensureRenderHappensSoon();
+    }
   }
-
-  renderLibrary();
-  renderLibraryWanted = false;
-  renderLibraryTimeout = setTimeout(checkRenderLibrary, renderLibraryInterval);
 }
 
 function renderLibrary() {
@@ -2628,12 +2634,12 @@ $document.ready(function(){
   socket.on('dynamicModeOn', function(data) {
     dynamicModeOn = data;
     renderPlaylistButtons();
-    renderPlaylist();
+    triggerRenderPlaylist();
   });
   player = new PlayerClient(socket);
-  player.on('libraryupdate', ensureRenderLibraryHappensSoon);
-  player.on('playlistupdate', renderPlaylist);
-  player.on('scanningUpdate', renderPlaylist);
+  player.on('libraryupdate', triggerRenderLibrary);
+  player.on('playlistupdate', triggerRenderPlaylist);
+  player.on('scanningUpdate', triggerRenderPlaylist);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderPlaylistButtons();

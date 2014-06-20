@@ -354,7 +354,7 @@ var selection = {
 };
 var BASE_TITLE = document.title;
 var MARGIN = 10;
-var AUTO_EXPAND_LIMIT = 20;
+var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
 var permissions = {};
@@ -464,23 +464,23 @@ function loadLocalState() {
   }
 }
 
-function scrollLibraryToSelection(){
+function scrollLibraryToSelection() {
   var helpers = getSelectionHelpers();
-  if (helpers == null) return;
+  if (!helpers) return;
   delete helpers.playlist;
   scrollThingToSelection($library, helpers);
 }
 
 function scrollPlaylistToSelection(){
   var helpers = getSelectionHelpers();
-  if (helpers == null) return;
+  if (!helpers) return;
   delete helpers.track;
   delete helpers.artist;
   delete helpers.album;
   scrollThingToSelection($playlistItems, helpers);
 }
 
-function scrollThingToSelection($scroll_area, helpers){
+function scrollThingToSelection($scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
   for (var selName in helpers) {
@@ -498,14 +498,14 @@ function scrollThingToSelection($scroll_area, helpers){
     }
   }
   if (topPos != null) {
-    var scroll_area_top = $scroll_area.offset().top;
-    var selection_top = topPos - scroll_area_top;
-    var selection_bottom = bottomPos - scroll_area_top - $scroll_area.height();
-    var scroll_amt = $scroll_area.scrollTop();
-    if (selection_top < 0) {
-      return $scroll_area.scrollTop(scroll_amt + selection_top);
-    } else if (selection_bottom > 0) {
-      return $scroll_area.scrollTop(scroll_amt + selection_bottom);
+    var scrollAreaTop = $scrollArea.offset().top;
+    var selectionTop = topPos - scrollAreaTop;
+    var selectionBottom = bottomPos - scrollAreaTop - $scrollArea.height();
+    var scrollAmt = $scrollArea.scrollTop();
+    if (selectionTop < 0) {
+      return $scrollArea.scrollTop(scrollAmt + selectionTop);
+    } else if (selectionBottom > 0) {
+      return $scrollArea.scrollTop(scrollAmt + selectionBottom);
     }
   }
 }
@@ -692,13 +692,13 @@ function getSelectionHelpers(){
 
 function refreshSelection() {
   var helpers = getSelectionHelpers();
-  if (helpers == null) return;
-  $playlistItems  .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
+  if (!helpers) return;
+  $playlistItems   .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
   $library         .find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
-  for (var selection_type in helpers) {
-    var helper = helpers[selection_type];
+  for (var selectionType in helpers) {
+    var helper = helpers[selectionType];
     var id;
     // clean out stale ids
     for (id in helper.ids) {
@@ -709,14 +709,14 @@ function refreshSelection() {
     for (id in helper.ids) {
       helper.$getDiv(id).addClass('selected');
     }
-    if (selection.cursor != null && selection_type === selection.type) {
-      var validIds = getValidIds(selection_type);
+    if (selection.cursor != null && selectionType === selection.type) {
+      var validIds = getValidIds(selectionType);
       if (validIds[selection.cursor] == null) {
         // server just deleted our current cursor item.
         // select another of our ids randomly, if we have any.
         selection.cursor = Object.keys(helper.ids)[0];
         selection.rangeSelectAnchor = selection.cursor;
-        selection.rangeSelectAnchorType = selection_type;
+        selection.rangeSelectAnchorType = selectionType;
         if (selection.cursor == null) {
           // no selected items
           selection.fullClear();
@@ -729,8 +729,8 @@ function refreshSelection() {
   }
 }
 
-function getValidIds(selection_type) {
-  switch (selection_type) {
+function getValidIds(selectionType) {
+  switch (selectionType) {
     case 'playlist': return player.playlist.itemTable;
     case 'artist':   return player.library.artistTable;
     case 'album':    return player.library.albumTable;
@@ -833,24 +833,26 @@ function renderLibrary() {
   expandStuff($artists);
   $library.scrollTop(scrollTop);
   refreshSelection();
+  expandLibraryToSelection();
 
-  function expandStuff($li_set) {
-    for (var i = 0; i < $li_set.length; i += 1) {
-      var li = $li_set[i];
+  function expandStuff($liSet) {
+    if (nodeCount >= AUTO_EXPAND_LIMIT) return;
+    for (var i = 0; i < $liSet.length; i += 1) {
+      var li = $liSet[i];
       var $li = $(li);
-      if (nodeCount >= AUTO_EXPAND_LIMIT) return;
       var $ul = $li.children("ul");
-      var $sub_li_set = $ul.children("li");
-      var proposedNodeCount = nodeCount + $sub_li_set.length;
+      var $subLiSet = $ul.children("li");
+      var proposedNodeCount = nodeCount + $subLiSet.length;
       if (proposedNodeCount <= AUTO_EXPAND_LIMIT) {
         toggleLibraryExpansion($li);
         $ul = $li.children("ul");
-        $sub_li_set = $ul.children("li");
+        $subLiSet = $ul.children("li");
         nodeCount = proposedNodeCount;
-        expandStuff($sub_li_set);
+        expandStuff($subLiSet);
       }
     }
   }
+
 }
 
 function getCurrentTrackPosition(){
@@ -1174,7 +1176,7 @@ var keyboardHandlers = (function(){
     var dir = event.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
       var helpers = getSelectionHelpers();
-      if (helpers == null) return;
+      if (!helpers) return;
       var helper = helpers[selection.type];
       var selected_item = helper.table[selection.cursor];
       var is_expanded_funcs = {
@@ -1428,17 +1430,49 @@ function removeContextMenu() {
 }
 
 function isArtistExpanded(artist){
-  var $li;
-  $li = $("#lib-artist-" + toHtmlId(artist.key)).closest("li");
-  if (!$li.data('cached')) {
-    return false;
-  }
+  var artistHtmlId = artistId(artist.key);
+  var artistElem = document.getElementById(artistHtmlId);
+  var $li = $(artistElem).closest('li');
+  if (!$li.data('cached')) return false;
   return $li.find("> ul").is(":visible");
 }
+
+function expandArtist(artist) {
+  if (isArtistExpanded(artist)) return;
+
+  var artistElem = document.getElementById(artistId(artist.key));
+  var $li = $(artistElem).closest('li');
+  toggleLibraryExpansion($li);
+}
+
 function isAlbumExpanded(album){
-  var $li = $("#lib-album-" + toHtmlId(album.key)).closest("li");
+  var albumElem = document.getElementById(toAlbumId(album.key));
+  var $li = $(albumElem).closest('li');
   return $li.find("> ul").is(":visible");
 }
+
+function expandAlbum(album) {
+  if (isAlbumExpanded(album)) return;
+
+  expandArtist(album.artist);
+  var elem = document.getElementById(toAlbumId(album.key));
+  var $li = $(elem).closest('li');
+  toggleLibraryExpansion($li);
+}
+
+function expandLibraryToSelection() {
+  if (!selection.isLibrary()) return;
+  for (var trackKey in selection.ids.track) {
+    var track = player.library.trackTable[trackKey];
+    expandAlbum(track.album);
+  }
+  for (var albumKey in selection.ids.album) {
+    var album = player.library.albumTable[albumKey];
+    expandArtist(album.artist);
+  }
+  scrollLibraryToSelection();
+}
+
 function isStoredPlaylistExpanded(stored_playlist){
   var $li = $("#stored-pl-pl-" + toHtmlId(stored_playlist.name)).closest("li");
   return $li.find("> ul").is(":visible");

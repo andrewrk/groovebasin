@@ -17,8 +17,6 @@ util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
   EventEmitter.call(this);
 
-  window.__debug_PlayerClient = this;
-
   var self = this;
   self.socket = socket;
   self.serverTimeOffset = 0;

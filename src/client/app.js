@@ -29,7 +29,7 @@ var selection = {
   isLibrary: function(){
     return this.type === 'artist' || this.type === 'album' || this.type === 'track';
   },
-  isPlaylist: function(){
+  isQueue: function(){
     return this.type === 'queue';
   },
   isStoredPlaylist: function(){
@@ -72,7 +72,7 @@ var selection = {
         if (!--result) return true;
       }
       return false;
-    } else if (this.isPlaylist()) {
+    } else if (this.isQueue()) {
       result = 2;
       for (k in this.ids.queue) {
         if (!--result) return true;
@@ -241,8 +241,8 @@ var selection = {
     if (random == null) random = false;
     if (this.isLibrary()) {
       return libraryToTrackKeys();
-    } else if (this.isPlaylist()) {
-      return playlistToTrackKeys();
+    } else if (this.isQueue()) {
+      return queueToTrackKeys();
     } else if (this.isStoredPlaylist()) {
       return storedPlaylistToTrackKeys();
     } else {
@@ -288,17 +288,17 @@ var selection = {
       }
       return trackSetToKeys(track_set);
     }
-    function playlistToTrackKeys(){
+    function queueToTrackKeys(){
       var keys = [];
       for (var key in selection.ids.queue) {
-        keys.push(player.playlist.itemTable[key].track.key);
+        keys.push(player.queue.itemTable[key].track.key);
       }
       if (random) shuffle(keys);
       return keys;
     }
     function storedPlaylistToTrackKeys(){
       var track_set = {};
-      function renderPlaylist(playlist){
+      function renderQueue(playlist){
         var i, ref$, len$, item;
         for (i = 0, len$ = (ref$ = playlist.itemList).length; i < len$; ++i) {
           item = ref$[i];
@@ -316,7 +316,7 @@ var selection = {
         };
       }
       for (var key in selection.ids.stored_playlist) {
-        renderPlaylist(player.stored_playlist_table[key]);
+        renderQueue(player.stored_playlist_table[key]);
       }
       for (key in selection.ids.stored_playlist_item) {
         renderPlaylistItem(player.stored_playlist_item_table[key]);
@@ -393,14 +393,14 @@ var localState = {
 };
 var $document = $(document);
 var $window = $(window);
-var $pl_window = $('#playlist-window');
-var $left_window = $('#left-window');
-var $playlistItems = $('#playlist-items');
+var $queueWindow = $('#queue-window');
+var $leftWindow = $('#left-window');
+var $queueItems = $('#queue-items');
 var $dynamicMode = $('#dynamic-mode');
-var $pl_btn_repeat = $('#pl-btn-repeat');
+var $queueBtnRepeat = $('#queue-btn-repeat');
 var $tabs = $('#tabs');
 var $library = $('#library');
-var $lib_filter = $('#lib-filter');
+var $libFilter = $('#lib-filter');
 var $trackSlider = $('#track-slider');
 var $nowplaying = $('#nowplaying');
 var $nowplaying_elapsed = $nowplaying.find('.elapsed');
@@ -408,13 +408,13 @@ var $nowplaying_left = $nowplaying.find('.left');
 var $volSlider = $('#vol-slider');
 var $settings = $('#settings');
 var $uploadByUrl = $('#upload-by-url');
-var $main_err_msg = $('#main-err-msg');
-var $main_err_msg_text = $('#main-err-msg-text');
+var $mainErrMsg = $('#main-err-msg');
+var $mainErrMsgText = $('#main-err-msg-text');
 var $stored_playlists = $('#stored-playlists');
 var $upload = $('#upload');
-var $track_display = $('#track-display');
-var $lib_header = $('#library-pane .window-header');
-var $pl_header = $pl_window.find('#playlist .header');
+var $trackDisplay = $('#track-display');
+var $libHeader = $('#lib-window-header');
+var $queueHeader = $('#queue-header');
 var $autoQueueUploads = $('#auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var $uploadWidget = $("#upload-widget");
@@ -438,7 +438,7 @@ var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
 var $editTagsDialog = $('#edit-tags');
-var $playlistMenu = $('#menu-playlist');
+var $queueMenu = $('#menu-queue');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 
@@ -476,7 +476,7 @@ function scrollPlaylistToSelection(){
   delete helpers.track;
   delete helpers.artist;
   delete helpers.album;
-  scrollThingToSelection($playlistItems, helpers);
+  scrollThingToSelection($queueItems, helpers);
 }
 
 function scrollThingToSelection($scrollArea, helpers){
@@ -534,11 +534,11 @@ function downloadKeys(keys, zipName) {
 function getDragPosition(x, y){
   var ref$;
   var result = {};
-  for (var i = 0, len$ = (ref$ = $playlistItems.find(".pl-item").get()).length; i < len$; ++i) {
+  for (var i = 0, len$ = (ref$ = $queueItems.find(".pl-item").get()).length; i < len$; ++i) {
     var item = ref$[i];
     var $item = $(item);
     var middle = $item.offset().top + $item.height() / 2;
-    var track = player.playlist.itemTable[$item.attr('data-id')];
+    var track = player.queue.itemTable[$item.attr('data-id')];
     if (middle < y) {
       if (result.previous_key == null || track.sortKey > result.previous_key) {
         result.$previous = $item;
@@ -559,21 +559,21 @@ function renderPlaylistButtons(){
     .prop("checked", dynamicModeOn)
     .button("refresh");
   var repeatModeName = repeatModeNames[player.repeat];
-  $pl_btn_repeat
+  $queueBtnRepeat
     .button("option", "label", "Repeat: " + repeatModeName)
     .prop("checked", player.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
 }
 
-function renderPlaylist(){
-  var itemList = player.playlist.itemList || [];
-  var scrollTop = $playlistItems.scrollTop();
+function renderQueue(){
+  var itemList = player.queue.itemList || [];
+  var scrollTop = $queueItems.scrollTop();
 
   // add the missing dom entries
   var i;
-  var playlistItemsDom = $playlistItems.get(0);
+  var playlistItemsDom = $queueItems.get(0);
   for (i = playlistItemsDom.childElementCount; i < itemList.length; i += 1) {
-    $playlistItems.append(
+    $queueItems.append(
       '<div class="pl-item">' +
         '<span class="track"></span>' +
         '<span class="title"></span>' +
@@ -589,7 +589,7 @@ function renderPlaylist(){
   }
 
   // overwrite existing dom entries
-  var $domItems = $playlistItems.children();
+  var $domItems = $queueItems.children();
   var item, track;
   for (i = 0; i < itemList.length; i += 1) {
     var $domItem = $($domItems[i]);
@@ -607,27 +607,27 @@ function renderPlaylist(){
 
   refreshSelection();
   labelPlaylistItems();
-  $playlistItems.scrollTop(scrollTop);
+  $queueItems.scrollTop(scrollTop);
 }
 
 function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
-  $playlistItems.find(".pl-item")
+  $queueItems.find(".pl-item")
     .removeClass('current')
     .removeClass('old')
     .removeClass('random');
   if (curItem != null && dynamicModeOn) {
     for (var index = 0; index < curItem.index; ++index) {
-      item = player.playlist.itemList[index];
+      item = player.queue.itemList[index];
       var itemId = item && item.id;
       if (itemId != null) {
         $("#playlist-track-" + itemId).addClass('old');
       }
     }
   }
-  for (var i = 0; i < player.playlist.itemList.length; i += 1) {
-    item = player.playlist.itemList[i];
+  for (var i = 0; i < player.queue.itemList.length; i += 1) {
+    item = player.queue.itemList[i];
     if (item.isRandom) {
       $("#playlist-track-" + item.id).addClass('random');
     }
@@ -639,14 +639,14 @@ function labelPlaylistItems() {
 
 function getSelectionHelpers(){
   if (player == null) return null;
-  if (player.playlist == null) return null;
-  if (player.playlist.itemTable == null) return null;
+  if (player.queue == null) return null;
+  if (player.queue.itemTable == null) return null;
   if (player.searchResults == null) return null;
   if (player.searchResults.artistTable == null) return null;
   return {
     queue: {
       ids: selection.ids.queue,
-      table: player.playlist.itemTable,
+      table: player.queue.itemTable,
       $getDiv: function(id){
         return $("#playlist-track-" + id);
       },
@@ -692,7 +692,7 @@ function getSelectionHelpers(){
 function refreshSelection() {
   var helpers = getSelectionHelpers();
   if (!helpers) return;
-  $playlistItems   .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
+  $queueItems   .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
   $library         .find(".clickable").removeClass('selected').removeClass('cursor');
   $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
@@ -730,7 +730,7 @@ function refreshSelection() {
 
 function getValidIds(selectionType) {
   switch (selectionType) {
-    case 'queue':  return player.playlist.itemTable;
+    case 'queue':  return player.queue.itemTable;
     case 'artist': return player.library.artistTable;
     case 'album':  return player.library.albumTable;
     case 'track':  return player.library.trackTable;
@@ -751,7 +751,7 @@ function artistDisplayName(name) {
 }
 
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
-var triggerRenderPlaylist = makeRenderCall(renderPlaylist, 100);
+var triggerRenderQueue = makeRenderCall(renderQueue, 100);
 
 function makeRenderCall(renderFn, interval) {
   var renderTimeout = null;
@@ -890,33 +890,33 @@ function renderVolumeSlider() {
   $volSlider.slider('option', 'disabled', !enabled);
 }
 
-function renderNowPlaying(){
+function renderNowPlaying() {
   var track = null;
   if (player.currentItem != null) {
     track = player.currentItem.track;
   }
-  var track_display;
+  var trackDisplay;
   if (track != null) {
-    track_display = track.name + " - " + track.artistName;
+    trackDisplay = track.name + " - " + track.artistName;
     if (track.albumName.length) {
-      track_display += " - " + track.albumName;
+      trackDisplay += " - " + track.albumName;
     }
-    document.title = track_display + " - " + BASE_TITLE;
-    if (track.name.indexOf("Groove Basin") === 0) {
+    document.title = trackDisplay + " - " + BASE_TITLE;
+    if (/Groove Basin/.test(track.name)) {
       $("html").addClass('groovebasin');
     } else {
       $("html").removeClass('groovebasin');
     }
-    if (track.name.indexOf("Never Gonna Give You Up") === 0 && track.artistName.indexOf("Rick Astley") === 0) {
+    if (/Never Gonna Give You Up/.test(track.name) && /Rick Astley/.test(track.artistName)) {
       $("html").addClass('nggyu');
     } else {
       $("html").removeClass('nggyu');
     }
   } else {
-    track_display = "&nbsp;";
+    trackDisplay = "&nbsp;";
     document.title = BASE_TITLE;
   }
-  $track_display.html(track_display);
+  $trackDisplay.html(trackDisplay);
   var old_class;
   var new_class;
   if (player.isPlaying === true) {
@@ -934,16 +934,16 @@ function renderNowPlaying(){
 
 function render(){
   var hide_main_err = load_status === LoadStatus.GoodToGo;
-  $pl_window.toggle(hide_main_err);
-  $left_window.toggle(hide_main_err);
+  $queueWindow.toggle(hide_main_err);
+  $leftWindow.toggle(hide_main_err);
   $nowplaying.toggle(hide_main_err);
-  $main_err_msg.toggle(!hide_main_err);
+  $mainErrMsg.toggle(!hide_main_err);
   if (!hide_main_err) {
     document.title = BASE_TITLE;
-    $main_err_msg_text.text(load_status);
+    $mainErrMsgText.text(load_status);
     return;
   }
-  renderPlaylist();
+  renderQueue();
   renderPlaylistButtons();
   renderLibrary();
   renderNowPlaying();
@@ -1042,19 +1042,19 @@ function handleDeletePressed(shift) {
   if (selection.isLibrary()) {
     keysList = selection.toTrackKeys();
     maybeDeleteTracks(keysList);
-  } else if (selection.isPlaylist()) {
+  } else if (selection.isQueue()) {
     if (shift) {
       keysList = [];
       for (var id in selection.ids.queue) {
-        keysList.push(player.playlist.itemTable[id].track.key);
+        keysList.push(player.queue.itemTable[id].track.key);
       }
       if (!maybeDeleteTracks(keysList)) return;
     }
-    var sortKey = player.playlist.itemTable[selection.cursor].sortKey;
+    var sortKey = player.queue.itemTable[selection.cursor].sortKey;
     player.removeIds(Object.keys(selection.ids.queue));
     var item = null;
-    for (var i = 0; i < player.playlist.itemList.length; i++) {
-      item = player.playlist.itemList[i];
+    for (var i = 0; i < player.queue.itemList.length; i++) {
+      item = player.queue.itemList[i];
       if (item.sortKey > sortKey) {
         // select the very next one
         break;
@@ -1096,29 +1096,29 @@ var keyboardHandlers = (function(){
     var defaultIndex, dir, nextPos;
     if (event.which === 38) {
       // up
-      defaultIndex = player.currentItem ? player.currentItem.index - 1 : player.playlist.itemList.length - 1;
+      defaultIndex = player.currentItem ? player.currentItem.index - 1 : player.queue.itemList.length - 1;
       dir = -1;
     } else {
       // down
       defaultIndex = player.currentItem ? player.currentItem.index + 1 : 0;
       dir = 1;
     }
-    if (defaultIndex >= player.playlist.itemList.length) {
-      defaultIndex = player.playlist.itemList.length - 1;
+    if (defaultIndex >= player.queue.itemList.length) {
+      defaultIndex = player.queue.itemList.length - 1;
     } else if (defaultIndex < 0) {
       defaultIndex = 0;
     }
     if (event.altKey) {
-      if (selection.isPlaylist()) {
+      if (selection.isQueue()) {
         player.shiftIds(selection.ids.queue, dir);
       }
     } else {
-      if (selection.isPlaylist()) {
-        nextPos = player.playlist.itemTable[selection.cursor].index + dir;
-        if (nextPos < 0 || nextPos >= player.playlist.itemList.length) {
+      if (selection.isQueue()) {
+        nextPos = player.queue.itemTable[selection.cursor].index + dir;
+        if (nextPos < 0 || nextPos >= player.queue.itemList.length) {
           return;
         }
-        selection.cursor = player.playlist.itemList[nextPos].id;
+        selection.cursor = player.queue.itemList[nextPos].id;
         if (!event.ctrlKey && !event.shiftKey) {
           // single select
           selection.clear();
@@ -1163,12 +1163,12 @@ var keyboardHandlers = (function(){
           selection.rangeSelectAnchorType = selection.type;
         }
       } else {
-        if (player.playlist.itemList.length === 0) return;
-        selection.selectOnly('queue', player.playlist.itemList[defaultIndex].id);
+        if (player.queue.itemList.length === 0) return;
+        selection.selectOnly('queue', player.queue.itemList[defaultIndex].id);
       }
       refreshSelection();
     }
-    if (selection.isPlaylist()) scrollPlaylistToSelection();
+    if (selection.isQueue()) scrollPlaylistToSelection();
     if (selection.isLibrary()) scrollLibraryToSelection();
   }
   function leftRightHandler(event){
@@ -1234,7 +1234,7 @@ var keyboardHandlers = (function(){
       alt: null,
       shift: null,
       handler: function(event){
-        if (selection.isPlaylist()) {
+        if (selection.isQueue()) {
           player.seek(selection.cursor, 0);
           player.play();
         } else if (selection.isLibrary()) {
@@ -1409,7 +1409,7 @@ var keyboardHandlers = (function(){
           $shortcuts.focus();
         } else {
           clickTab('library');
-          $lib_filter.focus().select();
+          $libFilter.focus().select();
         }
       },
     },
@@ -1417,8 +1417,8 @@ var keyboardHandlers = (function(){
 })();
 
 function removeContextMenu() {
-  if ($playlistMenu.is(":visible")) {
-    $playlistMenu.hide();
+  if ($queueMenu.is(":visible")) {
+    $queueMenu.hide();
     return true;
   }
   if ($libraryMenu.is(":visible")) {
@@ -1519,15 +1519,15 @@ function selectPlaylistRange() {
   selection.clear();
   var anchor = selection.rangeSelectAnchor;
   if (anchor == null) anchor = selection.cursor;
-  var min_pos = player.playlist.itemTable[anchor].index;
-  var max_pos = player.playlist.itemTable[selection.cursor].index;
+  var min_pos = player.queue.itemTable[anchor].index;
+  var max_pos = player.queue.itemTable[selection.cursor].index;
   if (max_pos < min_pos) {
     var tmp = min_pos;
     min_pos = max_pos;
     max_pos = tmp;
   }
   for (var i = min_pos; i <= max_pos; i++) {
-    selection.ids.queue[player.playlist.itemList[i].id] = true;
+    selection.ids.queue[player.queue.itemList[i].id] = true;
   }
 }
 function selectTreeRange() {
@@ -1574,7 +1574,7 @@ function performDrag(event, callbacks){
   abortDrag = function(){
     $document.off('mousemove', onDragMove).off('mouseup', onDragEnd);
     if (started_drag) {
-      $playlistItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+      $queueItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
       started_drag = false;
     }
     abortDrag = function(){};
@@ -1591,7 +1591,7 @@ function performDrag(event, callbacks){
       }
     }
     result = getDragPosition(event.pageX, event.pageY);
-    $playlistItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+    $queueItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
     if (result.$next != null) {
       result.$next.addClass("border-top");
     } else if (result.$previous != null) {
@@ -1648,19 +1648,19 @@ function blur() {
 }
 
 var dynamicModeLabel = document.getElementById('dynamic-mode-label');
-var plBtnRepeatLabel = document.getElementById('pl-btn-repeat-label');
+var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
 function setUpPlaylistUi(){
-  $pl_window.on('click', 'button.clear', function(event){
+  $queueWindow.on('click', 'button.clear', function(event){
     player.clear();
   });
-  $pl_window.on('mousedown', 'button.clear', stopPropagation);
+  $queueWindow.on('mousedown', 'button.clear', stopPropagation);
 
-  $pl_window.on('click', 'button.shuffle', function(){
+  $queueWindow.on('click', 'button.shuffle', function(){
     player.shuffle();
   });
-  $pl_window.on('mousedown', 'button.shuffle', stopPropagation);
+  $queueWindow.on('mousedown', 'button.shuffle', stopPropagation);
 
-  $pl_btn_repeat.on('click', nextRepeatState);
+  $queueBtnRepeat.on('click', nextRepeatState);
   plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
 
   $dynamicMode.on('click', function(){
@@ -1670,15 +1670,15 @@ function setUpPlaylistUi(){
   });
   dynamicModeLabel.addEventListener('mousedown', stopPropagation, false);
 
-  $playlistItems.on('dblclick', '.pl-item', function(event){
+  $queueItems.on('dblclick', '.pl-item', function(event){
     var trackId = $(this).attr('data-id');
     player.seek(trackId, 0);
     player.play();
   });
-  $playlistItems.on('contextmenu', function(event){
+  $queueItems.on('contextmenu', function(event){
     return event.altKey;
   });
-  $playlistItems.on('mousedown', '.pl-item', function(event){
+  $queueItems.on('mousedown', '.pl-item', function(event){
     var trackId, skipDrag;
     if (started_drag) return true;
     $(document.activeElement).blur();
@@ -1687,7 +1687,7 @@ function setUpPlaylistUi(){
       removeContextMenu();
       trackId = $(this).attr('data-id');
       skipDrag = false;
-      if (!selection.isPlaylist()) {
+      if (!selection.isQueue()) {
         selection.selectOnly('queue', trackId);
       } else if (event.ctrlKey || event.shiftKey) {
         skipDrag = true;
@@ -1733,40 +1733,40 @@ function setUpPlaylistUi(){
       event.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
-      if (!selection.isPlaylist() || selection.ids.queue[trackId] == null) {
+      if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
         selection.selectOnly('queue', trackId);
         refreshSelection();
       }
       if (!selection.isMulti()) {
-        var item = player.playlist.itemTable[trackId];
+        var item = player.queue.itemTable[trackId];
         downloadMenuZipName = null;
-        $playlistMenu.find('.download').attr('href', 'library/' + encodeURI(item.track.file));
+        $queueMenu.find('.download').attr('href', 'library/' + encodeURI(item.track.file));
       } else {
         downloadMenuZipName = "songs";
-        $playlistMenu.find('.download').attr('href', '#');
+        $queueMenu.find('.download').attr('href', '#');
       }
-      $playlistMenu.show().offset({
+      $queueMenu.show().offset({
         left: event.pageX + 1,
         top: event.pageY + 1
       });
-      updateAdminActions($playlistMenu);
+      updateAdminActions($queueMenu);
     }
   });
-  $playlistItems.on('mousedown', function(){
+  $queueItems.on('mousedown', function(){
     return false;
   });
-  $playlistMenu.menu();
-  $playlistMenu.on('mousedown', function(){
+  $queueMenu.menu();
+  $queueMenu.on('mousedown', function(){
     return false;
   });
-  $playlistMenu.on('click', '.remove', function(){
+  $queueMenu.on('click', '.remove', function(){
     handleDeletePressed(false);
     removeContextMenu();
     return false;
   });
-  $playlistMenu.on('click', '.download', onDownloadContextMenu);
-  $playlistMenu.on('click', '.delete', onDeleteContextMenu);
-  $playlistMenu.on('click', '.edit-tags', onEditTagsContextMenu);
+  $queueMenu.on('click', '.download', onDownloadContextMenu);
+  $queueMenu.on('click', '.delete', onDeleteContextMenu);
+  $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
 }
 
 function stopPropagation(event) {
@@ -2362,13 +2362,13 @@ function ensureSearchHappensSoon() {
   // give the user a small timeout between key presses to finish typing.
   // otherwise, we might be bogged down displaying the search results for "a" or the like.
   searchTimer = setTimeout(function() {
-    player.search($lib_filter.val());
+    player.search($libFilter.val());
     searchTimer = null;
   }, 100);
 }
 
 function setUpLibraryUi(){
-  $lib_filter.on('keydown', function(event){
+  $libFilter.on('keydown', function(event){
     var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
     event.stopPropagation();
     switch (event.which) {
@@ -2377,7 +2377,7 @@ function setUpLibraryUi(){
         $(event.target).blur();
       } else {
         setTimeout(function(){
-          $lib_filter.val("");
+          $libFilter.val("");
           // queue up a search refresh now, because if the user holds Escape,
           // it will blur the search box, and we won't get a keyup for Escape.
           ensureSearchHappensSoon();
@@ -2411,16 +2411,16 @@ function setUpLibraryUi(){
     case 40:
       selection.selectOnly('artist', player.searchResults.artistList[0].key);
       refreshSelection();
-      $lib_filter.blur();
+      $libFilter.blur();
       return false;
     case 38:
       selection.selectOnly('artist', player.searchResults.artistList[player.searchResults.artistList.length - 1].key);
       refreshSelection();
-      $lib_filter.blur();
+      $libFilter.blur();
       return false;
     }
   });
-  $lib_filter.on('keyup', function(event){
+  $libFilter.on('keyup', function(event){
     ensureSearchHappensSoon();
   });
   genericTreeUi($library, {
@@ -2600,28 +2600,28 @@ function toTrackId(s) {
 
 function handleResize(){
   $nowplaying.width(MARGIN);
-  $pl_window.height(MARGIN);
-  $left_window.height(MARGIN);
+  $queueWindow.height(MARGIN);
+  $leftWindow.height(MARGIN);
   $library.height(MARGIN);
   $upload.height(MARGIN);
-  $playlistItems.height(MARGIN);
+  $queueItems.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
   var second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
-  $left_window.offset({
+  $leftWindow.offset({
     left: MARGIN,
     top: second_layer_top
   });
-  $pl_window.offset({
-    left: $left_window.offset().left + $left_window.width() + MARGIN,
+  $queueWindow.offset({
+    left: $leftWindow.offset().left + $leftWindow.width() + MARGIN,
     top: second_layer_top
   });
-  $pl_window.width($window.width() - $pl_window.offset().left - MARGIN);
-  $left_window.height($window.height() - $left_window.offset().top);
-  $pl_window.height($left_window.height() - MARGIN);
-  var tab_contents_height = $left_window.height() - $tabs.height() - MARGIN;
-  $library.height(tab_contents_height - $lib_header.height());
-  $upload.height(tab_contents_height);
-  $playlistItems.height($pl_window.height() - $pl_header.position().top - $pl_header.height());
+  $queueWindow.width($window.width() - $queueWindow.offset().left - MARGIN);
+  $leftWindow.height($window.height() - $leftWindow.offset().top);
+  $queueWindow.height($leftWindow.height() - MARGIN);
+  var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
+  $library.height(tabContentsHeight - $libHeader.height());
+  $upload.height(tabContentsHeight);
+  $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
 }
 function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";
@@ -2667,12 +2667,12 @@ $document.ready(function(){
   socket.on('dynamicModeOn', function(data) {
     dynamicModeOn = data;
     renderPlaylistButtons();
-    triggerRenderPlaylist();
+    triggerRenderQueue();
   });
   player = new PlayerClient(socket);
   player.on('libraryupdate', triggerRenderLibrary);
-  player.on('playlistupdate', triggerRenderPlaylist);
-  player.on('scanningUpdate', triggerRenderPlaylist);
+  player.on('queueUpdate', triggerRenderQueue);
+  player.on('scanningUpdate', triggerRenderQueue);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderPlaylistButtons();

@@ -46,7 +46,7 @@
       </ul>
     </div>
     <div id="library-pane" class="ui-widget-content ui-corner-all">
-      <div class="window-header">
+      <div id="lib-window-header" class="window-header">
         <input type="text" id="lib-filter" placeholder="filter">
         <select id="organize">
           <option selected="selected">Artist / Album / Song</option>
@@ -93,7 +93,7 @@
           </div>
           <h2>Permissions</h2>
           <ul>
-            <li id="auth-perm-read">Reading the library, current playlist, and playback status</li>
+            <li id="auth-perm-read">Reading the library, current queue, and playback status</li>
             <li id="auth-perm-add">Adding songs, loading playlists, and uploading songs.</li>
             <li id="auth-perm-control">Control playback state, and manipulate playlists.</li>
             <li id="auth-perm-admin">Deleting songs, updating tags, organizing library.</li>
@@ -135,22 +135,22 @@
       </div>
     </div>
   </div>
-  <div id="playlist-window" class="ui-widget-content ui-corner-all" style="display: none">
+  <div id="queue-window" class="ui-widget-content ui-corner-all" style="display: none">
     <div class="window-header">
       <button class="jquery-button clear">Clear</button>
       <button class="jquery-button shuffle">Shuffle</button>
       <input class="jquery-button" type="checkbox" id="dynamic-mode"><label id="dynamic-mode-label" for="dynamic-mode">Dynamic Mode</label>
-      <input class="jquery-button" type="checkbox" id="pl-btn-repeat"><label id="pl-btn-repeat-label" for="pl-btn-repeat">Repeat: Off</label>
+      <input class="jquery-button" type="checkbox" id="queue-btn-repeat"><label id="queue-btn-repeat-label" for="queue-btn-repeat">Repeat: Off</label>
     </div>
-    <div id="playlist">
-      <div class="header">
+    <div id="queue-list">
+      <div id="queue-header" class="header">
         <span class="track">&nbsp;</span>
         <span class="title">Title</span>
         <span class="artist">Artist</span>
         <span class="album">Album</span>
         <span class="time">Time</span>
       </div>
-      <div id="playlist-items">
+      <div id="queue-items">
       </div>
     </div>
   </div>
@@ -188,7 +188,7 @@
       <dd>Toggle streaming</dd>
     </dl>
 
-    <h1>Playlist</h1>
+    <h1>The Play Queue</h1>
     <dl>
       <dt>Up <em>and</em> Down</dt>
       <dd>Select the next song</dd>
@@ -203,15 +203,15 @@
     </dl>
     <dl>
       <dt>C</dt>
-      <dd>Clear playlist</dd>
+      <dd>Clear queue</dd>
     </dl>
     <dl>
       <dt>H</dt>
-      <dd>Shuffle playlist</dd>
+      <dd>Shuffle queue</dd>
     </dl>
     <dl>
       <dt>d</dt>
-      <dd>Toggle dynamic playlist mode</dd>
+      <dd>Toggle dynamic queue mode</dd>
     </dl>
     <dl>
       <dt>r</dt>
@@ -219,7 +219,7 @@
     </dl>
     <dl>
       <dt>Del</dt>
-      <dd>Remove selected songs from playlist</dd>
+      <dd>Remove selected songs from queue</dd>
     </dl>
     <dl>
       <dt>Shift + Del</dt>
@@ -356,7 +356,7 @@
     <button id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
     <label accesskey="r" id="edit-tags-per-label"><input id="edit-tags-per" type="checkbox">Pe<span class="accesskey">r</span> Track</label>
   </div>
-  <ul id="menu-playlist" style="display: none">
+  <ul id="menu-queue" style="display: none">
     <li><a href="#" class="remove">Remove</a></li>
     <li><a href="#" class="delete">Delete From Library</a></li>
     <li><a href="#" class="download" target="_blank">Download</a></li>

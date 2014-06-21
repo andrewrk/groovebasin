@@ -364,7 +364,6 @@ var userIsSeeking = false;
 var userIsVolumeSliding = false;
 var started_drag = false;
 var abortDrag = function(){};
-var clickTab = null;
 var myUserId = null;
 var lastFmApiKey = null;
 var LoadStatus = {
@@ -441,6 +440,25 @@ var $editTagsDialog = $('#edit-tags');
 var $queueMenu = $('#menu-queue');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
+
+var tabs = {
+  library: {
+    $pane: $('#library-pane'),
+    $tab: $('#library-tab'),
+  },
+  upload: {
+    $pane: $('#upload-pane'),
+    $tab: $('#upload-tab'),
+  },
+  playlists: {
+    $pane: $('#playlists-pane'),
+    $tab: $('#playlists-tab'),
+  },
+  settings: {
+    $pane: $('#settings-pane'),
+    $tab: $('#settings-tab'),
+  },
+};
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -1342,7 +1360,7 @@ var keyboardHandlers = (function(){
       alt: false,
       shift: false,
       handler: function(){
-        clickTab('library');
+        clickTab(tabs.library);
       },
     },
     // r
@@ -1365,7 +1383,7 @@ var keyboardHandlers = (function(){
       alt: false,
       shift: false,
       handler: function(){
-        clickTab('upload');
+        clickTab(tabs.upload);
         $uploadByUrl.focus().select();
       },
     },
@@ -1408,7 +1426,7 @@ var keyboardHandlers = (function(){
           });
           $shortcuts.focus();
         } else {
-          clickTab('library');
+          clickTab(tabs.library);
           $libFilter.focus().select();
         }
       },
@@ -2088,46 +2106,31 @@ function setUpNowPlayingUi(){
   }
 }
 
-var tabs = [
-  {
-    name: 'library',
-    $pane: $('#library-pane'),
-    $tab: $('#library-tab'),
-  },
-  {
-    name: 'upload',
-    $pane: $('#upload-pane'),
-    $tab: $('#upload-tab'),
-  },
-  {
-    name: 'playlists',
-    $pane: $('#playlists-pane'),
-    $tab: $('#playlists-tab'),
-  },
-  {
-    name: 'settings',
-    $pane: $('#settings-pane'),
-    $tab: $('#settings-tab'),
-  },
-];
+function clickTab(tab) {
+  unselectTabs();
+  tab.$tab.addClass('ui-state-active');
+  tab.$pane.show();
+  handleResize();
+}
 
-function setUpTabsUi(){
-  tabs.forEach(setUpTabListener);
+function setUpTabListener(tab) {
+  tab.$tab.on('click', function(event) {
+    clickTab(tab);
+  });
+}
 
-  function setUpTabListener(tab) {
-    tab.$tab.on('click', function(event) {
-      unselectTabs();
-      tab.$tab.addClass('ui-state-active');
-      tab.$pane.show();
-      handleResize();
-    });
+function setUpTabsUi() {
+  for (var name in tabs) {
+    var tab = tabs[name];
+    setUpTabListener(tab);
   }
+}
 
-  function unselectTabs() {
-    tabs.forEach(function(tab) {
-      tab.$tab.removeClass('ui-state-active');
-      tab.$pane.hide();
-    });
+function unselectTabs() {
+  for (var name in tabs) {
+    var tab = tabs[name];
+    tab.$tab.removeClass('ui-state-active');
+    tab.$pane.hide();
   }
 }
 

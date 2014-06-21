@@ -1740,7 +1740,7 @@ function setUpPlaylistUi(){
       if (!selection.isMulti()) {
         var item = player.queue.itemTable[trackId];
         downloadMenuZipName = null;
-        $queueMenu.find('.download').attr('href', 'library/' + encodeURI(item.track.file));
+        $queueMenu.find('.download').attr('href', encodeDownloadHref(item.track.file));
       } else {
         downloadMenuZipName = "songs";
         $queueMenu.find('.download').attr('href', '#');
@@ -2538,7 +2538,7 @@ function genericTreeUi($elem, options){
       }
       if (track) {
         downloadMenuZipName = null;
-        $libraryMenu.find('.download').attr('href', 'library/' + encodeURI(track.file));
+        $libraryMenu.find('.download').attr('href', encodeDownloadHref(track.file));
       } else {
         downloadMenuZipName = zipNameForSelCursor();
         $libraryMenu.find('.download').attr('href', '#');
@@ -2553,6 +2553,11 @@ function genericTreeUi($elem, options){
   $elem.on('mousedown', function(){
     return false;
   });
+}
+
+function encodeDownloadHref(file) {
+  // be sure to escape #hashtags
+  return 'library/' + encodeURI(file).replace(/#/g, "%23");
 }
 
 function zipNameForSelCursor() {

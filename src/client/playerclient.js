@@ -8,6 +8,7 @@ var jsondiffpatch = require('jsondiffpatch');
 module.exports = PlayerClient;
 
 var compareSortKeyAndId = makeCompareProps(['sortKey', 'id']);
+var compareNameAndId = makeCompareProps(['name', 'id']);
 
 PlayerClient.REPEAT_OFF = 0;
 PlayerClient.REPEAT_ONE = 1;
@@ -27,6 +28,8 @@ function PlayerClient(socket) {
   self.libraryFromServerVersion = null;
   self.scanningFromServer = undefined;
   self.scanningFromServerVersion = null;
+  self.playlistsFromServer = undefined;
+  self.playlistsFromServerVersion = null;
   self.resetServerState();
   self.socket.on('disconnect', function() {
     self.resetServerState();
@@ -97,6 +100,15 @@ function PlayerClient(socket) {
     self.emit('scanningUpdate');
   });
 
+  self.socket.on('playlists', function(o) {
+    if (o.reset) self.playlistsFromServer = undefined;
+    self.playlistsFromServer = jsondiffpatch.patch(self.playlistsFromServer, o.delta);
+    deleteUndefineds(self.playlistsFromServer);
+    self.playlistsFromServerVersion = o.version;
+    self.updatePlaylistsIndex();
+    self.emit('playlistsUpdate');
+  });
+
   function deleteUndefineds(o) {
     for (var key in o) {
       if (o[key] === undefined) delete o[key];
@@ -123,6 +135,11 @@ PlayerClient.prototype.handleConnectionStart = function(){
     delta: true,
     version: this.scanningFromServerVersion,
   });
+  this.sendCommand('subscribe', {
+    name: 'playlists',
+    delta: true,
+    version: this.playlistsFromServerVersion,
+  });
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {
@@ -133,6 +150,46 @@ PlayerClient.prototype.updateTrackStartDate = function() {
 PlayerClient.prototype.updateCurrentItem = function() {
   this.currentItem = (this.currentItemId != null) ?
     this.queue.itemTable[this.currentItemId] : null;
+};
+
+PlayerClient.prototype.clearStoredPlaylists = function() {
+  this.stored_playlist_table = {};
+  this.stored_playlist_item_table = {};
+  this.stored_playlists = [];
+};
+
+PlayerClient.prototype.updatePlaylistsIndex = function() {
+  this.clearStoredPlaylists();
+  if (!this.playlistsFromServer) return;
+  for (var id in this.playlistsFromServer) {
+    var playlistFromServer = this.playlistsFromServer[id];
+    var playlist = {
+      itemList: [],
+      itemTable: {},
+      id: playlistFromServer.id,
+      name: playlistFromServer.name,
+      index: 0, // we'll set this correctly later
+    };
+    for (var itemId in playlistFromServer.items) {
+      var itemFromServer = playlistFromServer.items[itemId];
+      var track = this.library.trackTable[itemFromServer.key];
+      var item = {
+        id: itemId,
+        sortKey: itemFromServer.sortKey,
+        isRandom: false,
+        track: track,
+        playlist: playlist,
+      };
+      playlist.itemTable[itemId] = item;
+      this.stored_playlist_item_table[itemId] = item;
+    }
+    this.refreshPlaylistList(playlist);
+    this.stored_playlists.push(playlist);
+  }
+  this.stored_playlists.sort(compareNameAndId);
+  this.stored_playlists.forEach(function(playlist, index) {
+    playlist.index = index;
+  });
 };
 
 PlayerClient.prototype.updateQueueIndex = function() {
@@ -149,7 +206,7 @@ PlayerClient.prototype.updateQueueIndex = function() {
       playlist: this.queue,
     };
   }
-  this.refreshQueueList();
+  this.refreshPlaylistList(this.queue);
   this.updateCurrentItem();
 };
 
@@ -218,7 +275,7 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
     };
     previousKey = sortKey;
   }
-  this.refreshQueueList();
+  this.refreshPlaylistList(this.queue);
   this.sendCommand('addid', items);
   this.emit('queueUpdate');
 };
@@ -324,7 +381,7 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
     track.sortKey = sortKey;
     previousKey = sortKey;
   }
-  this.refreshQueueList();
+  this.refreshPlaylistList(this.queue);
   this.sendCommand('move', items);
   this.emit('queueUpdate');
 };
@@ -391,7 +448,7 @@ PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
     }
   }
   // we may have reversed the table and adjusted all the sort keys, so we need to refresh this.
-  this.refreshQueueList();
+  this.refreshPlaylistList(this.queue);
 
   this.sendCommand('move', movedItems);
   this.emit('queueUpdate');
@@ -410,7 +467,7 @@ PlayerClient.prototype.removeIds = function(trackIds){
     ids.push(trackId);
     var item = this.queue.itemTable[trackId];
     delete this.queue.itemTable[item.id];
-    this.refreshQueueList();
+    this.refreshPlaylistList(this.queue);
   }
   this.sendCommand('deleteid', ids);
   this.emit('queueUpdate');
@@ -475,17 +532,17 @@ PlayerClient.prototype.clearQueue = function(){
   };
 };
 
-PlayerClient.prototype.refreshQueueList = function(){
-  this.queue.itemList = [];
+PlayerClient.prototype.refreshPlaylistList = function(playlist) {
+  playlist.itemList = [];
   var item;
-  for (var id in this.queue.itemTable) {
-    item = this.queue.itemTable[id];
-    item.playlist = this.queue;
-    this.queue.itemList.push(item);
+  for (var id in playlist.itemTable) {
+    item = playlist.itemTable[id];
+    item.playlist = playlist;
+    playlist.itemList.push(item);
   }
-  this.queue.itemList.sort(compareSortKeyAndId);
-  for (var i = 0; i < this.queue.itemList.length; i += 1) {
-    item = this.queue.itemList[i];
+  playlist.itemList.sort(compareSortKeyAndId);
+  for (var i = 0; i < playlist.itemList.length; i += 1) {
+    item = playlist.itemList[i];
     item.index = i;
   }
 };
@@ -522,9 +579,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.currentItem = null;
   this.currentItemId = null;
 
-  this.stored_playlist_table = {};
-  this.stored_playlist_item_table = {};
-  this.stored_playlists = [];
+  this.clearStoredPlaylists();
 };
 
 function elapsedToDate(elapsed){

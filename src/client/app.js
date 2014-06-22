@@ -409,7 +409,7 @@ var $settings = $('#settings');
 var $uploadByUrl = $('#upload-by-url');
 var $mainErrMsg = $('#main-err-msg');
 var $mainErrMsgText = $('#main-err-msg-text');
-var $stored_playlists = $('#stored-playlists');
+var $playlistsLists = $('#playlists-list');
 var $upload = $('#upload');
 var $trackDisplay = $('#track-display');
 var $libHeader = $('#lib-window-header');
@@ -710,9 +710,9 @@ function getSelectionHelpers(){
 function refreshSelection() {
   var helpers = getSelectionHelpers();
   if (!helpers) return;
-  $queueItems   .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
-  $library         .find(".clickable").removeClass('selected').removeClass('cursor');
-  $stored_playlists.find(".clickable").removeClass('selected').removeClass('cursor');
+  $queueItems    .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
+  $library       .find(".clickable").removeClass('selected').removeClass('cursor');
+  $playlistsLists.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
   for (var selectionType in helpers) {
     var helper = helpers[selectionType];

@@ -16,7 +16,8 @@ function Socket() {
     var match = host.match(/^(.+):(\d+)$/);
     var port = match ? parseInt(match[2], 10) : 80;
     var hostName = match ? match[1] : host;
-    var wsUrl = 'ws://' + hostName + ':' + port + pathname;
+    var wsProto = (window.document.location.protocol === 'https:') ? "wss:" : "ws:";
+    var wsUrl = wsProto + '//' + hostName + ':' + port + pathname;
     self.ws = new WebSocket(wsUrl);
 
     self.ws.addEventListener('message', onMessage, false);
@@ -52,4 +53,4 @@ Socket.prototype.send = function(name, args) {
     name: name,
     args: args,
   }));
-}
+};

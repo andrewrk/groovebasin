@@ -13,10 +13,12 @@ function Socket() {
   function createWs() {
     var host = window.document.location.host;
     var pathname = window.document.location.pathname;
+    var isHttps = window.document.location.protocol === 'https:';
     var match = host.match(/^(.+):(\d+)$/);
-    var port = match ? parseInt(match[2], 10) : 80;
+    var defaultPort = isHttps ? 443 : 80;
+    var port = match ? parseInt(match[2], 10) : defaultPort;
     var hostName = match ? match[1] : host;
-    var wsProto = (window.document.location.protocol === 'https:') ? "wss:" : "ws:";
+    var wsProto = isHttps ? "wss:" : "ws:";
     var wsUrl = wsProto + '//' + hostName + ':' + port + pathname;
     self.ws = new WebSocket(wsUrl);
 

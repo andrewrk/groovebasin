@@ -409,7 +409,8 @@ var $settings = $('#settings');
 var $uploadByUrl = $('#upload-by-url');
 var $mainErrMsg = $('#main-err-msg');
 var $mainErrMsgText = $('#main-err-msg-text');
-var $playlistsLists = $('#playlists-list');
+var $playlistsList = $('#playlists-list');
+var $playlists = $('#playlists');
 var $upload = $('#upload');
 var $trackDisplay = $('#track-display');
 var $libHeader = $('#lib-window-header');
@@ -440,6 +441,10 @@ var $editTagsDialog = $('#edit-tags');
 var $queueMenu = $('#menu-queue');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
+var $newPlaylistBtn = $('#new-playlist-btn');
+var $emptyLibraryMessage = $('#empty-library-message');
+var $libraryNoItems = $('#library-no-items');
+var $libraryArtists = $('#library-artists');
 
 var tabs = {
   library: {
@@ -710,9 +715,9 @@ function getSelectionHelpers(){
 function refreshSelection() {
   var helpers = getSelectionHelpers();
   if (!helpers) return;
-  $queueItems    .find(".pl-item"  ).removeClass('selected').removeClass('cursor');
-  $library       .find(".clickable").removeClass('selected').removeClass('cursor');
-  $playlistsLists.find(".clickable").removeClass('selected').removeClass('cursor');
+  $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
+  $libraryArtists.find(".clickable").removeClass('selected').removeClass('cursor');
+  $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.type == null) return;
   for (var selectionType in helpers) {
     var helper = helpers[selectionType];
@@ -752,13 +757,11 @@ function getValidIds(selectionType) {
     case 'artist': return player.library.artistTable;
     case 'album':  return player.library.albumTable;
     case 'track':  return player.library.trackTable;
+    case 'stored_playlist':  return player.stored_playlist_table;
+    case 'stored_playlist_item':  return player.stored_playlist_item_table;
   }
   throw new Error("BadSelectionType");
 }
-
-var $emptyLibraryMessage = $('#empty-library-message');
-var $libraryNoItems = $('#library-no-items');
-var $libraryArtists = $('#library-artists');
 
 function artistId(s) {
   return "lib-artist-" + toHtmlId(s);
@@ -770,6 +773,7 @@ function artistDisplayName(name) {
 
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
+var triggerPlaylistsUpdate = makeRenderCall(renderPlaylists, 100);
 
 function makeRenderCall(renderFn, interval) {
   var renderTimeout = null;
@@ -794,6 +798,57 @@ function makeRenderCall(renderFn, interval) {
       ensureRenderHappensSoon();
     }
   }
+}
+
+function renderPlaylists() {
+  var playlistList = player.stored_playlists;
+  var scrollTop = $playlists.scrollTop();
+
+  // add the missing dom entries
+  var i;
+  var playlistListDom = $playlistsList.get(0);
+  for (i = playlistListDom.childElementCount; i < playlistList.length; i += 1) {
+    $playlistsList.append(
+      '<li>' +
+        '<div class="clickable expandable" data-type="stored_playlist">' +
+          '<div class="ui-icon"></div>' +
+          '<span></span>' +
+        '</div>' +
+        '<ul></ul>' +
+      '</li>');
+  }
+  // remove the extra dom entries
+  var domItem;
+  while (playlistList.length < playlistListDom.childElementCount) {
+    playlistListDom.removeChild(playlistListDom.lastChild);
+  }
+
+  // overwrite existing dom entries
+  var playlist;
+  var $domItems = $playlistsList.children();
+  for (i = 0; i < playlistList.length; i += 1) {
+    domItem = $domItems[i];
+    playlist = playlistList[i];
+    $(domItem).data('cached', false);
+    var divDom = domItem.children[0];
+    divDom.setAttribute('id', toStoredPlaylistId(playlist.id));
+    divDom.setAttribute('data-key', playlist.id);
+    var iconDom = divDom.children[0];
+    $(iconDom)
+      .addClass(ICON_COLLAPSED)
+      .removeClass(ICON_EXPANDED);
+    var spanDom = divDom.children[1];
+    spanDom.textContent = playlist.name;
+    var ulDom = domItem.children[1];
+    ulDom.style.display = 'block';
+    while (ulDom.firstChild) {
+      ulDom.removeChild(ulDom.firstChild);
+    }
+  }
+
+  $playlists.scrollTop(scrollTop);
+  refreshSelection();
+  // TODO expandPlaylistsToSelection()
 }
 
 function renderLibrary() {
@@ -935,16 +990,16 @@ function renderNowPlaying() {
     document.title = BASE_TITLE;
   }
   $trackDisplay.html(trackDisplay);
-  var old_class;
-  var new_class;
+  var oldClass;
+  var newClass;
   if (player.isPlaying === true) {
-    old_class = 'ui-icon-play';
-    new_class = 'ui-icon-pause';
+    oldClass = 'ui-icon-play';
+    newClass = 'ui-icon-pause';
   } else {
-    old_class = 'ui-icon-pause';
-    new_class = 'ui-icon-play';
+    oldClass = 'ui-icon-pause';
+    newClass = 'ui-icon-play';
   }
-  $nowplaying.find(".toggle span").removeClass(old_class).addClass(new_class);
+  $nowplaying.find(".toggle span").removeClass(oldClass).addClass(newClass);
   $trackSlider.slider("option", "disabled", player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
@@ -1014,30 +1069,70 @@ function renderArtist($ul, albumList) {
   });
 }
 
-function toggleLibraryExpansion($li){
+function renderPlaylist($ul, playlist) {
+  playlist.itemList.forEach(function(item) {
+    debugger;
+    $ul.append(
+      '<li>' +
+        '<div class="clickable" data-type="stored_playlist_item">' +
+          '<span></span>' +
+        '</div>' +
+      '</li>');
+    var liDom = $ul.get(0).lastChild;
+    var divDom = liDom.children[0];
+    divDom.setAttribute('id', toStoredPlaylistItemId(item.id));
+    divDom.setAttribute('data-key', item.id);
+    var spanDom = divDom.children[0];
+    var track = item.track;
+    var caption = track.artistName + " - " + track.name;
+    spanDom.textContent = caption;
+  });
+}
+
+function genericToggleExpansion($li, options) {
+  var topLevelType = options.topLevelType;
+  var renderDom = options.renderDom;
   var $div = $li.find("> div");
   var $ul = $li.find("> ul");
-  if ($div.attr('data-type') === 'artist') {
+  if ($div.attr('data-type') === topLevelType) {
     if (!$li.data('cached')) {
       $li.data('cached', true);
-      var artistKey = $div.attr('data-key');
-      var albumList = player.searchResults.artistTable[artistKey].albumList;
-
-      renderArtist($ul, albumList);
+      var key = $div.attr('data-key');
+      renderDom($ul, key);
 
       $ul.toggle();
       refreshSelection();
     }
   }
   $ul.toggle();
-  var old_class = ICON_EXPANDED;
-  var new_class = ICON_COLLAPSED;
+  var oldClass = ICON_EXPANDED;
+  var newClass = ICON_COLLAPSED;
   if ($ul.is(":visible")) {
-    var tmp = old_class;
-    old_class = new_class;
-    new_class = tmp;
+    var tmp = oldClass;
+    oldClass = newClass;
+    newClass = tmp;
   }
-  $div.find("div").removeClass(old_class).addClass(new_class);
+  $div.find("div").removeClass(oldClass).addClass(newClass);
+}
+
+function toggleLibraryExpansion($li) {
+  genericToggleExpansion($li, {
+    topLevelType: 'artist',
+    renderDom: function($ul, key) {
+      var albumList = player.searchResults.artistTable[key].albumList;
+      renderArtist($ul, albumList);
+    },
+  });
+}
+
+function togglePlaylistExpansion($li) {
+  genericToggleExpansion($li, {
+    topLevelType: 'stored_playlist',
+    renderDom: function($ul, key) {
+      var playlist = player.stored_playlist_table[key];
+      renderPlaylist($ul, playlist);
+    },
+  });
 }
 
 function maybeDeleteTracks(keysList) {
@@ -1667,7 +1762,7 @@ function blur() {
 
 var dynamicModeLabel = document.getElementById('dynamic-mode-label');
 var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
-function setUpPlaylistUi(){
+function setUpPlayQueueUi() {
   $queueWindow.on('click', 'button.clear', function(event){
     player.clear();
   });
@@ -1785,6 +1880,26 @@ function setUpPlaylistUi(){
   $queueMenu.on('click', '.download', onDownloadContextMenu);
   $queueMenu.on('click', '.delete', onDeleteContextMenu);
   $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
+}
+
+function niceDateString() {
+  var now = new Date();
+  var year = 1900 + now.getYear();
+  var month = zfill(now.getMonth() + 1, 2);
+  var day = zfill(now.getDate(), 2);
+  return year + '-' + month + '-' + day;
+}
+
+function setUpPlaylistsUi() {
+  $newPlaylistBtn.on('click', function(event) {
+    player.createPlaylist("New Playlist " + niceDateString());
+  });
+  genericTreeUi($playlistsList, {
+    toggleExpansion: togglePlaylistExpansion,
+    isSelectionOwner: function() {
+      return selection.isStoredPlaylist();
+    },
+  });
 }
 
 function stopPropagation(event) {
@@ -2571,6 +2686,10 @@ function zipNameForSelCursor() {
       return player.library.albumTable[selection.cursor].name;
     case 'track':
       return "songs";
+    case 'stored_playlist':
+      return player.stored_playlist_table[selection.cursor].name;
+    case 'stored_playlist_item':
+      return "songs";
     default:
       throw new Error("bad selection cursor type: " + selection.type);
   }
@@ -2589,7 +2708,8 @@ function updateAdminActions($menu) {
 }
 function setUpUi(){
   setUpGenericUi();
-  setUpPlaylistUi();
+  setUpPlayQueueUi();
+  setUpPlaylistsUi();
   setUpLibraryUi();
   setUpNowPlayingUi();
   setUpTabsUi();
@@ -2604,6 +2724,14 @@ function toAlbumId(s) {
 
 function toTrackId(s) {
   return "lib-track-" + toHtmlId(s);
+}
+
+function toStoredPlaylistItemId(s) {
+  return "stored-pl-item-" + toHtmlId(s);
+}
+
+function toStoredPlaylistId(s) {
+  return "stored-pl-pl-" + toHtmlId(s);
 }
 
 function handleResize(){
@@ -2681,6 +2809,7 @@ $document.ready(function(){
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
+  player.on('playlistsUpdate', triggerPlaylistsUpdate);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderPlaylistButtons();

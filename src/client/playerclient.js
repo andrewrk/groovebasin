@@ -158,6 +158,13 @@ PlayerClient.prototype.clearStoredPlaylists = function() {
   this.stored_playlists = [];
 };
 
+PlayerClient.prototype.sortAndIndexPlaylists = function() {
+  this.stored_playlists.sort(compareNameAndId);
+  this.stored_playlists.forEach(function(playlist, index) {
+    playlist.index = index;
+  });
+};
+
 PlayerClient.prototype.updatePlaylistsIndex = function() {
   this.clearStoredPlaylists();
   if (!this.playlistsFromServer) return;
@@ -185,11 +192,9 @@ PlayerClient.prototype.updatePlaylistsIndex = function() {
     }
     this.refreshPlaylistList(playlist);
     this.stored_playlists.push(playlist);
+    this.stored_playlist_table[playlist.id] = playlist;
   }
-  this.stored_playlists.sort(compareNameAndId);
-  this.stored_playlists.forEach(function(playlist, index) {
-    playlist.index = index;
-  });
+  this.sortAndIndexPlaylists();
 };
 
 PlayerClient.prototype.updateQueueIndex = function() {
@@ -580,6 +585,28 @@ PlayerClient.prototype.resetServerState = function(){
   this.currentItemId = null;
 
   this.clearStoredPlaylists();
+};
+
+PlayerClient.prototype.createPlaylist = function(name) {
+  var id = uuid();
+  this.sendCommand('playlistCreate', {
+    id: id,
+    name: name,
+  });
+  // anticipate server response
+  var playlist = {
+    itemList: [],
+    itemTable: {},
+    id: id,
+    name: name,
+    index: 0,
+  };
+  this.stored_playlist_table[id] = playlist;
+  this.stored_playlists.push(playlist);
+  this.sortAndIndexPlaylists();
+  this.emit('playlistsUpdate');
+
+  return playlist;
 };
 
 function elapsedToDate(elapsed){

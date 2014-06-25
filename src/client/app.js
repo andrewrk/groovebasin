@@ -1155,6 +1155,13 @@ function handleDeletePressed(shift) {
   if (selection.isLibrary()) {
     keysList = selection.toTrackKeys();
     maybeDeleteTracks(keysList);
+  } else if (selection.isStoredPlaylist()) {
+    if (shift) {
+      keysList = selection.toTrackKeys();
+      maybeDeleteTracks(keysList);
+    } else {
+      maybeDeleteSelectedPlaylists();
+    }
   } else if (selection.isQueue()) {
     if (shift) {
       keysList = [];
@@ -1862,7 +1869,7 @@ function setUpPlayQueueUi() {
         left: event.pageX + 1,
         top: event.pageY + 1
       });
-      updateAdminActions($queueMenu);
+      updateMenuDisableState($queueMenu);
     }
   });
   $queueItems.on('mousedown', function(){
@@ -2574,6 +2581,35 @@ function setUpLibraryUi(){
   $libraryMenu.on('click', '.download', onDownloadContextMenu);
   $libraryMenu.on('click', '.delete', onDeleteContextMenu);
   $libraryMenu.on('click', '.edit-tags', onEditTagsContextMenu);
+  $libraryMenu.on('click', '.delete-playlist', onDeletePlaylistContextMenu);
+  $libraryMenu.on('click', '.remove', onRemoveFromPlaylistContextMenu);
+}
+
+function maybeDeleteSelectedPlaylists() {
+  var ids = Object.keys(selection.ids.stored_playlist);
+  var nameList = ids.map(function(id) {
+    return player.stored_playlist_table[id].name;
+  });
+  var listText = nameList.slice(0, 7).join("\n  ");
+  if (nameList.length > 7) {
+    listText += "\n  ...";
+  }
+  var playlistText = nameList.length === 1 ? "playlist" : "playlists";
+  var message = "You are about to delete " + nameList.length + " " + playlistText +
+    " permanently:\n\n  " + listText;
+  if (!confirm(message)) return false;
+  player.deletePlaylists(ids);
+  return true;
+}
+
+function onDeletePlaylistContextMenu() {
+  maybeDeleteSelectedPlaylists();
+  removeContextMenu();
+  return false;
+}
+
+function onRemoveFromPlaylistContextMenu() {
+  // TODO
 }
 
 function genericTreeUi($elem, options){
@@ -2654,18 +2690,32 @@ function genericTreeUi($elem, options){
           track = player.stored_playlist_item_table[key].track;
         }
       }
+      var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
+      var $removeFromPlaylistLi = $libraryMenu.find('.remove').closest('li');
+      if (type === 'stored_playlist') {
+        $deletePlaylistLi.show();
+      } else {
+        $deletePlaylistLi.hide();
+      }
+      if (type === 'stored_playlist_item') {
+        $removeFromPlaylistLi.show();
+      } else {
+        $removeFromPlaylistLi.hide();
+      }
+
+      var $downloadItem = $libraryMenu.find('.download');
       if (track) {
         downloadMenuZipName = null;
-        $libraryMenu.find('.download').attr('href', encodeDownloadHref(track.file));
+        $downloadItem.attr('href', encodeDownloadHref(track.file));
       } else {
         downloadMenuZipName = zipNameForSelCursor();
-        $libraryMenu.find('.download').attr('href', '#');
+        $downloadItem.attr('href', '#');
       }
       $libraryMenu.show().offset({
         left: event.pageX + 1,
         top: event.pageY + 1
       });
-      updateAdminActions($libraryMenu);
+      updateMenuDisableState($libraryMenu);
     }
   });
   $elem.on('mousedown', function(){
@@ -2695,17 +2745,25 @@ function zipNameForSelCursor() {
   }
 }
 
-function updateAdminActions($menu) {
-  if (!permissions.admin) {
-    $menu.find('.delete,.edit-tags')
-      .addClass('ui-state-disabled')
-      .attr('title', "Insufficient privileges. See Settings.");
-  } else {
-    $menu.find('.delete,.edit-tags')
-      .removeClass('ui-state-disabled')
-      .attr('title', '');
+function updateMenuDisableState($menu) {
+  var menuPermDoms = {
+    admin: $menu.find('.delete,.edit-tags'),
+    control: $menu.find('.remove,.delete-playlist'),
+  };
+  for (var permName in menuPermDoms) {
+    var $item = menuPermDoms[permName];
+    if (permissions[permName]) {
+      $item
+        .removeClass('ui-state-disabled')
+        .attr('title', '');
+    } else {
+      $item
+        .addClass('ui-state-disabled')
+        .attr('title', "Insufficient privileges. See Settings.");
+    }
   }
 }
+
 function setUpUi(){
   setUpGenericUi();
   setUpPlayQueueUi();

@@ -489,6 +489,24 @@ PlayerClient.prototype.deleteTracks = function(keysList) {
   this.emit('libraryupdate');
 };
 
+PlayerClient.prototype.deletePlaylists = function(idsList) {
+  this.sendCommand('playlistDelete', idsList);
+  for (var i = 0; i < idsList.length; i += 1) {
+    var id = idsList[i];
+    var playlist = this.stored_playlist_table[id];
+    for (var j = 0; j < playlist.itemList; j += 1) {
+      var item = playlist.itemList[j];
+      delete this.stored_playlist_item_table[item.id];
+    }
+    delete this.stored_playlist_table[id];
+    this.stored_playlists.splice(playlist.index, 1);
+    for (j = playlist.index; j < this.stored_playlists.length; j += 1) {
+      this.stored_playlists[j].index -= 1;
+    }
+  }
+  this.emit('playlistsUpdate');
+};
+
 PlayerClient.prototype.seek = function(id, pos) {
   pos = parseFloat(pos || 0);
   var item = id ? this.queue.itemTable[id] : this.currentItem;

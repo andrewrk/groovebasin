@@ -1479,8 +1479,8 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: streaming.toggleStatus
     },
-    // u
-    85: {
+    // i
+    73: {
       ctrl: false,
       alt: false,
       shift: false,

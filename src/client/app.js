@@ -2863,6 +2863,13 @@ $document.ready(function(){
     renderPlaylistButtons();
     triggerRenderQueue();
   });
+  socket.on('connect', function(){
+    sendAuth();
+    socket.send('subscribe', {name: 'dynamicModeOn'});
+    socket.send('subscribe', {name: 'hardwarePlayback'});
+    load_status = LoadStatus.GoodToGo;
+    render();
+  });
   player = new PlayerClient(socket);
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
@@ -2872,13 +2879,6 @@ $document.ready(function(){
     renderNowPlaying();
     renderPlaylistButtons();
     labelPlaylistItems();
-  });
-  socket.on('connect', function(){
-    socket.send('subscribe', {name: 'dynamicModeOn'});
-    socket.send('subscribe', {name: 'hardwarePlayback'});
-    sendAuth();
-    load_status = LoadStatus.GoodToGo;
-    render();
   });
   socket.on('disconnect', function(){
     load_status = LoadStatus.NoServer;

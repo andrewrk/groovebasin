@@ -53,7 +53,6 @@ function PlayerClient(socket) {
     self.emit('statusupdate');
   });
   self.socket.on('streamers', function(streamers) {
-    console.log("streamers", streamers);
     self.streamers = streamers;
     self.emit('streamers');
   });

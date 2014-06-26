@@ -52,6 +52,11 @@ function PlayerClient(socket) {
     self.repeat = repeat;
     self.emit('statusupdate');
   });
+  self.socket.on('streamers', function(streamers) {
+    console.log("streamers", streamers);
+    self.streamers = streamers;
+    self.emit('streamers');
+  });
 
   self.socket.on('currentTrack', function(o) {
     self.isPlaying = o.isPlaying;
@@ -140,6 +145,7 @@ PlayerClient.prototype.handleConnectionStart = function(){
     delta: true,
     version: this.playlistsFromServerVersion,
   });
+  this.sendCommand('subscribe', {name: 'streamers'});
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {
@@ -601,6 +607,10 @@ PlayerClient.prototype.resetServerState = function(){
   this.repeat = 0;
   this.currentItem = null;
   this.currentItemId = null;
+  this.streamers = {
+    anonCount: 0,
+    clientIds: [],
+  };
 
   this.clearStoredPlaylists();
 };

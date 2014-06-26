@@ -18,20 +18,28 @@ function onLabelDown(event) {
   event.stopPropagation();
 }
 
-function getButtonLabel() {
+function getStreamerCount() {
+  return player.streamers.anonCount + player.streamers.clientIds.length;
+}
+
+function getStatusLabel() {
   if (tryingToStream) {
     if (actuallyStreaming) {
       if (stillBuffering) {
-        return "Stream: Buffering";
+        return "Buffering";
       } else {
-        return "Stream: On";
+        return "On";
       }
     } else {
-      return "Stream: Paused";
+      return "Paused";
     }
   } else {
-    return "Stream: Off";
+    return "Off";
   }
+}
+
+function getButtonLabel() {
+  return getStreamerCount() + " Stream: " + getStatusLabel();
 }
 
 function renderStreamButton(){
@@ -100,6 +108,7 @@ function init(playerInstance, socket) {
   player = playerInstance;
 
   player.on('currentTrack', updatePlayer);
+  player.on('streamers', renderStreamButton);
   socket.on('seek', clearBuffer);
   setUpUi();
 }

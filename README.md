@@ -11,15 +11,15 @@ service. Groove Basin will never support DRM content.
 
 Try out the [live demo](http://demo.groovebasin.com/).
 
-## Features
+## Feature Highlights
 
-* Fast, responsive UI. It feels like a desktop app, not a web app.
+* Fast and responsive. It feels like a desktop app, not a web app.
 
-* Dynamic playlist mode which automatically queues random songs, favoring
-  songs that have not been queued recently.
+* Dynamic Mode which automatically queues random songs, favoring songs
+  that have not been queued recently.
 
-* Drag and drop upload. Drag and drop playlist editing. Rich keyboard
-  shortcuts.
+* Drag and drop upload. Drag and drop playlist editing. Keyboard shortcuts
+  galore.
 
 * Lazy multi-core
   [EBU R128 loudness scanning](http://tech.ebu.ch/loudness) (tags compatible
@@ -31,16 +31,15 @@ Try out the [live demo](http://demo.groovebasin.com/).
   your friends - even when you are not physically near your home speakers.
 
 * MPD protocol support. This means you already have a selection of
-  [clients](http://mpd.wikia.com/wiki/Clients) which integrate with Groove Basin.
-  For example [MPDroid](https://github.com/abarisain/dmix).
+  [clients](http://mpd.wikia.com/wiki/Clients) which integrate with
+  Groove Basin. For example [MPDroid](https://github.com/abarisain/dmix).
+  If you're writing a new client, upgrade to the Groove Basin Protocol with
+  the `protocolupgrade` command.
 
 * [Last.fm](http://www.last.fm/) scrobbling.
 
 * File system monitoring. Add songs anywhere inside your music directory and
   they instantly appear in your library in real time.
-
-* Supports GrooveBasin Protocol on the same port as MPD Protocol - use the
-  `protocolupgrade` command to upgrade.
 
 ## Install
 
@@ -53,17 +52,19 @@ Try out the [live demo](http://demo.groovebasin.com/).
 4. `npm run build`
 5. `npm start`
 
+## Configuration
+
+When Groove Basin starts it will look for `config.js` in the current directory.
+If not found it creates one for you with default values.
+
+Use this to set your music library location, permissions, and other settings.
+
 ## Screenshots
 
 ![Search + drag/drop support](http://superjoesoftware.com/temp/groove-basin-0.0.4.png)
 ![Multi-select and context menu](http://superjoesoftware.com/temp/groove-basin-0.0.4-lib-menu.png)
 ![Keyboard shortcuts](http://superjoesoftware.com/temp/groove-basin-0.0.4-shortcuts.png)
 ![Last.fm Scrobbling](http://superjoesoftware.com/temp/groove-basin-0.0.4-lastfm.png)
-
-## Configuration
-
-When Groove Basin starts it will look for `config.js` in the current directory.
-If not found it creates one for you with default values.
 
 ## Developing
 

@@ -113,6 +113,18 @@ function PlayerClient(socket) {
     self.emit('playlistsUpdate');
   });
 
+  // Expects an array of user ids.
+  self.socket.on('users', function(users) {
+    self.users = users;
+    self.emit('usersUpdate');
+  });
+
+  // Expects an int of number of downvotes.
+  self.socket.on('downvotecount', function(count) {
+    self.downvotecount = count;
+    self.emit('downvotecountUpdate');
+  });
+
   function deleteUndefineds(o) {
     for (var key in o) {
       if (o[key] === undefined) delete o[key];
@@ -145,6 +157,8 @@ PlayerClient.prototype.handleConnectionStart = function(){
     version: this.playlistsFromServerVersion,
   });
   this.sendCommand('subscribe', {name: 'streamers'});
+  this.sendCommand('subscribe', {name: 'users'});
+  this.sendCommand('subscribe', {name: 'downvotecount'});
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {

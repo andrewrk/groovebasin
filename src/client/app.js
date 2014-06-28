@@ -2880,6 +2880,8 @@ $document.ready(function(){
     renderPlaylistButtons();
     labelPlaylistItems();
   });
+  player.on('usersUpdate', updateVotePane);
+  player.on('downvotecountUpdate', updateVotePane);
   socket.on('disconnect', function(){
     load_status = LoadStatus.NoServer;
     render();
@@ -2918,6 +2920,11 @@ function formatTime(seconds) {
   } else {
     return sign + minutes + ":" + zfill(seconds, 2);
   }
+}
+
+function updateVotePane() {
+  var ratio = 100 - ((player.downvotecount / player.users.length) * 100);
+  $('#votecounter .yay').width(ratio + '%');
 }
 
 var badCharRe = new RegExp('[^a-zA-Z0-9-]', 'gm');

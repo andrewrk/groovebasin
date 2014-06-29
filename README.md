@@ -49,7 +49,7 @@ Try out the [live demo](http://demo.groovebasin.com/).
    or compile from source.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source and cd to it.
-4. `npm run build`
+4. `npm install`
 5. `npm start`
 
 ## Configuration

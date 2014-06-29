@@ -50,7 +50,7 @@
   },
   "scripts": {
     "start": "node lib/server.js",
-    "build": "npm install && ./build",
+    "postinstall": "./build",
     "dev": "npm run build && npm start"
   }
 }

@@ -32,11 +32,11 @@
     "lastfm": "~0.9.0",
     "level": "~0.18.0",
     "mess": "~0.1.1",
-    "mkdirp": "~0.3.5",
-    "multiparty": "~3.2.9",
+    "mkdirp": "~0.5.0",
+    "multiparty": "~3.3.0",
     "music-library-index": "~1.2.0",
-    "mv": "~2.0.0",
-    "osenv": "0.0.3",
+    "mv": "~2.0.1",
+    "osenv": "~0.1.0",
     "pend": "~1.1.1",
     "requireindex": "~1.1.0",
     "semver": "~2.3.1",
@@ -44,12 +44,12 @@
     "superagent": "~0.18.0",
     "uuid": "~1.4.1",
     "ws": "~0.4.31",
-    "ytdl-core": "^0.1.0",
+    "ytdl-core": "0.x.x",
     "zfill": "0.0.1"
   },
   "devDependencies": {
-    "browserify": "^4.1.6",
-    "stylus": "^0.46.3"
+    "browserify": "~4.2.0",
+    "stylus": "~0.47.1"
   },
   "scripts": {
     "start": "node lib/server.js",

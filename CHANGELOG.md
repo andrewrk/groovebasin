@@ -1,21 +1,21 @@
 ### Version 1.2.0 (2014-07-04)
 
-* Andrew Kelley:
-  - client uses relative stream URL so reverse proxies can work.
-  - client uses wss if protocol is https.
-  - client UI indicates how many people are streaming
-  - automatically pause when last streamer disconnects
-  - client: remove dotted outline of links.
-  - uploading is permission add, not control
-  - rename the Upload tab to the Import tab
-  - fix not being able to see client with anonymous read-only permissions set
-  - fix library scan errors deleting songs from database.
-  - streaming: less chance of glitches
-  - streaming: no hiccup sound on skip
+ * Andrew Kelley:
+   - client uses relative stream URL so reverse proxies can work.
+   - client uses wss if protocol is https.
+   - client UI indicates how many people are streaming
+   - automatically pause when last streamer disconnects
+   - client: remove dotted outline of links.
+   - uploading is permission add, not control
+   - rename the Upload tab to the Import tab
+   - fix not being able to see client with anonymous read-only permissions set
+   - fix library scan errors deleting songs from database.
+   - streaming: less chance of glitches
+   - streaming: no hiccup sound on skip
 
  * Josh Wolfe:
-  - fix unable to download songs with hashtags in the URL
-    (but first, let me take a #selfie)
+   - fix unable to download songs with hashtags in the URL
+     (but first, let me take a #selfie)
 
 ### Version 1.1.0 (2014-06-20)
 

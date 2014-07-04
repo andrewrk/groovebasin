@@ -1,3 +1,8 @@
+### Version 1.2.1 (2014-07-04)
+
+ * Andrew Kelley:
+   - fix ytdl-core version locking. Fixes YouTube import.
+
 ### Version 1.2.0 (2014-07-04)
 
  * Andrew Kelley:

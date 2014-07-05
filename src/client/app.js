@@ -2,7 +2,6 @@ var $ = window.$;
 
 var shuffle = require('mess');
 var querystring = require('querystring');
-var zfill = require('zfill');
 var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 var Socket = require('./socket');
@@ -2925,4 +2924,10 @@ function toHtmlId(string) {
   return string.replace(badCharRe, function(c) {
     return "_" + c.charCodeAt(0) + "_";
   });
+}
+
+function zfill(number, size) {
+  number = String(number);
+  while (number.length < size) number = "0" + number;
+  return number;
 }

@@ -43,9 +43,22 @@ Try out the [live demo](http://demo.groovebasin.com/).
 
 ## Install
 
+### Pre-Built Packages
+
+#### Ubuntu
+
+```
+sudo apt-add-repository ppa:andrewrk/libgroove
+sudo apt-get update
+sudo apt-get install groovebasin
+groovebasin
+```
+
+### From Source
+
 1. Install [Node.js](http://nodejs.org) v0.10.x. Note that on Debian and
    Ubuntu, you also need the nodejs-dev and nodejs-legacy packages.  You may
-   also choose  to use [Chris Lea's PPA](https://launchpad.net/~chris-lea/+archive/node.js/)
+   also choose to use [Chris Lea's PPA](https://launchpad.net/~chris-lea/+archive/node.js/)
    or compile from source.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source and cd to it.

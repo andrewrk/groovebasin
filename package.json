@@ -29,7 +29,6 @@
     "jsondiffpatch": "~0.1.7",
     "keese": "~1.0.0",
     "lastfm": "~0.9.0",
-    "level": "~0.18.0",
     "mess": "~0.1.1",
     "mkdirp": "~0.5.0",
     "multiparty": "~3.3.0",
@@ -44,7 +43,9 @@
     "uuid": "~1.4.1",
     "ws": "~0.4.31",
     "ytdl-core": ">=0.2.2",
-    "zip-stream": "~0.3.6"
+    "zip-stream": "~0.3.6",
+    "level-packager": "~0.18.0",
+    "leveldown": "~0.10.2"
   },
   "devDependencies": {
     "browserify": "~4.2.0",

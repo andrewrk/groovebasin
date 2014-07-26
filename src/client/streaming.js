@@ -4,6 +4,7 @@ exports.init = init;
 
 var tryingToStream = false;
 var actuallyStreaming = false;
+var actuallyPlaying = false;
 var stillBuffering = false;
 var player = null;
 var audio = new Audio();
@@ -77,22 +78,25 @@ function clearBuffer() {
 }
 
 function updatePlayer() {
-  if (actuallyStreaming !== tryingToStream) {
+  if (actuallyStreaming !== tryingToStream || actuallyPlaying !== player.isPlaying) {
     if (tryingToStream) {
       audio.src = getUrl();
       audio.load();
       if (player.isPlaying) {
         audio.play();
         stillBuffering = true;
+        actuallyPlaying = true;
       } else {
         audio.pause();
         stillBuffering = false;
+        actuallyPlaying = false;
       }
     } else {
       audio.pause();
       audio.src = "";
       audio.load();
       stillBuffering = false;
+      actuallyPlaying = false;
     }
     actuallyStreaming = tryingToStream;
   }

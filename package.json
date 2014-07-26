@@ -36,7 +36,6 @@
     "mv": "~2.0.1",
     "osenv": "~0.1.0",
     "pend": "~1.1.1",
-    "requireindex": "~1.1.0",
     "semver": "~2.3.1",
     "serve-static": "~1.2.3",
     "superagent": "~0.18.0",

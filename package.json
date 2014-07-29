@@ -41,7 +41,7 @@
     "superagent": "~0.18.0",
     "uuid": "~1.4.1",
     "ws": "~0.4.31",
-    "ytdl-core": ">=0.2.3",
+    "ytdl-core": ">=0.2.4",
     "zip-stream": "~0.3.6",
     "level-packager": "~0.18.0",
     "leveldown": "~0.10.2"

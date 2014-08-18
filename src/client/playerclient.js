@@ -534,7 +534,7 @@ PlayerClient.prototype.seek = function(id, pos) {
 };
 
 PlayerClient.prototype.setVolume = function(vol){
-  if (vol > 1.0) vol = 1.0;
+  if (vol > 2.0) vol = 2.0;
   if (vol < 0.0) vol = 0.0;
   this.volume = vol;
   this.sendCommand('setvol', this.volume);

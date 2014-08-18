@@ -444,6 +444,8 @@ var $newPlaylistBtn = $('#new-playlist-btn');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
+var $volNum = $('#vol-num');
+var $volWarning = $('#vol-warning');
 
 var tabs = {
   library: {
@@ -955,11 +957,9 @@ function updateSliderPos() {
 function renderVolumeSlider() {
   if (userIsVolumeSliding) return;
 
-  var enabled = player.volume != null;
-  if (enabled) {
-    $volSlider.slider('option', 'value', player.volume);
-  }
-  $volSlider.slider('option', 'disabled', !enabled);
+  $volSlider.slider('option', 'value', player.volume);
+  $volNum.text(Math.round(player.volume * 100));
+  $volWarning.toggle(player.volume > 1);
 }
 
 function renderNowPlaying() {
@@ -1335,7 +1335,7 @@ var keyboardHandlers = (function(){
       alt: false,
       shift: null,
       handler: function(){
-        player.setVolume(player.volume - 0.10);
+        bumpVolume(-0.1);
       }
   };
   var volumeUpHandler = {
@@ -1343,7 +1343,7 @@ var keyboardHandlers = (function(){
       alt: false,
       shift: null,
       handler: function(){
-        player.setVolume(player.volume + 0.10);
+        bumpVolume(0.1);
       }
   };
   return {
@@ -1534,6 +1534,14 @@ var keyboardHandlers = (function(){
     },
   };
 })();
+
+function bumpVolume(v) {
+  if (streaming.getTryingToStream()) {
+    streaming.setVolume(streaming.getVolume() + v);
+  } else {
+    player.setVolume(player.volume + v);
+  }
+}
 
 function removeContextMenu() {
   if ($queueMenu.is(":visible")) {
@@ -2204,13 +2212,21 @@ function setUpNowPlayingUi(){
   });
   function setVol(event, ui){
     if (event.originalEvent == null) return;
-    player.setVolume(ui.value);
+    var snap = 0.05;
+    var val = ui.value;
+    if (Math.abs(val - 1) < snap) {
+      val = 1;
+    }
+    player.setVolume(val);
+    $volNum.text(Math.round(val * 100));
+    $volWarning.toggle(val > 1);
   }
   $volSlider.slider({
     step: 0.01,
     min: 0,
-    max: 1,
+    max: 2,
     change: setVol,
+    slide: setVol,
     start: function(event, ui){
       userIsVolumeSliding = true;
     },
@@ -2884,7 +2900,7 @@ $document.ready(function(){
     render();
   });
   setUpUi();
-  streaming.init(player, socket);
+  streaming.init(player, socket, localState, saveLocalState);
   render();
   $window.resize(handleResize);
   window._debug_player = player;

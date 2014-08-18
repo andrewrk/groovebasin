@@ -22,13 +22,13 @@
         <span class="ui-icon ui-icon-seek-next"></span>
       </li>
     </ul>
-    <div id="vol">
-      <span class="ui-icon ui-icon-volume-off"></span>
-      <div id="vol-slider"></div>
-      <span class="ui-icon ui-icon-volume-on"></span>
-    </div>
     <div id="more-playback-btns">
       <input class="jquery-button" type="checkbox" id="stream-btn"><label id="stream-btn-label" for="stream-btn">Stream</label>
+    </div>
+    <div id="client-vol">
+      <span class="ui-icon ui-icon-volume-off"></span>
+      <div id="client-vol-slider"></div>
+      <span class="ui-icon ui-icon-volume-on"></span>
     </div>
     <h1 id="track-display"></h1>
     <div id="track-slider"></div>
@@ -122,10 +122,21 @@
         </div>
         <div class="section">
           <h1>Admin</h1>
-          <p>
+          <div>
             Hardware audio playback is
             <input type="checkbox" id="toggle-hardware-playback"><label for="toggle-hardware-playback">On</label>
-          </p>
+          </div>
+          <div>Volume: <span id="vol-num"></span>%</div>
+          <div id="vol-warning" style="display: none">
+            Greater than 100% volume compromises audio quality.
+            <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
+          </div>
+          <div id="vol">
+            <span class="ui-icon ui-icon-volume-off"></span>
+            <div id="vol-slider"></div>
+            <span class="ui-icon ui-icon-volume-on"></span>
+          </div>
+          <div style="clear: both;"></div>
         </div>
         <div class="section">
           <h1>About</h1>

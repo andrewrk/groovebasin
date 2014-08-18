@@ -1,17 +1,24 @@
 exports.getUrl = getUrl;
 exports.toggleStatus = toggleStatus;
 exports.init = init;
+exports.getTryingToStream = getTryingToStream;
+exports.setVolume = setVolume;
+exports.getVolume = getVolume;
 
 var tryingToStream = false;
 var actuallyStreaming = false;
 var actuallyPlaying = false;
 var stillBuffering = false;
 var player = null;
+var localState = null;
+var saveLocalState = null;
 var audio = new Audio();
 audio.addEventListener('playing', onPlaying, false);
 
 var $ = window.$;
 var $streamBtn = $('#stream-btn');
+var $clientVolSlider = $('#client-vol-slider');
+var $clientVol = $('#client-vol');
 
 document.getElementById('stream-btn-label').addEventListener('mousedown', onLabelDown, false);
 
@@ -49,6 +56,7 @@ function renderStreamButton(){
     .button("option", "label", label)
     .prop("checked", tryingToStream)
     .button("refresh");
+  $clientVol.toggle(tryingToStream);
 }
 
 function toggleStatus() {
@@ -110,10 +118,43 @@ function setUpUi() {
     }
   });
   $streamBtn.on('click', toggleStatus);
+  $clientVolSlider.slider({
+    step: 0.01,
+    min: 0,
+    max: 1,
+    value: localState.clientVolume || 1,
+    change: setVol,
+    slide: setVol,
+  });
+  $clientVol.hide();
 }
 
-function init(playerInstance, socket) {
+function setVol(event, ui) {
+  if (event.originalEvent == null) return;
+  setVolume(ui.value);
+}
+
+function getVolume() {
+  return audio.volume;
+}
+
+function setVolume(v) {
+  if (v < 0) v = 0;
+  if (v > 1) v = 1;
+  audio.volume = v;
+  localState.clientVolume = v;
+  saveLocalState();
+  $clientVolSlider.slider('option', 'value', audio.volume);
+}
+
+function getTryingToStream() {
+  return tryingToStream;
+}
+
+function init(playerInstance, socket, localStateInstance, saveLocalStateFn) {
   player = playerInstance;
+  localState = localStateInstance;
+  saveLocalState = saveLocalStateFn;
 
   player.on('currentTrack', updatePlayer);
   player.on('streamers', renderStreamButton);

@@ -27,7 +27,7 @@ function onLabelDown(event) {
 }
 
 function getStreamerCount() {
-  return player.streamers.anonCount + player.streamers.clientIds.length;
+  return player.streamers.anonCount + player.streamers.userIds.length;
 }
 
 function getStatusLabel() {

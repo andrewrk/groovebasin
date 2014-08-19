@@ -608,7 +608,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.currentItemId = null;
   this.streamers = {
     anonCount: 0,
-    clientIds: [],
+    userIds: [],
   };
 
   this.clearStoredPlaylists();

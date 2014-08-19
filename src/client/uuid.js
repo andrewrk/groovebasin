@@ -1,7 +1,7 @@
 // all these characters are safe to put in an HTML id
 var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 var crypto = window.crypto;
-var arr = new Uint8Array(27);
+var arr = new Uint8Array(24);
 module.exports = uuid;
 function uuid() {
   crypto.getRandomValues(arr);

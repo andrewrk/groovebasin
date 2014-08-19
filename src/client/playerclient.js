@@ -1,6 +1,6 @@
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
-var uuid = require('uuid');
+var uuid = require('./uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
 var jsondiffpatch = require('jsondiffpatch');

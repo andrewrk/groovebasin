@@ -5,7 +5,7 @@ var querystring = require('querystring');
 var PlayerClient = require('./playerclient');
 var streaming = require('./streaming');
 var Socket = require('./socket');
-var uuid = require('uuid');
+var uuid = require('./uuid');
 
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;

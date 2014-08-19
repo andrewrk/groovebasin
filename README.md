@@ -57,9 +57,7 @@ groovebasin
 ### From Source
 
 1. Install [Node.js](http://nodejs.org) v0.10.x. Note that on Debian and
-   Ubuntu, you also need the nodejs-dev and nodejs-legacy packages.  You may
-   also choose to use [Chris Lea's PPA](https://launchpad.net/~chris-lea/+archive/node.js/)
-   or compile from source.
+   Ubuntu, you also need the nodejs-dev and nodejs-legacy packages.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
 3. Clone the source and cd to it.
 4. `npm run build`

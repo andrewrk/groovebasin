@@ -356,7 +356,9 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
-var permissions = {};
+var myUser = {
+  perms: {},
+};
 var socket = null;
 var player = null;
 var userIsSeeking = false;
@@ -1931,7 +1933,7 @@ function onDownloadContextMenu() {
   return true;
 }
 function onDeleteContextMenu() {
-  if (!permissions.admin) return false;
+  if (!havePerm('admin')) return false;
   removeContextMenu();
   handleDeletePressed(true);
   return false;
@@ -1939,7 +1941,7 @@ function onDeleteContextMenu() {
 var editTagsTrackKeys = null;
 var editTagsTrackIndex = null;
 function onEditTagsContextMenu() {
-  if (!permissions.admin) return false;
+  if (!havePerm('admin')) return false;
   removeContextMenu();
   editTagsTrackKeys = selection.toTrackKeys();
   editTagsTrackIndex = 0;
@@ -2406,10 +2408,10 @@ function updateSettingsAuthUi() {
   $settingsShowPassword.toggle(!showEdit);
   $settingsAuthCancel.toggle(!!localState.authPassword);
   $authPassword.val("");
-  $authPermRead.toggle(!!permissions.read);
-  $authPermAdd.toggle(!!permissions.add);
-  $authPermControl.toggle(!!permissions.control);
-  $authPermAdmin.toggle(!!permissions.admin);
+  $authPermRead.toggle(havePerm('read'));
+  $authPermAdd.toggle(havePerm('add'));
+  $authPermControl.toggle(havePerm('control'));
+  $authPermAdmin.toggle(havePerm('admin'));
   streamUrlDom.setAttribute('href', streaming.getUrl());
 }
 
@@ -2767,7 +2769,7 @@ function updateMenuDisableState($menu) {
   };
   for (var permName in menuPermDoms) {
     var $item = menuPermDoms[permName];
-    if (permissions[permName]) {
+    if (havePerm(permName)) {
       $item
         .removeClass('ui-state-disabled')
         .attr('title', '');
@@ -2862,8 +2864,8 @@ $document.ready(function(){
     updateSettingsAdminUi();
   });
   socket.on('LastFmApiKey', updateLastFmApiKey);
-  socket.on('permissions', function(data){
-    permissions = data;
+  socket.on('user', function(data) {
+    myUser = data;
     updateSettingsAuthUi();
   });
   socket.on('token', function(token) {
@@ -2946,4 +2948,8 @@ function zfill(number, size) {
   number = String(number);
   while (number.length < size) number = "0" + number;
   return number;
+}
+
+function havePerm(permName) {
+  return !!(myUser && myUser.perms[permName]);
 }

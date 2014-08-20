@@ -10,6 +10,8 @@ var uuid = require('./uuid');
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
 var haveAdminUser = true;
+var approvedUsers = null;
+var sortedApprovedUsers = null;
 
 var downloadMenuZipName = null;
 
@@ -357,6 +359,7 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
+var GUEST_USER_ID = "(guest)";
 var myUser = {
   perms: {},
 };
@@ -448,6 +451,7 @@ var $authShowPassword = $('#auth-show-password');
 var $authUsername = $('#auth-username');
 var $authUsernameDisplay = $('#auth-username-display');
 var $authPassword = $('#auth-password');
+var $settingsUsersSelect = $('#settings-users-select');
 
 var tabs = {
   library: {
@@ -2421,6 +2425,50 @@ function updateSettingsAuthUi() {
   $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
   $settingsAuthLogout.toggle(myUser.registered);
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
+
+  if (sortedApprovedUsers) {
+    var selectedUserId = $settingsUsersSelect.val();
+    $settingsUsersSelect.empty();
+    for (var i = 0; i < sortedApprovedUsers.length; i += 1) {
+      var user = sortedApprovedUsers[i];
+      $settingsUsersSelect.append($("<option/>", {
+        value: user.id,
+        text: user.name,
+      }));
+      selectedUserId = selectedUserId || user.id;
+    }
+    $settingsUsersSelect.val(selectedUserId);
+  }
+}
+
+function sortApprovedUsers() {
+  if (!approvedUsers) {
+    sortedApprovedUsers = null;
+    return;
+  }
+  sortedApprovedUsers = [];
+  for (var id in approvedUsers) {
+    var user = approvedUsers[id];
+    user.id = id;
+    sortedApprovedUsers.push(user);
+  }
+  sortedApprovedUsers.sort(compareUserNames);
+}
+
+function compareUserNames(a, b) {
+  var lowerA = a.name.toLowerCase();
+  var lowerB = b.name.toLowerCase();
+  if (a.id === GUEST_USER_ID) {
+    return -1;
+  } else if (b.id === GUEST_USER_ID) {
+    return 1;
+  } else if (lowerA < lowerB) {
+    return -1;
+  } else if (lowerA > lowerB) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 function updateSettingsAdminUi() {
@@ -2888,7 +2936,6 @@ $document.ready(function(){
   socket.on('LastFmApiKey', updateLastFmApiKey);
   socket.on('user', function(data) {
     myUser = data;
-    console.log("perms", myUser.perms);
     $authUsernameDisplay.text(myUser.name);
     if (!localState.authUsername || !localState.authPassword) {
       // We didn't have a user account saved. The server assigned us a name.
@@ -2916,11 +2963,17 @@ $document.ready(function(){
     haveAdminUser = data;
     updateHaveAdminUserUi();
   });
+  socket.on('approvedUsers', function(data) {
+    approvedUsers = data;
+    sortApprovedUsers();
+    updateSettingsAuthUi();
+  });
   socket.on('connect', function(){
     sendAuth();
     socket.send('subscribe', {name: 'dynamicModeOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
     socket.send('subscribe', {name: 'haveAdminUser'});
+    socket.send('subscribe', {name: 'approvedUsers'});
     load_status = LoadStatus.GoodToGo;
     render();
   });

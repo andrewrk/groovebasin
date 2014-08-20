@@ -9,6 +9,7 @@ var uuid = require('./uuid');
 
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
+var haveAdminUser = true;
 
 var downloadMenuZipName = null;
 
@@ -448,6 +449,8 @@ var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
 var $volNum = $('#vol-num');
 var $volWarning = $('#vol-warning');
+var $ensureAdminDiv = $('#ensure-admin');
+var $ensureAdminBtn = $('#ensure-admin-btn');
 
 var tabs = {
   library: {
@@ -589,6 +592,10 @@ function renderPlaylistButtons(){
     .button("option", "label", "Repeat: " + repeatModeName)
     .prop("checked", player.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
+}
+
+function updateHaveAdminUserUi() {
+  $ensureAdminDiv.toggle(!haveAdminUser);
 }
 
 function renderQueue(){
@@ -2430,6 +2437,11 @@ function setUpSettingsUi(){
   $settingsAuthSave.button();
   $settingsAuthEdit.button();
   $settingsAuthClear.button();
+  $ensureAdminBtn.button();
+
+  $ensureAdminDiv.on('click', function(event) {
+    socket.send('ensureAdminUser');
+  });
 
   $lastFmSignOut.on('click', function(event) {
     localState.lastfm.username = null;
@@ -2880,10 +2892,15 @@ $document.ready(function(){
     renderPlaylistButtons();
     triggerRenderQueue();
   });
+  socket.on('haveAdminUser', function(data) {
+    haveAdminUser = data;
+    updateHaveAdminUserUi();
+  });
   socket.on('connect', function(){
     sendAuth();
     socket.send('subscribe', {name: 'dynamicModeOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
+    socket.send('subscribe', {name: 'haveAdminUser'});
     load_status = LoadStatus.GoodToGo;
     render();
   });

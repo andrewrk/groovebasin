@@ -83,6 +83,13 @@
       <div id="settings">
         <div class="section">
           <h1>Authentication</h1>
+          <div id="ensure-admin" style="display: none;">
+            <p>
+            There is currently no admin account. Press this button to create the
+            admin account and print the username and password to the server log:
+            </p>
+            <button id="ensure-admin-btn">Make Admin Account</button>
+          </div>
           <div id="settings-edit-password">
             <input type="password" id="auth-password" placeholder="password" />
             <button id="settings-auth-save">Save</button>

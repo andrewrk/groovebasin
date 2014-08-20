@@ -451,7 +451,12 @@ var $authShowPassword = $('#auth-show-password');
 var $authUsername = $('#auth-username');
 var $authUsernameDisplay = $('#auth-username-display');
 var $authPassword = $('#auth-password');
+var $settingsUsers = $('#settings-users');
 var $settingsUsersSelect = $('#settings-users-select');
+var $userPermRead = $('#user-perm-read');
+var $userPermAdd = $('#user-perm-add');
+var $userPermControl = $('#user-perm-control');
+var $userPermAdmin = $('#user-perm-admin');
 
 var tabs = {
   library: {
@@ -2425,6 +2430,7 @@ function updateSettingsAuthUi() {
   $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
   $settingsAuthLogout.toggle(myUser.registered);
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
+  $settingsUsers.toggle(havePerm('admin'));
 
   if (sortedApprovedUsers) {
     var selectedUserId = $settingsUsersSelect.val();
@@ -2438,6 +2444,7 @@ function updateSettingsAuthUi() {
       selectedUserId = selectedUserId || user.id;
     }
     $settingsUsersSelect.val(selectedUserId);
+    updatePermsForSelectedUser();
   }
 }
 
@@ -2488,6 +2495,10 @@ function setUpSettingsUi(){
   $settingsAuthLogout.button();
   $ensureAdminBtn.button();
   $settingsAuthRequest.button();
+  $userPermRead.button();
+  $userPermAdd.button();
+  $userPermControl.button();
+  $userPermAdmin.button();
 
   $ensureAdminDiv.on('click', function(event) {
     socket.send('ensureAdminUser');
@@ -2539,7 +2550,7 @@ function setUpSettingsUi(){
   $authUsername.on('keydown', handleUserOrPassKeyDown);
   $authPassword.on('keydown', handleUserOrPassKeyDown);
   $authShowPassword.on('change', function(event) {
-    var showPw = $authShowPassword.is(':checked');
+    var showPw = $authShowPassword.prop('checked');
     $authPassword.get(0).type = showPw ? 'text' : 'password';
   });
   $settingsAuthRequest.on('click', function(event) {
@@ -2555,6 +2566,34 @@ function setUpSettingsUi(){
     myUser.registered = false;
     updateSettingsAuthUi();
   });
+  $userPermRead.on('change', updateSelectedUserPerms);
+  $userPermAdd.on('change', updateSelectedUserPerms);
+  $userPermControl.on('change', updateSelectedUserPerms);
+  $userPermAdmin.on('change', updateSelectedUserPerms);
+  $settingsUsersSelect.on('change', updatePermsForSelectedUser);
+}
+
+function updatePermsForSelectedUser() {
+  var selectedUserId = $settingsUsersSelect.val();
+  var user = approvedUsers[selectedUserId];
+  console.log("updatePermsForSelectedUser", user.perms, "havePerm(control)", havePerm('control'));
+  $userPermRead.prop('checked', user.perms.read).button('refresh');
+  $userPermAdd.prop('checked', user.perms.add).button('refresh');
+  $userPermControl.prop('checked', user.perms.control).button('refresh');
+  $userPermAdmin.prop('checked', user.perms.admin).button('refresh');
+}
+
+function updateSelectedUserPerms(event) {
+  socket.send('updateUser', {
+    userId: $settingsUsersSelect.val(),
+    perms: {
+      read: $userPermRead.prop('checked'),
+      add: $userPermAdd.prop('checked'),
+      control: $userPermControl.prop('checked'),
+      admin: $userPermAdmin.prop('checked'),
+    },
+  });
+  return false;
 }
 
 function handleUserOrPassKeyDown(event) {
@@ -2964,6 +3003,7 @@ $document.ready(function(){
     updateHaveAdminUserUi();
   });
   socket.on('approvedUsers', function(data) {
+    console.log("got new approvedUsers:", data);
     approvedUsers = data;
     sortApprovedUsers();
     updateSettingsAuthUi();

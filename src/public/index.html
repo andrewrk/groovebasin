@@ -100,10 +100,10 @@
           <div id="settings-show-auth">
             <p>Authenticated as <span id="auth-username-display">...</span></p>
             <p>Permissions:
-              <span id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
-              <span id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
-              <span id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
-              <span id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
+              <span class="perm" id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
+              <span class="perm" id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
+              <span class="perm" id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
+              <span class="perm" id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
             </p>
             <button id="settings-auth-edit">Edit</button>
             <button id="settings-auth-logout">Logout</button>
@@ -111,7 +111,11 @@
           </div>
           <div id="settings-users">
             <h1>Users</h1>
-            <select id="settings-users-select"></select>
+            <select id="settings-users-select"></select><br>
+            <input id="user-perm-read" type="checkbox"><label for="user-perm-read" title="Reading the library, current queue, and playback status.">read</label>
+            <input id="user-perm-add" type="checkbox"><label for="user-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</label>
+            <input id="user-perm-control" type="checkbox"><label for="user-perm-control" title="Control playback state, and manipulate playlists.">control</label>
+            <input id="user-perm-admin" type="checkbox"><label for="user-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</label>
           </div>
         </div>
         <div class="section">

@@ -366,7 +366,6 @@ var userIsSeeking = false;
 var userIsVolumeSliding = false;
 var started_drag = false;
 var abortDrag = function(){};
-var myUserId = null;
 var lastFmApiKey = null;
 var LoadStatus = {
   Init: 'Loading...',
@@ -375,20 +374,14 @@ var LoadStatus = {
 };
 var repeatModeNames = ["Off", "One", "All"];
 var load_status = LoadStatus.Init;
-var settings_ui = {
-  auth: {
-    show_edit: false,
-    password: ""
-  }
-};
+
 var localState = {
-  myUserIds: {},
-  userName: null,
   lastfm: {
     username: null,
     session_key: null,
     scrobbling_on: false
   },
+  authUsername: null,
   authPassword: null,
   autoQueueUploads: true,
 };
@@ -420,19 +413,19 @@ var $queueHeader = $('#queue-header');
 var $autoQueueUploads = $('#auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var $uploadWidget = $("#upload-widget");
-var $settingsEditPassword = $('#settings-edit-password');
-var $settingsShowPassword = $('#settings-show-password');
+var $settingsRegister = $('#settings-register');
+var $settingsShowAuth = $('#settings-show-auth');
 var $settingsAuthCancel = $('#settings-auth-cancel');
 var $settingsAuthSave = $('#settings-auth-save');
 var $settingsAuthEdit = $('#settings-auth-edit');
-var $settingsAuthClear = $('#settings-auth-clear');
+var $settingsAuthRequest = $('#settings-auth-request');
+var $settingsAuthLogout = $('#settings-auth-logout');
 var streamUrlDom = document.getElementById('settings-stream-url');
 var $authPermRead = $('#auth-perm-read');
 var $authPermAdd = $('#auth-perm-add');
 var $authPermControl = $('#auth-perm-control');
 var $authPermAdmin = $('#auth-perm-admin');
 var $lastFmSignOut = $('#lastfm-sign-out');
-var $authPassword = $('#auth-password');
 var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
 var $settingsLastFmIn = $('#settings-lastfm-in');
 var $settingsLastFmOut = $('#settings-lastfm-out');
@@ -451,6 +444,10 @@ var $volNum = $('#vol-num');
 var $volWarning = $('#vol-warning');
 var $ensureAdminDiv = $('#ensure-admin');
 var $ensureAdminBtn = $('#ensure-admin-btn');
+var $authShowPassword = $('#auth-show-password');
+var $authUsername = $('#auth-username');
+var $authUsernameDisplay = $('#auth-username-display');
+var $authPassword = $('#auth-password');
 
 var tabs = {
   library: {
@@ -1685,22 +1682,28 @@ function selectTreeRange() {
 }
 
 function sendAuth() {
-  var pass = localState.authPassword;
-  if (!pass) return;
-  socket.send('password', pass);
+  if (!localState.authPassword || !localState.authUsername) return;
+  socket.send('login', {
+    username: localState.authUsername,
+    password: localState.authPassword,
+  });
 }
 
-function settingsAuthSave(){
-  settings_ui.auth.show_edit = false;
+function settingsAuthSave() {
+  localState.authUsername = $authUsername.val();
   localState.authPassword = $authPassword.val();
   saveLocalState();
-  updateSettingsAuthUi();
   sendAuth();
+  hideShowAuthEdit(false);
 }
 
-function settingsAuthCancel(){
-  settings_ui.auth.show_edit = false;
-  updateSettingsAuthUi();
+function settingsAuthCancel() {
+  hideShowAuthEdit(false);
+}
+
+function hideShowAuthEdit(visible) {
+  $settingsRegister.toggle(visible);
+  $settingsShowAuth.toggle(!visible);
 }
 
 function performDrag(event, callbacks){
@@ -2410,16 +2413,14 @@ function updateLastFmSettingsUi() {
 }
 
 function updateSettingsAuthUi() {
-  var showEdit = !!(localState.authPassword == null || settings_ui.auth.show_edit);
-  $settingsEditPassword.toggle(showEdit);
-  $settingsShowPassword.toggle(!showEdit);
-  $settingsAuthCancel.toggle(!!localState.authPassword);
-  $authPassword.val("");
   $authPermRead.toggle(havePerm('read'));
   $authPermAdd.toggle(havePerm('add'));
   $authPermControl.toggle(havePerm('control'));
   $authPermAdmin.toggle(havePerm('admin'));
   streamUrlDom.setAttribute('href', streaming.getUrl());
+  $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
+  $settingsAuthLogout.toggle(myUser.registered);
+  $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
 }
 
 function updateSettingsAdminUi() {
@@ -2436,8 +2437,9 @@ function setUpSettingsUi(){
   $settingsAuthCancel.button();
   $settingsAuthSave.button();
   $settingsAuthEdit.button();
-  $settingsAuthClear.button();
+  $settingsAuthLogout.button();
   $ensureAdminBtn.button();
+  $settingsAuthRequest.button();
 
   $ensureAdminDiv.on('click', function(event) {
     socket.send('ensureAdminUser');
@@ -2475,18 +2477,10 @@ function setUpSettingsUi(){
     updateSettingsAdminUi();
   });
   $settingsAuthEdit.on('click', function(event) {
-    settings_ui.auth.show_edit = true;
-    updateSettingsAuthUi();
-    $authPassword
-      .focus()
-      .val("")
-      .select();
-  });
-  $settingsAuthClear.on('click', function(event) {
-    localState.authPassword = null;
-    saveLocalState();
-    settings_ui.auth.password = "";
-    updateSettingsAuthUi();
+    $authUsername.val(localState.authUsername);
+    $authPassword.val(localState.authPassword);
+    hideShowAuthEdit(true);
+    $authUsername.focus().select();
   });
   $settingsAuthSave.on('click', function(event){
     settingsAuthSave();
@@ -2494,18 +2488,34 @@ function setUpSettingsUi(){
   $settingsAuthCancel.on('click', function(event) {
     settingsAuthCancel();
   });
-  $authPassword.on('keydown', function(event) {
-    event.stopPropagation();
-    settings_ui.auth.password = $authPassword.val();
-    if (event.which === 27) {
-      settingsAuthCancel();
-    } else if (event.which === 13) {
-      settingsAuthSave();
-    }
+  $authUsername.on('keydown', handleUserOrPassKeyDown);
+  $authPassword.on('keydown', handleUserOrPassKeyDown);
+  $authShowPassword.on('change', function(event) {
+    var showPw = $authShowPassword.is(':checked');
+    $authPassword.get(0).type = showPw ? 'text' : 'password';
   });
-  $authPassword.on('keyup', function(event) {
-    settings_ui.auth.password = $authPassword.val();
+  $settingsAuthRequest.on('click', function(event) {
+    socket.send('requestApproval');
+    myUser.requested = true;
+    updateSettingsAuthUi();
   });
+  $settingsAuthLogout.on('click', function(event) {
+    localState.authUsername = null;
+    localState.authPassword = null;
+    saveLocalState();
+    socket.send('logout');
+    myUser.registered = false;
+    updateSettingsAuthUi();
+  });
+}
+
+function handleUserOrPassKeyDown(event) {
+  event.stopPropagation();
+  if (event.which === 27) {
+    settingsAuthCancel();
+  } else if (event.which === 13) {
+    settingsAuthSave();
+  }
 }
 
 var searchTimer = null;
@@ -2878,6 +2888,16 @@ $document.ready(function(){
   socket.on('LastFmApiKey', updateLastFmApiKey);
   socket.on('user', function(data) {
     myUser = data;
+    console.log("perms", myUser.perms);
+    $authUsernameDisplay.text(myUser.name);
+    if (!localState.authUsername || !localState.authPassword) {
+      // We didn't have a user account saved. The server assigned us a name.
+      // Generate a password and call dibs on the account.
+      localState.authUsername = myUser.name;
+      localState.authPassword = uuid();
+      saveLocalState();
+      sendAuth();
+    }
     updateSettingsAuthUi();
   });
   socket.on('token', function(token) {
@@ -2917,6 +2937,9 @@ $document.ready(function(){
   socket.on('disconnect', function(){
     load_status = LoadStatus.NoServer;
     render();
+  });
+  socket.on('error', function(err) {
+    console.error(err);
   });
   setUpUi();
   streaming.init(player, socket, localState, saveLocalState);

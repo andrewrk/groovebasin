@@ -90,23 +90,25 @@
             </p>
             <button id="ensure-admin-btn">Make Admin Account</button>
           </div>
-          <div id="settings-edit-password">
-            <input type="password" id="auth-password" placeholder="password" />
+          <div id="settings-register" style="display: none">
+            <input type="text" id="auth-username" placeholder="username"><br>
+            <input type="password" id="auth-password" placeholder="password">
+            <input type="checkbox" id="auth-show-password" class="jquery-button"><label for="auth-show-password">Reveal</label><br>
             <button id="settings-auth-save">Save</button>
             <button id="settings-auth-cancel">Cancel</button>
           </div>
-          <div id="settings-show-password">
-            Using a password
+          <div id="settings-show-auth">
+            <p>Authenticated as <span id="auth-username-display">...</span></p>
+            <p>Permissions:
+              <span id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
+              <span id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
+              <span id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
+              <span id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
+            </p>
             <button id="settings-auth-edit">Edit</button>
-            <button id="settings-auth-clear">Clear</button>
+            <button id="settings-auth-logout">Logout</button>
+            <button id="settings-auth-request">Request Validation</button>
           </div>
-          <h2>Permissions</h2>
-          <ul>
-            <li id="auth-perm-read">Reading the library, current queue, and playback status</li>
-            <li id="auth-perm-add">Adding songs, loading playlists, and uploading songs.</li>
-            <li id="auth-perm-control">Control playback state, and manipulate playlists.</li>
-            <li id="auth-perm-admin">Deleting songs, updating tags, organizing library.</li>
-          </ul>
         </div>
         <div class="section">
           <h1>Last.fm</h1>

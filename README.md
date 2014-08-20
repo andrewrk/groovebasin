@@ -56,9 +56,11 @@ groovebasin
 
 ### From Source
 
-1. Install [Node.js](http://nodejs.org) v0.10.x. Note that on Debian and
-   Ubuntu, you also need the nodejs-dev and nodejs-legacy packages.
+1. Install [Node.js](http://nodejs.org) v0.10.x. On Debian and
+   Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
+   libgroove is available in Debian Testing and an Ubuntu PPA. See the
+   libgroove README for more details.
 3. Clone the source and cd to it.
 4. `npm run build`
 5. `npm start`
@@ -68,7 +70,10 @@ groovebasin
 When Groove Basin starts it will look for `config.js` in the current directory.
 If not found it creates one for you with default values.
 
-Use this to set your music library location, permissions, and other settings.
+Use this to set your music library location and other settings.
+
+It is recommended that you generate a self-signed certificate and use that
+instead of using the public one bundled with this source code.
 
 ## Screenshots
 
@@ -98,14 +103,8 @@ in #libgroove on Freenode.
 
 ### Roadmap
 
- 1. Tag Editing
- 2. Music library organization
- 3. Accoustid Integration
- 4. Playlists
- 5. User accounts / permissions rehaul
- 6. Event history / chat
- 7. Finalize GrooveBasin protocol spec
-
-## Release Notes
-
-See CHANGELOG.md
+ 0. Event history
+ 0. Music library organization
+ 0. Playlists
+ 0. Accoustid Integration
+ 0. Finalize GrooveBasin protocol spec

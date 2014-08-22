@@ -35,9 +35,9 @@ function PlayerClient(socket) {
     self.resetServerState();
   });
   if (self.socket.isConnected) {
-    self.handleConnectionStart();
+    self.resubscribe();
   } else {
-    self.socket.on('connect', self.handleConnectionStart.bind(self));
+    self.socket.on('connect', self.resubscribe.bind(self));
   }
   self.socket.on('time', function(o) {
     self.serverTimeOffset = new Date(o) - new Date();
@@ -120,7 +120,7 @@ function PlayerClient(socket) {
   }
 }
 
-PlayerClient.prototype.handleConnectionStart = function(){
+PlayerClient.prototype.resubscribe = function(){
   this.sendCommand('subscribe', {
     name: 'library',
     delta: true,
@@ -608,7 +608,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.currentItemId = null;
   this.streamers = {
     anonCount: 0,
-    clientIds: [],
+    userIds: [],
   };
 
   this.clearStoredPlaylists();

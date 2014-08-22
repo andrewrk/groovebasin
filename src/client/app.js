@@ -9,6 +9,11 @@ var uuid = require('./uuid');
 
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
+var haveAdminUser = true;
+var approvedUsers = null;
+var sortedApprovedUsers = null;
+var approvalRequests = null;
+var sortedApprovalRequests = null;
 
 var downloadMenuZipName = null;
 
@@ -356,14 +361,16 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
-var permissions = {};
+var GUEST_USER_ID = "(guest)";
+var myUser = {
+  perms: {},
+};
 var socket = null;
 var player = null;
 var userIsSeeking = false;
 var userIsVolumeSliding = false;
 var started_drag = false;
 var abortDrag = function(){};
-var myUserId = null;
 var lastFmApiKey = null;
 var LoadStatus = {
   Init: 'Loading...',
@@ -372,20 +379,14 @@ var LoadStatus = {
 };
 var repeatModeNames = ["Off", "One", "All"];
 var load_status = LoadStatus.Init;
-var settings_ui = {
-  auth: {
-    show_edit: false,
-    password: ""
-  }
-};
+
 var localState = {
-  myUserIds: {},
-  userName: null,
   lastfm: {
     username: null,
     session_key: null,
     scrobbling_on: false
   },
+  authUsername: null,
   authPassword: null,
   autoQueueUploads: true,
 };
@@ -417,19 +418,19 @@ var $queueHeader = $('#queue-header');
 var $autoQueueUploads = $('#auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var $uploadWidget = $("#upload-widget");
-var $settingsEditPassword = $('#settings-edit-password');
-var $settingsShowPassword = $('#settings-show-password');
+var $settingsRegister = $('#settings-register');
+var $settingsShowAuth = $('#settings-show-auth');
 var $settingsAuthCancel = $('#settings-auth-cancel');
 var $settingsAuthSave = $('#settings-auth-save');
 var $settingsAuthEdit = $('#settings-auth-edit');
-var $settingsAuthClear = $('#settings-auth-clear');
+var $settingsAuthRequest = $('#settings-auth-request');
+var $settingsAuthLogout = $('#settings-auth-logout');
 var streamUrlDom = document.getElementById('settings-stream-url');
 var $authPermRead = $('#auth-perm-read');
 var $authPermAdd = $('#auth-perm-add');
 var $authPermControl = $('#auth-perm-control');
 var $authPermAdmin = $('#auth-perm-admin');
 var $lastFmSignOut = $('#lastfm-sign-out');
-var $authPassword = $('#auth-password');
 var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
 var $settingsLastFmIn = $('#settings-lastfm-in');
 var $settingsLastFmOut = $('#settings-lastfm-out');
@@ -446,6 +447,25 @@ var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
 var $volNum = $('#vol-num');
 var $volWarning = $('#vol-warning');
+var $ensureAdminDiv = $('#ensure-admin');
+var $ensureAdminBtn = $('#ensure-admin-btn');
+var $authShowPassword = $('#auth-show-password');
+var $authUsername = $('#auth-username');
+var $authUsernameDisplay = $('#auth-username-display');
+var $authPassword = $('#auth-password');
+var $settingsUsers = $('#settings-users');
+var $settingsUsersSelect = $('#settings-users-select');
+var $settingsRequests = $('#settings-requests');
+var $settingsRequest = $('#settings-request');
+var $userPermRead = $('#user-perm-read');
+var $userPermAdd = $('#user-perm-add');
+var $userPermControl = $('#user-perm-control');
+var $userPermAdmin = $('#user-perm-admin');
+var $settingsDeleteUser = $('#settings-delete-user');
+var $requestReplace = $('#request-replace');
+var $requestName = $('#request-name');
+var $requestApprove = $('#request-approve');
+var $requestDeny = $('#request-deny');
 
 var tabs = {
   library: {
@@ -587,6 +607,10 @@ function renderPlaylistButtons(){
     .button("option", "label", "Repeat: " + repeatModeName)
     .prop("checked", player.repeat !== PlayerClient.REPEAT_OFF)
     .button("refresh");
+}
+
+function updateHaveAdminUserUi() {
+  $ensureAdminDiv.toggle(!haveAdminUser);
 }
 
 function renderQueue(){
@@ -1676,22 +1700,28 @@ function selectTreeRange() {
 }
 
 function sendAuth() {
-  var pass = localState.authPassword;
-  if (!pass) return;
-  socket.send('password', pass);
+  if (!localState.authPassword || !localState.authUsername) return;
+  socket.send('login', {
+    username: localState.authUsername,
+    password: localState.authPassword,
+  });
 }
 
-function settingsAuthSave(){
-  settings_ui.auth.show_edit = false;
+function settingsAuthSave() {
+  localState.authUsername = $authUsername.val();
   localState.authPassword = $authPassword.val();
   saveLocalState();
-  updateSettingsAuthUi();
   sendAuth();
+  hideShowAuthEdit(false);
 }
 
-function settingsAuthCancel(){
-  settings_ui.auth.show_edit = false;
-  updateSettingsAuthUi();
+function settingsAuthCancel() {
+  hideShowAuthEdit(false);
+}
+
+function hideShowAuthEdit(visible) {
+  $settingsRegister.toggle(visible);
+  $settingsShowAuth.toggle(!visible);
 }
 
 function performDrag(event, callbacks){
@@ -1931,7 +1961,7 @@ function onDownloadContextMenu() {
   return true;
 }
 function onDeleteContextMenu() {
-  if (!permissions.admin) return false;
+  if (!havePerm('admin')) return false;
   removeContextMenu();
   handleDeletePressed(true);
   return false;
@@ -1939,7 +1969,7 @@ function onDeleteContextMenu() {
 var editTagsTrackKeys = null;
 var editTagsTrackIndex = null;
 function onEditTagsContextMenu() {
-  if (!permissions.admin) return false;
+  if (!havePerm('admin')) return false;
   removeContextMenu();
   editTagsTrackKeys = selection.toTrackKeys();
   editTagsTrackIndex = 0;
@@ -2401,16 +2431,93 @@ function updateLastFmSettingsUi() {
 }
 
 function updateSettingsAuthUi() {
-  var showEdit = !!(localState.authPassword == null || settings_ui.auth.show_edit);
-  $settingsEditPassword.toggle(showEdit);
-  $settingsShowPassword.toggle(!showEdit);
-  $settingsAuthCancel.toggle(!!localState.authPassword);
-  $authPassword.val("");
-  $authPermRead.toggle(!!permissions.read);
-  $authPermAdd.toggle(!!permissions.add);
-  $authPermControl.toggle(!!permissions.control);
-  $authPermAdmin.toggle(!!permissions.admin);
+  $authPermRead.toggle(havePerm('read'));
+  $authPermAdd.toggle(havePerm('add'));
+  $authPermControl.toggle(havePerm('control'));
+  $authPermAdmin.toggle(havePerm('admin'));
   streamUrlDom.setAttribute('href', streaming.getUrl());
+  $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
+  $settingsAuthLogout.toggle(myUser.registered);
+  $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
+  $settingsUsers.toggle(havePerm('admin'));
+  $settingsRequests.toggle(havePerm('admin') &&
+      sortedApprovalRequests && sortedApprovalRequests.length > 0);
+
+  var i, user;
+  if (sortedApprovedUsers) {
+    var selectedUserId = $settingsUsersSelect.val();
+    $settingsUsersSelect.empty();
+    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
+      user = sortedApprovedUsers[i];
+      $settingsUsersSelect.append($("<option/>", {
+        value: user.id,
+        text: user.name,
+      }));
+      selectedUserId = selectedUserId || user.id;
+    }
+    $settingsUsersSelect.val(selectedUserId);
+    updatePermsForSelectedUser();
+  }
+  if (sortedApprovalRequests) {
+    var request = sortedApprovalRequests[0];
+    $requestReplace.empty();
+    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
+      user = sortedApprovedUsers[i];
+      if (user.id === GUEST_USER_ID) {
+        user = request;
+      }
+      $requestReplace.append($("<option/>", {
+        value: user.id,
+        text: user.name,
+      }));
+    }
+    $requestReplace.val(request.id);
+    $requestName.val(request.name);
+  }
+}
+
+function sortApprovedUsers() {
+  if (!approvedUsers) {
+    sortedApprovedUsers = null;
+    return;
+  }
+  sortedApprovedUsers = [];
+  for (var id in approvedUsers) {
+    var user = approvedUsers[id];
+    user.id = id;
+    sortedApprovedUsers.push(user);
+  }
+  sortedApprovedUsers.sort(compareUserNames);
+}
+
+function sortApprovalRequests() {
+  if (!approvalRequests) {
+    sortedApprovalRequests = null;
+    return;
+  }
+  sortedApprovalRequests = [];
+  for (var id in approvalRequests) {
+    var user = approvalRequests[id];
+    user.id = id;
+    sortedApprovalRequests.push(user);
+  }
+  sortedApprovalRequests.sort(compareUserNames);
+}
+
+function compareUserNames(a, b) {
+  var lowerA = a.name.toLowerCase();
+  var lowerB = b.name.toLowerCase();
+  if (a.id === GUEST_USER_ID) {
+    return -1;
+  } else if (b.id === GUEST_USER_ID) {
+    return 1;
+  } else if (lowerA < lowerB) {
+    return -1;
+  } else if (lowerA > lowerB) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 function updateSettingsAdminUi() {
@@ -2427,7 +2534,18 @@ function setUpSettingsUi(){
   $settingsAuthCancel.button();
   $settingsAuthSave.button();
   $settingsAuthEdit.button();
-  $settingsAuthClear.button();
+  $settingsAuthLogout.button();
+  $ensureAdminBtn.button();
+  $settingsAuthRequest.button();
+  $userPermRead.button();
+  $userPermAdd.button();
+  $userPermControl.button();
+  $userPermAdmin.button();
+  $settingsDeleteUser.button();
+
+  $ensureAdminDiv.on('click', function(event) {
+    socket.send('ensureAdminUser');
+  });
 
   $lastFmSignOut.on('click', function(event) {
     localState.lastfm.username = null;
@@ -2461,18 +2579,10 @@ function setUpSettingsUi(){
     updateSettingsAdminUi();
   });
   $settingsAuthEdit.on('click', function(event) {
-    settings_ui.auth.show_edit = true;
-    updateSettingsAuthUi();
-    $authPassword
-      .focus()
-      .val("")
-      .select();
-  });
-  $settingsAuthClear.on('click', function(event) {
-    localState.authPassword = null;
-    saveLocalState();
-    settings_ui.auth.password = "";
-    updateSettingsAuthUi();
+    $authUsername.val(localState.authUsername);
+    $authPassword.val(localState.authPassword);
+    hideShowAuthEdit(true);
+    $authUsername.focus().select();
   });
   $settingsAuthSave.on('click', function(event){
     settingsAuthSave();
@@ -2480,18 +2590,85 @@ function setUpSettingsUi(){
   $settingsAuthCancel.on('click', function(event) {
     settingsAuthCancel();
   });
-  $authPassword.on('keydown', function(event) {
-    event.stopPropagation();
-    settings_ui.auth.password = $authPassword.val();
-    if (event.which === 27) {
-      settingsAuthCancel();
-    } else if (event.which === 13) {
-      settingsAuthSave();
-    }
+  $authUsername.on('keydown', handleUserOrPassKeyDown);
+  $authPassword.on('keydown', handleUserOrPassKeyDown);
+  $authShowPassword.on('change', function(event) {
+    var showPw = $authShowPassword.prop('checked');
+    $authPassword.get(0).type = showPw ? 'text' : 'password';
   });
-  $authPassword.on('keyup', function(event) {
-    settings_ui.auth.password = $authPassword.val();
+  $settingsAuthRequest.on('click', function(event) {
+    socket.send('requestApproval');
+    myUser.requested = true;
+    updateSettingsAuthUi();
   });
+  $settingsAuthLogout.on('click', function(event) {
+    localState.authUsername = null;
+    localState.authPassword = null;
+    saveLocalState();
+    socket.send('logout');
+    myUser.registered = false;
+    updateSettingsAuthUi();
+  });
+  $userPermRead.on('change', updateSelectedUserPerms);
+  $userPermAdd.on('change', updateSelectedUserPerms);
+  $userPermControl.on('change', updateSelectedUserPerms);
+  $userPermAdmin.on('change', updateSelectedUserPerms);
+  $settingsUsersSelect.on('change', updatePermsForSelectedUser);
+
+  $settingsDeleteUser.on('click', function(event) {
+    var selectedUserId = $settingsUsersSelect.val();
+    socket.send('deleteUsers', [selectedUserId]);
+  });
+
+  $requestApprove.on('click', function(event) {
+    handleApproveDeny(true);
+  });
+  $requestDeny.on('click', function(event) {
+    handleApproveDeny(false);
+  });
+}
+
+function handleApproveDeny(approved) {
+  var request = sortedApprovalRequests[0];
+  socket.send('approve', [{
+    id: request.id,
+    replaceId: $requestReplace.val(),
+    approved: approved,
+    name: $requestName.val(),
+  }]);
+}
+
+function updatePermsForSelectedUser() {
+  var selectedUserId = $settingsUsersSelect.val();
+  var user = approvedUsers[selectedUserId];
+  $userPermRead.prop('checked', user.perms.read).button('refresh');
+  $userPermAdd.prop('checked', user.perms.add).button('refresh');
+  $userPermControl.prop('checked', user.perms.control).button('refresh');
+  $userPermAdmin.prop('checked', user.perms.admin).button('refresh');
+
+  $settingsDeleteUser.prop('disabled', selectedUserId === GUEST_USER_ID).button('refresh');
+}
+
+function updateSelectedUserPerms(event) {
+  socket.send('updateUser', {
+    userId: $settingsUsersSelect.val(),
+    perms: {
+      read: $userPermRead.prop('checked'),
+      add: $userPermAdd.prop('checked'),
+      control: $userPermControl.prop('checked'),
+      admin: $userPermAdmin.prop('checked'),
+    },
+  });
+  return false;
+}
+
+function handleUserOrPassKeyDown(event) {
+  event.stopPropagation();
+  if (event.which === 27) {
+    settingsAuthCancel();
+  } else if (event.which === 13) {
+    settingsAuthSave();
+  }
 }
 
 var searchTimer = null;
@@ -2767,7 +2944,7 @@ function updateMenuDisableState($menu) {
   };
   for (var permName in menuPermDoms) {
     var $item = menuPermDoms[permName];
-    if (permissions[permName]) {
+    if (havePerm(permName)) {
       $item
         .removeClass('ui-state-disabled')
         .attr('title', '');
@@ -2862,8 +3039,24 @@ $document.ready(function(){
     updateSettingsAdminUi();
   });
   socket.on('LastFmApiKey', updateLastFmApiKey);
-  socket.on('permissions', function(data){
-    permissions = data;
+  socket.on('user', function(data) {
+    myUser = data;
+    $authUsernameDisplay.text(myUser.name);
+    if (!localState.authUsername || !localState.authPassword) {
+      // We didn't have a user account saved. The server assigned us a name.
+      // Generate a password and call dibs on the account.
+      localState.authUsername = myUser.name;
+      localState.authPassword = uuid();
+      saveLocalState();
+      sendAuth();
+    } else {
+      socket.send('subscribe', {name: 'dynamicModeOn'});
+      socket.send('subscribe', {name: 'hardwarePlayback'});
+      socket.send('subscribe', {name: 'haveAdminUser'});
+      socket.send('subscribe', {name: 'approvedUsers'});
+      socket.send('subscribe', {name: 'requests'});
+      player.resubscribe();
+    }
     updateSettingsAuthUi();
   });
   socket.on('token', function(token) {
@@ -2878,10 +3071,22 @@ $document.ready(function(){
     renderPlaylistButtons();
     triggerRenderQueue();
   });
+  socket.on('haveAdminUser', function(data) {
+    haveAdminUser = data;
+    updateHaveAdminUserUi();
+  });
+  socket.on('approvedUsers', function(data) {
+    approvedUsers = data;
+    sortApprovedUsers();
+    updateSettingsAuthUi();
+  });
+  socket.on('requests', function(data) {
+    approvalRequests = data;
+    sortApprovalRequests();
+    updateSettingsAuthUi();
+  });
   socket.on('connect', function(){
     sendAuth();
-    socket.send('subscribe', {name: 'dynamicModeOn'});
-    socket.send('subscribe', {name: 'hardwarePlayback'});
     load_status = LoadStatus.GoodToGo;
     render();
   });
@@ -2898,6 +3103,9 @@ $document.ready(function(){
   socket.on('disconnect', function(){
     load_status = LoadStatus.NoServer;
     render();
+  });
+  socket.on('error', function(err) {
+    console.error(err);
   });
   setUpUi();
   streaming.init(player, socket, localState, saveLocalState);
@@ -2946,4 +3154,8 @@ function zfill(number, size) {
   number = String(number);
   while (number.length < size) number = "0" + number;
   return number;
+}
+
+function havePerm(permName) {
+  return !!(myUser && myUser.perms[permName]);
 }

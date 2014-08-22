@@ -12,6 +12,8 @@ var hardwarePlaybackOn = false;
 var haveAdminUser = true;
 var approvedUsers = null;
 var sortedApprovedUsers = null;
+var approvalRequests = null;
+var sortedApprovalRequests = null;
 
 var downloadMenuZipName = null;
 
@@ -453,11 +455,17 @@ var $authUsernameDisplay = $('#auth-username-display');
 var $authPassword = $('#auth-password');
 var $settingsUsers = $('#settings-users');
 var $settingsUsersSelect = $('#settings-users-select');
+var $settingsRequests = $('#settings-requests');
+var $settingsRequest = $('#settings-request');
 var $userPermRead = $('#user-perm-read');
 var $userPermAdd = $('#user-perm-add');
 var $userPermControl = $('#user-perm-control');
 var $userPermAdmin = $('#user-perm-admin');
 var $settingsDeleteUser = $('#settings-delete-user');
+var $requestReplace = $('#request-replace');
+var $requestName = $('#request-name');
+var $requestApprove = $('#request-approve');
+var $requestDeny = $('#request-deny');
 
 var tabs = {
   library: {
@@ -2432,12 +2440,15 @@ function updateSettingsAuthUi() {
   $settingsAuthLogout.toggle(myUser.registered);
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
   $settingsUsers.toggle(havePerm('admin'));
+  $settingsRequests.toggle(havePerm('admin') &&
+      sortedApprovalRequests && sortedApprovalRequests.length > 0);
 
+  var i, user;
   if (sortedApprovedUsers) {
     var selectedUserId = $settingsUsersSelect.val();
     $settingsUsersSelect.empty();
-    for (var i = 0; i < sortedApprovedUsers.length; i += 1) {
-      var user = sortedApprovedUsers[i];
+    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
+      user = sortedApprovedUsers[i];
       $settingsUsersSelect.append($("<option/>", {
         value: user.id,
         text: user.name,
@@ -2446,6 +2457,22 @@ function updateSettingsAuthUi() {
     }
     $settingsUsersSelect.val(selectedUserId);
     updatePermsForSelectedUser();
+  }
+  if (sortedApprovalRequests) {
+    var request = sortedApprovalRequests[0];
+    $requestReplace.empty();
+    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
+      user = sortedApprovedUsers[i];
+      if (user.id === GUEST_USER_ID) {
+        user = request;
+      }
+      $requestReplace.append($("<option/>", {
+        value: user.id,
+        text: user.name,
+      }));
+    }
+    $requestReplace.val(request.id);
+    $requestName.val(request.name);
   }
 }
 
@@ -2461,6 +2488,20 @@ function sortApprovedUsers() {
     sortedApprovedUsers.push(user);
   }
   sortedApprovedUsers.sort(compareUserNames);
+}
+
+function sortApprovalRequests() {
+  if (!approvalRequests) {
+    sortedApprovalRequests = null;
+    return;
+  }
+  sortedApprovalRequests = [];
+  for (var id in approvalRequests) {
+    var user = approvalRequests[id];
+    user.id = id;
+    sortedApprovalRequests.push(user);
+  }
+  sortedApprovalRequests.sort(compareUserNames);
 }
 
 function compareUserNames(a, b) {
@@ -2578,6 +2619,23 @@ function setUpSettingsUi(){
     var selectedUserId = $settingsUsersSelect.val();
     socket.send('deleteUsers', [selectedUserId]);
   });
+
+  $requestApprove.on('click', function(event) {
+    handleApproveDeny(true);
+  });
+  $requestDeny.on('click', function(event) {
+    handleApproveDeny(false);
+  });
+}
+
+function handleApproveDeny(approved) {
+  var request = sortedApprovalRequests[0];
+  socket.send('approve', [{
+    id: request.id,
+    replaceId: $requestReplace.val(),
+    approved: approved,
+    name: $requestName.val(),
+  }]);
 }
 
 function updatePermsForSelectedUser() {
@@ -3015,12 +3073,18 @@ $document.ready(function(){
     sortApprovedUsers();
     updateSettingsAuthUi();
   });
+  socket.on('requests', function(data) {
+    approvalRequests = data;
+    sortApprovalRequests();
+    updateSettingsAuthUi();
+  });
   socket.on('connect', function(){
     sendAuth();
     socket.send('subscribe', {name: 'dynamicModeOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
     socket.send('subscribe', {name: 'haveAdminUser'});
     socket.send('subscribe', {name: 'approvedUsers'});
+    socket.send('subscribe', {name: 'requests'});
     load_status = LoadStatus.GoodToGo;
     render();
   });

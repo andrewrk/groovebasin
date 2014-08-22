@@ -457,6 +457,7 @@ var $userPermRead = $('#user-perm-read');
 var $userPermAdd = $('#user-perm-add');
 var $userPermControl = $('#user-perm-control');
 var $userPermAdmin = $('#user-perm-admin');
+var $settingsDeleteUser = $('#settings-delete-user');
 
 var tabs = {
   library: {
@@ -2499,6 +2500,7 @@ function setUpSettingsUi(){
   $userPermAdd.button();
   $userPermControl.button();
   $userPermAdmin.button();
+  $settingsDeleteUser.button();
 
   $ensureAdminDiv.on('click', function(event) {
     socket.send('ensureAdminUser');
@@ -2571,16 +2573,22 @@ function setUpSettingsUi(){
   $userPermControl.on('change', updateSelectedUserPerms);
   $userPermAdmin.on('change', updateSelectedUserPerms);
   $settingsUsersSelect.on('change', updatePermsForSelectedUser);
+
+  $settingsDeleteUser.on('click', function(event) {
+    var selectedUserId = $settingsUsersSelect.val();
+    socket.send('deleteUsers', [selectedUserId]);
+  });
 }
 
 function updatePermsForSelectedUser() {
   var selectedUserId = $settingsUsersSelect.val();
   var user = approvedUsers[selectedUserId];
-  console.log("updatePermsForSelectedUser", user.perms, "havePerm(control)", havePerm('control'));
   $userPermRead.prop('checked', user.perms.read).button('refresh');
   $userPermAdd.prop('checked', user.perms.add).button('refresh');
   $userPermControl.prop('checked', user.perms.control).button('refresh');
   $userPermAdmin.prop('checked', user.perms.admin).button('refresh');
+
+  $settingsDeleteUser.prop('disabled', selectedUserId === GUEST_USER_ID).button('refresh');
 }
 
 function updateSelectedUserPerms(event) {
@@ -3003,7 +3011,6 @@ $document.ready(function(){
     updateHaveAdminUserUi();
   });
   socket.on('approvedUsers', function(data) {
-    console.log("got new approvedUsers:", data);
     approvedUsers = data;
     sortApprovedUsers();
     updateSettingsAuthUi();

@@ -3049,6 +3049,13 @@ $document.ready(function(){
       localState.authPassword = uuid();
       saveLocalState();
       sendAuth();
+    } else {
+      socket.send('subscribe', {name: 'dynamicModeOn'});
+      socket.send('subscribe', {name: 'hardwarePlayback'});
+      socket.send('subscribe', {name: 'haveAdminUser'});
+      socket.send('subscribe', {name: 'approvedUsers'});
+      socket.send('subscribe', {name: 'requests'});
+      player.resubscribe();
     }
     updateSettingsAuthUi();
   });
@@ -3080,11 +3087,6 @@ $document.ready(function(){
   });
   socket.on('connect', function(){
     sendAuth();
-    socket.send('subscribe', {name: 'dynamicModeOn'});
-    socket.send('subscribe', {name: 'hardwarePlayback'});
-    socket.send('subscribe', {name: 'haveAdminUser'});
-    socket.send('subscribe', {name: 'approvedUsers'});
-    socket.send('subscribe', {name: 'requests'});
     load_status = LoadStatus.GoodToGo;
     render();
   });

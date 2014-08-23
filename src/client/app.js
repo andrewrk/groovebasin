@@ -14,6 +14,8 @@ var approvedUsers = null;
 var sortedApprovedUsers = null;
 var approvalRequests = null;
 var sortedApprovalRequests = null;
+var connectedUsers = null;
+var sortedConnectedUsers = null;
 
 var downloadMenuZipName = null;
 
@@ -466,6 +468,7 @@ var $requestReplace = $('#request-replace');
 var $requestName = $('#request-name');
 var $requestApprove = $('#request-approve');
 var $requestDeny = $('#request-deny');
+var $eventsOnlineUsers = $('#events-online-users');
 
 var tabs = {
   library: {
@@ -479,6 +482,10 @@ var tabs = {
   playlists: {
     $pane: $('#playlists-pane'),
     $tab: $('#playlists-tab'),
+  },
+  events: {
+    $pane: $('#events-pane'),
+    $tab: $('#events-tab'),
   },
   settings: {
     $pane: $('#settings-pane'),
@@ -638,13 +645,12 @@ function renderQueue(){
 
   // overwrite existing dom entries
   var $domItems = $queueItems.children();
-  var item, track;
   for (i = 0; i < itemList.length; i += 1) {
     var $domItem = $($domItems[i]);
-    item = itemList[i];
+    var item = itemList[i];
     $domItem.attr('id', 'playlist-track-' + item.id);
     $domItem.attr('data-id', item.id);
-    track = item.track;
+    var track = item.track;
     $domItem.find('.track').text(track.track || "");
     $domItem.find('.title').text(track.name || "");
     $domItem.find('.artist').text(track.artistName || "");
@@ -2458,7 +2464,7 @@ function updateSettingsAuthUi() {
     $settingsUsersSelect.val(selectedUserId);
     updatePermsForSelectedUser();
   }
-  if (sortedApprovalRequests) {
+  if (sortedApprovalRequests && sortedApprovalRequests.length > 0) {
     var request = sortedApprovalRequests[0];
     $requestReplace.empty();
     for (i = 0; i < sortedApprovedUsers.length; i += 1) {
@@ -2476,32 +2482,19 @@ function updateSettingsAuthUi() {
   }
 }
 
-function sortApprovedUsers() {
-  if (!approvedUsers) {
-    sortedApprovedUsers = null;
-    return;
+function sortUserObject(userObject) {
+  if (!userObject) {
+    return null;
   }
-  sortedApprovedUsers = [];
-  for (var id in approvedUsers) {
-    var user = approvedUsers[id];
+  var array = [];
+  for (var id in userObject) {
+    var user = userObject[id];
     user.id = id;
-    sortedApprovedUsers.push(user);
+    user.streaming = !!user.streaming;
+    array.push(user);
   }
-  sortedApprovedUsers.sort(compareUserNames);
-}
-
-function sortApprovalRequests() {
-  if (!approvalRequests) {
-    sortedApprovalRequests = null;
-    return;
-  }
-  sortedApprovalRequests = [];
-  for (var id in approvalRequests) {
-    var user = approvalRequests[id];
-    user.id = id;
-    sortedApprovalRequests.push(user);
-  }
-  sortedApprovalRequests.sort(compareUserNames);
+  array.sort(compareUserNames);
+  return array;
 }
 
 function compareUserNames(a, b) {
@@ -2669,6 +2662,45 @@ function handleUserOrPassKeyDown(event) {
   } else if (event.which === 13) {
     settingsAuthSave();
   }
+}
+
+function setUpEventsUi() {
+  // TODO
+}
+
+function updateEventsUi() {
+  renderOnlineUsers();
+  // TODO
+}
+
+function renderOnlineUsers() {
+  var scrollTop = $eventsOnlineUsers.scrollTop();
+
+  // add the missing dom entries
+  var i;
+  var onlineUserDom = $eventsOnlineUsers.get(0);
+  for (i = onlineUserDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
+    $eventsOnlineUsers.append(
+      '<div class="user">' +
+        '<span class="streaming ui-icon ui-icon-signal-diag"></span>' +
+        '<span class="name"></span>' +
+      '</div>');
+  }
+  // remove extra dom entries
+  var domItem;
+  while (sortedConnectedUsers.length < onlineUserDom.childElementCount) {
+    onlineUserDom.removeChild(onlineUserDom.lastChild);
+  }
+  // overwrite existing dom entries
+  var $domItems = $eventsOnlineUsers.children();
+  for (i = 0; i < sortedConnectedUsers.length; i += 1) {
+    var $domItem = $($domItems[i]);
+    var user = sortedConnectedUsers[i];
+    $domItem.find('.name').text(user.name);
+    $domItem.find('.streaming').toggle(user.streaming);
+  }
+
+  $eventsOnlineUsers.scrollTop(scrollTop);
 }
 
 var searchTimer = null;
@@ -2966,6 +2998,7 @@ function setUpUi(){
   setUpUploadUi();
   setUpSettingsUi();
   setUpEditTagsUi();
+  setUpEventsUi();
 }
 
 function toAlbumId(s) {
@@ -2986,20 +3019,22 @@ function toStoredPlaylistId(s) {
 
 function handleResize(){
   $nowplaying.width(MARGIN);
+
+  setAllTabsHeight(MARGIN);
   $queueWindow.height(MARGIN);
   $leftWindow.height(MARGIN);
   $library.height(MARGIN);
   $upload.height(MARGIN);
   $queueItems.height(MARGIN);
   $nowplaying.width($document.width() - MARGIN * 2);
-  var second_layer_top = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
+  var secondLayerTop = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
   $leftWindow.offset({
     left: MARGIN,
-    top: second_layer_top
+    top: secondLayerTop
   });
   $queueWindow.offset({
     left: $leftWindow.offset().left + $leftWindow.width() + MARGIN,
-    top: second_layer_top
+    top: secondLayerTop
   });
   $queueWindow.width($window.width() - $queueWindow.offset().left - MARGIN);
   $leftWindow.height($window.height() - $leftWindow.offset().top);
@@ -3007,10 +3042,19 @@ function handleResize(){
   var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
   $library.height(tabContentsHeight - $libHeader.height());
   $upload.height(tabContentsHeight);
+
+  setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
 }
 function refreshPage(){
   location.href = location.protocol + "//" + location.host + "/";
+}
+
+function setAllTabsHeight(h) {
+  for (var name in tabs) {
+    var tab = tabs[name];
+    tab.$pane.height(h);
+  }
 }
 
 $document.ready(function(){
@@ -3055,6 +3099,7 @@ $document.ready(function(){
       socket.send('subscribe', {name: 'haveAdminUser'});
       socket.send('subscribe', {name: 'approvedUsers'});
       socket.send('subscribe', {name: 'requests'});
+      socket.send('subscribe', {name: 'connectedUsers'});
       player.resubscribe();
     }
     updateSettingsAuthUi();
@@ -3077,13 +3122,18 @@ $document.ready(function(){
   });
   socket.on('approvedUsers', function(data) {
     approvedUsers = data;
-    sortApprovedUsers();
+    sortedApprovedUsers = sortUserObject(approvedUsers);
     updateSettingsAuthUi();
   });
   socket.on('requests', function(data) {
     approvalRequests = data;
-    sortApprovalRequests();
+    sortedApprovalRequests = sortUserObject(approvalRequests);
     updateSettingsAuthUi();
+  });
+  socket.on('connectedUsers', function(data) {
+    connectedUsers = data;
+    sortedConnectedUsers = sortUserObject(connectedUsers);
+    updateEventsUi();
   });
   socket.on('connect', function(){
     sendAuth();

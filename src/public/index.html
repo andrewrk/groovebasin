@@ -42,6 +42,7 @@
         <li id="library-tab" class="hoverable ui-state-default ui-corner-top ui-state-active"><span>Library</span></li>
         <li id="upload-tab" class="hoverable ui-state-default ui-corner-top"><span>Import</span></li>
         <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top" style="display: none"><span>Playlists</span></li>
+        <li id="events-tab" class="hoverable ui-state-default ui-corner-top"><span>Events</span></li>
         <li id="settings-tab" class="hoverable ui-state-default ui-corner-top"><span>Settings</span></li>
       </ul>
     </div>
@@ -63,10 +64,13 @@
     </div>
     <div id="upload-pane" class="ui-widget-content ui-corner-all" style="display: none">
       <div id="upload">
-        <input id="upload-by-url" type="text" placeholder="Paste URL here">
+        <h1>Import by URL</h1>
+        <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
+        <h1>Upload Files</h1>
         <div id="upload-widget">
           <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
         </div>
+        <h1>Options</h1>
         <div>
           Automatically queue imported songs: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
         </div>
@@ -78,6 +82,12 @@
         <ul id="playlists-list">
         </ul>
       </div>
+    </div>
+    <div id="events-pane" class="ui-widget-content ui-corner-all" style="display: none">
+        <div id="events-online-users">
+        </div>
+        <table id="events-chat-table">
+        </table>
     </div>
     <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
       <div id="settings">
@@ -91,7 +101,7 @@
             <button id="ensure-admin-btn">Make Admin Account</button>
           </div>
           <div id="settings-register" style="display: none">
-            <input type="text" id="auth-username" placeholder="username"><br>
+            <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
             <input type="password" id="auth-password" placeholder="password">
             <input type="checkbox" id="auth-show-password" class="jquery-button"><label for="auth-show-password">Reveal</label><br>
             <button id="settings-auth-save">Save</button>

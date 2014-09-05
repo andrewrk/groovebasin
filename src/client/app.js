@@ -2780,8 +2780,10 @@ function renderOnlineUsers() {
 
   var scrollTop = $eventsOnlineUsers.scrollTop();
 
+
   // add the missing dom entries
   var onlineUserDom = $eventsOnlineUsers.get(0);
+  var heightChanged = onlineUserDom.childElementCount !== sortedConnectedUsers.length;
   for (i = onlineUserDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
     $eventsOnlineUsers.append(
       '<div class="user">' +
@@ -2804,6 +2806,10 @@ function renderOnlineUsers() {
   }
 
   $eventsOnlineUsers.scrollTop(scrollTop);
+
+  if (heightChanged) {
+    handleResize();
+  }
 }
 
 var searchTimer = null;
@@ -3237,8 +3243,8 @@ $document.ready(function(){
   player = new PlayerClient(socket);
   player.on('users', function() {
     updateSettingsAuthUi();
-    renderOnlineUsers();
     renderEvents();
+    renderOnlineUsers();
   });
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);

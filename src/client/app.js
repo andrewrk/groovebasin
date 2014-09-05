@@ -2767,6 +2767,12 @@ var eventTypeMessageFns = {
       return "seeked to " + formatTime(ev.pos);
     }
   },
+  pause: function(ev) {
+    return "pressed pause";
+  },
+  play: function(ev) {
+    return "pressed play";
+  },
 };
 function getEventMessage(ev) {
   var fn = eventTypeMessageFns[ev.type];

@@ -2471,7 +2471,7 @@ function updateSettingsAuthUi() {
       if (user.id === PlayerClient.GUEST_USER_ID) {
         user = request;
       }
-      if (user.approved) {
+      if (user.approved || user === request) {
         $requestReplace.append($("<option/>", {
           value: user.id,
           text: user.name,

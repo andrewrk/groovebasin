@@ -2705,7 +2705,7 @@ function renderEvents() {
     var user = player.usersTable[ev.userId];
     var userText = user ? user.name : "*";
     $domItem.removeClass().addClass('event').addClass(ev.type);
-    $domItem.find('.name').text(userText);
+    $domItem.find('.name').text(userText).attr('title', ev.date.toString());
     $domItem.find('.msg').text(getEventMessage(ev));
   }
 

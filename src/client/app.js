@@ -2725,13 +2725,27 @@ var eventTypeMessageFns = {
     return ev.text;
   },
   login: function(ev) {
-    return "login";
+    return "logged in";
   },
   register: function(ev) {
-    return "register";
+    return "registered";
   },
   part: function(ev) {
-    return "disconnect";
+    return "disconnectd";
+  },
+  streamStart: function(ev) {
+    if (ev.userId) {
+      return "started streaming";
+    } else {
+      return "anonymous user started streaming";
+    }
+  },
+  streamStop: function(ev) {
+    if (ev.userId) {
+      return "stopped streaming";
+    } else {
+      return "anonymous user stopped streaming";
+    }
   },
 };
 function getEventMessage(ev) {

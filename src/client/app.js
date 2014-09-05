@@ -12,6 +12,7 @@ var hardwarePlaybackOn = false;
 var haveAdminUser = true;
 
 var downloadMenuZipName = null;
+var firstEventsScrollToBottom = false;
 
 var selection = {
   ids: {
@@ -2686,12 +2687,14 @@ function clearChatInputValue() {
 }
 
 function renderEvents() {
+  var eventsListDom = $eventsList.get(0);
   var scrollTop = $eventsList.scrollTop();
-  var scrolledToBottom = ($eventsList.get(0).scrollHeight - scrollTop) === $eventsList.outerHeight();
+  firstEventsScrollToBottom = firstEventsScrollToBottom || (eventsListDom.childElementCount === 0);
+  var scrolledToBottom = firstEventsScrollToBottom ||
+    (eventsListDom.scrollHeight - scrollTop) === $eventsList.outerHeight();
 
   // add the missing dom entries
   var i;
-  var eventsListDom = $eventsList.get(0);
   for (i = eventsListDom.childElementCount; i < player.eventsList.length; i += 1) {
     $eventsList.append(
       '<div class="event">' +
@@ -3118,6 +3121,10 @@ function toStoredPlaylistId(s) {
 }
 
 function handleResize() {
+  var eventsScrollTop = $eventsList.scrollTop();
+  var eventsScrolledToBottom = firstEventsScrollToBottom ||
+    ($eventsList.get(0).scrollHeight - eventsScrollTop) === $eventsList.outerHeight();
+
   $nowplaying.width(MARGIN);
 
   setAllTabsHeight(MARGIN);
@@ -3146,6 +3153,11 @@ function handleResize() {
 
   setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
+
+  if (eventsScrolledToBottom) {
+    scrollEventsToBottom();
+    firstEventsScrollToBottom = false;
+  }
 }
 
 function refreshPage() {

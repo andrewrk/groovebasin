@@ -27,7 +27,11 @@ function onLabelDown(event) {
 }
 
 function getStreamerCount() {
-  return player.streamers.anonCount + player.streamers.userIds.length;
+  var count = player.streamers;
+  player.usersList.forEach(function(user) {
+    if (user.streaming) count += 1;
+  });
+  return count;
 }
 
 function getStatusLabel() {
@@ -158,6 +162,7 @@ function init(playerInstance, socket, localStateInstance, saveLocalStateFn) {
 
   player.on('currentTrack', updatePlayer);
   player.on('streamers', renderStreamButton);
+  player.on('users', renderStreamButton);
   socket.on('seek', clearBuffer);
   setUpUi();
 }

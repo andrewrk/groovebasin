@@ -1,6 +1,8 @@
 @import "vendor/reset.min.css"
 @import "vendor/jquery-ui-1.10.4.custom.min.css"
 
+lightGray = #292929
+
 user-select()
   -moz-user-select arguments
   -khtml-user-select arguments
@@ -227,7 +229,7 @@ a:hover,a:active,a:focus
 
   div.current
     border 1px solid #096AC8
-    background-color #292929
+    background-color lightGray
     font-weight bold
     color #75abff
 
@@ -334,7 +336,7 @@ a:hover,a:active,a:focus
   margin-right 20px
 
 #settings-request
-  background-color #292929
+  background-color lightGray
   border-radius 4px
   padding 4px
 
@@ -361,7 +363,30 @@ a:hover,a:active,a:focus
   text-decoration underline
 
 .perm
-  background-color #292929
+  background-color lightGray
   color #96B7EB
   padding 2px
   border-radius 4px
+
+#events-list
+  overflow-y auto
+  font-size 0.9em
+
+  .name
+    width 29%
+    float left
+    overflow-x hidden
+    overflow-y hidden
+    text-align right
+    height 16px
+  .msg
+    float left
+    width 69%
+    margin-left 4px
+  .event
+    padding-top 2px
+  .chat
+    background-color lightGray
+
+#chat-box-input
+  width 100%

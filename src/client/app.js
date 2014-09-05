@@ -10,12 +10,6 @@ var uuid = require('./uuid');
 var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
 var haveAdminUser = true;
-var approvedUsers = null;
-var sortedApprovedUsers = null;
-var approvalRequests = null;
-var sortedApprovalRequests = null;
-var connectedUsers = null;
-var sortedConnectedUsers = null;
 
 var downloadMenuZipName = null;
 
@@ -363,7 +357,6 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
 var ICON_EXPANDED = 'ui-icon-triangle-1-se';
-var GUEST_USER_ID = "(guest)";
 var myUser = {
   perms: {},
 };
@@ -380,7 +373,7 @@ var LoadStatus = {
   GoodToGo: '[good to go]'
 };
 var repeatModeNames = ["Off", "One", "All"];
-var load_status = LoadStatus.Init;
+var loadStatus = LoadStatus.Init;
 
 var localState = {
   lastfm: {
@@ -469,6 +462,9 @@ var $requestName = $('#request-name');
 var $requestApprove = $('#request-approve');
 var $requestDeny = $('#request-deny');
 var $eventsOnlineUsers = $('#events-online-users');
+var $eventsList = $('#events-list');
+var $chatBox = $('#chat-box');
+var $chatBoxInput = $('#chat-box-input');
 
 var tabs = {
   library: {
@@ -1035,14 +1031,14 @@ function renderNowPlaying() {
 }
 
 function render(){
-  var hide_main_err = load_status === LoadStatus.GoodToGo;
-  $queueWindow.toggle(hide_main_err);
-  $leftWindow.toggle(hide_main_err);
-  $nowplaying.toggle(hide_main_err);
-  $mainErrMsg.toggle(!hide_main_err);
-  if (!hide_main_err) {
+  var hideMainErr = loadStatus === LoadStatus.GoodToGo;
+  $queueWindow.toggle(hideMainErr);
+  $leftWindow.toggle(hideMainErr);
+  $nowplaying.toggle(hideMainErr);
+  $mainErrMsg.toggle(!hideMainErr);
+  if (!hideMainErr) {
     document.title = BASE_TITLE;
-    $mainErrMsgText.text(load_status);
+    $mainErrMsgText.text(loadStatus);
     return;
   }
   renderQueue();
@@ -1507,6 +1503,17 @@ var keyboardHandlers = (function(){
       alt: false,
       shift: false,
       handler: streaming.toggleStatus
+    },
+    // t
+    84: {
+      ctrl: false,
+      alt: false,
+      shift: false,
+      handler: function() {
+        clickTab(tabs.events);
+        scrollEventsToBottom();
+        $chatBoxInput.focus().select();
+      },
     },
     // i
     73: {
@@ -2437,6 +2444,44 @@ function updateLastFmSettingsUi() {
 }
 
 function updateSettingsAuthUi() {
+  var i, user;
+  var request = null;
+  var selectedUserId = $settingsUsersSelect.val();
+  $settingsUsersSelect.empty();
+  for (i = 0; i < player.usersList.length; i += 1) {
+    user = player.usersList[i];
+    if (user.approved) {
+      $settingsUsersSelect.append($("<option/>", {
+        value: user.id,
+        text: user.name,
+      }));
+      selectedUserId = selectedUserId || user.id;
+    }
+    if (!user.approved && user.requested) {
+      request = request || user;
+    }
+  }
+  $settingsUsersSelect.val(selectedUserId);
+  updatePermsForSelectedUser();
+
+  if (request) {
+    $requestReplace.empty();
+    for (i = 0; i < player.usersList.length; i += 1) {
+      user = player.usersList[i];
+      if (user.id === PlayerClient.GUEST_USER_ID) {
+        user = request;
+      }
+      if (user.approved) {
+        $requestReplace.append($("<option/>", {
+          value: user.id,
+          text: user.name,
+        }));
+      }
+    }
+    $requestReplace.val(request.id);
+    $requestName.val(request.name);
+  }
+
   $authPermRead.toggle(havePerm('read'));
   $authPermAdd.toggle(havePerm('add'));
   $authPermControl.toggle(havePerm('control'));
@@ -2446,71 +2491,7 @@ function updateSettingsAuthUi() {
   $settingsAuthLogout.toggle(myUser.registered);
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
   $settingsUsers.toggle(havePerm('admin'));
-  $settingsRequests.toggle(havePerm('admin') &&
-      sortedApprovalRequests && sortedApprovalRequests.length > 0);
-
-  var i, user;
-  if (sortedApprovedUsers) {
-    var selectedUserId = $settingsUsersSelect.val();
-    $settingsUsersSelect.empty();
-    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
-      user = sortedApprovedUsers[i];
-      $settingsUsersSelect.append($("<option/>", {
-        value: user.id,
-        text: user.name,
-      }));
-      selectedUserId = selectedUserId || user.id;
-    }
-    $settingsUsersSelect.val(selectedUserId);
-    updatePermsForSelectedUser();
-  }
-  if (sortedApprovalRequests && sortedApprovalRequests.length > 0) {
-    var request = sortedApprovalRequests[0];
-    $requestReplace.empty();
-    for (i = 0; i < sortedApprovedUsers.length; i += 1) {
-      user = sortedApprovedUsers[i];
-      if (user.id === GUEST_USER_ID) {
-        user = request;
-      }
-      $requestReplace.append($("<option/>", {
-        value: user.id,
-        text: user.name,
-      }));
-    }
-    $requestReplace.val(request.id);
-    $requestName.val(request.name);
-  }
-}
-
-function sortUserObject(userObject) {
-  if (!userObject) {
-    return null;
-  }
-  var array = [];
-  for (var id in userObject) {
-    var user = userObject[id];
-    user.id = id;
-    user.streaming = !!user.streaming;
-    array.push(user);
-  }
-  array.sort(compareUserNames);
-  return array;
-}
-
-function compareUserNames(a, b) {
-  var lowerA = a.name.toLowerCase();
-  var lowerB = b.name.toLowerCase();
-  if (a.id === GUEST_USER_ID) {
-    return -1;
-  } else if (b.id === GUEST_USER_ID) {
-    return 1;
-  } else if (lowerA < lowerB) {
-    return -1;
-  } else if (lowerA > lowerB) {
-    return 1;
-  } else {
-    return 0;
-  }
+  $settingsRequests.toggle(havePerm('admin') && !!request);
 }
 
 function updateSettingsAdminUi() {
@@ -2622,7 +2603,15 @@ function setUpSettingsUi(){
 }
 
 function handleApproveDeny(approved) {
-  var request = sortedApprovalRequests[0];
+  var request = null;
+  for (var i = 0; i < player.usersList.length; i += 1) {
+    var user = player.usersList[i];
+    if (!user.approved && user.requested) {
+      request = user;
+      break;
+    }
+  }
+  if (!request) return;
   socket.send('approve', [{
     id: request.id,
     replaceId: $requestReplace.val(),
@@ -2633,13 +2622,14 @@ function handleApproveDeny(approved) {
 
 function updatePermsForSelectedUser() {
   var selectedUserId = $settingsUsersSelect.val();
-  var user = approvedUsers[selectedUserId];
+  var user = player.usersTable[selectedUserId];
+  if (!user) return;
   $userPermRead.prop('checked', user.perms.read).button('refresh');
   $userPermAdd.prop('checked', user.perms.add).button('refresh');
   $userPermControl.prop('checked', user.perms.control).button('refresh');
   $userPermAdmin.prop('checked', user.perms.admin).button('refresh');
 
-  $settingsDeleteUser.prop('disabled', selectedUserId === GUEST_USER_ID).button('refresh');
+  $settingsDeleteUser.prop('disabled', selectedUserId === PlayerClient.GUEST_USER_ID).button('refresh');
 }
 
 function updateSelectedUserPerms(event) {
@@ -2665,19 +2655,105 @@ function handleUserOrPassKeyDown(event) {
 }
 
 function setUpEventsUi() {
-  // TODO
+  $chatBoxInput.on('keydown', function(event) {
+    event.stopPropagation();
+    if (event.which === 27) {
+      $chatBoxInput.blur();
+      return false;
+    } else if (event.which === 13) {
+      var msg = $chatBoxInput.val().trim();
+      setTimeout(clearChatInputValue, 0);
+      if (!msg.length) {
+        return false;
+      }
+      socket.send('chat', msg);
+      return false;
+    }
+  });
+
 }
 
-function updateEventsUi() {
-  renderOnlineUsers();
-  // TODO
+function clearChatInputValue() {
+  $chatBoxInput.val("");
 }
 
-function renderOnlineUsers() {
-  var scrollTop = $eventsOnlineUsers.scrollTop();
+function renderEvents() {
+  var scrollTop = $eventsList.scrollTop();
+  var scrolledToBottom = ($eventsList.get(0).scrollHeight - scrollTop) === $eventsList.outerHeight();
 
   // add the missing dom entries
   var i;
+  var eventsListDom = $eventsList.get(0);
+  for (i = eventsListDom.childElementCount; i < player.eventsList.length; i += 1) {
+    $eventsList.append(
+      '<div class="event">' +
+        '<span class="name"></span>' +
+        '<span class="msg"></span>' +
+        '<div style="clear: both;"></div>' +
+      '</div>');
+  }
+  // remove extra dom entries
+  var domItem;
+  while (player.eventsList.length < eventsListDom.childElementCount) {
+    eventsListDom.removeChild(eventsListDom.lastChild);
+  }
+  // overwrite existing dom entries
+  var $domItems = $eventsList.children();
+  for (i = 0; i < player.eventsList.length; i += 1) {
+    var $domItem = $($domItems[i]);
+    var ev = player.eventsList[i];
+    var user = player.usersTable[ev.userId];
+    var userText = user ? user.name : "*";
+    $domItem.removeClass().addClass('event').addClass(ev.type);
+    $domItem.find('.name').text(userText);
+    $domItem.find('.msg').text(getEventMessage(ev));
+  }
+
+  if (scrolledToBottom) {
+    scrollEventsToBottom();
+  } else {
+    $eventsList.scrollTop(scrollTop);
+  }
+}
+
+function scrollEventsToBottom() {
+  $eventsList.scrollTop(1000000);
+}
+
+var eventTypeMessageFns = {
+  chat: function(ev) {
+    return ev.text;
+  },
+  login: function(ev) {
+    return "login";
+  },
+  register: function(ev) {
+    return "register";
+  },
+  part: function(ev) {
+    return "disconnect";
+  },
+};
+function getEventMessage(ev) {
+  var fn = eventTypeMessageFns[ev.type];
+  if (!fn) throw new Error("Unknown event type: " + ev.type);
+  return fn(ev);
+}
+
+function renderOnlineUsers() {
+  var i;
+  var user;
+  var sortedConnectedUsers = [];
+  for (i = 0; i < player.usersList.length; i += 1) {
+    user = player.usersList[i];
+    if (user.connected) {
+      sortedConnectedUsers.push(user);
+    }
+  }
+
+  var scrollTop = $eventsOnlineUsers.scrollTop();
+
+  // add the missing dom entries
   var onlineUserDom = $eventsOnlineUsers.get(0);
   for (i = onlineUserDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
     $eventsOnlineUsers.append(
@@ -2695,7 +2771,7 @@ function renderOnlineUsers() {
   var $domItems = $eventsOnlineUsers.children();
   for (i = 0; i < sortedConnectedUsers.length; i += 1) {
     var $domItem = $($domItems[i]);
-    var user = sortedConnectedUsers[i];
+    user = sortedConnectedUsers[i];
     $domItem.find('.name').text(user.name);
     $domItem.find('.streaming').toggle(user.streaming);
   }
@@ -3017,7 +3093,7 @@ function toStoredPlaylistId(s) {
   return "stored-pl-pl-" + toHtmlId(s);
 }
 
-function handleResize(){
+function handleResize() {
   $nowplaying.width(MARGIN);
 
   setAllTabsHeight(MARGIN);
@@ -3042,11 +3118,13 @@ function handleResize(){
   var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
   $library.height(tabContentsHeight - $libHeader.height());
   $upload.height(tabContentsHeight);
+  $eventsList.height(tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height());
 
   setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
 }
-function refreshPage(){
+
+function refreshPage() {
   location.href = location.protocol + "//" + location.host + "/";
 }
 
@@ -3093,14 +3171,6 @@ $document.ready(function(){
       localState.authPassword = uuid();
       saveLocalState();
       sendAuth();
-    } else {
-      socket.send('subscribe', {name: 'dynamicModeOn'});
-      socket.send('subscribe', {name: 'hardwarePlayback'});
-      socket.send('subscribe', {name: 'haveAdminUser'});
-      socket.send('subscribe', {name: 'approvedUsers'});
-      socket.send('subscribe', {name: 'requests'});
-      socket.send('subscribe', {name: 'connectedUsers'});
-      player.resubscribe();
     }
     updateSettingsAuthUi();
   });
@@ -3120,27 +3190,20 @@ $document.ready(function(){
     haveAdminUser = data;
     updateHaveAdminUserUi();
   });
-  socket.on('approvedUsers', function(data) {
-    approvedUsers = data;
-    sortedApprovedUsers = sortUserObject(approvedUsers);
-    updateSettingsAuthUi();
-  });
-  socket.on('requests', function(data) {
-    approvalRequests = data;
-    sortedApprovalRequests = sortUserObject(approvalRequests);
-    updateSettingsAuthUi();
-  });
-  socket.on('connectedUsers', function(data) {
-    connectedUsers = data;
-    sortedConnectedUsers = sortUserObject(connectedUsers);
-    updateEventsUi();
-  });
   socket.on('connect', function(){
     sendAuth();
-    load_status = LoadStatus.GoodToGo;
+    socket.send('subscribe', {name: 'dynamicModeOn'});
+    socket.send('subscribe', {name: 'hardwarePlayback'});
+    socket.send('subscribe', {name: 'haveAdminUser'});
+    loadStatus = LoadStatus.GoodToGo;
     render();
   });
   player = new PlayerClient(socket);
+  player.on('users', function() {
+    updateSettingsAuthUi();
+    renderOnlineUsers();
+    renderEvents();
+  });
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
@@ -3151,8 +3214,11 @@ $document.ready(function(){
     labelPlaylistItems();
   });
   socket.on('disconnect', function(){
-    load_status = LoadStatus.NoServer;
+    loadStatus = LoadStatus.NoServer;
     render();
+  });
+  player.on('events', function() {
+    renderEvents();
   });
   socket.on('error', function(err) {
     console.error(err);

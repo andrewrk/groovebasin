@@ -14,6 +14,8 @@ PlayerClient.REPEAT_OFF = 0;
 PlayerClient.REPEAT_ONE = 1;
 PlayerClient.REPEAT_ALL = 2;
 
+PlayerClient.GUEST_USER_ID = "(guest)";
+
 util.inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
   EventEmitter.call(this);
@@ -22,6 +24,7 @@ function PlayerClient(socket) {
   self.socket = socket;
   self.serverTimeOffset = 0;
   self.serverTrackStartDate = null;
+
   self.queueFromServer = undefined;
   self.queueFromServerVersion = null;
   self.libraryFromServer = undefined;
@@ -30,6 +33,11 @@ function PlayerClient(socket) {
   self.scanningFromServerVersion = null;
   self.playlistsFromServer = undefined;
   self.playlistsFromServerVersion = null;
+  self.eventsFromServer = undefined;
+  self.eventsFromServerVersion = null;
+  self.usersFromServer = undefined;
+  self.usersFromServerVersion = null;
+
   self.resetServerState();
   self.socket.on('disconnect', function() {
     self.resetServerState();
@@ -113,6 +121,24 @@ function PlayerClient(socket) {
     self.emit('playlistsUpdate');
   });
 
+  self.socket.on('events', function(o) {
+    if (o.reset) self.eventsFromServer = undefined;
+    self.eventsFromServer = jsondiffpatch.patch(self.eventsFromServer, o.delta);
+    deleteUndefineds(self.eventsFromServer);
+    self.eventsFromServerVersion = o.version;
+    self.sortEventsFromServer();
+    self.emit('events');
+  });
+
+  self.socket.on('users', function(o) {
+    if (o.reset) self.usersFromServer = undefined;
+    self.usersFromServer = jsondiffpatch.patch(self.usersFromServer, o.delta);
+    deleteUndefineds(self.usersFromServer);
+    self.usersFromServerVersion = o.version;
+    self.sortUsersFromServer();
+    self.emit('users');
+  });
+
   function deleteUndefineds(o) {
     for (var key in o) {
       if (o[key] === undefined) delete o[key];
@@ -145,6 +171,53 @@ PlayerClient.prototype.resubscribe = function(){
     version: this.playlistsFromServerVersion,
   });
   this.sendCommand('subscribe', {name: 'streamers'});
+  this.sendCommand('subscribe', {
+    name: 'users',
+    delta: true,
+    version: this.usersFromServerVersion,
+  });
+  this.sendCommand('subscribe', {
+    name: 'events',
+    delta: true,
+    version: this.eventsFromServerVersion,
+  });
+};
+
+PlayerClient.prototype.sortEventsFromServer = function() {
+  this.eventsList = [];
+  for (var id in this.eventsFromServer) {
+    var serverEvent = this.eventsFromServer[id];
+    var ev = {
+      id: serverEvent.id,
+      date: new Date(serverEvent.date),
+      userId: serverEvent.userId,
+      type: serverEvent.type,
+      sortKey: serverEvent.sortKey,
+      text: serverEvent.text,
+    };
+    this.eventsList.push(ev);
+  }
+  this.eventsList.sort(compareSortKeyAndId);
+};
+
+PlayerClient.prototype.sortUsersFromServer = function() {
+  this.usersList = [];
+  this.usersTable = {};
+  for (var id in this.usersFromServer) {
+    var serverUser = this.usersFromServer[id];
+    var user = {
+      id: id,
+      name: serverUser.name,
+      perms: serverUser.perms,
+      requested: !!serverUser.requested,
+      approved: !!serverUser.approved,
+      streaming: !!serverUser.streaming,
+      connected: !!serverUser.connected,
+    };
+    this.usersTable[id] = user;
+    this.usersList.push(user);
+  }
+  this.usersList.sort(compareUserNames);
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {
@@ -606,10 +679,10 @@ PlayerClient.prototype.resetServerState = function(){
   this.repeat = 0;
   this.currentItem = null;
   this.currentItemId = null;
-  this.streamers = {
-    anonCount: 0,
-    userIds: [],
-  };
+  this.streamers = 0;
+  this.usersList = [];
+  this.usersTable = {};
+  this.eventsList = [];
 
   this.clearStoredPlaylists();
 };
@@ -651,8 +724,7 @@ function noop(err){
 function operatorCompare(a, b){
   if (a === b) {
     return 0;
-  }
-  if (a < b) {
+  } else if (a < b) {
     return -1;
   } else {
     return 1;
@@ -668,4 +740,20 @@ function makeCompareProps(props){
     }
     return 0;
   };
+}
+
+function compareUserNames(a, b) {
+  var lowerA = a.name.toLowerCase();
+  var lowerB = b.name.toLowerCase();
+  if (a.id === PlayerClient.GUEST_USER_ID) {
+    return -1;
+  } else if (b.id === PlayerClient.GUEST_USER_ID) {
+    return 1;
+  } else if (lowerA < lowerB) {
+    return -1;
+  } else if (lowerA > lowerB) {
+    return 1;
+  } else {
+    return 0;
+  }
 }

@@ -2741,7 +2741,7 @@ var eventTypeMessageFns = {
     return "registered";
   },
   part: function(ev) {
-    return "disconnectd";
+    return "disconnected";
   },
   streamStart: function(ev) {
     if (ev.user) {
@@ -2759,6 +2759,13 @@ var eventTypeMessageFns = {
   },
   currentTrack: function(ev) {
     return "Now playing: " + getNowPlayingText(ev.track);
+  },
+  seek: function(ev) {
+    if (ev.pos === 0) {
+      return "chose a different song";
+    } else {
+      return "seeked to " + formatTime(ev.pos);
+    }
   },
 };
 function getEventMessage(ev) {

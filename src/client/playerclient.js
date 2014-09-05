@@ -193,6 +193,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       type: serverEvent.type,
       sortKey: serverEvent.sortKey,
       text: serverEvent.text,
+      pos: serverEvent.pos ? serverEvent.pos : 0,
     };
     if (serverEvent.trackId) {
       ev.track = this.library.trackTable[serverEvent.trackId];

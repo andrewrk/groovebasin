@@ -988,6 +988,17 @@ function renderVolumeSlider() {
   $volWarning.toggle(player.volume > 1);
 }
 
+function getNowPlayingText(track) {
+  if (!track) {
+    return "Nothing";
+  }
+  var str = track.name + " - " + track.artistName;
+  if (track.albumName) {
+    str += " - " + track.albumName;
+  }
+  return str;
+}
+
 function renderNowPlaying() {
   var track = null;
   if (player.currentItem != null) {
@@ -995,10 +1006,7 @@ function renderNowPlaying() {
   }
   var trackDisplay;
   if (track != null) {
-    trackDisplay = track.name + " - " + track.artistName;
-    if (track.albumName.length) {
-      trackDisplay += " - " + track.albumName;
-    }
+    trackDisplay = getNowPlayingText(track);
     document.title = trackDisplay + " - " + BASE_TITLE;
     if (/Groove Basin/.test(track.name)) {
       $("html").addClass('groovebasin');
@@ -2702,8 +2710,7 @@ function renderEvents() {
   for (i = 0; i < player.eventsList.length; i += 1) {
     var $domItem = $($domItems[i]);
     var ev = player.eventsList[i];
-    var user = player.usersTable[ev.userId];
-    var userText = user ? user.name : "*";
+    var userText = ev.user ? ev.user.name : "*";
     $domItem.removeClass().addClass('event').addClass(ev.type);
     $domItem.find('.name').text(userText).attr('title', ev.date.toString());
     $domItem.find('.msg').text(getEventMessage(ev));
@@ -2734,18 +2741,21 @@ var eventTypeMessageFns = {
     return "disconnectd";
   },
   streamStart: function(ev) {
-    if (ev.userId) {
+    if (ev.user) {
       return "started streaming";
     } else {
       return "anonymous user started streaming";
     }
   },
   streamStop: function(ev) {
-    if (ev.userId) {
+    if (ev.user) {
       return "stopped streaming";
     } else {
       return "anonymous user stopped streaming";
     }
+  },
+  currentTrack: function(ev) {
+    return "Now playing: " + getNowPlayingText(ev.track);
   },
 };
 function getEventMessage(ev) {

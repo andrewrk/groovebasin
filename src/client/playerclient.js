@@ -190,11 +190,16 @@ PlayerClient.prototype.sortEventsFromServer = function() {
     var ev = {
       id: serverEvent.id,
       date: new Date(serverEvent.date),
-      userId: serverEvent.userId,
       type: serverEvent.type,
       sortKey: serverEvent.sortKey,
       text: serverEvent.text,
     };
+    if (serverEvent.trackId) {
+      ev.track = this.library.trackTable[serverEvent.trackId];
+    }
+    if (serverEvent.userId) {
+      ev.user = this.usersTable[serverEvent.userId];
+    }
     this.eventsList.push(ev);
   }
   this.eventsList.sort(compareSortKeyAndId);

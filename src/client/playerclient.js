@@ -186,8 +186,10 @@ PlayerClient.prototype.resubscribe = function(){
 
 PlayerClient.prototype.sortEventsFromServer = function() {
   this.eventsList = [];
+  this.unseenChatCount = 0;
   for (var id in this.eventsFromServer) {
     var serverEvent = this.eventsFromServer[id];
+    var seen = !!this.seenEvents[id];
     var ev = {
       id: id,
       date: new Date(serverEvent.date),
@@ -195,8 +197,11 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       sortKey: serverEvent.sortKey,
       text: serverEvent.text,
       pos: serverEvent.pos ? serverEvent.pos : 0,
-      seen: !!this.seenEvents[id],
+      seen: seen,
     };
+    if (!seen && serverEvent.type === 'chat') {
+      this.unseenChatCount += 1;
+    }
     if (serverEvent.trackId) {
       ev.track = this.library.trackTable[serverEvent.trackId];
     }
@@ -215,6 +220,7 @@ PlayerClient.prototype.markAllEventsSeen = function() {
     this.seenEvents[ev.id] = true;
     ev.seen = true;
   }
+  this.unseenChatCount = 0;
 };
 
 PlayerClient.prototype.sortUsersFromServer = function() {
@@ -701,6 +707,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.usersTable = {};
   this.eventsList = [];
   this.seenEvents = {};
+  this.unseenChatCount = 0;
 
   this.clearStoredPlaylists();
 };

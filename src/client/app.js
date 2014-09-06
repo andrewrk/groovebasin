@@ -13,6 +13,7 @@ var haveAdminUser = true;
 
 var downloadMenuZipName = null;
 var eventsListScrolledToBottom = true;
+var isBrowserTabActive = true;
 
 var selection = {
   ids: {
@@ -1007,10 +1008,11 @@ function renderNowPlaying() {
   if (player.currentItem != null) {
     track = player.currentItem.track;
   }
+
+  updateTitle();
   var trackDisplay;
   if (track != null) {
     trackDisplay = getNowPlayingText(track);
-    document.title = trackDisplay + " - " + BASE_TITLE;
     if (/Groove Basin/.test(track.name)) {
       $("html").addClass('groovebasin');
     } else {
@@ -1023,7 +1025,6 @@ function renderNowPlaying() {
     }
   } else {
     trackDisplay = "&nbsp;";
-    document.title = BASE_TITLE;
   }
   $trackDisplay.html(trackDisplay);
   var oldClass;
@@ -2697,15 +2698,20 @@ function clearChatInputValue() {
 }
 
 function renderUnseenChatCount() {
-  var unseenChatCount = 0;
-  for (var i = 0; i < player.eventsList.length; i += 1) {
-    var ev = player.eventsList[i];
-    if (ev.type === 'chat' && !ev.seen) {
-      unseenChatCount += 1;
-    }
-  }
-  var eventsTabText = (unseenChatCount > 0) ? ("Events (" + unseenChatCount + ")") : "Events";
+  var eventsTabText = (player.unseenChatCount > 0) ?
+    ("Events (" + player.unseenChatCount + ")") : "Events";
   $eventsTabSpan.text(eventsTabText);
+  updateTitle();
+}
+
+function updateTitle() {
+  var track = player.currentItem && player.currentItem.track;
+  var prefix = (player.unseenChatCount > 0) ? ("(" + player.unseenChatCount + ") ") : "";
+  if (track) {
+    document.title = prefix + getNowPlayingText(track) + " - " + BASE_TITLE;
+  } else {
+    document.title = prefix + BASE_TITLE;
+  }
 }
 
 function renderEvents() {
@@ -3288,7 +3294,7 @@ $document.ready(function(){
     labelPlaylistItems();
   });
   player.on('events', function() {
-    if (activeTab === tabs.events) {
+    if (activeTab === tabs.events && isBrowserTabActive) {
       player.markAllEventsSeen();
     }
     renderEvents();
@@ -3304,8 +3310,22 @@ $document.ready(function(){
   streaming.init(player, socket, localState, saveLocalState);
   render();
   $window.resize(handleResize);
+  window.addEventListener('focus', onWindowFocus, false);
+  window.addEventListener('blur', onWindowBlur, false);
   window._debug_player = player;
 });
+
+function onWindowFocus() {
+  isBrowserTabActive = true;
+  if (activeTab === tabs.events) {
+    player.markAllEventsSeen();
+    renderUnseenChatCount();
+  }
+}
+
+function onWindowBlur() {
+  isBrowserTabActive = false;
+}
 
 function compareArrays(arr1, arr2) {
   for (var i1 = 0; i1 < arr1.length; i1 += 1) {

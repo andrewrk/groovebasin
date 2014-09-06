@@ -489,6 +489,8 @@ var tabs = {
     $tab: $('#settings-tab'),
   },
 };
+var activeTab = tabs.library;
+var $eventsTabSpan = tabs.events.$tab.find('span');
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -2299,7 +2301,12 @@ function clickTab(tab) {
   unselectTabs();
   tab.$tab.addClass('ui-state-active');
   tab.$pane.show();
+  activeTab = tab;
   handleResize();
+  if (tab === tabs.events) {
+    player.markAllEventsSeen();
+    renderUnseenChatCount();
+  }
 }
 
 function setUpTabListener(tab) {
@@ -2689,12 +2696,26 @@ function clearChatInputValue() {
   $chatBoxInput.val("");
 }
 
+function renderUnseenChatCount() {
+  var unseenChatCount = 0;
+  for (var i = 0; i < player.eventsList.length; i += 1) {
+    var ev = player.eventsList[i];
+    if (ev.type === 'chat' && !ev.seen) {
+      unseenChatCount += 1;
+    }
+  }
+  var eventsTabText = (unseenChatCount > 0) ? ("Events (" + unseenChatCount + ")") : "Events";
+  $eventsTabSpan.text(eventsTabText);
+}
+
 function renderEvents() {
   var eventsListDom = $eventsList.get(0);
   var scrollTop = $eventsList.scrollTop();
 
+  renderUnseenChatCount();
+
   // add the missing dom entries
-  var i;
+  var i, ev;
   for (i = eventsListDom.childElementCount; i < player.eventsList.length; i += 1) {
     $eventsList.append(
       '<div class="event">' +
@@ -2712,7 +2733,7 @@ function renderEvents() {
   var $domItems = $eventsList.children();
   for (i = 0; i < player.eventsList.length; i += 1) {
     var $domItem = $($domItems[i]);
-    var ev = player.eventsList[i];
+    ev = player.eventsList[i];
     var userText = ev.user ? ev.user.name : "*";
     $domItem.removeClass().addClass('event').addClass(ev.type);
     $domItem.find('.name').text(userText).attr('title', ev.date.toString());
@@ -3266,12 +3287,15 @@ $document.ready(function(){
     renderPlaylistButtons();
     labelPlaylistItems();
   });
+  player.on('events', function() {
+    if (activeTab === tabs.events) {
+      player.markAllEventsSeen();
+    }
+    renderEvents();
+  });
   socket.on('disconnect', function(){
     loadStatus = LoadStatus.NoServer;
     render();
-  });
-  player.on('events', function() {
-    renderEvents();
   });
   socket.on('error', function(err) {
     console.error(err);

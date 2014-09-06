@@ -127,6 +127,7 @@ function PlayerClient(socket) {
     deleteUndefineds(self.eventsFromServer);
     self.eventsFromServerVersion = o.version;
     self.sortEventsFromServer();
+    if (o.reset) self.markAllEventsSeen();
     self.emit('events');
   });
 
@@ -188,12 +189,13 @@ PlayerClient.prototype.sortEventsFromServer = function() {
   for (var id in this.eventsFromServer) {
     var serverEvent = this.eventsFromServer[id];
     var ev = {
-      id: serverEvent.id,
+      id: id,
       date: new Date(serverEvent.date),
       type: serverEvent.type,
       sortKey: serverEvent.sortKey,
       text: serverEvent.text,
       pos: serverEvent.pos ? serverEvent.pos : 0,
+      seen: !!this.seenEvents[id],
     };
     if (serverEvent.trackId) {
       ev.track = this.library.trackTable[serverEvent.trackId];
@@ -204,6 +206,15 @@ PlayerClient.prototype.sortEventsFromServer = function() {
     this.eventsList.push(ev);
   }
   this.eventsList.sort(compareSortKeyAndId);
+};
+
+PlayerClient.prototype.markAllEventsSeen = function() {
+  this.seenEvents = {};
+  for (var i = 0; i < this.eventsList.length; i += 1) {
+    var ev = this.eventsList[i];
+    this.seenEvents[ev.id] = true;
+    ev.seen = true;
+  }
 };
 
 PlayerClient.prototype.sortUsersFromServer = function() {
@@ -689,6 +700,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.usersList = [];
   this.usersTable = {};
   this.eventsList = [];
+  this.seenEvents = {};
 
   this.clearStoredPlaylists();
 };

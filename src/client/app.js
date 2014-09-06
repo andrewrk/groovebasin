@@ -2802,7 +2802,11 @@ var eventTypeMessageFns = {
     return "pressed play";
   },
   import: function(ev) {
-    return "imported " + getNowPlayingText(ev.track);
+    if (ev.user) {
+      return "imported " + getNowPlayingText(ev.track);
+    } else {
+      return "anonymous user imported " + getNowPlayingText(ev.track);
+    }
   },
 };
 function getEventMessage(ev) {

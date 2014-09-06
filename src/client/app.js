@@ -12,7 +12,7 @@ var hardwarePlaybackOn = false;
 var haveAdminUser = true;
 
 var downloadMenuZipName = null;
-var firstEventsScrollToBottom = false;
+var eventsListScrolledToBottom = true;
 
 var selection = {
   ids: {
@@ -1520,8 +1520,8 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: function() {
         clickTab(tabs.events);
-        scrollEventsToBottom();
         $chatBoxInput.focus().select();
+        scrollEventsToBottom();
       },
     },
     // i
@@ -2664,6 +2664,9 @@ function handleUserOrPassKeyDown(event) {
 }
 
 function setUpEventsUi() {
+  $eventsList.on('scroll', function(event) {
+    eventsListScrolledToBottom = ($eventsList.get(0).scrollHeight - $eventsList.scrollTop()) === $eventsList.outerHeight();
+  });
   $chatBoxInput.on('keydown', function(event) {
     event.stopPropagation();
     if (event.which === 27) {
@@ -2689,9 +2692,6 @@ function clearChatInputValue() {
 function renderEvents() {
   var eventsListDom = $eventsList.get(0);
   var scrollTop = $eventsList.scrollTop();
-  firstEventsScrollToBottom = firstEventsScrollToBottom || (eventsListDom.childElementCount === 0);
-  var scrolledToBottom = firstEventsScrollToBottom ||
-    (eventsListDom.scrollHeight - scrollTop) === $eventsList.outerHeight();
 
   // add the missing dom entries
   var i;
@@ -2719,7 +2719,7 @@ function renderEvents() {
     $domItem.find('.msg').text(getEventMessage(ev));
   }
 
-  if (scrolledToBottom) {
+  if (eventsListScrolledToBottom) {
     scrollEventsToBottom();
   } else {
     $eventsList.scrollTop(scrollTop);
@@ -2727,6 +2727,7 @@ function renderEvents() {
 }
 
 function scrollEventsToBottom() {
+  eventsListScrolledToBottom = true;
   $eventsList.scrollTop(1000000);
 }
 
@@ -3141,8 +3142,6 @@ function toStoredPlaylistId(s) {
 
 function handleResize() {
   var eventsScrollTop = $eventsList.scrollTop();
-  var eventsScrolledToBottom = firstEventsScrollToBottom ||
-    ($eventsList.get(0).scrollHeight - eventsScrollTop) === $eventsList.outerHeight();
 
   $nowplaying.width(MARGIN);
 
@@ -3173,9 +3172,8 @@ function handleResize() {
   setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
 
-  if (eventsScrolledToBottom) {
+  if (eventsListScrolledToBottom) {
     scrollEventsToBottom();
-    firstEventsScrollToBottom = false;
   }
 }
 

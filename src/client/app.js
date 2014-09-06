@@ -2801,6 +2801,9 @@ var eventTypeMessageFns = {
   play: function(ev) {
     return "pressed play";
   },
+  import: function(ev) {
+    return "imported " + getNowPlayingText(ev.track);
+  },
 };
 function getEventMessage(ev) {
   var fn = eventTypeMessageFns[ev.type];

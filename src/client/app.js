@@ -2762,14 +2762,37 @@ var eventTypeMessageFns = {
   chat: function(ev) {
     return ev.text;
   },
+  currentTrack: function(ev) {
+    return "Now playing: " + getNowPlayingText(ev.track);
+  },
+  import: function(ev) {
+    if (ev.user) {
+      return "imported " + getNowPlayingText(ev.track);
+    } else {
+      return "anonymous user imported " + getNowPlayingText(ev.track);
+    }
+  },
   login: function(ev) {
     return "logged in";
+  },
+  part: function(ev) {
+    return "disconnected";
+  },
+  pause: function(ev) {
+    return "pressed pause";
+  },
+  play: function(ev) {
+    return "pressed play";
   },
   register: function(ev) {
     return "registered";
   },
-  part: function(ev) {
-    return "disconnected";
+  seek: function(ev) {
+    if (ev.pos === 0) {
+      return "chose a different song";
+    } else {
+      return "seeked to " + formatTime(ev.pos);
+    }
   },
   streamStart: function(ev) {
     if (ev.user) {
@@ -2783,29 +2806,6 @@ var eventTypeMessageFns = {
       return "stopped streaming";
     } else {
       return "anonymous user stopped streaming";
-    }
-  },
-  currentTrack: function(ev) {
-    return "Now playing: " + getNowPlayingText(ev.track);
-  },
-  seek: function(ev) {
-    if (ev.pos === 0) {
-      return "chose a different song";
-    } else {
-      return "seeked to " + formatTime(ev.pos);
-    }
-  },
-  pause: function(ev) {
-    return "pressed pause";
-  },
-  play: function(ev) {
-    return "pressed play";
-  },
-  import: function(ev) {
-    if (ev.user) {
-      return "imported " + getNowPlayingText(ev.track);
-    } else {
-      return "anonymous user imported " + getNowPlayingText(ev.track);
     }
   },
 };

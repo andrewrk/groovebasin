@@ -103,7 +103,6 @@ in #libgroove on Freenode.
 
 ### Roadmap
 
- 0. Event history
  0. Music library organization
  0. Playlists
  0. Accoustid Integration

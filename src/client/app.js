@@ -2775,6 +2775,9 @@ var eventTypeMessageFns = {
   login: function(ev) {
     return "logged in";
   },
+  move: function(ev) {
+    return "moved queue items";
+  },
   part: function(ev) {
     return "disconnected";
   },

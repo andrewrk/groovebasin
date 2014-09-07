@@ -382,7 +382,7 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
     previousKey = sortKey;
   }
   this.refreshPlaylistList(this.queue);
-  this.sendCommand('addid', items);
+  this.sendCommand('queue', items);
   this.emit('queueUpdate');
 };
 
@@ -575,7 +575,7 @@ PlayerClient.prototype.removeIds = function(trackIds){
     delete this.queue.itemTable[item.id];
     this.refreshPlaylistList(this.queue);
   }
-  this.sendCommand('deleteid', ids);
+  this.sendCommand('remove', ids);
   this.emit('queueUpdate');
 };
 

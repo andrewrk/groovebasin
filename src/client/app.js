@@ -2787,11 +2787,19 @@ var eventTypeMessageFns = {
   play: function(ev) {
     return "pressed play";
   },
-  queueOne: function(ev) {
-    return "added to the queue: " + getNowPlayingText(ev.track);
+  queue: function(ev) {
+    if (ev.track) {
+      return "added to the queue: " + getNowPlayingText(ev.track);
+    } else {
+      return "added " + ev.pos + " tracks to the queue";
+    }
   },
-  queueMany: function(ev) {
-    return "added " + ev.pos + " tracks to the queue";
+  remove: function(ev) {
+    if (ev.track) {
+      return "removed from the queue: " + getNowPlayingText(ev.track);
+    } else {
+      return "removed " + ev.pos + " tracks from the queue";
+    }
   },
   register: function(ev) {
     return "registered";

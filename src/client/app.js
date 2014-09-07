@@ -994,7 +994,7 @@ function renderVolumeSlider() {
 
 function getNowPlayingText(track) {
   if (!track) {
-    return "Nothing";
+    return "(Deleted Track)";
   }
   var str = track.name + " - " + track.artistName;
   if (track.albumName) {

@@ -2784,6 +2784,12 @@ var eventTypeMessageFns = {
   play: function(ev) {
     return "pressed play";
   },
+  queueOne: function(ev) {
+    return "added to the queue: " + getNowPlayingText(ev.track);
+  },
+  queueMany: function(ev) {
+    return "added " + ev.pos + " tracks to the queue";
+  },
   register: function(ev) {
     return "registered";
   },

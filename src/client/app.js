@@ -1484,6 +1484,15 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: toggleDynamicMode,
     },
+    // e
+    69: {
+      ctrl: false,
+      alt: false,
+      shift: false,
+      handler: function(){
+        clickTab(tabs.settings);
+      },
+    },
     // S
     72: {
       ctrl: false,
@@ -1491,15 +1500,6 @@ var keyboardHandlers = (function(){
       shift: true,
       handler: function(){
         player.shuffle();
-      },
-    },
-    // l
-    76: {
-      ctrl: false,
-      alt: false,
-      shift: false,
-      handler: function(){
-        clickTab(tabs.library);
       },
     },
     // r

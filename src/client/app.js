@@ -2811,6 +2811,9 @@ var eventTypeMessageFns = {
       return "seeked to " + formatTime(ev.pos);
     }
   },
+  stop: function(ev) {
+    return "pressed stop";
+  },
   streamStart: function(ev) {
     if (ev.user) {
       return "started streaming";

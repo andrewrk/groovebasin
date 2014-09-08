@@ -3,7 +3,6 @@ var $ = window.$;
 var shuffle = require('mess');
 var querystring = require('querystring');
 var PlayerClient = require('./playerclient');
-var streaming = require('./streaming');
 var Socket = require('./socket');
 var uuid = require('./uuid');
 
@@ -14,6 +13,12 @@ var haveAdminUser = true;
 var downloadMenuZipName = null;
 var eventsListScrolledToBottom = true;
 var isBrowserTabActive = true;
+
+var tryingToStream = false;
+var actuallyStreaming = false;
+var actuallyPlaying = false;
+var stillBuffering = false;
+var streamAudio = new Audio();
 
 var selection = {
   ids: {
@@ -389,6 +394,9 @@ var localState = {
 };
 var $document = $(document);
 var $window = $(window);
+var $streamBtn = $('#stream-btn');
+var $clientVolSlider = $('#client-vol-slider');
+var $clientVol = $('#client-vol');
 var $queueWindow = $('#queue-window');
 var $leftWindow = $('#left-window');
 var $queueItems = $('#queue-items');
@@ -1514,7 +1522,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: false,
-      handler: streaming.toggleStatus
+      handler: toggleStreamStatus
     },
     // t
     84: {
@@ -1585,8 +1593,8 @@ var keyboardHandlers = (function(){
 })();
 
 function bumpVolume(v) {
-  if (streaming.getTryingToStream()) {
-    streaming.setVolume(streaming.getVolume() + v);
+  if (tryingToStream) {
+    setStreamVolume(streamAudio.volume + v);
   } else {
     player.setVolume(player.volume + v);
   }
@@ -2503,7 +2511,7 @@ function updateSettingsAuthUi() {
   $authPermAdd.toggle(havePerm('add'));
   $authPermControl.toggle(havePerm('control'));
   $authPermAdmin.toggle(havePerm('admin'));
-  streamUrlDom.setAttribute('href', streaming.getUrl());
+  streamUrlDom.setAttribute('href', getStreamUrl());
   $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
   $settingsAuthLogout.toggle(myUser.registered);
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
@@ -3176,6 +3184,25 @@ function setUpUi(){
   setUpSettingsUi();
   setUpEditTagsUi();
   setUpEventsUi();
+  setUpStreamUi();
+}
+
+function setUpStreamUi() {
+  $streamBtn.button({
+    icons: {
+      primary: "ui-icon-signal-diag"
+    }
+  });
+  $streamBtn.on('click', toggleStreamStatus);
+  $clientVolSlider.slider({
+    step: 0.01,
+    min: 0,
+    max: 1,
+    value: localState.clientVolume || 1,
+    change: setVol,
+    slide: setVol,
+  });
+  $clientVol.hide();
 }
 
 function toAlbumId(s) {
@@ -3242,6 +3269,117 @@ function setAllTabsHeight(h) {
   }
 }
 
+function onStreamLabelDown(event) {
+  event.stopPropagation();
+}
+
+function getStreamerCount() {
+  var count = player.streamers;
+  player.usersList.forEach(function(user) {
+    if (user.streaming) count += 1;
+  });
+  return count;
+}
+
+function getStreamStatusLabel() {
+  if (tryingToStream) {
+    if (actuallyStreaming) {
+      if (stillBuffering) {
+        return "Buffering";
+      } else {
+        return "On";
+      }
+    } else {
+      return "Paused";
+    }
+  } else {
+    return "Off";
+  }
+}
+
+function getStreamButtonLabel() {
+  return getStreamerCount() + " Stream: " + getStreamStatusLabel();
+}
+
+function renderStreamButton(){
+  var label = getStreamButtonLabel();
+  $streamBtn
+    .button("option", "label", label)
+    .prop("checked", tryingToStream)
+    .button("refresh");
+  $clientVol.toggle(tryingToStream);
+}
+
+function toggleStreamStatus() {
+  tryingToStream = !tryingToStream;
+  renderStreamButton();
+  updateStreamPlayer();
+  return false;
+}
+
+function getStreamUrl() {
+  // keep the URL relative so that reverse proxies can work
+  return "stream.mp3";
+}
+
+function onStreamPlaying() {
+  stillBuffering = false;
+  renderStreamButton();
+}
+
+function clearStreamBuffer() {
+  if (tryingToStream) {
+    tryingToStream = !tryingToStream;
+    updateStreamPlayer();
+    tryingToStream = !tryingToStream;
+    updateStreamPlayer();
+  }
+}
+
+function updateStreamPlayer() {
+  if (actuallyStreaming !== tryingToStream || actuallyPlaying !== player.isPlaying) {
+    if (tryingToStream) {
+      streamAudio.src = getStreamUrl();
+      streamAudio.load();
+      if (player.isPlaying) {
+        streamAudio.play();
+        stillBuffering = true;
+        actuallyPlaying = true;
+      } else {
+        streamAudio.pause();
+        stillBuffering = false;
+        actuallyPlaying = false;
+      }
+    } else {
+      streamAudio.pause();
+      streamAudio.src = "";
+      streamAudio.load();
+      stillBuffering = false;
+      actuallyPlaying = false;
+    }
+    actuallyStreaming = tryingToStream;
+  }
+  renderStreamButton();
+}
+
+function setVol(event, ui) {
+  if (event.originalEvent == null) return;
+  setStreamVolume(ui.value);
+}
+
+function setStreamVolume(v) {
+  if (v < 0) v = 0;
+  if (v > 1) v = 1;
+  streamAudio.volume = v;
+  localState.clientVolume = v;
+  saveLocalState();
+  $clientVolSlider.slider('option', 'value', streamAudio.volume);
+}
+
+window.addEventListener('focus', onWindowFocus, false);
+window.addEventListener('blur', onWindowBlur, false);
+streamAudio.addEventListener('playing', onStreamPlaying, false);
+document.getElementById('stream-btn-label').addEventListener('mousedown', onStreamLabelDown, false);
 $document.ready(function(){
   loadLocalState();
   socket = new Socket();
@@ -3310,6 +3448,7 @@ $document.ready(function(){
     updateSettingsAuthUi();
     renderEvents();
     renderOnlineUsers();
+    renderStreamButton();
   });
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
@@ -3326,6 +3465,9 @@ $document.ready(function(){
     }
     renderEvents();
   });
+  player.on('currentTrack', updateStreamPlayer);
+  player.on('streamers', renderStreamButton);
+  socket.on('seek', clearStreamBuffer);
   socket.on('disconnect', function(){
     loadStatus = LoadStatus.NoServer;
     render();
@@ -3333,12 +3475,10 @@ $document.ready(function(){
   socket.on('error', function(err) {
     console.error(err);
   });
+
   setUpUi();
-  streaming.init(player, socket, localState, saveLocalState);
   render();
   $window.resize(handleResize);
-  window.addEventListener('focus', onWindowFocus, false);
-  window.addEventListener('blur', onWindowBlur, false);
   window._debug_player = player;
 });
 

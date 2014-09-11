@@ -41,8 +41,7 @@
     "ws": "~0.4.32",
     "ytdl-core": ">=0.2.4",
     "zip-stream": "~0.3.7",
-    "level-packager": "~0.18.0",
-    "leveldown": "~0.10.2"
+    "leveldown": "~1.0.0"
   },
   "devDependencies": {
     "browserify": "~5.10.0",

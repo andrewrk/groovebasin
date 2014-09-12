@@ -2458,7 +2458,7 @@ function updateLastFmSettingsUi() {
   settingsLastFmUserDom.setAttribute('href', "http://last.fm/user/" +
       encodeURIComponent(localState.lastfm.username));
   settingsLastFmUserDom.textContent = localState.lastfm.username;
-  var authUrl = "http://www.last.fm/api/auth/?api_key=" +
+  var authUrl = "https://www.last.fm/api/auth/?api_key=" +
         encodeURIComponent(lastFmApiKey) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/");
   lastFmAuthUrlDom.setAttribute('href', authUrl);

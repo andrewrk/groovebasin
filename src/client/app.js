@@ -1470,8 +1470,12 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(event){
-        handleDeletePressed(event.shiftKey);
+      handler: function(event) {
+        if ((havePerm('admin') && event.shiftKey) ||
+           (havePerm('control') && !event.shiftKey))
+        {
+          handleDeletePressed(event.shiftKey);
+        }
       },
     },
     // =

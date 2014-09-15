@@ -3316,9 +3316,14 @@ function renderStreamButton(){
 
 function toggleStreamStatus() {
   tryingToStream = !tryingToStream;
+  sendStreamingStatus();
   renderStreamButton();
   updateStreamPlayer();
   return false;
+}
+
+function sendStreamingStatus() {
+  socket.send("setStreaming", tryingToStream);
 }
 
 function getStreamUrl() {
@@ -3441,6 +3446,7 @@ $document.ready(function(){
   });
   socket.on('connect', function(){
     sendAuth();
+    sendStreamingStatus();
     socket.send('subscribe', {name: 'dynamicModeOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
     socket.send('subscribe', {name: 'haveAdminUser'});

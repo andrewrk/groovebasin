@@ -2958,9 +2958,9 @@ function setUpLibraryUi(){
       return false;
     }
   });
-  $libFilter.on('keyup', function(event){
-    ensureSearchHappensSoon();
-  });
+  $libFilter.on('keyup', ensureSearchHappensSoon);
+  $libFilter.on('cut', ensureSearchHappensSoon);
+  $libFilter.on('paste', ensureSearchHappensSoon);
   genericTreeUi($library, {
     toggleExpansion: toggleLibraryExpansion,
     isSelectionOwner: function(){

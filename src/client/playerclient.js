@@ -562,20 +562,22 @@ PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
 
 PlayerClient.prototype.removeIds = function(trackIds){
   if (trackIds.length === 0) return;
-  var ids = [];
+
+  var currentId = this.currentItem && this.currentItem.id;
+  var currentIndex = this.currentItem && this.currentItem.index;
   for (var i = 0; i < trackIds.length; i += 1) {
     var trackId = trackIds[i];
-    var currentId = this.currentItem && this.currentItem.id;
-    if (currentId === trackId) {
-      this.currentItemId = null;
-      this.currentItem = null;
+    if (trackId === currentId) {
+      this.trackStartDate = new Date();
+      this.pausedTime = 0;
     }
-    ids.push(trackId);
-    var item = this.queue.itemTable[trackId];
-    delete this.queue.itemTable[item.id];
-    this.refreshPlaylistList(this.queue);
+    delete this.queue.itemTable[trackId];
   }
-  this.sendCommand('remove', ids);
+  this.refreshPlaylistList(this.queue);
+  this.currentItem = (currentIndex == null) ? null : this.queue.itemList[currentIndex];
+  this.currentItemId = this.currentItem && this.currentItem.id;
+
+  this.sendCommand('remove', trackIds);
   this.emit('queueUpdate');
 };
 

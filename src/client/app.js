@@ -446,6 +446,7 @@ var $editTagsDialog = $('#edit-tags');
 var $queueMenu = $('#menu-queue');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
+var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
 var $newPlaylistBtn = $('#new-playlist-btn');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
@@ -2521,6 +2522,11 @@ function updateSettingsAuthUi() {
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
   $settingsUsers.toggle(havePerm('admin'));
   $settingsRequests.toggle(havePerm('admin') && !!request);
+
+  $toggleHardwarePlayback
+    .prop('disabled', !havePerm('admin'))
+    .button('refresh');
+  $toggleHardwarePlaybackLabel.attr('title', havePerm('admin') ? "" : "Requires admin privilege.");
 }
 
 function updateSettingsAdminUi() {

@@ -565,14 +565,20 @@ PlayerClient.prototype.removeIds = function(trackIds){
 
   var currentId = this.currentItem && this.currentItem.id;
   var currentIndex = this.currentItem && this.currentItem.index;
+  var offset = 0;
   for (var i = 0; i < trackIds.length; i += 1) {
     var trackId = trackIds[i];
     if (trackId === currentId) {
       this.trackStartDate = new Date();
       this.pausedTime = 0;
     }
+    var item = this.queue.itemTable[trackId];
+    if (item.index < currentIndex) {
+      offset -= 1;
+    }
     delete this.queue.itemTable[trackId];
   }
+  currentIndex += offset;
   this.refreshPlaylistList(this.queue);
   this.currentItem = (currentIndex == null) ? null : this.queue.itemList[currentIndex];
   this.currentItemId = this.currentItem && this.currentItem.id;

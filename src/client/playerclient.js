@@ -3,7 +3,7 @@ var util = require('util');
 var uuid = require('./uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
-var jsondiffpatch = require('jsondiffpatch');
+var curlydiff = require('curlydiff');
 
 module.exports = PlayerClient;
 
@@ -78,7 +78,7 @@ function PlayerClient(socket) {
 
   self.socket.on('queue', function(o) {
     if (o.reset) self.queueFromServer = undefined;
-    self.queueFromServer = jsondiffpatch.patch(self.queueFromServer, o.delta);
+    self.queueFromServer = curlydiff.apply(self.queueFromServer, o.delta);
     deleteUndefineds(self.queueFromServer);
     self.queueFromServerVersion = o.version;
     self.updateQueueIndex();
@@ -88,7 +88,7 @@ function PlayerClient(socket) {
 
   self.socket.on('library', function(o) {
     if (o.reset) self.libraryFromServer = undefined;
-    self.libraryFromServer = jsondiffpatch.patch(self.libraryFromServer, o.delta);
+    self.libraryFromServer = curlydiff.apply(self.libraryFromServer, o.delta);
     deleteUndefineds(self.libraryFromServer);
     self.libraryFromServerVersion = o.version;
     self.library.clear();
@@ -106,7 +106,7 @@ function PlayerClient(socket) {
 
   self.socket.on('scanning', function(o) {
     if (o.reset) self.scanningFromServer = undefined;
-    self.scanningFromServer = jsondiffpatch.patch(self.scanningFromServer, o.delta);
+    self.scanningFromServer = curlydiff.apply(self.scanningFromServer, o.delta);
     deleteUndefineds(self.scanningFromServer);
     self.scanningFromServerVersion = o.version;
     self.emit('scanningUpdate');
@@ -114,7 +114,7 @@ function PlayerClient(socket) {
 
   self.socket.on('playlists', function(o) {
     if (o.reset) self.playlistsFromServer = undefined;
-    self.playlistsFromServer = jsondiffpatch.patch(self.playlistsFromServer, o.delta);
+    self.playlistsFromServer = curlydiff.apply(self.playlistsFromServer, o.delta);
     deleteUndefineds(self.playlistsFromServer);
     self.playlistsFromServerVersion = o.version;
     self.updatePlaylistsIndex();
@@ -123,7 +123,7 @@ function PlayerClient(socket) {
 
   self.socket.on('events', function(o) {
     if (o.reset) self.eventsFromServer = undefined;
-    self.eventsFromServer = jsondiffpatch.patch(self.eventsFromServer, o.delta);
+    self.eventsFromServer = curlydiff.apply(self.eventsFromServer, o.delta);
     deleteUndefineds(self.eventsFromServer);
     self.eventsFromServerVersion = o.version;
     self.sortEventsFromServer();
@@ -133,7 +133,7 @@ function PlayerClient(socket) {
 
   self.socket.on('users', function(o) {
     if (o.reset) self.usersFromServer = undefined;
-    self.usersFromServer = jsondiffpatch.patch(self.usersFromServer, o.delta);
+    self.usersFromServer = curlydiff.apply(self.usersFromServer, o.delta);
     deleteUndefineds(self.usersFromServer);
     self.usersFromServerVersion = o.version;
     self.sortUsersFromServer();

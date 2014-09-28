@@ -79,7 +79,6 @@ function PlayerClient(socket) {
   self.socket.on('queue', function(o) {
     if (o.reset) self.queueFromServer = undefined;
     self.queueFromServer = curlydiff.apply(self.queueFromServer, o.delta);
-    deleteUndefineds(self.queueFromServer);
     self.queueFromServerVersion = o.version;
     self.updateQueueIndex();
     self.emit('statusupdate');
@@ -89,7 +88,6 @@ function PlayerClient(socket) {
   self.socket.on('library', function(o) {
     if (o.reset) self.libraryFromServer = undefined;
     self.libraryFromServer = curlydiff.apply(self.libraryFromServer, o.delta);
-    deleteUndefineds(self.libraryFromServer);
     self.libraryFromServerVersion = o.version;
     self.library.clear();
     for (var key in self.libraryFromServer) {
@@ -107,7 +105,6 @@ function PlayerClient(socket) {
   self.socket.on('scanning', function(o) {
     if (o.reset) self.scanningFromServer = undefined;
     self.scanningFromServer = curlydiff.apply(self.scanningFromServer, o.delta);
-    deleteUndefineds(self.scanningFromServer);
     self.scanningFromServerVersion = o.version;
     self.emit('scanningUpdate');
   });
@@ -115,7 +112,6 @@ function PlayerClient(socket) {
   self.socket.on('playlists', function(o) {
     if (o.reset) self.playlistsFromServer = undefined;
     self.playlistsFromServer = curlydiff.apply(self.playlistsFromServer, o.delta);
-    deleteUndefineds(self.playlistsFromServer);
     self.playlistsFromServerVersion = o.version;
     self.updatePlaylistsIndex();
     self.emit('playlistsUpdate');
@@ -124,7 +120,6 @@ function PlayerClient(socket) {
   self.socket.on('events', function(o) {
     if (o.reset) self.eventsFromServer = undefined;
     self.eventsFromServer = curlydiff.apply(self.eventsFromServer, o.delta);
-    deleteUndefineds(self.eventsFromServer);
     self.eventsFromServerVersion = o.version;
     self.sortEventsFromServer();
     if (o.reset) self.markAllEventsSeen();
@@ -134,17 +129,10 @@ function PlayerClient(socket) {
   self.socket.on('users', function(o) {
     if (o.reset) self.usersFromServer = undefined;
     self.usersFromServer = curlydiff.apply(self.usersFromServer, o.delta);
-    deleteUndefineds(self.usersFromServer);
     self.usersFromServerVersion = o.version;
     self.sortUsersFromServer();
     self.emit('users');
   });
-
-  function deleteUndefineds(o) {
-    for (var key in o) {
-      if (o[key] === undefined) delete o[key];
-    }
-  }
 }
 
 PlayerClient.prototype.resubscribe = function(){

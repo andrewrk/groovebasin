@@ -20,7 +20,6 @@
     "url": "git://github.com/andrewrk/groovebasin.git"
   },
   "dependencies": {
-    "body-parser": "~1.6.5",
     "connect-static": "~1.2.2",
     "cookies": "~0.5.0",
     "express": "~4.8.4",

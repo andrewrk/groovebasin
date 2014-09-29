@@ -40,7 +40,7 @@
     "semver": "~3.0.1",
     "serve-static": "~1.5.3",
     "ws": "~0.4.32",
-    "yazl": "~2.0.0",
+    "yazl": "~2.0.1",
     "ytdl-core": ">=0.2.4"
   },
   "devDependencies": {

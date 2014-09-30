@@ -10,7 +10,6 @@ var dynamicModeOn = false;
 var hardwarePlaybackOn = false;
 var haveAdminUser = true;
 
-var downloadMenuZipName = null;
 var eventsListScrolledToBottom = true;
 var isBrowserTabActive = true;
 
@@ -567,28 +566,6 @@ function scrollThingToSelection($scrollArea, helpers){
       return $scrollArea.scrollTop(scrollAmt + selectionBottom);
     }
   }
-}
-
-function downloadKeys(keys, zipName) {
-  var $form = $(document.createElement('form'));
-  $form.attr('action', "/download/custom");
-  $form.attr('method', "post");
-  $form.attr('target', "_blank");
-  for (var i = 0; i < keys.length; i += 1) {
-    var key = keys[i];
-    var $input = $(document.createElement('input'));
-    $input.attr('type', 'hidden');
-    $input.attr('name', 'key');
-    $input.attr('value', key);
-    $form.append($input);
-  }
-  var $zipNameInput = $(document.createElement('input'));
-  $zipNameInput.attr('type', 'hidden');
-  $zipNameInput.attr('name', 'zipName');
-  $zipNameInput.attr('value', zipName);
-  $form.append($zipNameInput);
-
-  $form.submit();
 }
 
 function getDragPosition(x, y){
@@ -1934,11 +1911,9 @@ function setUpPlayQueueUi() {
       }
       if (!selection.isMulti()) {
         var item = player.queue.itemTable[trackId];
-        downloadMenuZipName = null;
         $queueMenu.find('.download').attr('href', encodeDownloadHref(item.track.file));
       } else {
-        downloadMenuZipName = "songs";
-        $queueMenu.find('.download').attr('href', '#');
+        $queueMenu.find('.download').attr('href', makeMultifileDownloadHref());
       }
       $queueMenu.show().offset({
         left: event.pageX + 1,
@@ -1990,12 +1965,6 @@ function stopPropagation(event) {
 
 function onDownloadContextMenu() {
   removeContextMenu();
-
-  if (downloadMenuZipName) {
-    downloadKeys(selection.toTrackKeys(), downloadMenuZipName);
-    return false;
-  }
-
   return true;
 }
 function onDeleteContextMenu() {
@@ -3101,12 +3070,12 @@ function genericTreeUi($elem, options){
         selection.selectOnly(type, key);
         refreshSelection();
       }
-      var track = null;
+      var singleTrack = null;
       if (!selection.isMulti()) {
         if (type === 'track') {
-          track = player.searchResults.trackTable[key];
+          singleTrack = player.searchResults.trackTable[key];
         } else if (type === 'stored_playlist_item') {
-          track = player.stored_playlist_item_table[key].track;
+          singleTrack = player.stored_playlist_item_table[key].track;
         }
       }
       var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
@@ -3123,12 +3092,10 @@ function genericTreeUi($elem, options){
       }
 
       var $downloadItem = $libraryMenu.find('.download');
-      if (track) {
-        downloadMenuZipName = null;
-        $downloadItem.attr('href', encodeDownloadHref(track.file));
+      if (singleTrack) {
+        $downloadItem.attr('href', encodeDownloadHref(singleTrack.file));
       } else {
-        downloadMenuZipName = zipNameForSelCursor();
-        $downloadItem.attr('href', '#');
+        $downloadItem.attr('href', makeMultifileDownloadHref());
       }
       $libraryMenu.show().offset({
         left: event.pageX + 1,
@@ -3147,21 +3114,9 @@ function encodeDownloadHref(file) {
   return 'library/' + encodeURI(file).replace(/#/g, "%23");
 }
 
-function zipNameForSelCursor() {
-  switch (selection.type) {
-    case 'artist':
-      return player.library.artistTable[selection.cursor].name;
-    case 'album':
-      return player.library.albumTable[selection.cursor].name;
-    case 'track':
-      return "songs";
-    case 'stored_playlist':
-      return player.stored_playlist_table[selection.cursor].name;
-    case 'stored_playlist_item':
-      return "songs";
-    default:
-      throw new Error("bad selection cursor type: " + selection.type);
-  }
+function makeMultifileDownloadHref() {
+  var keys = selection.toTrackKeys();
+  return "/download/keys?" + keys.join("&");
 }
 
 function updateMenuDisableState($menu) {

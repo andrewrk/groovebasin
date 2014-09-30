@@ -22,7 +22,7 @@
   "dependencies": {
     "connect-static": "~1.2.2",
     "cookies": "~0.5.0",
-    "curlydiff": "1.0.0",
+    "curlydiff": "~2.0.1",
     "express": "~4.8.4",
     "findit": "~2.0.0",
     "groove": "~2.2.6",

@@ -3289,7 +3289,7 @@ function sendStreamingStatus() {
 
 function getStreamUrl() {
   // keep the URL relative so that reverse proxies can work
-  return "stream.mp3";
+  return "stream.ogg";
 }
 
 function onStreamPlaying() {

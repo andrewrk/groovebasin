@@ -1,7 +1,6 @@
 var $ = window.$;
 
 var shuffle = require('mess');
-var querystring = require('querystring');
 var PlayerClient = require('./playerclient');
 var Socket = require('./socket');
 var uuid = require('./uuid');
@@ -3353,7 +3352,7 @@ document.getElementById('stream-btn-label').addEventListener('mousedown', onStre
 $document.ready(function(){
   loadLocalState();
   socket = new Socket();
-  var queryObj = querystring.parse(location.search.substring(1));
+  var queryObj = parseQueryString();
   if (queryObj.token) {
     socket.on('connect', function() {
       socket.send('LastFmGetSession', queryObj.token);
@@ -3509,4 +3508,15 @@ function zfill(number, size) {
 
 function havePerm(permName) {
   return !!(myUser && myUser.perms[permName]);
+}
+
+function parseQueryString(s) {
+  s = s || location.search.substring(1);
+  var o = {};
+  var pairs = s.split('&');
+  pairs.forEach(function(pair) {
+    var keyValueArr = pair.split('=');
+    o[keyValueArr[0]] = keyValueArr[1];
+  });
+  return o;
 }

@@ -1,5 +1,5 @@
-var EventEmitter = require('events').EventEmitter;
-var util = require('util');
+var EventEmitter = require('./event_emitter');
+var inherits = require('./inherits');
 var uuid = require('./uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
@@ -16,7 +16,7 @@ PlayerClient.REPEAT_ALL = 2;
 
 PlayerClient.GUEST_USER_ID = "(guest)";
 
-util.inherits(PlayerClient, EventEmitter);
+inherits(PlayerClient, EventEmitter);
 function PlayerClient(socket) {
   EventEmitter.call(this);
 

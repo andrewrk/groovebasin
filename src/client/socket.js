@@ -1,9 +1,9 @@
-var EventEmitter = require('events').EventEmitter;
-var util = require('util');
+var EventEmitter = require('./event_emitter');
+var inherits = require('./inherits');
 
 module.exports = Socket;
 
-util.inherits(Socket, EventEmitter);
+inherits(Socket, EventEmitter);
 function Socket() {
   var self = this;
   EventEmitter.call(self);

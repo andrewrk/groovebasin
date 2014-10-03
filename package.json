@@ -43,8 +43,8 @@
     "ytdl-core": ">=0.2.4"
   },
   "devDependencies": {
-    "browserify": "~5.10.0",
-    "stylus": "~0.47.3"
+    "stylus": "~0.47.3",
+    "browserify-lite": "0.0.1"
   },
   "scripts": {
     "start": "node lib/server.js",

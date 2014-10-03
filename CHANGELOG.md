@@ -1,3 +1,53 @@
+### Version 1.3.0 (2014-10-03)
+
+ * Andrew Kelley:
+   - if songs have no track numbers then never use album loudness
+   - fix YouTube import
+   - fix streaming not pausing and playing reliably
+   - fix glitch in streaming when resuming after a long pause
+   - add client side volume slider
+   - use SSL by default with a public self signed cert
+   - import URL allows downloading from https with invalid certs
+   - replace uuid dependency with a simpler, faster, and more robust
+     random string
+   - rewrite user login and permissions support. MPD users can log in with
+     (username) + '/' + (password)
+   - user accounts and permissions are managed via the browser interface
+     instead of with the configuration file
+   - add events tab which tells what actions have happened recently, supports
+     chat, and displays which users are streaming
+   - fix permissions checking for downloading anonymous requests
+   - remove 'l' hotkey for library and add 'e' hotkey for settings
+   - rename legacy protocol message names
+   - quieter log by default; ability to run with --verbose
+   - fix bug where all files on play queue would be preloaded; now only the
+     next and previous few files are preloaded
+   - client: shift+delete only attempts to delete tracks when you have the
+     necessary permissions
+   - stream endpoint obeys permission settings
+   - stream count is number of logged in users with an activated stream button
+     plus number of anonymous users connected to the http endpoint
+   - auto-pause is now instant instead of half second timer
+   - client: fix cutting/pasting text filter box behavior
+   - fix crash when removing a nested directory in the music directory
+   - client: fix player preduction when currently playing track is removed
+   - fix handling of slashes when importing from YouTube
+   - client: disable hardware playback toggle button when not admin
+   - cut the client javascript bundle size in half
+   - build: /bin/sh instead of /bin/bash
+
+ * Josh Wolfe:
+   - implement and switch to more robust zip generating module. Fixes unicode
+     file names in zips and enables the download progress bar.
+   - implement and switch to simpler object diffing module. Reduces client-side
+     JavaScript bundle size as well as bandwidth needed to stay connected to
+     Groove Basin when other users are making edits.
+   - Multi-file downloads use a GET request. This lets you copy a download URL
+     which downloads multiple files to the clipboard.
+
+ * David Renshaw:
+   - Fix crash when import URL fails to download.
+
 ### Version 1.2.1 (2014-07-04)
 
  * Andrew Kelley:

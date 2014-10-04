@@ -1,3 +1,11 @@
+### Version 1.3.1 (2014-10-03)
+
+ * Andrew Kelley:
+   - update to jquery 2.1.1; include unminified source
+   - correctly report error when fail to parse config
+   - use cssreset source instead of minified file
+   - update to jquery ui 1.11.1; include source
+
 ### Version 1.3.0 (2014-10-03)
 
  * Andrew Kelley:

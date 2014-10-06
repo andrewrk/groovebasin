@@ -1,3 +1,9 @@
+### Version 1.3.2 (2014-10-06)
+
+ * Andrew Kelley:
+   - style: fix messed up menus and volume slider from upgrading jquery ui
+   - config file is config.json instead of config.js
+
 ### Version 1.3.1 (2014-10-03)
 
  * Andrew Kelley:

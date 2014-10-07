@@ -67,8 +67,8 @@ groovebasin
 
 ## Configuration
 
-When Groove Basin starts it will look for `config.js` in the current directory.
-If not found it creates one for you with default values.
+When Groove Basin starts it will look for `config.json` in the current
+directory. If not found it creates one for you with default values.
 
 Use this to set your music library location and other settings.
 

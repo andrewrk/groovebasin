@@ -59,8 +59,8 @@ groovebasin
 1. Install [Node.js](http://nodejs.org) v0.10.x. On Debian and
    Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`.
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
-   libgroove is available in Debian Testing and an Ubuntu PPA. See the
-   libgroove README for more details.
+   libgroove is available in many package managers. See the libgroove README
+   for more details.
 3. Clone the source and cd to it.
 4. `npm run build`
 5. `npm start`
@@ -77,10 +77,12 @@ instead of using the public one bundled with this source code.
 
 ## Screenshots
 
-![Search + drag/drop support](http://superjoesoftware.com/temp/groove-basin-0.0.4.png)
-![Multi-select and context menu](http://superjoesoftware.com/temp/groove-basin-0.0.4-lib-menu.png)
-![Keyboard shortcuts](http://superjoesoftware.com/temp/groove-basin-0.0.4-shortcuts.png)
-![Last.fm Scrobbling](http://superjoesoftware.com/temp/groove-basin-0.0.4-lastfm.png)
+![Search + drag/drop support](http://groovebasin.com/img/groovebasin-1.3.2-searchdragdrop.png)
+![Multi-select and context menu](http://groovebasin.com/img/groovebasin-1.3.2-libmenu.png)
+![Keyboard shortcuts](http://groovebasin.com/img/groovebasin-1.3.2-shortcuts.png)
+![Settings](http://groovebasin.com/img/groovebasin-1.3.2-settings.png)
+![Import](http://groovebasin.com/img/groovebasin-1.3.2-import.png)
+![Events](http://groovebasin.com/img/groovebasin-1.3.2-events.png)
 
 ## Developing
 

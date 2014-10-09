@@ -2745,6 +2745,9 @@ function scrollEventsToBottom() {
 }
 
 var eventTypeMessageFns = {
+  autoPause: function(ev) {
+    return "auto pause because nobody is listening";
+  },
   chat: function(ev) {
     return ev.text;
   },

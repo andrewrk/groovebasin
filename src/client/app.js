@@ -3412,6 +3412,7 @@ $document.ready(function(){
     socket.send('subscribe', {name: 'haveAdminUser'});
     loadStatus = LoadStatus.GoodToGo;
     render();
+    ensureSearchHappensSoon();
   });
   player = new PlayerClient(socket);
   player.on('users', function() {

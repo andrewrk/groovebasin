@@ -40,7 +40,8 @@
     "ws": "~0.4.32",
     "yazl": "~2.0.1",
     "ytdl-core": ">=0.2.4",
-    "findit2": "~2.2.1"
+    "findit2": "~2.2.1",
+    "content-disposition-parse": "~1.0.1"
   },
   "devDependencies": {
     "stylus": "~0.49.1",

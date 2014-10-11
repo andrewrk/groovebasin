@@ -16,6 +16,12 @@ selected-div()
   background #00498F url(images/ui-bg_dots-small_40_00498f_2x2.png) 50% 50% repeat
   color #fff
 
+.clear
+  clear both
+
+html, body
+  height 100%
+
 html
   background url(images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png)
 html.groovebasin
@@ -96,9 +102,48 @@ a:hover,a:active,a:focus
   font-size .6em
   margin 2px 0 0 8px
 
-#left-window
-  width 400px
-  position absolute
+.header-container
+  height 9%
+
+.main-container
+  display block
+  height 90%
+  width 100%
+
+  > div
+    vertical-align top
+
+  #left-window
+    display inline-block
+    float left
+    height 100%
+    min-width 400px
+    margin-left 5px
+    overflow hidden
+    width 30%
+
+    .tab-container
+      height 100%
+      overflow-y: scroll
+
+  #queue-window
+    display inline-block
+    height 100%
+    float right
+    min-width 700px
+    margin-right 5px
+    width: 69%
+
+    .window-header
+      margin-bottom 4px
+      font-size .6em
+
+#queue-list
+  .header
+    font-weight bold
+    overflow-x hidden
+    overflow-y hidden
+    height 1.2em
 
 #library-pane
   .window-header
@@ -161,21 +206,6 @@ a:hover,a:active,a:focus
 
 #organize
   width 200px
-
-#queue-window
-  width 700px
-  position absolute
-
-  .window-header
-    margin-bottom 4px
-    font-size .6em
-
-#queue-list
-  .header
-    font-weight bold
-    overflow-x hidden
-    overflow-y hidden
-    height 1.2em
 
   span.track
     width 26px
@@ -249,6 +279,20 @@ a:hover,a:active,a:focus
 
   span.time
     text-align right
+
+#queue-list span
+  display inline-block
+  &.track
+    margin-right 0.3%
+    width 3%
+  &.title
+    width 40%
+  &.artist
+    width 25%
+  &.album
+    width 25%
+  &.time
+    width 5%
 
 #upload
   overflow-y auto

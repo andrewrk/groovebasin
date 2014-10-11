@@ -7,207 +7,213 @@
   <link rel="shortcut icon" href="/favicon.png">
 </head>
 <body>
-  <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
-    <ul class="playback-btns ui-widget ui-helper-clearfix">
-      <li class="ui-state-default ui-corner-all hoverable prev">
-        <span class="ui-icon ui-icon-seek-prev"></span>
-      </li>
-      <li class="ui-state-default ui-corner-all hoverable toggle">
-        <span class="ui-icon ui-icon-pause"></span>
-      </li>
-      <li class="ui-state-default ui-corner-all hoverable stop">
-        <span class="ui-icon ui-icon-stop"></span>
-      </li>
-      <li class="ui-state-default ui-corner-all hoverable next">
-        <span class="ui-icon ui-icon-seek-next"></span>
-      </li>
-    </ul>
-    <div id="more-playback-btns">
-      <input class="jquery-button" type="checkbox" id="stream-btn"><label id="stream-btn-label" for="stream-btn">Stream</label>
-    </div>
-    <div id="client-vol">
-      <span class="ui-icon ui-icon-volume-off"></span>
-      <div id="client-vol-slider"></div>
-      <span class="ui-icon ui-icon-volume-on"></span>
-    </div>
-    <h1 id="track-display"></h1>
-    <div id="track-slider"></div>
-    <span class="time elapsed"></span>
-    <span class="time left"></span>
-    <div style="clear: both;"></div>
-  </div>
-  <div id="left-window" style="display: none">
-    <div id="tabs" class="ui-widget ui-corner-all">
-      <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
-        <li id="library-tab" class="hoverable ui-state-default ui-corner-top ui-state-active"><span>Library</span></li>
-        <li id="upload-tab" class="hoverable ui-state-default ui-corner-top"><span>Import</span></li>
-        <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top" style="display: none"><span>Playlists</span></li>
-        <li id="events-tab" class="hoverable ui-state-default ui-corner-top"><span>Events</span></li>
-        <li id="settings-tab" class="hoverable ui-state-default ui-corner-top"><span>Settings</span></li>
+  <div class="header-container">
+    <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
+      <ul class="playback-btns ui-widget ui-helper-clearfix">
+        <li class="ui-state-default ui-corner-all hoverable prev">
+          <span class="ui-icon ui-icon-seek-prev"></span>
+        </li>
+        <li class="ui-state-default ui-corner-all hoverable toggle">
+          <span class="ui-icon ui-icon-pause"></span>
+        </li>
+        <li class="ui-state-default ui-corner-all hoverable stop">
+          <span class="ui-icon ui-icon-stop"></span>
+        </li>
+        <li class="ui-state-default ui-corner-all hoverable next">
+          <span class="ui-icon ui-icon-seek-next"></span>
+        </li>
       </ul>
-    </div>
-    <div id="library-pane" class="ui-widget-content ui-corner-all">
-      <div id="lib-window-header" class="window-header">
-        <input type="text" id="lib-filter" placeholder="filter">
-        <select id="organize">
-          <option selected="selected">Artist / Album / Song</option>
-        </select>
+      <div id="more-playback-btns">
+        <input class="jquery-button" type="checkbox" id="stream-btn"><label id="stream-btn-label" for="stream-btn">Stream</label>
       </div>
-      <div id="library">
-        <ul id="library-artists">
-        </ul>
-        <p id="library-no-items" class="ui-state-highlight ui-corner-all">
-          <span class="ui-icon ui-icon-info"></span>
-          <strong id="empty-library-message">loading...</strong>
-        </p>
+      <div id="client-vol">
+        <span class="ui-icon ui-icon-volume-off"></span>
+        <div id="client-vol-slider"></div>
+        <span class="ui-icon ui-icon-volume-on"></span>
       </div>
+      <h1 id="track-display"></h1>
+      <div id="track-slider"></div>
+      <span class="time elapsed"></span>
+      <span class="time left"></span>
+      <div style="clear: both;"></div>
     </div>
-    <div id="upload-pane" class="ui-widget-content ui-corner-all" style="display: none">
-      <div id="upload">
-        <h1>Import by URL</h1>
-        <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
-        <h1>Upload Files</h1>
-        <div id="upload-widget">
-          <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
-        </div>
-        <h1>Options</h1>
-        <div>
-          Automatically queue imported songs: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
-        </div>
-      </div>
-    </div>
-    <div id="playlists-pane" class="ui-widget-content ui-corner-all" style="display: none">
-      <button id="new-playlist-btn">New Playlist</button>
-      <div id="playlists">
-        <ul id="playlists-list">
+  </div>
+  <div class="main-container">
+    <div id="left-window" style="display: none">
+      <div id="tabs" class="ui-widget ui-corner-all">
+        <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
+          <li id="library-tab" class="hoverable ui-state-default ui-corner-top ui-state-active"><span>Library</span></li>
+          <li id="upload-tab" class="hoverable ui-state-default ui-corner-top"><span>Import</span></li>
+          <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top" style="display: none"><span>Playlists</span></li>
+          <li id="events-tab" class="hoverable ui-state-default ui-corner-top"><span>Events</span></li>
+          <li id="settings-tab" class="hoverable ui-state-default ui-corner-top"><span>Settings</span></li>
         </ul>
       </div>
-    </div>
-    <div id="events-pane" class="ui-widget-content ui-corner-all" style="display: none">
-        <div id="events-online-users">
-        </div>
-        <div id="events-list">
-        </div>
-        <div id="chat-box">
-          <input type="text" id="chat-box-input" placeholder="chat">
-        </div>
-    </div>
-    <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
-      <div id="settings">
-        <div class="section">
-          <h1>Authentication</h1>
-          <div id="ensure-admin" style="display: none;">
-            <p>
-            There is currently no admin account. Press this button to create the
-            admin account and print the username and password to the server log:
+      <div class="tab-container">
+        <div id="library-pane" class="ui-widget-content ui-corner-all">
+          <div id="lib-window-header" class="window-header">
+            <input type="text" id="lib-filter" placeholder="filter">
+            <select id="organize">
+              <option selected="selected">Artist / Album / Song</option>
+            </select>
+          </div>
+          <div id="library">
+            <ul id="library-artists">
+            </ul>
+            <p id="library-no-items" class="ui-state-highlight ui-corner-all">
+              <span class="ui-icon ui-icon-info"></span>
+              <strong id="empty-library-message">loading...</strong>
             </p>
-            <button id="ensure-admin-btn">Make Admin Account</button>
           </div>
-          <div id="settings-register" style="display: none">
-            <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
-            <input type="password" id="auth-password" placeholder="password">
-            <input type="checkbox" id="auth-show-password" class="jquery-button"><label for="auth-show-password">Reveal</label><br>
-            <button id="settings-auth-save">Save</button>
-            <button id="settings-auth-cancel">Cancel</button>
-          </div>
-          <div id="settings-show-auth">
-            <p>Authenticated as <span id="auth-username-display">...</span></p>
-            <p>Permissions:
-              <span class="perm" id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
-              <span class="perm" id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
-              <span class="perm" id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
-              <span class="perm" id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
-            </p>
-            <button id="settings-auth-edit">Edit</button>
-            <button id="settings-auth-logout">Logout</button>
-            <button id="settings-auth-request">Request Validation</button>
-          </div>
-          <div id="settings-users">
-            <h1>Users</h1>
-            <select id="settings-users-select"></select><br>
-            <button id="settings-delete-user">Delete</button>
-            <input id="user-perm-read" type="checkbox"><label for="user-perm-read" title="Reading the library, current queue, and playback status.">read</label>
-            <input id="user-perm-add" type="checkbox"><label for="user-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</label>
-            <input id="user-perm-control" type="checkbox"><label for="user-perm-control" title="Control playback state, and manipulate playlists.">control</label>
-            <input id="user-perm-admin" type="checkbox"><label for="user-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</label>
-          </div>
-          <div id="settings-requests">
-            <h1>Requests</h1>
-            <div id="settings-request">
-              <input type="text" id="request-name"> Name<br>
-              <select id="request-replace"></select> Account<br>
-              <button class="jquery-button" id="request-approve">Approve</button>
-              <button class="jquery-button" id="request-deny">Deny</button>
+        </div>
+        <div id="upload-pane" class="ui-widget-content ui-corner-all" style="display: none">
+          <div id="upload">
+            <h1>Import by URL</h1>
+            <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
+            <h1>Upload Files</h1>
+            <div id="upload-widget">
+              <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
+            </div>
+            <h1>Options</h1>
+            <div>
+              Automatically queue imported songs: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
             </div>
           </div>
         </div>
-        <div class="section">
-          <h1>Last.fm</h1>
-          <div id="settings-lastfm-in">
-            <p>
-              Authenticated as
-              <a id="settings-lastfm-user" href="#">...</a>.
-              <button id="lastfm-sign-out">Sign out</button>
-            </p>
-            <p>
-              Scrobbling is
-              <input class="jquery-button" type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
-            </p>
-          </div>
-          <div id="settings-lastfm-out">
-            <p>
-              <a id="lastfm-auth-url" href="#">Authenticate with Last.fm</a>
-            </p>
+        <div id="playlists-pane" class="ui-widget-content ui-corner-all" style="display: none">
+          <button id="new-playlist-btn">New Playlist</button>
+          <div id="playlists">
+            <ul id="playlists-list">
+            </ul>
           </div>
         </div>
-        <div class="section">
-          <h1>Sound</h1>
-          <div>
-            Hardware audio playback is
-            <input type="checkbox" id="toggle-hardware-playback"><label for="toggle-hardware-playback" id="toggle-hardware-playback-label">On</label>
-          </div>
-          <div>Volume: <span id="vol-num"></span>%</div>
-          <div id="vol-warning" style="display: none">
-            Greater than 100% volume compromises audio quality.
-            <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
-          </div>
-          <div id="vol">
-            <span class="ui-icon ui-icon-volume-off"></span>
-            <div id="vol-slider"></div>
-            <span class="ui-icon ui-icon-volume-on"></span>
-          </div>
-          <div style="clear: both;"></div>
+        <div id="events-pane" class="ui-widget-content ui-corner-all" style="display: none">
+            <div id="events-online-users">
+            </div>
+            <div id="events-list">
+            </div>
+            <div id="chat-box">
+              <input type="text" id="chat-box-input" placeholder="chat">
+            </div>
         </div>
-        <div class="section">
-          <h1>About</h1>
-          <ul>
-            <li><a id="settings-stream-url" href="#" target="_blank">Stream URL</a></li>
-            <li><a href="http://github.com/andrewrk/groovebasin" target="_blank">GrooveBasin on GitHub</a></li>
-          </ul>
+        <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
+          <div id="settings">
+            <div class="section">
+              <h1>Authentication</h1>
+              <div id="ensure-admin" style="display: none;">
+                <p>
+                There is currently no admin account. Press this button to create the
+                admin account and print the username and password to the server log:
+                </p>
+                <button id="ensure-admin-btn">Make Admin Account</button>
+              </div>
+              <div id="settings-register" style="display: none">
+                <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
+                <input type="password" id="auth-password" placeholder="password">
+                <input type="checkbox" id="auth-show-password" class="jquery-button"><label for="auth-show-password">Reveal</label><br>
+                <button id="settings-auth-save">Save</button>
+                <button id="settings-auth-cancel">Cancel</button>
+              </div>
+              <div id="settings-show-auth">
+                <p>Authenticated as <span id="auth-username-display">...</span></p>
+                <p>Permissions:
+                  <span class="perm" id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
+                  <span class="perm" id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
+                  <span class="perm" id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
+                  <span class="perm" id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
+                </p>
+                <button id="settings-auth-edit">Edit</button>
+                <button id="settings-auth-logout">Logout</button>
+                <button id="settings-auth-request">Request Validation</button>
+              </div>
+              <div id="settings-users">
+                <h1>Users</h1>
+                <select id="settings-users-select"></select><br>
+                <button id="settings-delete-user">Delete</button>
+                <input id="user-perm-read" type="checkbox"><label for="user-perm-read" title="Reading the library, current queue, and playback status.">read</label>
+                <input id="user-perm-add" type="checkbox"><label for="user-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</label>
+                <input id="user-perm-control" type="checkbox"><label for="user-perm-control" title="Control playback state, and manipulate playlists.">control</label>
+                <input id="user-perm-admin" type="checkbox"><label for="user-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</label>
+              </div>
+              <div id="settings-requests">
+                <h1>Requests</h1>
+                <div id="settings-request">
+                  <input type="text" id="request-name"> Name<br>
+                  <select id="request-replace"></select> Account<br>
+                  <button class="jquery-button" id="request-approve">Approve</button>
+                  <button class="jquery-button" id="request-deny">Deny</button>
+                </div>
+              </div>
+            </div>
+            <div class="section">
+              <h1>Last.fm</h1>
+              <div id="settings-lastfm-in">
+                <p>
+                  Authenticated as
+                  <a id="settings-lastfm-user" href="#">...</a>.
+                  <button id="lastfm-sign-out">Sign out</button>
+                </p>
+                <p>
+                  Scrobbling is
+                  <input class="jquery-button" type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
+                </p>
+              </div>
+              <div id="settings-lastfm-out">
+                <p>
+                  <a id="lastfm-auth-url" href="#">Authenticate with Last.fm</a>
+                </p>
+              </div>
+            </div>
+            <div class="section">
+              <h1>Sound</h1>
+              <div>
+                Hardware audio playback is
+                <input type="checkbox" id="toggle-hardware-playback"><label for="toggle-hardware-playback" id="toggle-hardware-playback-label">On</label>
+              </div>
+              <div>Volume: <span id="vol-num"></span>%</div>
+              <div id="vol-warning" style="display: none">
+                Greater than 100% volume compromises audio quality.
+                <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
+              </div>
+              <div id="vol">
+                <span class="ui-icon ui-icon-volume-off"></span>
+                <div id="vol-slider"></div>
+                <span class="ui-icon ui-icon-volume-on"></span>
+              </div>
+              <div style="clear: both;"></div>
+            </div>
+            <div class="section">
+              <h1>About</h1>
+              <ul>
+                <li><a id="settings-stream-url" href="#" target="_blank">Stream URL</a></li>
+                <li><a href="http://github.com/andrewrk/groovebasin" target="_blank">GrooveBasin on GitHub</a></li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+    <div id="queue-window" class="ui-widget-content ui-corner-all" style="display: none">
+      <div class="window-header">
+        <button class="jquery-button clear">Clear</button>
+        <button class="jquery-button shuffle">Shuffle</button>
+        <input class="jquery-button" type="checkbox" id="dynamic-mode"><label id="dynamic-mode-label" for="dynamic-mode">Dynamic Mode</label>
+        <input class="jquery-button" type="checkbox" id="queue-btn-repeat"><label id="queue-btn-repeat-label" for="queue-btn-repeat">Repeat: Off</label>
+      </div>
+      <div id="queue-list">
+        <div id="queue-header" class="header">
+          <span class="track">&nbsp;</span>
+          <span class="title">Title</span>
+          <span class="artist">Artist</span>
+          <span class="album">Album</span>
+          <span class="time">Time</span>
+        </div>
+        <div id="queue-items">
+        </div>
+      </div>
+    </div>
+    <div class="clear"></div>
   </div>
-  <div id="queue-window" class="ui-widget-content ui-corner-all" style="display: none">
-    <div class="window-header">
-      <button class="jquery-button clear">Clear</button>
-      <button class="jquery-button shuffle">Shuffle</button>
-      <input class="jquery-button" type="checkbox" id="dynamic-mode"><label id="dynamic-mode-label" for="dynamic-mode">Dynamic Mode</label>
-      <input class="jquery-button" type="checkbox" id="queue-btn-repeat"><label id="queue-btn-repeat-label" for="queue-btn-repeat">Repeat: Off</label>
-    </div>
-    <div id="queue-list">
-      <div id="queue-header" class="header">
-        <span class="track">&nbsp;</span>
-        <span class="title">Title</span>
-        <span class="artist">Artist</span>
-        <span class="album">Album</span>
-        <span class="time">Time</span>
-      </div>
-      <div id="queue-items">
-      </div>
-    </div>
-  </div>
-  <div style="clear: both"></div>
   <div id="main-err-msg" class="ui-state-error ui-corner-all">
     <p>
       <span class="ui-icon ui-icon-alert"></span>

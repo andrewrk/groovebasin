@@ -1044,7 +1044,6 @@ function render(){
   renderNowPlaying();
   updateSettingsAuthUi();
   updateLastFmSettingsUi();
-  handleResize();
 }
 
 function renderArtist($ul, albumList) {
@@ -2284,7 +2283,6 @@ function clickTab(tab) {
   tab.$tab.addClass('ui-state-active');
   tab.$pane.show();
   activeTab = tab;
-  handleResize();
   if (tab === tabs.events) {
     player.markAllEventsSeen();
     renderUnseenChatCount();
@@ -2863,10 +2861,6 @@ function renderOnlineUsers() {
   }
 
   $eventsOnlineUsers.scrollTop(scrollTop);
-
-  if (heightChanged) {
-    handleResize();
-  }
 }
 
 var searchTimer = null;
@@ -3186,43 +3180,6 @@ function toStoredPlaylistItemId(s) {
 
 function toStoredPlaylistId(s) {
   return "stored-pl-pl-" + toHtmlId(s);
-}
-
-function handleResize() {
-  var eventsScrollTop = $eventsList.scrollTop();
-
-  $nowplaying.width(MARGIN);
-
-  setAllTabsHeight(MARGIN);
-  $queueWindow.height(MARGIN);
-  $leftWindow.height(MARGIN);
-  $library.height(MARGIN);
-  $upload.height(MARGIN);
-  $queueItems.height(MARGIN);
-  $nowplaying.width($document.width() - MARGIN * 2);
-  var secondLayerTop = $nowplaying.offset().top + $nowplaying.height() + MARGIN;
-  $leftWindow.offset({
-    left: MARGIN,
-    top: secondLayerTop
-  });
-  $queueWindow.offset({
-    left: $leftWindow.offset().left + $leftWindow.width() + MARGIN,
-    top: secondLayerTop
-  });
-  $queueWindow.width($window.width() - $queueWindow.offset().left - MARGIN);
-  $leftWindow.height($window.height() - $leftWindow.offset().top);
-  $queueWindow.height($leftWindow.height() - MARGIN);
-  var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
-  $library.height(tabContentsHeight - $libHeader.height());
-  $upload.height(tabContentsHeight);
-  $eventsList.height(tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height());
-
-  setAllTabsHeight(tabContentsHeight);
-  $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
-
-  if (eventsListScrolledToBottom) {
-    scrollEventsToBottom();
-  }
 }
 
 function refreshPage() {

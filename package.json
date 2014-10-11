@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "stylus": "~0.49.1",
-    "browserify-lite": "~0.2.2"
+    "browserify-lite": "~0.2.3"
   },
   "scripts": {
     "start": "node lib/server.js",

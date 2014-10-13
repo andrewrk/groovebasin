@@ -2317,6 +2317,10 @@ function uploadFiles(files) {
 
   var formData = new FormData();
 
+  if (localState.autoQueueUploads) {
+    formData.append('autoQueue', '1');
+  }
+
   for (var i = 0; i < files.length; i += 1) {
     var file = files[i];
     formData.append("file", file);
@@ -2344,11 +2348,6 @@ function uploadFiles(files) {
   }
 
   function onLoad(e) {
-    if (localState.autoQueueUploads) {
-      var keys = JSON.parse(this.response);
-      // sort them the same way the library is sorted
-      player.queueTracks(player.sortKeys(keys));
-    }
     cleanup();
   }
 
@@ -2398,20 +2397,11 @@ function setUpUploadUi(){
     var url = $uploadByUrl.val();
     var id = uuid();
     $uploadByUrl.val("").blur();
-    socket.on('importUrl', onImportUrl);
     socket.send('importUrl', {
       url: url,
       id: id,
+      autoQueue: !!localState.autoQueueUploads,
     });
-
-    function onImportUrl(args) {
-      if (args.id !== id) return;
-      socket.removeListener('importUrl', onImportUrl);
-      if (!args.key) return;
-      if (localState.autoQueueUploads) {
-        player.queueTracks([args.key]);
-      }
-    }
   }
 }
 
@@ -2755,10 +2745,11 @@ var eventTypeMessageFns = {
     return "Now playing: " + getNowPlayingText(ev.track);
   },
   import: function(ev) {
-    if (ev.user) {
-      return "imported " + getNowPlayingText(ev.track);
+    var prefix = ev.user ? "imported " : "anonymous user imported ";
+    if (ev.pos > 1) {
+      return prefix + ev.pos + " tracks";
     } else {
-      return "anonymous user imported " + getNowPlayingText(ev.track);
+      return prefix + getNowPlayingText(ev.track);
     }
   },
   login: function(ev) {

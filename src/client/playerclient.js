@@ -667,26 +667,6 @@ PlayerClient.prototype.refreshPlaylistList = function(playlist) {
   }
 };
 
-// sort keys according to how they appear in the library
-PlayerClient.prototype.sortKeys = function(keys) {
-  var realLib = this.library;
-  var lib = new MusicLibraryIndex();
-  keys.forEach(function(key) {
-    var track = realLib.trackTable[key];
-    if (track) lib.addTrack(track);
-  });
-  lib.rebuild();
-  var results = [];
-  lib.artistList.forEach(function(artist) {
-    artist.albumList.forEach(function(album) {
-      album.trackList.forEach(function(track) {
-        results.push(track.key);
-      });
-    });
-  });
-  return results;
-};
-
 PlayerClient.prototype.resetServerState = function(){
   this.haveFileListCache = false;
   this.library = new MusicLibraryIndex({

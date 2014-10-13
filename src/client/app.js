@@ -2839,14 +2839,14 @@ var eventTypeMessageFns = {
     return "pressed play";
   },
   queue: function(ev) {
-    if (ev.track) {
+    if (ev.pos === 1) {
       return "added to the queue: " + getNowPlayingText(ev.track);
     } else {
       return "added " + ev.pos + " tracks to the queue";
     }
   },
   remove: function(ev) {
-    if (ev.track) {
+    if (ev.pos === 1) {
       return "removed from the queue: " + getNowPlayingText(ev.track);
     } else {
       return "removed " + ev.pos + " tracks from the queue";

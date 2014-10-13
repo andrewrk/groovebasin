@@ -2752,7 +2752,7 @@ function renderImportProgress() {
     $domItem.find('.name').text(ev.filenameHintWithoutPath);
     var percent = humanSize(ev.bytesWritten, 1);
     if (ev.size) {
-      percent += " / " + humanSize(ev.size);
+      percent += " / " + humanSize(ev.size, 1);
     }
     $domItem.find('.percent').text(percent);
   }

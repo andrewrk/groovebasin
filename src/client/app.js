@@ -474,6 +474,8 @@ var $eventsOnlineUsers = $('#events-online-users');
 var $eventsList = $('#events-list');
 var $chatBox = $('#chat-box');
 var $chatBoxInput = $('#chat-box-input');
+var $queueDuration = $('#queue-duration');
+var $queueDurationLabel = $('#queue-duration-label');
 
 var tabs = {
   library: {
@@ -649,6 +651,27 @@ function renderQueue(){
   $queueItems.scrollTop(scrollTop);
 }
 
+function updateQueueDuration() {
+  var duration = 0;
+
+  if (selection.isQueue()) {
+    selection.toTrackKeys().forEach(addKeyDuration);
+    $queueDurationLabel.text("Selection:");
+  } else {
+    player.queue.itemList.forEach(addItemDuration);
+    $queueDurationLabel.text("Play Queue:");
+  }
+  $queueDuration.text(formatTime(duration));
+
+  function addKeyDuration(key) {
+    duration += player.library.trackTable[key].duration;
+  }
+
+  function addItemDuration(item) {
+    duration += item.track.duration;
+  }
+}
+
 function labelPlaylistItems() {
   var item;
   var curItem = player.currentItem;
@@ -730,6 +753,7 @@ function getSelectionHelpers(){
 
 function refreshSelection() {
   var helpers = getSelectionHelpers();
+  updateQueueDuration();
   if (!helpers) return;
   $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
   $libraryArtists.find(".clickable").removeClass('selected').removeClass('cursor');

@@ -1,6 +1,7 @@
 var $ = window.$;
 
 var shuffle = require('mess');
+var humanSize = require('human-size');
 var PlayerClient = require('./playerclient');
 var Socket = require('./socket');
 var uuid = require('./uuid');
@@ -476,6 +477,8 @@ var $chatBox = $('#chat-box');
 var $chatBoxInput = $('#chat-box-input');
 var $queueDuration = $('#queue-duration');
 var $queueDurationLabel = $('#queue-duration-label');
+var $importProgress = $('#import-progress');
+var $importProgressList = $('#import-progress-list');
 
 var tabs = {
   library: {
@@ -664,7 +667,10 @@ function updateQueueDuration() {
   $queueDuration.text(formatTime(duration));
 
   function addKeyDuration(key) {
-    duration += player.library.trackTable[key].duration;
+    var track = player.library.trackTable[key];
+    if (track) {
+      duration += track.duration;
+    }
   }
 
   function addItemDuration(item) {
@@ -753,12 +759,17 @@ function getSelectionHelpers(){
 
 function refreshSelection() {
   var helpers = getSelectionHelpers();
-  updateQueueDuration();
-  if (!helpers) return;
+  if (!helpers) {
+    updateQueueDuration();
+    return;
+  }
   $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
   $libraryArtists.find(".clickable").removeClass('selected').removeClass('cursor');
   $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
-  if (selection.type == null) return;
+  if (selection.type == null) {
+    updateQueueDuration();
+    return;
+  }
   for (var selectionType in helpers) {
     var helper = helpers[selectionType];
     var id;
@@ -789,6 +800,7 @@ function refreshSelection() {
       }
     }
   }
+  updateQueueDuration();
 }
 
 function getValidIds(selectionType) {
@@ -2714,6 +2726,41 @@ function updateTitle() {
   }
 }
 
+function renderImportProgress() {
+  var importProgressListDom = $importProgressList.get(0);
+  var scrollTop = $importProgressList.scrollTop();
+
+  // add the missing dom entries
+  var i, ev;
+  for (i = importProgressListDom.childElementCount; i < player.importProgressList.length; i += 1) {
+    $importProgressList.append(
+      '<li class="progress">' +
+        '<span class="name"></span> ' +
+        '<span class="percent"></span>' +
+      '</li>');
+  }
+  // remove extra dom entries
+  var domItem;
+  while (player.importProgressList.length < importProgressListDom.childElementCount) {
+    importProgressListDom.removeChild(importProgressListDom.lastChild);
+  }
+  // overwrite existing dom entries
+  var $domItems = $importProgressList.children();
+  for (i = 0; i < player.importProgressList.length; i += 1) {
+    var $domItem = $($domItems[i]);
+    ev = player.importProgressList[i];
+    $domItem.find('.name').text(ev.filenameHintWithoutPath);
+    var percent = humanSize(ev.bytesWritten, 1);
+    if (ev.size) {
+      percent += " / " + humanSize(ev.size);
+    }
+    $domItem.find('.percent').text(percent);
+  }
+
+  $importProgress.toggle(player.importProgressList.length > 0);
+  $importProgressList.scrollTop(scrollTop);
+}
+
 function renderEvents() {
   var eventsListDom = $eventsList.get(0);
   var scrollTop = $eventsList.scrollTop();
@@ -3439,6 +3486,7 @@ $document.ready(function(){
     renderOnlineUsers();
     renderStreamButton();
   });
+  player.on('importProgress', renderImportProgress);
   player.on('libraryupdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);

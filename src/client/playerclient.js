@@ -9,6 +9,7 @@ module.exports = PlayerClient;
 
 var compareSortKeyAndId = makeCompareProps(['sortKey', 'id']);
 var compareNameAndId = makeCompareProps(['name', 'id']);
+var compareDates = makeCompareProps(['date', 'id']);
 
 PlayerClient.REPEAT_OFF = 0;
 PlayerClient.REPEAT_ONE = 1;
@@ -37,6 +38,8 @@ function PlayerClient(socket) {
   self.eventsFromServerVersion = null;
   self.usersFromServer = undefined;
   self.usersFromServerVersion = null;
+  self.importProgressFromServer = undefined;
+  self.importProgressFromServerVersion = null;
 
   self.resetServerState();
   self.socket.on('disconnect', function() {
@@ -133,6 +136,14 @@ function PlayerClient(socket) {
     self.sortUsersFromServer();
     self.emit('users');
   });
+
+  self.socket.on('importProgress', function(o) {
+    if (o.reset) self.importProgressFromServer = undefined;
+    self.importProgressFromServer = curlydiff.apply(self.importProgressFromServer, o.delta);
+    self.importProgressFromServerVersion = o.version;
+    self.sortImportProgressFromServer();
+    self.emit('importProgress');
+  });
 }
 
 PlayerClient.prototype.resubscribe = function(){
@@ -169,6 +180,11 @@ PlayerClient.prototype.resubscribe = function(){
     name: 'events',
     delta: true,
     version: this.eventsFromServerVersion,
+  });
+  this.sendCommand('subscribe', {
+    name: 'importProgress',
+    delta: true,
+    version: this.importProgressFromServerVersion,
   });
 };
 
@@ -229,6 +245,24 @@ PlayerClient.prototype.sortUsersFromServer = function() {
     this.usersList.push(user);
   }
   this.usersList.sort(compareUserNames);
+};
+
+PlayerClient.prototype.sortImportProgressFromServer = function() {
+  this.importProgressList = [];
+  this.importProgressTable = {};
+  for (var id in this.importProgressFromServer) {
+    var ev = this.importProgressFromServer[id];
+    var importEvent = {
+      id: id,
+      date: new Date(ev.date),
+      filenameHintWithoutPath: ev.filenameHintWithoutPath,
+      bytesWritten: ev.bytesWritten,
+      size: ev.size,
+    };
+    this.importProgressTable[id] = importEvent;
+    this.importProgressList.push(importEvent);
+  }
+  this.importProgressList.sort(compareDates);
 };
 
 PlayerClient.prototype.updateTrackStartDate = function() {
@@ -684,6 +718,8 @@ PlayerClient.prototype.resetServerState = function(){
   this.eventsList = [];
   this.seenEvents = {};
   this.unseenChatCount = 0;
+  this.importProgressList = [];
+  this.importProgressTable = {};
 
   this.clearStoredPlaylists();
 };

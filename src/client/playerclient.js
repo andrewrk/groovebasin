@@ -380,8 +380,46 @@ PlayerClient.prototype.getDefaultQueuePosition = function() {
   };
 };
 
-PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
+PlayerClient.prototype.queueOnQueue = function(keys, previousKey, nextKey) {
+  var items = this.queueTracks(this.queue, keys, previousKey, nextKey);
+  this.sendCommand('queue', items);
+  this.emit('queueUpdate');
+};
+
+PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey, nextKey) {
+  var playlist = this.stored_playlist_table[playlistId];
+  var items = this.queueTracks(playlist, keys, previousKey, nextKey);
+
+  this.sendCommand('playlistAddItems', {
+    id: playlistId,
+    items: items,
+  });
+
+  this.emit('playlistsUpdate');
+};
+
+PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextKey) {
   if (!keys.length) return;
+
+  var items = this.generatePlaylistItems(keys, previousKey, nextKey);
+
+  for (var item in items) {
+    playlist[playlist.id] = {
+      id: item,
+      key: item.key,
+      sortKey: item.sortKey,
+      isRandom: false,
+      track: this.library.trackTable[item.key],
+    };
+  }
+
+  this.refreshPlaylistList(playlist);
+
+  return items;
+};
+
+PlayerClient.prototype.generatePlaylistItems = function(keys, previousKey, nextKey) {
+  var items = {};
 
   if (previousKey == null && nextKey == null) {
     var defaultPos = this.getDefaultQueuePosition();
@@ -389,7 +427,6 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
     nextKey = defaultPos.nextKey;
   }
 
-  var items = {};
   var sortKeys = keese(previousKey, nextKey, keys.length);
   for (var i = 0; i < keys.length; i += 1) {
     var key = keys[i];
@@ -399,17 +436,9 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
       key: key,
       sortKey: sortKey,
     };
-    this.queue.itemTable[id] = {
-      id: id,
-      key: key,
-      sortKey: sortKey,
-      isRandom: false,
-      track: this.library.trackTable[key],
-    };
   }
-  this.refreshPlaylistList(this.queue);
-  this.sendCommand('queue', items);
-  this.emit('queueUpdate');
+
+  return items;
 };
 
 PlayerClient.prototype.queueTracksNext = function(keys) {
@@ -424,7 +453,7 @@ PlayerClient.prototype.queueTracksNext = function(keys) {
       }
     }
   }
-  this.queueTracks(keys, prevKey, nextKey);
+  this.queueOnQueue(keys, prevKey, nextKey);
 };
 
 PlayerClient.prototype.clear = function(){

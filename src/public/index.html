@@ -41,7 +41,7 @@
       <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-corner-all">
         <li id="library-tab" class="hoverable ui-state-default ui-corner-top ui-state-active"><span>Library</span></li>
         <li id="upload-tab" class="hoverable ui-state-default ui-corner-top"><span>Import</span></li>
-        <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top" style="display: none"><span>Playlists</span></li>
+        <li id="playlists-tab" class="hoverable ui-state-default ui-corner-top"><span>Playlists</span></li>
         <li id="events-tab" class="hoverable ui-state-default ui-corner-top"><span>Events</span></li>
         <li id="settings-tab" class="hoverable ui-state-default ui-corner-top"><span>Settings</span></li>
       </ul>
@@ -84,7 +84,7 @@
       </div>
     </div>
     <div id="playlists-pane" class="ui-widget-content ui-corner-all" style="display: none">
-      <button id="new-playlist-btn">New Playlist</button>
+      <input type="text" id="new-playlist-name" placeholder="New Playlist">
       <div id="playlists">
         <ul id="playlists-list">
         </ul>
@@ -425,9 +425,10 @@
     <button id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
     <label accesskey="r" id="edit-tags-per-label"><input id="edit-tags-per" type="checkbox">Pe<span class="accesskey">r</span> Track</label>
   </div>
-  <ul id="menu-queue" style="display: none">
+  <ul id="queue-menu" style="display: none">
     <li><a href="#" class="remove">Remove</a></li>
     <li><a href="#" class="delete">Delete From Library</a></li>
+    <li><a href="#" class="add-to-playlist">Add To Playlist...</a></li>
     <li><a href="#" class="download" target="_blank">Download</a></li>
     <li><a href="#" class="edit-tags">Edit Tags</a></li>
   </ul>

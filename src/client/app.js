@@ -1238,6 +1238,26 @@ function handleDeletePressed(shift) {
   }
 }
 
+function handleAddToPlaylist(parent) {
+  // Get all of the available playlists.
+  var playlistList = player.stored_playlists;
+
+  // Stick a div in there.
+  $(parent).parent().after('<div class="playlist-selection"><ul id="playlist-selection-list"></ul></div>');
+
+  // Stick 'em in the div.
+  for (var i = 0; i < playlistList.length; i++) {
+    var html = "<li data-playlist-id=" + playlistList[i].id + ">" + playlistList[i].name + "</li>";
+    $('#playlist-selection-list').prepend(html);
+  }
+
+  $('#playlist-selection-list li').click(function() {
+    var keysList = selection.toTrackKeys();
+    var playlistId = $(this).attr('data-playlist-id');
+    player.addToPlaylist(playlistId, keysList);
+  });
+}
+
 function togglePlayback(){
   if (player.isPlaying === true) {
     player.pause();
@@ -1970,6 +1990,7 @@ function setUpPlayQueueUi() {
     return false;
   });
   $queueMenu.on('click', '.download', onDownloadContextMenu);
+  $queueMenu.on('click', '.add-to-playlist', onAddToPlaylistContextMenu);
   $queueMenu.on('click', '.delete', onDeleteContextMenu);
   $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
 }
@@ -2013,14 +2034,23 @@ function onDownloadContextMenu() {
   removeContextMenu();
   return true;
 }
+
 function onDeleteContextMenu() {
   if (!havePerm('admin')) return false;
   removeContextMenu();
   handleDeletePressed(true);
   return false;
 }
+
+function onAddToPlaylistContextMenu() {
+  if (!havePerm('control')) return false;
+  handleAddToPlaylist(this);
+  return true;
+}
+
 var editTagsTrackKeys = null;
 var editTagsTrackIndex = null;
+
 function onEditTagsContextMenu() {
   if (!havePerm('admin')) return false;
   removeContextMenu();
@@ -2029,6 +2059,7 @@ function onEditTagsContextMenu() {
   showEditTags();
   return false;
 }
+
 var EDITABLE_PROPS = {
   name: {
     type: 'string',

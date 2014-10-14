@@ -751,6 +751,21 @@ PlayerClient.prototype.createPlaylist = function(name) {
   return playlist;
 };
 
+PlayerClient.prototype.addToPlaylist = function(playlistId, songIds) {
+  this.sendCommand('playlistAddItems', {
+    id: playlistId,
+    items: songIds,
+  });
+
+  var playlist = this.stored_playlist_table[playlistId];
+  console.log('yoyouo:');
+  console.log(playlist);
+  this.stored_playlists.push(playlist);
+
+  this.refreshPlaylistList(this.queue);
+  this.emit('playlistsUpdate');
+};
+
 function elapsedToDate(elapsed){
   return new Date(new Date() - elapsed * 1000);
 }

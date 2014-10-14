@@ -2359,6 +2359,7 @@ function uploadFiles(files) {
 
   for (var i = 0; i < files.length; i += 1) {
     var file = files[i];
+    formData.append("size", String(file.size));
     formData.append("file", file);
   }
 

@@ -1990,7 +1990,6 @@ function setUpPlaylistsUi() {
 
     if (keyCode == 13) {
       if ($(this).val().trim().length > 0) {
-        // TODO prevent multiple of the same name playlist?
         player.createPlaylist($(this).val().trim());
         // Clear out the input box after we give a name.
         $(this).val('');

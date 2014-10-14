@@ -446,7 +446,7 @@ var $queueMenu = $('#menu-queue');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
-var $newPlaylistBtn = $('#new-playlist-btn');
+var $newPlaylistName = $('#new-playlist-name');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
@@ -1983,9 +1983,21 @@ function niceDateString() {
 }
 
 function setUpPlaylistsUi() {
-  $newPlaylistBtn.on('click', function(event) {
-    player.createPlaylist("New Playlist " + niceDateString());
+  $newPlaylistName.on('keydown', function(event) {
+    event.stopPropagation();
+
+    var keyCode = event.keyCode || event.which;
+
+    if (keyCode == 13) {
+      if ($(this).val().trim().length > 0) {
+        // TODO prevent multiple of the same name playlist?
+        player.createPlaylist($(this).val().trim());
+        // Clear out the input box after we give a name.
+        $(this).val('');
+      }
+    }
   });
+
   genericTreeUi($playlistsList, {
     toggleExpansion: togglePlaylistExpansion,
     isSelectionOwner: function() {

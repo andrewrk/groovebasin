@@ -1242,6 +1242,10 @@ function handleAddToPlaylist(parent) {
   // Get all of the available playlists.
   var playlistList = player.stored_playlists;
 
+  if ($(parent).parent().find('.playlist-selection').length > 0) {
+    $(parent).parent().find('.playlist-selection').remove();
+  }
+
   // Stick a div in there.
   $(parent).parent().after('<div class="playlist-selection"><ul id="playlist-selection-list"></ul></div>');
 
@@ -1255,6 +1259,7 @@ function handleAddToPlaylist(parent) {
     var keysList = selection.toTrackKeys();
     var playlistId = $(this).attr('data-playlist-id');
     player.addToPlaylist(playlistId, keysList);
+    removeContextMenu();
   });
 }
 
@@ -1630,6 +1635,9 @@ function bumpVolume(v) {
 
 function removeContextMenu() {
   if ($queueMenu.is(":visible")) {
+    if ($queueMenu.find('.playlist-selection').length > 0) {
+      $queueMenu.find('.playlist-selection').remove();
+    }
     $queueMenu.hide();
     return true;
   }

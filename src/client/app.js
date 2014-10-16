@@ -1034,16 +1034,6 @@ function renderNowPlaying() {
   var trackDisplay;
   if (track != null) {
     trackDisplay = getNowPlayingText(track);
-    if (/Groove Basin/.test(track.name)) {
-      $("html").addClass('groovebasin');
-    } else {
-      $("html").removeClass('groovebasin');
-    }
-    if (/Never Gonna Give You Up/.test(track.name) && /Rick Astley/.test(track.artistName)) {
-      $("html").addClass('nggyu');
-    } else {
-      $("html").removeClass('nggyu');
-    }
   } else {
     trackDisplay = "&nbsp;";
   }

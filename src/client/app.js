@@ -504,6 +504,7 @@ var tabs = {
 };
 var activeTab = tabs.library;
 var $eventsTabSpan = tabs.events.$tab.find('span');
+var $importTabSpan = tabs.upload.$tab.find('span');
 
 function saveLocalState(){
   localStorage.setItem('state', JSON.stringify(localState));
@@ -2720,6 +2721,10 @@ function updateTitle() {
 function renderImportProgress() {
   var importProgressListDom = $importProgressList.get(0);
   var scrollTop = $importProgressList.scrollTop();
+
+  var importTabText = (player.importProgressList.length > 0) ?
+    ("Import (" + player.importProgressList.length + ")") : "Import";
+  $importTabSpan.text(importTabText);
 
   // add the missing dom entries
   var i, ev;

@@ -1756,6 +1756,12 @@ function settingsAuthSave() {
   hideShowAuthEdit(false);
 }
 
+function changeUserName(username) {
+  localState.authUsername = username;
+  saveLocalState();
+  sendAuth();
+}
+
 function settingsAuthCancel() {
   hideShowAuthEdit(false);
 }
@@ -2690,11 +2696,22 @@ function setUpEventsUi() {
       if (!msg.length) {
         return false;
       }
+      var match = msg.match(/^\/(\w+)\s+(.+)/);
+      if (match) {
+        handleSlashCommands(match[1], match[2]);
+        return false;
+      }
       socket.send('chat', msg);
       return false;
     }
   });
 
+}
+
+function handleSlashCommands(command, message) {
+  if (command === 'nick') {
+    changeUserName(message);
+  }
 }
 
 function clearChatInputValue() {

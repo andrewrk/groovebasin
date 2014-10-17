@@ -1,3 +1,33 @@
+### Version 1.4.0 (2014-10-16)
+
+ * Andrew Kelley:
+   - client: fix showing filter without filtered results when server restarts
+   - fix auto pause behavior and add event for it
+   - fix symlink behavior in music library
+   - import by url: respect content-disposition header
+   - fix serving invalid content-disposition header
+   - no longer accidentally shipping config.json in npm module
+   - uploaded files are imported in a streaming fashion instead of after all
+     files are finishing uploading.
+   - fix an uploading crash
+   - ability to import and upload .zip files.
+   - auto queue happens server side.
+   - play queue displays total duration and selection duration
+   - add progress reporting for ongoing imports
+   - fix aborted uploads getting stuck
+   - Remove the easter eggs. It was fun while it lasted. Maybe someday we will
+     live in a society where nothing is copyrighted.
+   - add Cache-Control header to static assets to help enforce caching rules.
+
+ * Josh Wolfe:
+   - fix crash when uploading 0 byte .zip file
+
+ * Felipe Sateler:
+   - open stream and homepage links in new tabs/windows
+
+ * Melissa Noelle:
+   - client supports /nick command to change name
+
 ### Version 1.3.2 (2014-10-06)
 
  * Andrew Kelley:

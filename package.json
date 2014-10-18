@@ -40,7 +40,7 @@
     "ws": "~0.4.32",
     "yazl": "~2.0.2",
     "ytdl-core": ">=0.2.4",
-    "findit2": "~2.2.2",
+    "findit2": "~2.2.3",
     "content-disposition": "~0.5.0",
     "yauzl": "~2.1.0"
   },

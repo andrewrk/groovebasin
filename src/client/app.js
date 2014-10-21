@@ -2681,6 +2681,10 @@ function handleUserOrPassKeyDown(event) {
   }
 }
 
+var chatCommands = {
+  nick: changeUserName,
+};
+
 function setUpEventsUi() {
   $eventsList.on('scroll', function(event) {
     eventsListScrolledToBottom = ($eventsList.get(0).scrollHeight - $eventsList.scrollTop()) === $eventsList.outerHeight();
@@ -2692,26 +2696,25 @@ function setUpEventsUi() {
       return false;
     } else if (event.which === 13) {
       var msg = $chatBoxInput.val().trim();
-      setTimeout(clearChatInputValue, 0);
-      if (!msg.length) {
-        return false;
-      }
-      var match = msg.match(/^\/(\w+)\s+(.+)/);
+      if (!msg.length) return false;
+      var match = msg.match(/^\/([^\/]\w*)\s+(.+)/);
       if (match) {
-        handleSlashCommands(match[1], match[2]);
-        return false;
+        var chatCommand = chatCommands[match[1]];
+        if (chatCommand) {
+          chatCommand(match[2]);
+        } else {
+          // don't clear the text box; invalid command
+          return false;
+        }
+      } else {
+        // replace starting '//' with '/'
+        socket.send('chat', msg.replace(/^\/\//, '/'));
       }
-      socket.send('chat', msg);
+      setTimeout(clearChatInputValue, 0);
       return false;
     }
   });
 
-}
-
-function handleSlashCommands(command, message) {
-  if (command === 'nick') {
-    changeUserName(message);
-  }
 }
 
 function clearChatInputValue() {

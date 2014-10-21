@@ -202,6 +202,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       text: serverEvent.text,
       pos: serverEvent.pos ? serverEvent.pos : 0,
       seen: seen,
+      displayClass: serverEvent.displayClass,
     };
     if (!seen && serverEvent.type === 'chat') {
       this.unseenChatCount += 1;

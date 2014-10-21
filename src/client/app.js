@@ -2683,7 +2683,7 @@ function handleUserOrPassKeyDown(event) {
 
 var chatCommands = {
   nick: changeUserName,
-  me: displaySlashMe
+  me: displaySlashMe,
 };
 
 function setUpEventsUi() {
@@ -2709,7 +2709,7 @@ function setUpEventsUi() {
         }
       } else {
         // replace starting '//' with '/'
-        socket.send('chat', msg.replace(/^\/\//, '/'));
+        socket.send('chat', { text: msg.replace(/^\/\//, '/') });
       }
       setTimeout(clearChatInputValue, 0);
       return false;
@@ -2718,7 +2718,10 @@ function setUpEventsUi() {
 }
 
 function displaySlashMe(message) {
-  socket.send('chat-me', message);
+  socket.send('chat', {
+    text: message,
+    displayClass: 'me',
+  });
 }
 
 function clearChatInputValue() {
@@ -2811,6 +2814,9 @@ function renderEvents() {
     $domItem.removeClass().addClass('event').addClass(ev.type);
     $domItem.find('.name').text(userText).attr('title', ev.date.toString());
     $domItem.find('.msg').text(getEventMessage(ev));
+    if (ev.displayClass) {
+      $domItem.addClass('chat-me');
+    }
   }
 
   if (eventsListScrolledToBottom) {

@@ -2683,6 +2683,7 @@ function handleUserOrPassKeyDown(event) {
 
 var chatCommands = {
   nick: changeUserName,
+  me: displaySlashMe
 };
 
 function setUpEventsUi() {
@@ -2714,7 +2715,10 @@ function setUpEventsUi() {
       return false;
     }
   });
+}
 
+function displaySlashMe(message) {
+  socket.send('chat-me', message);
 }
 
 function clearChatInputValue() {
@@ -2826,6 +2830,9 @@ var eventTypeMessageFns = {
     return "auto pause because nobody is listening";
   },
   chat: function(ev) {
+    return ev.text;
+  },
+  'chat-me': function(ev) {
     return ev.text;
   },
   currentTrack: function(ev) {

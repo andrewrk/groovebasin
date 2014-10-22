@@ -1757,9 +1757,11 @@ function settingsAuthSave() {
 }
 
 function changeUserName(username) {
+  if (!username) return false;
   localState.authUsername = username;
   saveLocalState();
   sendAuth();
+  return true;
 }
 
 function settingsAuthCancel() {
@@ -2698,11 +2700,14 @@ function setUpEventsUi() {
     } else if (event.which === 13) {
       var msg = $chatBoxInput.val().trim();
       if (!msg.length) return false;
-      var match = msg.match(/^\/([^\/]\w*)\s+(.+)/);
+      var match = msg.match(/^\/([^\/]\w*)\s*(.*)$/);
       if (match) {
         var chatCommand = chatCommands[match[1]];
         if (chatCommand) {
-          chatCommand(match[2]);
+          if (!chatCommand(match[2])) {
+            // command failed; no message sent
+            return false;
+          }
         } else {
           // don't clear the text box; invalid command
           return false;
@@ -2718,10 +2723,12 @@ function setUpEventsUi() {
 }
 
 function displaySlashMe(message) {
+  if (!message) return false;
   socket.send('chat', {
     text: message,
     displayClass: 'me',
   });
+  return true;
 }
 
 function clearChatInputValue() {

@@ -2818,9 +2818,12 @@ function renderEvents() {
     var $domItem = $($domItems[i]);
     ev = player.eventsList[i];
     var userText = ev.user ? ev.user.name : "*";
+
     $domItem.removeClass().addClass('event').addClass(ev.type);
     $domItem.find('.name').text(userText).attr('title', ev.date.toString());
-    $domItem.find('.msg').text(getEventMessage(ev));
+
+    $domItem.find('.msg').html(getEventMessageHtml(ev));
+
     if (ev.displayClass) {
       $domItem.addClass('chat-me');
     }
@@ -2833,6 +2836,26 @@ function renderEvents() {
   }
 }
 
+function getEventMessageHtml(ev) {
+  var fn = eventTypeMessageFns[ev.type];
+  if (!fn) throw new Error("Unknown event type: " + ev.type);
+  var flags = {safe: false};
+  var text = fn(ev, flags);
+  return flags.safe ? text : escapeHtml(text);
+}
+
+function linkify(text) {
+  return text.replace(/(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/\[\]%?=~_|!:,.;]*[\-A-Z0-9+&@#\/\[\]%=~_|])/ig, '<a href="$1" target="_blank">$1</a>');
+}
+
+var escapeHtmlReplacements = { "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" };
+
+function escapeHtml(str) {
+  return str.replace(/[&"<>]/g, function (m) {
+    return escapeHtmlReplacements[m];
+  });
+}
+
 function scrollEventsToBottom() {
   eventsListScrolledToBottom = true;
   $eventsList.scrollTop(1000000);
@@ -2842,11 +2865,9 @@ var eventTypeMessageFns = {
   autoPause: function(ev) {
     return "auto pause because nobody is listening";
   },
-  chat: function(ev) {
-    return ev.text;
-  },
-  'chat-me': function(ev) {
-    return ev.text;
+  chat: function(ev, flags) {
+    flags.safe = true;
+    return linkify(escapeHtml(ev.text));
   },
   currentTrack: function(ev) {
     return "Now playing: " + getNowPlayingText(ev.track);
@@ -2916,11 +2937,6 @@ var eventTypeMessageFns = {
     }
   },
 };
-function getEventMessage(ev) {
-  var fn = eventTypeMessageFns[ev.type];
-  if (!fn) throw new Error("Unknown event type: " + ev.type);
-  return fn(ev);
-}
 
 function renderOnlineUsers() {
   var i;

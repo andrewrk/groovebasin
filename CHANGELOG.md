@@ -1,3 +1,20 @@
+### Version 1.5.0 (UNRELEASED)
+
+ * Andrew Kelley:
+   - fix symlink behavior in music library
+   - fix not respecting verbose logging for play queue
+   - `--config` option so config file can be in a different place
+   - db path is relative to config file instead of CWD
+   - save `playCount` in the db
+   - make importing files more efficient by disabling fs watching during
+   - use xdg-user-dir for default music directory
+   - add `--delete-all-events` CLI argument
+
+ * Melissa Noelle:
+   - chat: support /me events
+   - chat: color login events blue
+   - chat: convert URLs to links
+
 ### Version 1.4.0 (2014-10-16)
 
  * Andrew Kelley:

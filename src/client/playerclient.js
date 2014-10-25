@@ -387,9 +387,10 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
   }
 
   var items = {};
+  var sortKeys = keese(previousKey, nextKey, keys.length);
   for (var i = 0; i < keys.length; i += 1) {
     var key = keys[i];
-    var sortKey = keese(previousKey, nextKey);
+    var sortKey = sortKeys[i];
     var id = uuid();
     items[id] = {
       key: key,
@@ -402,7 +403,6 @@ PlayerClient.prototype.queueTracks = function(keys, previousKey, nextKey) {
       isRandom: false,
       track: this.library.trackTable[key],
     };
-    previousKey = sortKey;
   }
   this.refreshPlaylistList(this.queue);
   this.sendCommand('queue', items);
@@ -501,9 +501,10 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
   }
   tracks.sort(compareSortKeyAndId);
   var items = {};
+  var sortKeys = keese(previousKey, nextKey, tracks.length);
   for (i = 0; i < tracks.length; i += 1) {
     track = tracks[i];
-    var sortKey = keese(previousKey, nextKey);
+    var sortKey = sortKeys[i];
     items[track.id] = {
       sortKey: sortKey,
     };

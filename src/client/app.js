@@ -738,21 +738,21 @@ function getSelectionHelpers(){
       ids: selection.ids.track,
       table: player.searchResults.trackTable,
       $getDiv: function(id){
-        return $("#lib-track-" + toHtmlId(id));
+        return $("#lib-track-" + id);
       },
     },
     stored_playlist: {
       ids: selection.ids.stored_playlist,
       table: player.stored_playlist_table,
       $getDiv: function(id){
-        return $("#stored-pl-pl-" + toHtmlId(id));
+        return $("#stored-pl-pl-" + id);
       },
     },
     stored_playlist_item: {
       ids: selection.ids.stored_playlist_item,
       table: player.stored_playlist_item_table,
       $getDiv: function(id){
-        return $("#stored-pl-item-" + toHtmlId(id));
+        return $("#stored-pl-item-" + id);
       },
     },
   };
@@ -1665,6 +1665,7 @@ function expandLibraryToSelection() {
 }
 
 function isStoredPlaylistExpanded(stored_playlist){
+  // TODO use id instead of name
   var $li = $("#stored-pl-pl-" + toHtmlId(stored_playlist.name)).closest("li");
   return $li.find("> ul").is(":visible");
 }
@@ -2869,6 +2870,9 @@ var eventTypeMessageFns = {
     flags.safe = true;
     return linkify(escapeHtml(ev.text));
   },
+  connect: function(ev) {
+    return "connected";
+  },
   currentTrack: function(ev) {
     return "Now playing: " + getNowPlayingText(ev.track);
   },
@@ -3291,15 +3295,15 @@ function toAlbumId(s) {
 }
 
 function toTrackId(s) {
-  return "lib-track-" + toHtmlId(s);
+  return "lib-track-" + s;
 }
 
 function toStoredPlaylistItemId(s) {
-  return "stored-pl-item-" + toHtmlId(s);
+  return "stored-pl-item-" + s;
 }
 
 function toStoredPlaylistId(s) {
-  return "stored-pl-pl-" + toHtmlId(s);
+  return "stored-pl-pl-" + s;
 }
 
 function handleResize() {

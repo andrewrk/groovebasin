@@ -53,6 +53,7 @@ function PlayerClient(socket) {
   self.socket.on('time', function(o) {
     self.serverTimeOffset = new Date(o) - new Date();
     self.updateTrackStartDate();
+    self.sortEventsFromServer(); // because they rely on serverTimeOffset
     self.emit('statusupdate');
   });
   self.socket.on('volume', function(volume) {
@@ -196,7 +197,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
     var seen = !!this.seenEvents[id];
     var ev = {
       id: id,
-      date: new Date(serverEvent.date),
+      date: new Date(new Date(serverEvent.date) - this.serverTimeOffset),
       type: serverEvent.type,
       sortKey: serverEvent.sortKey,
       text: serverEvent.text,

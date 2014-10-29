@@ -298,8 +298,9 @@ PlayerClient.prototype.updatePlaylistsIndex = function() {
     var playlist = {
       itemList: [],
       itemTable: {},
-      id: playlistFromServer.id,
+      id: id,
       name: playlistFromServer.name,
+      mtime: playlistFromServer.mtime,
       index: 0, // we'll set this correctly later
     };
     for (var itemId in playlistFromServer.items) {

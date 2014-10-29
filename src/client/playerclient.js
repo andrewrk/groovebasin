@@ -214,6 +214,9 @@ PlayerClient.prototype.sortEventsFromServer = function() {
     if (serverEvent.userId) {
       ev.user = this.usersTable[serverEvent.userId];
     }
+    if (serverEvent.playlistId) {
+      ev.playlist = this.stored_playlist_table[serverEvent.playlistId];
+    }
     this.eventsList.push(ev);
   }
   this.eventsList.sort(compareSortKeyAndId);

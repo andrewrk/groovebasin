@@ -2899,6 +2899,9 @@ var eventTypeMessageFns = {
   play: function(ev) {
     return "pressed play";
   },
+  playlistRename: function(ev) {
+    return "renamed playlist " + ev.text + " to " + ev.playlist.name;
+  },
   queue: function(ev) {
     if (ev.pos === 1) {
       return "added to the queue: " + getNowPlayingText(ev.track);

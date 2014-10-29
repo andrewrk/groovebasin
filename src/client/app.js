@@ -2432,11 +2432,9 @@ function setUpUploadUi(){
 
   function importUrl() {
     var url = $uploadByUrl.val();
-    var id = uuid();
     $uploadByUrl.val("").blur();
     socket.send('importUrl', {
       url: url,
-      id: id,
       autoQueue: !!localState.autoQueueUploads,
     });
   }
@@ -2572,7 +2570,7 @@ function setUpSettingsUi(){
     saveLocalState();
     var params = {
       username: localState.lastfm.username,
-      session_key: localState.lastfm.session_key
+      sessionKey: localState.lastfm.session_key
     };
     socket.send(msg, params);
     updateLastFmSettingsUi();
@@ -2898,6 +2896,9 @@ var eventTypeMessageFns = {
   },
   play: function(ev) {
     return "pressed play";
+  },
+  playlistDelete: function(ev) {
+    return "deleted playlist " + ev.text;
   },
   playlistRename: function(ev) {
     return "renamed playlist " + ev.text + " to " + ev.playlist.name;

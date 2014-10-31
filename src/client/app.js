@@ -2910,6 +2910,9 @@ var eventTypeMessageFns = {
   playlistDelete: function(ev) {
     return "deleted playlist " + ev.text;
   },
+  playlistMoveItems: function(ev) {
+    return "moved " + ev.pos + " items in playlist " + ev.playlist.name;
+  },
   playlistRemoveItems: function(ev) {
     if (ev.pos === 1) {
       return "removed " + getNowPlayingText(ev.track) + " from playlist " + ev.playlist.name;

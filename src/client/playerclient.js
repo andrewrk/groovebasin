@@ -352,8 +352,6 @@ PlayerClient.prototype.isScanning = function(track) {
 PlayerClient.prototype.search = function(query) {
   query = query.trim();
 
-  var words = query.split(/\s+/);
-  query = words.join(" ");
   if (query === this.lastQuery) return;
 
   this.lastQuery = query;

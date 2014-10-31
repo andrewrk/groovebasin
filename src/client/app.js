@@ -2897,8 +2897,25 @@ var eventTypeMessageFns = {
   play: function(ev) {
     return "pressed play";
   },
+  playlistAddItems: function(ev) {
+    if (ev.pos === 1) {
+      return "added " + getNowPlayingText(ev.track) + " to playlist " + ev.playlist.name;
+    } else {
+      return "added " + ev.pos + " tracks to playlist " + ev.playlist.name;
+    }
+  },
+  playlistCreate: function(ev) {
+    return "created playlist " + ev.playlist.name;
+  },
   playlistDelete: function(ev) {
     return "deleted playlist " + ev.text;
+  },
+  playlistRemoveItems: function(ev) {
+    if (ev.pos === 1) {
+      return "removed " + getNowPlayingText(ev.track) + " from playlist " + ev.playlist.name;
+    } else {
+      return "removed " + ev.pos + "tracks from playlist " + ev.playlist.name;
+    }
   },
   playlistRename: function(ev) {
     return "renamed playlist " + ev.text + " to " + ev.playlist.name;

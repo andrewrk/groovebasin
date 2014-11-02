@@ -2860,6 +2860,16 @@ function scrollEventsToBottom() {
   $eventsList.scrollTop(1000000);
 }
 
+function getEventNowPlayingText(ev) {
+  if (ev.track) {
+    return getNowPlayingText(ev.track);
+  } else if (ev.text) {
+    return "(Deleted Track) " + ev.text;
+  } else {
+    return "(No Track)";
+  }
+}
+
 var eventTypeMessageFns = {
   autoPause: function(ev) {
     return "auto pause because nobody is listening";
@@ -2868,18 +2878,21 @@ var eventTypeMessageFns = {
     flags.safe = true;
     return linkify(escapeHtml(ev.text));
   },
+  clearQueue: function(ev) {
+    return "cleared the queue";
+  },
   connect: function(ev) {
     return "connected";
   },
   currentTrack: function(ev) {
-    return "Now playing: " + getNowPlayingText(ev.track);
+    return "Now playing: " + getEventNowPlayingText(ev);
   },
   import: function(ev) {
     var prefix = ev.user ? "imported " : "anonymous user imported ";
     if (ev.pos > 1) {
       return prefix + ev.pos + " tracks";
     } else {
-      return prefix + getNowPlayingText(ev.track);
+      return prefix + getEventNowPlayingText(ev);
     }
   },
   login: function(ev) {
@@ -2899,7 +2912,7 @@ var eventTypeMessageFns = {
   },
   playlistAddItems: function(ev) {
     if (ev.pos === 1) {
-      return "added " + getNowPlayingText(ev.track) + " to playlist " + ev.playlist.name;
+      return "added " + getEventNowPlayingText(ev) + " to playlist " + ev.playlist.name;
     } else {
       return "added " + ev.pos + " tracks to playlist " + ev.playlist.name;
     }
@@ -2915,7 +2928,7 @@ var eventTypeMessageFns = {
   },
   playlistRemoveItems: function(ev) {
     if (ev.pos === 1) {
-      return "removed " + getNowPlayingText(ev.track) + " from playlist " + ev.playlist.name;
+      return "removed " + getEventNowPlayingText(ev) + " from playlist " + ev.playlist.name;
     } else {
       return "removed " + ev.pos + "tracks from playlist " + ev.playlist.name;
     }
@@ -2925,14 +2938,14 @@ var eventTypeMessageFns = {
   },
   queue: function(ev) {
     if (ev.pos === 1) {
-      return "added to the queue: " + getNowPlayingText(ev.track);
+      return "added to the queue: " + getEventNowPlayingText(ev);
     } else {
       return "added " + ev.pos + " tracks to the queue";
     }
   },
   remove: function(ev) {
     if (ev.pos === 1) {
-      return "removed from the queue: " + getNowPlayingText(ev.track);
+      return "removed from the queue: " + getEventNowPlayingText(ev);
     } else {
       return "removed " + ev.pos + " tracks from the queue";
     }

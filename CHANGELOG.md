@@ -1,19 +1,43 @@
 ### Version 1.5.0 (UNRELEASED)
 
+Contains breaking changes to the Groove Basin protocol. Since the Groove Basin
+protocol is not officially stable yet, only the minor version number is bumped.
+
  * Andrew Kelley:
+   - client: double quotes can be used to include spaces in search terms.
    - fix symlink behavior in music library
+   - support for MPD stored_playlist commands
+   - MPD users show up in events pane, and MPD commands show up as events for
+     MPD users.
+   - MPD lsinfo command allows '/' to mean root directory. Fixes compatibility
+     with gmpc.
+   - MPD list command supports a single argument to return all tags of that
+     type. Fixes compatibility with gmpc.
+   - MPD: when appending tracks with dynamic mode on, insert them before the
+     random ones.
+   - (breaking change) protocolupgrade UUID has changed
+   - (breaking change) slashes and spaces disallowed in user names
    - fix not respecting verbose logging for play queue
    - `--config` option so config file can be in a different place
    - db path is relative to config file instead of CWD
    - save `playCount` in the db
    - make importing files more efficient by disabling fs watching during
-   - use xdg-user-dir for default music directory
+   - use `xdg-user-dir` if available for default music directory
    - add `--delete-all-events` CLI argument
+   - chat: invalid commands do not get cleared or sent
+   - fix MPD/groovebasin ID mapping memory leak
+   - groovebasin protocol has stricter and safer argument parsing, resulting in
+     several security vulnerabilities fixed.
+   - deleting multiple tracks from the library is more efficient and results in
+     `O(1)` messages to connected clients instead of `O(n)`.
 
  * Melissa Noelle:
    - chat: support /me events
-   - chat: color login events blue
    - chat: convert URLs to links
+
+ * Josh Wolfe:
+   - sort keys for queueing up large number of songs at once requires
+     `O(n*log(n))` size over the network instead of `O(n^2)`.
 
 ### Version 1.4.0 (2014-10-16)
 
@@ -398,7 +422,7 @@
 * Josh Wolfe:
   * do not show ugly "user_n" text after usernames in chat.
 
-### Version 0.0.4 (Mar 6 2012)
+### Version 0.0.4 (2012-03-06)
 
 * Andrew Kelley:
   * update keyboard shortcuts dialog

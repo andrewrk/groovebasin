@@ -442,11 +442,11 @@ var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
 var $editTagsDialog = $('#edit-tags');
-var $queueMenu = $('#menu-queue');
+var $queueMenu = $('#queue-menu');
 var $libraryMenu = $('#menu-library');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
-var $newPlaylistBtn = $('#new-playlist-btn');
+var $newPlaylistName = $('#new-playlist-name');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
@@ -1238,6 +1238,31 @@ function handleDeletePressed(shift) {
   }
 }
 
+function handleAddToPlaylist(parent) {
+  // Get all of the available playlists.
+  var playlistList = player.stored_playlists;
+
+  if ($(parent).parent().find('.playlist-selection').length > 0) {
+    $(parent).parent().find('.playlist-selection').remove();
+  }
+
+  // Stick a div in there.
+  $(parent).parent().after('<div class="playlist-selection"><ul id="playlist-selection-list"></ul></div>');
+
+  // Stick 'em in the div.
+  for (var i = 0; i < playlistList.length; i++) {
+    var html = "<li data-playlist-id=" + playlistList[i].id + ">" + playlistList[i].name + "</li>";
+    $('#playlist-selection-list').prepend(html);
+  }
+
+  $('#playlist-selection-list li').click(function() {
+    var keysList = selection.toTrackKeys();
+    var playlistId = $(this).attr('data-playlist-id');
+    player.addToPlaylist(playlistId, keysList);
+    removeContextMenu();
+  });
+}
+
 function togglePlayback(){
   if (player.isPlaying === true) {
     player.pause();
@@ -1610,6 +1635,9 @@ function bumpVolume(v) {
 
 function removeContextMenu() {
   if ($queueMenu.is(":visible")) {
+    if ($queueMenu.find('.playlist-selection').length > 0) {
+      $queueMenu.find('.playlist-selection').remove();
+    }
     $queueMenu.hide();
     return true;
   }
@@ -1970,6 +1998,7 @@ function setUpPlayQueueUi() {
     return false;
   });
   $queueMenu.on('click', '.download', onDownloadContextMenu);
+  $queueMenu.on('click', '.add-to-playlist', onAddToPlaylistContextMenu);
   $queueMenu.on('click', '.delete', onDeleteContextMenu);
   $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
 }
@@ -1983,9 +2012,20 @@ function niceDateString() {
 }
 
 function setUpPlaylistsUi() {
-  $newPlaylistBtn.on('click', function(event) {
-    player.createPlaylist("New Playlist " + niceDateString());
+  $newPlaylistName.on('keydown', function(event) {
+    event.stopPropagation();
+
+    var keyCode = event.keyCode || event.which;
+
+    if (keyCode == 13) {
+      if ($(this).val().trim().length > 0) {
+        player.createPlaylist($(this).val().trim());
+        // Clear out the input box after we give a name.
+        $(this).val('');
+      }
+    }
   });
+
   genericTreeUi($playlistsList, {
     toggleExpansion: togglePlaylistExpansion,
     isSelectionOwner: function() {
@@ -2002,14 +2042,23 @@ function onDownloadContextMenu() {
   removeContextMenu();
   return true;
 }
+
 function onDeleteContextMenu() {
   if (!havePerm('admin')) return false;
   removeContextMenu();
   handleDeletePressed(true);
   return false;
 }
+
+function onAddToPlaylistContextMenu() {
+  if (!havePerm('control')) return false;
+  handleAddToPlaylist(this);
+  return true;
+}
+
 var editTagsTrackKeys = null;
 var editTagsTrackIndex = null;
+
 function onEditTagsContextMenu() {
   if (!havePerm('admin')) return false;
   removeContextMenu();
@@ -2018,6 +2067,7 @@ function onEditTagsContextMenu() {
   showEditTags();
   return false;
 }
+
 var EDITABLE_PROPS = {
   name: {
     type: 'string',

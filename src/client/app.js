@@ -2960,6 +2960,9 @@ var eventTypeMessageFns = {
       return "seeked to " + formatTime(ev.pos);
     }
   },
+  shuffle: function(ev) {
+    return "shuffled the queue";
+  },
   stop: function(ev) {
     return "pressed stop";
   },

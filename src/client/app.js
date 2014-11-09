@@ -443,7 +443,7 @@ var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
 var $editTagsDialog = $('#edit-tags');
 var $queueMenu = $('#queue-menu');
-var $libraryMenu = $('#menu-library');
+var $libraryMenu = $('#library-menu');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
 var $newPlaylistName = $('#new-playlist-name');
@@ -479,6 +479,10 @@ var $queueDuration = $('#queue-duration');
 var $queueDurationLabel = $('#queue-duration-label');
 var $importProgress = $('#import-progress');
 var $importProgressList = $('#import-progress-list');
+var dynamicModeLabel = document.getElementById('dynamic-mode-label');
+var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
+var $queueMenuPlaylistSubmenu = $('#queue-menu-playlist-submenu');
+var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
 var tabs = {
   library: {
@@ -826,7 +830,7 @@ function artistDisplayName(name) {
 
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
-var triggerPlaylistsUpdate = makeRenderCall(renderPlaylists, 100);
+var triggerPlaylistsUpdate = makeRenderCall(updatePlaylistsUi, 100);
 
 function makeRenderCall(renderFn, interval) {
   var renderTimeout = null;
@@ -851,6 +855,40 @@ function makeRenderCall(renderFn, interval) {
       ensureRenderHappensSoon();
     }
   }
+}
+
+function updatePlaylistsUi() {
+  updatePlaylistsSubmenus($queueMenu, $queueMenuPlaylistSubmenu);
+  updatePlaylistsSubmenus($libraryMenu, $libraryMenuPlaylistSubmenu);
+  renderPlaylists();
+}
+
+function updatePlaylistsSubmenus($parentMenu, $menu) {
+  var playlistList = player.stored_playlists;
+
+  // add the missing dom entries
+  var i;
+  var menuDom = $menu.get(0);
+  for (i = menuDom.childElementCount; i < playlistList.length; i += 1) {
+    $menu.append('<li></li>');
+  }
+  // remove the extra dom entries
+  var domItem;
+  while (playlistList.length < menuDom.childElementCount) {
+    menuDom.removeChild(menuDom.lastChild);
+  }
+
+  // overwrite existing dom entries
+  var playlist;
+  var $domItems = $menu.children();
+  for (i = 0; i < playlistList.length; i += 1) {
+    domItem = $domItems[i];
+    playlist = playlistList[i];
+    domItem.setAttribute('data-key', playlist.id);
+    domItem.textContent = playlist.name;
+  }
+
+  $parentMenu.menu('refresh');
 }
 
 function renderPlaylists() {
@@ -1237,31 +1275,6 @@ function handleDeletePressed(shift) {
   }
 }
 
-function handleQueueOnPlaylist(parent) {
-  // Get all of the available playlists.
-  var playlistList = player.stored_playlists;
-
-  if ($(parent).parent().find('.playlist-selection').length > 0) {
-    $(parent).parent().find('.playlist-selection').remove();
-  }
-
-  // Stick a div in there.
-  $(parent).parent().after('<div class="playlist-selection"><ul id="playlist-selection-list"></ul></div>');
-
-  // Stick 'em in the div.
-  for (var i = 0; i < playlistList.length; i++) {
-    var html = "<li data-playlist-id=" + playlistList[i].id + ">" + playlistList[i].name + "</li>";
-    $('#playlist-selection-list').prepend(html);
-  }
-
-  $('#playlist-selection-list li').click(function() {
-    var keysList = selection.toTrackKeys();
-    var playlistId = $(this).attr('data-playlist-id');
-    player.queueOnPlaylist(playlistId, keysList);
-    removeContextMenu();
-  });
-}
-
 function togglePlayback(){
   if (player.isPlaying === true) {
     player.pause();
@@ -1634,9 +1647,6 @@ function bumpVolume(v) {
 
 function removeContextMenu() {
   if ($queueMenu.is(":visible")) {
-    if ($queueMenu.find('.playlist-selection').length > 0) {
-      $queueMenu.find('.playlist-selection').remove();
-    }
     $queueMenu.hide();
     return true;
   }
@@ -1692,8 +1702,7 @@ function expandLibraryToSelection() {
 }
 
 function isStoredPlaylistExpanded(stored_playlist){
-  // TODO use id instead of name
-  var $li = $("#stored-pl-pl-" + toHtmlId(stored_playlist.name)).closest("li");
+  var $li = $("#" + toStoredPlaylistId(stored_playlist.id)).closest("li");
   return $li.find("> ul").is(":visible");
 }
 
@@ -1881,8 +1890,6 @@ function blur() {
   $(this).blur();
 }
 
-var dynamicModeLabel = document.getElementById('dynamic-mode-label');
-var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
 function setUpPlayQueueUi() {
   $queueWindow.on('click', 'button.clear', function(ev){
     player.clear();
@@ -1997,9 +2004,9 @@ function setUpPlayQueueUi() {
     return false;
   });
   $queueMenu.on('click', '.download', onDownloadContextMenu);
-  $queueMenu.on('click', '.add-to-playlist', onAddToPlaylistContextMenu);
   $queueMenu.on('click', '.delete', onDeleteContextMenu);
   $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
+  $queueMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
 }
 
 function setUpPlaylistsUi() {
@@ -2041,7 +2048,10 @@ function onDeleteContextMenu() {
 
 function onAddToPlaylistContextMenu() {
   if (!havePerm('control')) return false;
-  handleQueueOnPlaylist(this);
+  var keysList = selection.toTrackKeys();
+  var playlistId = $(this).attr('data-key');
+  player.queueOnPlaylist(playlistId, keysList);
+  removeContextMenu();
   return true;
 }
 
@@ -2899,6 +2909,10 @@ function scrollEventsToBottom() {
   $eventsList.scrollTop(1000000);
 }
 
+function eventPlaylistName(ev) {
+  return ev.playlist ? ("playlist " + ev.playlist.name) : "(deleted playlist)";
+}
+
 function getEventNowPlayingText(ev) {
   if (ev.track) {
     return getNowPlayingText(ev.track);
@@ -2951,29 +2965,30 @@ var eventTypeMessageFns = {
   },
   playlistAddItems: function(ev) {
     if (ev.pos === 1) {
-      return "added " + getEventNowPlayingText(ev) + " to playlist " + ev.playlist.name;
+      return "added " + getEventNowPlayingText(ev) + " to " + eventPlaylistName(ev);
     } else {
-      return "added " + ev.pos + " tracks to playlist " + ev.playlist.name;
+      return "added " + ev.pos + " tracks to " + eventPlaylistName(ev);
     }
   },
   playlistCreate: function(ev) {
-    return "created playlist " + ev.playlist.name;
+    return "created " + eventPlaylistName(ev);
   },
   playlistDelete: function(ev) {
     return "deleted playlist " + ev.text;
   },
   playlistMoveItems: function(ev) {
-    return "moved " + ev.pos + " items in playlist " + ev.playlist.name;
+    return "moved " + ev.pos + " items in " + eventPlaylistName(ev);
   },
   playlistRemoveItems: function(ev) {
     if (ev.pos === 1) {
-      return "removed " + getEventNowPlayingText(ev) + " from playlist " + ev.playlist.name;
+      return "removed " + getEventNowPlayingText(ev) + " from " + eventPlaylistName(ev);
     } else {
-      return "removed " + ev.pos + "tracks from playlist " + ev.playlist.name;
+      return "removed " + ev.pos + "tracks from " + eventPlaylistName(ev);
     }
   },
   playlistRename: function(ev) {
-    return "renamed playlist " + ev.text + " to " + ev.playlist.name;
+    var name = ev.playlist ? ev.playlist.name : "(Deleted Playlist)";
+    return "renamed playlist " + ev.text + " to " + name;
   },
   queue: function(ev) {
     if (ev.pos === 1) {
@@ -3170,6 +3185,7 @@ function setUpLibraryUi(){
   $libraryMenu.on('click', '.edit-tags', onEditTagsContextMenu);
   $libraryMenu.on('click', '.delete-playlist', onDeletePlaylistContextMenu);
   $libraryMenu.on('click', '.remove', onRemoveFromPlaylistContextMenu);
+  $libraryMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
 }
 
 function maybeDeleteSelectedPlaylists() {
@@ -3695,9 +3711,8 @@ function formatTime(seconds) {
   }
 }
 
-var badCharRe = new RegExp('[^a-zA-Z0-9-]', 'gm');
 function toHtmlId(string) {
-  return string.replace(badCharRe, function(c) {
+  return string.replace(/[^a-zA-Z0-9-]/gm, function(c) {
     return "_" + c.charCodeAt(0) + "_";
   });
 }

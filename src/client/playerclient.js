@@ -381,12 +381,16 @@ PlayerClient.prototype.getDefaultQueuePosition = function() {
 };
 
 PlayerClient.prototype.queueOnQueue = function(keys, previousKey, nextKey) {
+  if (keys.length === 0) return;
+
   var items = this.queueTracks(this.queue, keys, previousKey, nextKey);
   this.sendCommand('queue', items);
   this.emit('queueUpdate');
 };
 
 PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey, nextKey) {
+  if (keys.length === 0) return;
+
   var playlist = this.stored_playlist_table[playlistId];
   var items = this.queueTracks(playlist, keys, previousKey, nextKey);
 
@@ -399,34 +403,13 @@ PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey,
 };
 
 PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextKey) {
-  if (!keys.length) return;
-
-  var items = this.generatePlaylistItems(keys, previousKey, nextKey);
-
-  for (var item in items) {
-    playlist[playlist.id] = {
-      id: item,
-      key: item.key,
-      sortKey: item.sortKey,
-      isRandom: false,
-      track: this.library.trackTable[item.key],
-    };
-  }
-
-  this.refreshPlaylistList(playlist);
-
-  return items;
-};
-
-PlayerClient.prototype.generatePlaylistItems = function(keys, previousKey, nextKey) {
-  var items = {};
-
   if (previousKey == null && nextKey == null) {
     var defaultPos = this.getDefaultQueuePosition();
     previousKey = defaultPos.previousKey;
     nextKey = defaultPos.nextKey;
   }
 
+  var items = {}; // we'll send this to the server
   var sortKeys = keese(previousKey, nextKey, keys.length);
   for (var i = 0; i < keys.length; i += 1) {
     var key = keys[i];
@@ -436,7 +419,16 @@ PlayerClient.prototype.generatePlaylistItems = function(keys, previousKey, nextK
       key: key,
       sortKey: sortKey,
     };
+    playlist[playlist.id] = {
+      id: id,
+      key: key,
+      sortKey: sortKey,
+      isRandom: false,
+      track: this.library.trackTable[key],
+    };
   }
+
+  this.refreshPlaylistList(playlist);
 
   return items;
 };
@@ -653,7 +645,8 @@ PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
       items: [playlistItemId],
     });
   }
-}
+  // TODO optimistic prediction
+};
 
 PlayerClient.prototype.deleteTracks = function(keysList) {
   this.sendCommand('deleteTracks', keysList);

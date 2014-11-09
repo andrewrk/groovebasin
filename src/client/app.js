@@ -3203,7 +3203,7 @@ function onDeletePlaylistContextMenu() {
 }
 
 function onRemoveFromPlaylistContextMenu() {
-  // TODO
+  player.removeItemsFromPlaylists(Object.keys(selection.ids.stored_playlist_item));
 }
 
 function genericTreeUi($elem, options){

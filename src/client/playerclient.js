@@ -643,6 +643,18 @@ PlayerClient.prototype.removeIds = function(trackIds){
   this.emit('queueUpdate');
 };
 
+PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
+  for (var i = 0; i < trackIds.length; i += 1) {
+    var playlistItemId = trackIds[i];
+    var playlistItem = this.stored_playlist_item_table[playlistItemId];
+    var playlist = playlistItem.playlist;
+    this.sendCommand('playlistRemoveItems', {
+      id: playlist.id,
+      items: [playlistItemId],
+    });
+  }
+}
+
 PlayerClient.prototype.deleteTracks = function(keysList) {
   this.sendCommand('deleteTracks', keysList);
   [this.library, this.searchResults].forEach(function(lib) {

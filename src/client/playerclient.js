@@ -383,6 +383,12 @@ PlayerClient.prototype.getDefaultQueuePosition = function() {
 PlayerClient.prototype.queueOnQueue = function(keys, previousKey, nextKey) {
   if (keys.length === 0) return;
 
+  if (previousKey == null && nextKey == null) {
+    var defaultPos = this.getDefaultQueuePosition();
+    previousKey = defaultPos.previousKey;
+    nextKey = defaultPos.nextKey;
+  }
+
   var items = this.queueTracks(this.queue, keys, previousKey, nextKey);
   this.sendCommand('queue', items);
   this.emit('queueUpdate');
@@ -392,6 +398,9 @@ PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey,
   if (keys.length === 0) return;
 
   var playlist = this.stored_playlist_table[playlistId];
+  if (previousKey == null && nextKey == null && playlist.itemList.length > 0) {
+    previousKey = playlist.itemList[playlist.itemList.length - 1].sortKey;
+  }
   var items = this.queueTracks(playlist, keys, previousKey, nextKey);
 
   this.sendCommand('playlistAddItems', {
@@ -403,12 +412,6 @@ PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey,
 };
 
 PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextKey) {
-  if (previousKey == null && nextKey == null) {
-    var defaultPos = this.getDefaultQueuePosition();
-    previousKey = defaultPos.previousKey;
-    nextKey = defaultPos.nextKey;
-  }
-
   var items = {}; // we'll send this to the server
   var sortKeys = keese(previousKey, nextKey, keys.length);
   for (var i = 0; i < keys.length; i += 1) {

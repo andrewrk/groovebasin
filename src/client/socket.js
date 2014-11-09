@@ -32,8 +32,8 @@ function Socket() {
       self.emit('connect');
     }
 
-    function onMessage(event) {
-      var msg = JSON.parse(event.data);
+    function onMessage(ev) {
+      var msg = JSON.parse(ev.data);
       self.emit(msg.name, msg.args);
     }
 

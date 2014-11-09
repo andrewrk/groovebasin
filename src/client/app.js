@@ -1261,9 +1261,9 @@ function nextRepeatState(){
 }
 
 var keyboardHandlers = (function(){
-  function upDownHandler(event){
+  function upDownHandler(ev){
     var defaultIndex, dir, nextPos;
-    if (event.which === 38) {
+    if (ev.which === 38) {
       // up
       defaultIndex = player.currentItem ? player.currentItem.index - 1 : player.queue.itemList.length - 1;
       dir = -1;
@@ -1277,7 +1277,7 @@ var keyboardHandlers = (function(){
     } else if (defaultIndex < 0) {
       defaultIndex = 0;
     }
-    if (event.altKey) {
+    if (ev.altKey) {
       if (selection.isQueue()) {
         player.shiftIds(selection.ids.queue, dir);
       }
@@ -1288,13 +1288,13 @@ var keyboardHandlers = (function(){
           return;
         }
         selection.cursor = player.queue.itemList[nextPos].id;
-        if (!event.ctrlKey && !event.shiftKey) {
+        if (!ev.ctrlKey && !ev.shiftKey) {
           // single select
           selection.clear();
           selection.ids.queue[selection.cursor] = true;
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.type;
-        } else if (!event.ctrlKey && event.shiftKey) {
+        } else if (!ev.ctrlKey && ev.shiftKey) {
           // range select
           selectPlaylistRange();
         } else {
@@ -1320,10 +1320,10 @@ var keyboardHandlers = (function(){
           selection.type = 'artist';
           selection.cursor = nextPos.artist.key;
         }
-        if (!event.ctrlKey && !event.shiftKey) {
+        if (!ev.ctrlKey && !ev.shiftKey) {
           // single select
           selection.selectOnly(selection.type, selection.cursor);
-        } else if (!event.ctrlKey && event.shiftKey) {
+        } else if (!ev.ctrlKey && ev.shiftKey) {
           // range select
           selectTreeRange();
         } else {
@@ -1340,8 +1340,8 @@ var keyboardHandlers = (function(){
     if (selection.isQueue()) scrollPlaylistToSelection();
     if (selection.isLibrary()) scrollLibraryToSelection();
   }
-  function leftRightHandler(event){
-    var dir = event.which === 37 ? -1 : 1;
+  function leftRightHandler(ev){
+    var dir = ev.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
       var helpers = getSelectionHelpers();
       if (!helpers) return;
@@ -1366,13 +1366,13 @@ var keyboardHandlers = (function(){
         }
       }
     } else {
-      if (event.ctrlKey) {
+      if (ev.ctrlKey) {
         if (dir > 0) {
           player.next();
         } else {
           player.prev();
         }
-      } else if (event.shiftKey) {
+      } else if (ev.shiftKey) {
         if (!player.currentItem) return;
         player.seek(null, getCurrentTrackPosition() + dir * player.currentItem.track.duration * 0.10);
       } else {
@@ -1402,12 +1402,12 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: null,
       shift: null,
-      handler: function(event){
+      handler: function(ev){
         if (selection.isQueue()) {
           player.seek(selection.cursor, 0);
           player.play();
         } else if (selection.isLibrary()) {
-          queueSelection(event);
+          queueSelection(ev);
         }
         return false;
       },
@@ -1432,8 +1432,8 @@ var keyboardHandlers = (function(){
       ctrl: null,
       alt: false,
       shift: false,
-      handler: function() {
-        if (event.ctrlKey) {
+      handler: function(ev) {
+        if (ev.ctrlKey) {
           toggleSelectionUnderCursor();
           refreshSelection();
         } else {
@@ -1474,11 +1474,11 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(event) {
-        if ((havePerm('admin') && event.shiftKey) ||
-           (havePerm('control') && !event.shiftKey))
+      handler: function(ev) {
+        if ((havePerm('admin') && ev.shiftKey) ||
+           (havePerm('control') && !ev.shiftKey))
         {
-          handleDeletePressed(event.shiftKey);
+          handleDeletePressed(ev.shiftKey);
         }
       },
     },
@@ -1582,8 +1582,8 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(event){
-        if (event.shiftKey) {
+      handler: function(ev){
+        if (ev.shiftKey) {
           $shortcuts.dialog({
             modal: true,
             title: "Keyboard Shortcuts",
@@ -1688,9 +1688,9 @@ function prevLibPos(libPos){
     }
   }
 }
-function queueSelection(event){
-  var keys = selection.toTrackKeys(event.altKey);
-  if (event.shiftKey) {
+function queueSelection(ev){
+  var keys = selection.toTrackKeys(ev.altKey);
+  if (ev.shiftKey) {
     player.queueTracksNext(keys);
   } else {
     player.queueTracks(keys);
@@ -1774,10 +1774,10 @@ function hideShowAuthEdit(visible) {
   $settingsShowAuth.toggle(!visible);
 }
 
-function performDrag(event, callbacks){
+function performDrag(ev, callbacks){
   abortDrag();
-  var start_drag_x = event.pageX;
-  var start_drag_y = event.pageY;
+  var start_drag_x = ev.pageX;
+  var start_drag_y = ev.pageY;
   abortDrag = function(){
     $document.off('mousemove', onDragMove).off('mouseup', onDragEnd);
     if (started_drag) {
@@ -1786,10 +1786,10 @@ function performDrag(event, callbacks){
     }
     abortDrag = function(){};
   };
-  function onDragMove(event){
+  function onDragMove(ev){
     var dist, result;
     if (!started_drag) {
-      dist = Math.pow(event.pageX - start_drag_x, 2) + Math.pow(event.pageY - start_drag_y, 2);
+      dist = Math.pow(ev.pageX - start_drag_x, 2) + Math.pow(ev.pageY - start_drag_y, 2);
       if (dist > 64) {
         started_drag = true;
       }
@@ -1797,7 +1797,7 @@ function performDrag(event, callbacks){
         return;
       }
     }
-    result = getDragPosition(event.pageX, event.pageY);
+    result = getDragPosition(ev.pageX, ev.pageY);
     $queueItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
     if (result.$next != null) {
       result.$next.addClass("border-top");
@@ -1805,26 +1805,26 @@ function performDrag(event, callbacks){
       result.$previous.addClass("border-bottom");
     }
   }
-  function onDragEnd(event){
-    if (event.which !== 1) {
+  function onDragEnd(ev){
+    if (ev.which !== 1) {
       return false;
     }
     if (started_drag) {
-      callbacks.complete(getDragPosition(event.pageX, event.pageY), event);
+      callbacks.complete(getDragPosition(ev.pageX, ev.pageY), ev);
     } else {
       callbacks.cancel();
     }
     abortDrag();
   }
   $document.on('mousemove', onDragMove).on('mouseup', onDragEnd);
-  onDragMove(event);
+  onDragMove(ev);
 }
 
 function setUpGenericUi(){
-  $document.on('mouseover', '.hoverable', function(event){
+  $document.on('mouseover', '.hoverable', function(ev){
     $(this).addClass("ui-state-hover");
   });
-  $document.on('mouseout', '.hoverable', function(event){
+  $document.on('mouseout', '.hoverable', function(ev){
     $(this).removeClass("ui-state-hover");
   });
   $(".jquery-button").button().on('click', blur);
@@ -1833,18 +1833,18 @@ function setUpGenericUi(){
     selection.fullClear();
     refreshSelection();
   });
-  $document.on('keydown', function(event){
-    var handler = keyboardHandlers[event.which];
+  $document.on('keydown', function(ev){
+    var handler = keyboardHandlers[ev.which];
     if (handler == null) return true;
-    if (handler.ctrl  != null && handler.ctrl  !== event.ctrlKey)  return true;
-    if (handler.alt   != null && handler.alt   !== event.altKey)   return true;
-    if (handler.shift != null && handler.shift !== event.shiftKey) return true;
-    handler.handler(event);
+    if (handler.ctrl  != null && handler.ctrl  !== ev.ctrlKey)  return true;
+    if (handler.alt   != null && handler.alt   !== ev.altKey)   return true;
+    if (handler.shift != null && handler.shift !== ev.shiftKey) return true;
+    handler.handler(ev);
     return false;
   });
-  $shortcuts.on('keydown', function(event) {
-    event.stopPropagation();
-    if (event.which === 27) {
+  $shortcuts.on('keydown', function(ev) {
+    ev.stopPropagation();
+    if (ev.which === 27) {
       $shortcuts.dialog('close');
     }
   });
@@ -1857,7 +1857,7 @@ function blur() {
 var dynamicModeLabel = document.getElementById('dynamic-mode-label');
 var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
 function setUpPlayQueueUi() {
-  $queueWindow.on('click', 'button.clear', function(event){
+  $queueWindow.on('click', 'button.clear', function(ev){
     player.clear();
   });
   $queueWindow.on('mousedown', 'button.clear', stopPropagation);
@@ -1877,32 +1877,32 @@ function setUpPlayQueueUi() {
   });
   dynamicModeLabel.addEventListener('mousedown', stopPropagation, false);
 
-  $queueItems.on('dblclick', '.pl-item', function(event){
+  $queueItems.on('dblclick', '.pl-item', function(ev){
     var trackId = $(this).attr('data-id');
     player.seek(trackId, 0);
     player.play();
   });
-  $queueItems.on('contextmenu', function(event){
-    return event.altKey;
+  $queueItems.on('contextmenu', function(ev){
+    return ev.altKey;
   });
-  $queueItems.on('mousedown', '.pl-item', function(event){
+  $queueItems.on('mousedown', '.pl-item', function(ev){
     var trackId, skipDrag;
     if (started_drag) return true;
     $(document.activeElement).blur();
-    if (event.which === 1) {
-      event.preventDefault();
+    if (ev.which === 1) {
+      ev.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
       skipDrag = false;
       if (!selection.isQueue()) {
         selection.selectOnly('queue', trackId);
-      } else if (event.ctrlKey || event.shiftKey) {
+      } else if (ev.ctrlKey || ev.shiftKey) {
         skipDrag = true;
-        if (event.shiftKey && !event.ctrlKey) {
+        if (ev.shiftKey && !ev.ctrlKey) {
           // range select click
           selection.cursor = trackId;
           selectPlaylistRange();
-        } else if (!event.shiftKey && event.ctrlKey) {
+        } else if (!ev.shiftKey && ev.ctrlKey) {
           // individual item selection toggle
           selection.cursor = trackId;
           selection.rangeSelectAnchor = trackId;
@@ -1914,8 +1914,8 @@ function setUpPlayQueueUi() {
       }
       refreshSelection();
       if (!skipDrag) {
-        return performDrag(event, {
-          complete: function(result, event){
+        return performDrag(ev, {
+          complete: function(result, ev){
             var delta, id;
             delta = {
               top: 0,
@@ -1935,9 +1935,9 @@ function setUpPlayQueueUi() {
           }
         });
       }
-    } else if (event.which === 3) {
-      if (event.altKey) return;
-      event.preventDefault();
+    } else if (ev.which === 3) {
+      if (ev.altKey) return;
+      ev.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
       if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
@@ -1951,8 +1951,8 @@ function setUpPlayQueueUi() {
         $queueMenu.find('.download').attr('href', makeMultifileDownloadHref());
       }
       $queueMenu.show().offset({
-        left: event.pageX + 1,
-        top: event.pageY + 1
+        left: ev.pageX + 1,
+        top: ev.pageY + 1
       });
       updateMenuDisableState($queueMenu);
     }
@@ -1983,7 +1983,7 @@ function niceDateString() {
 }
 
 function setUpPlaylistsUi() {
-  $newPlaylistBtn.on('click', function(event) {
+  $newPlaylistBtn.on('click', function(ev) {
     player.createPlaylist("New Playlist " + niceDateString());
   });
   genericTreeUi($playlistsList, {
@@ -1994,8 +1994,8 @@ function setUpPlaylistsUi() {
   });
 }
 
-function stopPropagation(event) {
-  event.stopPropagation();
+function stopPropagation(ev) {
+  ev.stopPropagation();
 }
 
 function onDownloadContextMenu() {
@@ -2157,11 +2157,11 @@ function showEditTags() {
 }
 
 function setUpEditTagsUi() {
-  $editTagsDialog.find("input").on("keydown", function(event) {
-    event.stopPropagation();
-    if (event.which === 27) {
+  $editTagsDialog.find("input").on("keydown", function(ev) {
+    ev.stopPropagation();
+    if (ev.which === 27) {
       $editTagsDialog.dialog('close');
-    } else if (event.which === 13) {
+    } else if (ev.which === 13) {
       saveAndClose();
     }
   });
@@ -2174,8 +2174,8 @@ function setUpEditTagsUi() {
     domItem.addEventListener('focus', onFocus, false);
   }
 
-  function onFocus(event) {
-    editTagsFocusDom = event.target;
+  function onFocus(ev) {
+    editTagsFocusDom = ev.target;
   }
 
   function createChangeListener(multiCheckBoxDom) {
@@ -2262,28 +2262,28 @@ function setUpNowPlayingUi(){
     step: 0.0001,
     min: 0,
     max: 1,
-    change: function(event, ui){
+    change: function(ev, ui){
       updateSliderUi(ui.value);
-      if (event.originalEvent == null) {
+      if (ev.originalEvent == null) {
         return;
       }
       if (!player.currentItem) return;
       player.seek(null, ui.value * player.currentItem.track.duration);
     },
-    slide: function(event, ui){
+    slide: function(ev, ui){
       updateSliderUi(ui.value);
       if (!player.currentItem) return;
       $nowplaying_elapsed.html(formatTime(ui.value * player.currentItem.track.duration));
     },
-    start: function(event, ui){
+    start: function(ev, ui){
       userIsSeeking = true;
     },
-    stop: function(event, ui){
+    stop: function(ev, ui){
       userIsSeeking = false;
     }
   });
-  function setVol(event, ui){
-    if (event.originalEvent == null) return;
+  function setVol(ev, ui){
+    if (ev.originalEvent == null) return;
     var snap = 0.05;
     var val = ui.value;
     if (Math.abs(val - 1) < snap) {
@@ -2299,16 +2299,16 @@ function setUpNowPlayingUi(){
     max: 2,
     change: setVol,
     slide: setVol,
-    start: function(event, ui){
+    start: function(ev, ui){
       userIsVolumeSliding = true;
     },
-    stop: function(event, ui){
+    stop: function(ev, ui){
       userIsVolumeSliding = false;
     }
   });
   setInterval(updateSliderPos, 100);
   function setUpMouseDownListener(cls, action){
-    $nowplaying.on('mousedown', "li." + cls, function(event){
+    $nowplaying.on('mousedown', "li." + cls, function(ev){
       action();
       return false;
     });
@@ -2328,7 +2328,7 @@ function clickTab(tab) {
 }
 
 function setUpTabListener(tab) {
-  tab.$tab.on('click', function(event) {
+  tab.$tab.on('click', function(ev) {
     clickTab(tab);
   });
 }
@@ -2409,7 +2409,7 @@ function setAutoUploadBtnState() {
 function setUpUploadUi(){
   $autoQueueUploads.button({ label: "..." });
   setAutoUploadBtnState();
-  $autoQueueUploads.on('click', function(event) {
+  $autoQueueUploads.on('click', function(ev) {
     var value = $(this).prop('checked');
     localState.autoQueueUploads = value;
     saveLocalState();
@@ -2421,11 +2421,11 @@ function setUpUploadUi(){
     uploadFiles(this.files);
   }
 
-  $uploadByUrl.on('keydown', function(event){
-    event.stopPropagation();
-    if (event.which === 27) {
+  $uploadByUrl.on('keydown', function(ev){
+    ev.stopPropagation();
+    if (ev.which === 27) {
       $uploadByUrl.val("").blur();
-    } else if (event.which === 13) {
+    } else if (ev.which === 13) {
       importUrl();
     }
   });
@@ -2545,11 +2545,11 @@ function setUpSettingsUi(){
   $userPermAdmin.button();
   $settingsDeleteUser.button();
 
-  $ensureAdminDiv.on('click', function(event) {
+  $ensureAdminDiv.on('click', function(ev) {
     socket.send('ensureAdminUser');
   });
 
-  $lastFmSignOut.on('click', function(event) {
+  $lastFmSignOut.on('click', function(ev) {
     localState.lastfm.username = null;
     localState.lastfm.session_key = null;
     localState.lastfm.scrobbling_on = false;
@@ -2557,7 +2557,7 @@ function setUpSettingsUi(){
     updateLastFmSettingsUi();
     return false;
   });
-  $toggleScrobble.on('click', function(event) {
+  $toggleScrobble.on('click', function(ev) {
     var msg;
     var value = $(this).prop("checked");
     if (value) {
@@ -2575,35 +2575,35 @@ function setUpSettingsUi(){
     socket.send(msg, params);
     updateLastFmSettingsUi();
   });
-  $toggleHardwarePlayback.on('click', function(event) {
+  $toggleHardwarePlayback.on('click', function(ev) {
     var value = $(this).prop('checked');
     socket.send('hardwarePlayback', value);
     updateSettingsAdminUi();
   });
-  $settingsAuthEdit.on('click', function(event) {
+  $settingsAuthEdit.on('click', function(ev) {
     $authUsername.val(localState.authUsername);
     $authPassword.val(localState.authPassword);
     hideShowAuthEdit(true);
     $authUsername.focus().select();
   });
-  $settingsAuthSave.on('click', function(event){
+  $settingsAuthSave.on('click', function(ev){
     settingsAuthSave();
   });
-  $settingsAuthCancel.on('click', function(event) {
+  $settingsAuthCancel.on('click', function(ev) {
     settingsAuthCancel();
   });
   $authUsername.on('keydown', handleUserOrPassKeyDown);
   $authPassword.on('keydown', handleUserOrPassKeyDown);
-  $authShowPassword.on('change', function(event) {
+  $authShowPassword.on('change', function(ev) {
     var showPw = $authShowPassword.prop('checked');
     $authPassword.get(0).type = showPw ? 'text' : 'password';
   });
-  $settingsAuthRequest.on('click', function(event) {
+  $settingsAuthRequest.on('click', function(ev) {
     socket.send('requestApproval');
     myUser.requested = true;
     updateSettingsAuthUi();
   });
-  $settingsAuthLogout.on('click', function(event) {
+  $settingsAuthLogout.on('click', function(ev) {
     localState.authUsername = null;
     localState.authPassword = null;
     saveLocalState();
@@ -2617,15 +2617,15 @@ function setUpSettingsUi(){
   $userPermAdmin.on('change', updateSelectedUserPerms);
   $settingsUsersSelect.on('change', updatePermsForSelectedUser);
 
-  $settingsDeleteUser.on('click', function(event) {
+  $settingsDeleteUser.on('click', function(ev) {
     var selectedUserId = $settingsUsersSelect.val();
     socket.send('deleteUsers', [selectedUserId]);
   });
 
-  $requestApprove.on('click', function(event) {
+  $requestApprove.on('click', function(ev) {
     handleApproveDeny(true);
   });
-  $requestDeny.on('click', function(event) {
+  $requestDeny.on('click', function(ev) {
     handleApproveDeny(false);
   });
 }
@@ -2660,7 +2660,7 @@ function updatePermsForSelectedUser() {
   $settingsDeleteUser.prop('disabled', selectedUserId === PlayerClient.GUEST_USER_ID).button('refresh');
 }
 
-function updateSelectedUserPerms(event) {
+function updateSelectedUserPerms(ev) {
   socket.send('updateUser', {
     userId: $settingsUsersSelect.val(),
     perms: {
@@ -2673,11 +2673,11 @@ function updateSelectedUserPerms(event) {
   return false;
 }
 
-function handleUserOrPassKeyDown(event) {
-  event.stopPropagation();
-  if (event.which === 27) {
+function handleUserOrPassKeyDown(ev) {
+  ev.stopPropagation();
+  if (ev.which === 27) {
     settingsAuthCancel();
-  } else if (event.which === 13) {
+  } else if (ev.which === 13) {
     settingsAuthSave();
   }
 }
@@ -2688,15 +2688,15 @@ var chatCommands = {
 };
 
 function setUpEventsUi() {
-  $eventsList.on('scroll', function(event) {
+  $eventsList.on('scroll', function(ev) {
     eventsListScrolledToBottom = ($eventsList.get(0).scrollHeight - $eventsList.scrollTop()) === $eventsList.outerHeight();
   });
-  $chatBoxInput.on('keydown', function(event) {
-    event.stopPropagation();
-    if (event.which === 27) {
+  $chatBoxInput.on('keydown', function(ev) {
+    ev.stopPropagation();
+    if (ev.which === 27) {
       $chatBoxInput.blur();
       return false;
-    } else if (event.which === 13) {
+    } else if (ev.which === 13) {
       var msg = $chatBoxInput.val().trim();
       if (!msg.length) return false;
       var match = msg.match(/^\/([^\/]\w*)\s*(.*)$/);
@@ -3038,13 +3038,13 @@ function ensureSearchHappensSoon() {
 }
 
 function setUpLibraryUi(){
-  $libFilter.on('keydown', function(event){
+  $libFilter.on('keydown', function(ev){
     var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
-    event.stopPropagation();
-    switch (event.which) {
+    ev.stopPropagation();
+    switch (ev.which) {
     case 27: // Escape
-      if ($(event.target).val().length === 0) {
-        $(event.target).blur();
+      if ($(ev.target).val().length === 0) {
+        $(ev.target).blur();
       } else {
         setTimeout(function(){
           $libFilter.val("");
@@ -3066,13 +3066,13 @@ function setUpLibraryUi(){
           }
         }
       }
-      if (event.altKey) shuffle(keys);
+      if (ev.altKey) shuffle(keys);
       if (keys.length > 2000) {
         if (!confirm("You are about to queue " + keys.length + " songs.")) {
           return false;
         }
       }
-      if (event.shiftKey) {
+      if (ev.shiftKey) {
         player.queueTracksNext(keys);
       } else {
         player.queueTracks(keys);
@@ -3158,7 +3158,7 @@ function onRemoveFromPlaylistContextMenu() {
 }
 
 function genericTreeUi($elem, options){
-  $elem.on('mousedown', 'div.expandable > div.ui-icon', function(event){
+  $elem.on('mousedown', 'div.expandable > div.ui-icon', function(ev){
     options.toggleExpansion($(this).closest('li'));
     return false;
   });
@@ -3166,37 +3166,37 @@ function genericTreeUi($elem, options){
     return false;
   });
   $elem.on('dblclick', 'div.clickable', queueSelection);
-  $elem.on('contextmenu', function(event){
-    return event.altKey;
+  $elem.on('contextmenu', function(ev){
+    return ev.altKey;
   });
-  $elem.on('mousedown', '.clickable', function(event){
+  $elem.on('mousedown', '.clickable', function(ev){
     $(document.activeElement).blur();
     var $this = $(this);
     var type = $this.attr('data-type');
     var key = $this.attr('data-key');
-    if (event.which === 1) {
-      leftMouseDown(event);
-    } else if (event.which === 3) {
-      if (event.altKey) {
+    if (ev.which === 1) {
+      leftMouseDown(ev);
+    } else if (ev.which === 3) {
+      if (ev.altKey) {
         return;
       }
-      rightMouseDown(event);
+      rightMouseDown(ev);
     }
-    function leftMouseDown(event){
-      event.preventDefault();
+    function leftMouseDown(ev){
+      ev.preventDefault();
       removeContextMenu();
       var skipDrag = false;
       if (!options.isSelectionOwner()) {
         selection.selectOnly(type, key);
-      } else if (event.ctrlKey || event.shiftKey) {
+      } else if (ev.ctrlKey || ev.shiftKey) {
         skipDrag = true;
         selection.cursor = key;
         selection.type = type;
-        if (!event.shiftKey && !event.ctrlKey) {
+        if (!ev.shiftKey && !ev.ctrlKey) {
           selection.selectOnly(type, key);
-        } else if (event.shiftKey) {
+        } else if (ev.shiftKey) {
           selectTreeRange();
-        } else if (event.ctrlKey) {
+        } else if (ev.ctrlKey) {
           toggleSelectionUnderCursor();
         }
       } else if (selection.ids[type][key] == null) {
@@ -3204,13 +3204,13 @@ function genericTreeUi($elem, options){
       }
       refreshSelection();
       if (!skipDrag) {
-        performDrag(event, {
-          complete: function(result, event){
+        performDrag(ev, {
+          complete: function(result, ev){
             var delta = {
               top: 0,
               bottom: 1
             };
-            var keys = selection.toTrackKeys(event.altKey);
+            var keys = selection.toTrackKeys(ev.altKey);
             player.queueTracks(keys, result.previous_key, result.next_key);
           },
           cancel: function(){
@@ -3220,8 +3220,8 @@ function genericTreeUi($elem, options){
         });
       }
     }
-    function rightMouseDown(event){
-      event.preventDefault();
+    function rightMouseDown(ev){
+      ev.preventDefault();
       removeContextMenu();
       if (!options.isSelectionOwner() || selection.ids[type][key] == null) {
         selection.selectOnly(type, key);
@@ -3255,8 +3255,8 @@ function genericTreeUi($elem, options){
         $downloadItem.attr('href', makeMultifileDownloadHref());
       }
       $libraryMenu.show().offset({
-        left: event.pageX + 1,
-        top: event.pageY + 1
+        left: ev.pageX + 1,
+        top: ev.pageY + 1
       });
       updateMenuDisableState($libraryMenu);
     }
@@ -3391,8 +3391,8 @@ function setAllTabsHeight(h) {
   }
 }
 
-function onStreamLabelDown(event) {
-  event.stopPropagation();
+function onStreamLabelDown(ev) {
+  ev.stopPropagation();
 }
 
 function getStreamerCount() {
@@ -3489,8 +3489,8 @@ function updateStreamPlayer() {
   renderStreamButton();
 }
 
-function setVol(event, ui) {
-  if (event.originalEvent == null) return;
+function setVol(ev, ui) {
+  if (ev.originalEvent == null) return;
   setStreamVolume(ui.value);
 }
 

@@ -1,6 +1,6 @@
-/*! jQuery UI - v1.11.1 - 2014-10-03
+/*! jQuery UI - v1.11.2 - 2014-11-09
 * http://jqueryui.com
-* Includes: core.js, widget.js, mouse.js, position.js, draggable.js, resizable.js, button.js, dialog.js, menu.js, progressbar.js, selectmenu.js, slider.js
+* Includes: core.js, widget.js, mouse.js, position.js, draggable.js, resizable.js, button.js, dialog.js, menu.js, progressbar.js, slider.js, tabs.js
 * Copyright 2014 jQuery Foundation and other contributors; Licensed MIT */
 
 (function( factory ) {
@@ -15,7 +15,7 @@
 	}
 }(function( $ ) {
 /*!
- * jQuery UI Core 1.11.1
+ * jQuery UI Core 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -30,7 +30,7 @@
 $.ui = $.ui || {};
 
 $.extend( $.ui, {
-	version: "1.11.1",
+	version: "1.11.2",
 
 	keyCode: {
 		BACKSPACE: 8,
@@ -309,7 +309,7 @@ $.ui.plugin = {
 
 
 /*!
- * jQuery UI Widget 1.11.1
+ * jQuery UI Widget 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -336,7 +336,7 @@ $.cleanData = (function( orig ) {
 				}
 
 			// http://bugs.jquery.com/ticket/8235
-			} catch( e ) {}
+			} catch ( e ) {}
 		}
 		orig( elems );
 	};
@@ -554,10 +554,6 @@ $.Widget.prototype = {
 		this.element = $( element );
 		this.uuid = widget_uuid++;
 		this.eventNamespace = "." + this.widgetName + this.uuid;
-		this.options = $.widget.extend( {},
-			this.options,
-			this._getCreateOptions(),
-			options );
 
 		this.bindings = $();
 		this.hoverable = $();
@@ -579,6 +575,11 @@ $.Widget.prototype = {
 				element.document || element );
 			this.window = $( this.document[0].defaultView || this.document[0].parentWindow );
 		}
+
+		this.options = $.widget.extend( {},
+			this.options,
+			this._getCreateOptions(),
+			options );
 
 		this._create();
 		this._trigger( "create", null, this._getCreateEventData() );
@@ -742,8 +743,14 @@ $.Widget.prototype = {
 	},
 
 	_off: function( element, eventName ) {
-		eventName = (eventName || "").split( " " ).join( this.eventNamespace + " " ) + this.eventNamespace;
+		eventName = (eventName || "").split( " " ).join( this.eventNamespace + " " ) +
+			this.eventNamespace;
 		element.unbind( eventName ).undelegate( eventName );
+
+		// Clear the stack to avoid memory leaks (#10056)
+		this.bindings = $( this.bindings.not( element ).get() );
+		this.focusable = $( this.focusable.not( element ).get() );
+		this.hoverable = $( this.hoverable.not( element ).get() );
 	},
 
 	_delay: function( handler, delay ) {
@@ -849,7 +856,7 @@ var widget = $.widget;
 
 
 /*!
- * jQuery UI Mouse 1.11.1
+ * jQuery UI Mouse 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -866,7 +873,7 @@ $( document ).mouseup( function() {
 });
 
 var mouse = $.widget("ui.mouse", {
-	version: "1.11.1",
+	version: "1.11.2",
 	options: {
 		cancel: "input,textarea,button,select,option",
 		distance: 1,
@@ -906,6 +913,8 @@ var mouse = $.widget("ui.mouse", {
 		if ( mouseHandled ) {
 			return;
 		}
+
+		this._mouseMoved = false;
 
 		// we may have missed mouseup (out of window)
 		(this._mouseStarted && this._mouseUp(event));
@@ -960,13 +969,23 @@ var mouse = $.widget("ui.mouse", {
 	},
 
 	_mouseMove: function(event) {
-		// IE mouseup check - mouseup happened when mouse was out of window
-		if ($.ui.ie && ( !document.documentMode || document.documentMode < 9 ) && !event.button) {
-			return this._mouseUp(event);
+		// Only check for mouseups outside the document if you've moved inside the document
+		// at least once. This prevents the firing of mouseup in the case of IE<9, which will
+		// fire a mousemove event if content is placed under the cursor. See #7778
+		// Support: IE <9
+		if ( this._mouseMoved ) {
+			// IE mouseup check - mouseup happened when mouse was out of window
+			if ($.ui.ie && ( !document.documentMode || document.documentMode < 9 ) && !event.button) {
+				return this._mouseUp(event);
 
-		// Iframe mouseup check - mouseup occurred in another document
-		} else if ( !event.which ) {
-			return this._mouseUp( event );
+			// Iframe mouseup check - mouseup occurred in another document
+			} else if ( !event.which ) {
+				return this._mouseUp( event );
+			}
+		}
+
+		if ( event.which || event.button ) {
+			this._mouseMoved = true;
 		}
 
 		if (this._mouseStarted) {
@@ -1023,7 +1042,7 @@ var mouse = $.widget("ui.mouse", {
 
 
 /*!
- * jQuery UI Position 1.11.1
+ * jQuery UI Position 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -1530,7 +1549,7 @@ var position = $.ui.position;
 
 
 /*!
- * jQuery UI Draggable 1.11.1
+ * jQuery UI Draggable 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -1542,7 +1561,7 @@ var position = $.ui.position;
 
 
 $.widget("ui.draggable", $.ui.mouse, {
-	version: "1.11.1",
+	version: "1.11.2",
 	widgetEventPrefix: "drag",
 	options: {
 		addClasses: true,
@@ -1577,8 +1596,8 @@ $.widget("ui.draggable", $.ui.mouse, {
 	},
 	_create: function() {
 
-		if (this.options.helper === "original" && !(/^(?:r|a|f)/).test(this.element.css("position"))) {
-			this.element[0].style.position = "relative";
+		if ( this.options.helper === "original" ) {
+			this._setPositionRelative();
 		}
 		if (this.options.addClasses){
 			this.element.addClass("ui-draggable");
@@ -1610,20 +1629,9 @@ $.widget("ui.draggable", $.ui.mouse, {
 	},
 
 	_mouseCapture: function(event) {
+		var o = this.options;
 
-		var document = this.document[ 0 ],
-			o = this.options;
-
-		// support: IE9
-		// IE9 throws an "Unspecified error" accessing document.activeElement from an <iframe>
-		try {
-			// Support: IE9+
-			// If the <body> is blurred, IE will switch windows, see #9520
-			if ( document.activeElement && document.activeElement.nodeName.toLowerCase() !== "body" ) {
-				// Blur any element that currently has focus, see #4261
-				$( document.activeElement ).blur();
-			}
-		} catch ( error ) {}
+		this._blurActiveElement( event );
 
 		// among others, prevent a drag on a resizable-handle
 		if (this.helper || o.disabled || $(event.target).closest(".ui-resizable-handle").length > 0) {
@@ -1636,18 +1644,52 @@ $.widget("ui.draggable", $.ui.mouse, {
 			return false;
 		}
 
-		$(o.iframeFix === true ? "iframe" : o.iframeFix).each(function() {
-			$("<div class='ui-draggable-iframeFix' style='background: #fff;'></div>")
-			.css({
-				width: this.offsetWidth + "px", height: this.offsetHeight + "px",
-				position: "absolute", opacity: "0.001", zIndex: 1000
-			})
-			.css($(this).offset())
-			.appendTo("body");
-		});
+		this._blockFrames( o.iframeFix === true ? "iframe" : o.iframeFix );
 
 		return true;
 
+	},
+
+	_blockFrames: function( selector ) {
+		this.iframeBlocks = this.document.find( selector ).map(function() {
+			var iframe = $( this );
+
+			return $( "<div>" )
+				.css( "position", "absolute" )
+				.appendTo( iframe.parent() )
+				.outerWidth( iframe.outerWidth() )
+				.outerHeight( iframe.outerHeight() )
+				.offset( iframe.offset() )[ 0 ];
+		});
+	},
+
+	_unblockFrames: function() {
+		if ( this.iframeBlocks ) {
+			this.iframeBlocks.remove();
+			delete this.iframeBlocks;
+		}
+	},
+
+	_blurActiveElement: function( event ) {
+		var document = this.document[ 0 ];
+
+		// Only need to blur if the event occurred on the draggable itself, see #10527
+		if ( !this.handleElement.is( event.target ) ) {
+			return;
+		}
+
+		// support: IE9
+		// IE9 throws an "Unspecified error" accessing document.activeElement from an <iframe>
+		try {
+
+			// Support: IE9, IE10
+			// If the <body> is blurred, IE will switch windows, see #9520
+			if ( document.activeElement && document.activeElement.nodeName.toLowerCase() !== "body" ) {
+
+				// Blur any element that currently has focus, see #4261
+				$( document.activeElement ).blur();
+			}
+		} catch ( error ) {}
 	},
 
 	_mouseStart: function(event) {
@@ -1679,26 +1721,13 @@ $.widget("ui.draggable", $.ui.mouse, {
 		this.cssPosition = this.helper.css( "position" );
 		this.scrollParent = this.helper.scrollParent( true );
 		this.offsetParent = this.helper.offsetParent();
-		this.offsetParentCssPosition = this.offsetParent.css( "position" );
+		this.hasFixedAncestor = this.helper.parents().filter(function() {
+				return $( this ).css( "position" ) === "fixed";
+			}).length > 0;
 
 		//The element's absolute position on the page minus margins
-		this.offset = this.positionAbs = this.element.offset();
-		this.offset = {
-			top: this.offset.top - this.margins.top,
-			left: this.offset.left - this.margins.left
-		};
-
-		//Reset scroll cache
-		this.offset.scroll = false;
-
-		$.extend(this.offset, {
-			click: { //Where the click happened, relative to the element
-				left: event.pageX - this.offset.left,
-				top: event.pageY - this.offset.top
-			},
-			parent: this._getParentOffset(),
-			relative: this._getRelativeOffset() //This is a relative to absolute position minus the actual position calculation - only used for relative positioned helper
-		});
+		this.positionAbs = this.element.offset();
+		this._refreshOffsets( event );
 
 		//Generate the original position
 		this.originalPosition = this.position = this._generatePosition( event, false );
@@ -1725,6 +1754,10 @@ $.widget("ui.draggable", $.ui.mouse, {
 			$.ui.ddmanager.prepareOffsets(this, event);
 		}
 
+		// Reset helper's right/bottom css if they're set and set explicit width/height instead
+		// as this prevents resizing of elements with right/bottom set (see #7772)
+		this._normalizeRightBottom();
+
 		this._mouseDrag(event, true); //Execute the drag once - this causes the helper not to be visible before getting its correct position
 
 		//If the ddmanager is used for droppables, inform the manager that dragging has started (see #5003)
@@ -1735,9 +1768,24 @@ $.widget("ui.draggable", $.ui.mouse, {
 		return true;
 	},
 
+	_refreshOffsets: function( event ) {
+		this.offset = {
+			top: this.positionAbs.top - this.margins.top,
+			left: this.positionAbs.left - this.margins.left,
+			scroll: false,
+			parent: this._getParentOffset(),
+			relative: this._getRelativeOffset()
+		};
+
+		this.offset.click = {
+			left: event.pageX - this.offset.left,
+			top: event.pageY - this.offset.top
+		};
+	},
+
 	_mouseDrag: function(event, noPropagation) {
 		// reset any necessary cached properties (see #5009)
-		if ( this.offsetParentCssPosition === "fixed" ) {
+		if ( this.hasFixedAncestor ) {
 			this.offset.parent = this._getParentOffset();
 		}
 
@@ -1795,19 +1843,19 @@ $.widget("ui.draggable", $.ui.mouse, {
 		return false;
 	},
 
-	_mouseUp: function(event) {
-		//Remove frame helpers
-		$("div.ui-draggable-iframeFix").each(function() {
-			this.parentNode.removeChild(this);
-		});
+	_mouseUp: function( event ) {
+		this._unblockFrames();
 
 		//If the ddmanager is used for droppables, inform the manager that dragging has stopped (see #5003)
 		if ( $.ui.ddmanager ) {
 			$.ui.ddmanager.dragStop(this, event);
 		}
 
-		// The interaction is over; whether or not the click resulted in a drag, focus the element
-		this.element.focus();
+		// Only need to focus if the event occurred on the draggable itself, see #10527
+		if ( this.handleElement.is( event.target ) ) {
+			// The interaction is over; whether or not the click resulted in a drag, focus the element
+			this.element.focus();
+		}
 
 		return $.ui.mouse.prototype._mouseUp.call(this, event);
 	},
@@ -1843,10 +1891,22 @@ $.widget("ui.draggable", $.ui.mouse, {
 	_createHelper: function(event) {
 
 		var o = this.options,
-			helper = $.isFunction(o.helper) ? $(o.helper.apply(this.element[ 0 ], [ event ])) : (o.helper === "clone" ? this.element.clone().removeAttr("id") : this.element);
+			helperIsFunction = $.isFunction( o.helper ),
+			helper = helperIsFunction ?
+				$( o.helper.apply( this.element[ 0 ], [ event ] ) ) :
+				( o.helper === "clone" ?
+					this.element.clone().removeAttr( "id" ) :
+					this.element );
 
 		if (!helper.parents("body").length) {
 			helper.appendTo((o.appendTo === "parent" ? this.element[0].parentNode : o.appendTo));
+		}
+
+		// http://bugs.jqueryui.com/ticket/9446
+		// a helper function can return the original element
+		// which wouldn't have been set to relative in _create
+		if ( helperIsFunction && helper[ 0 ] === this.element[ 0 ] ) {
+			this._setPositionRelative();
 		}
 
 		if (helper[0] !== this.element[0] && !(/(fixed|absolute)/).test(helper.css("position"))) {
@@ -1855,6 +1915,12 @@ $.widget("ui.draggable", $.ui.mouse, {
 
 		return helper;
 
+	},
+
+	_setPositionRelative: function() {
+		if ( !( /^(?:r|a|f)/ ).test( this.element.css( "position" ) ) ) {
+			this.element[ 0 ].style.position = "relative";
+		}
 	},
 
 	_adjustOffsetFromHelper: function(obj) {
@@ -1941,7 +2007,7 @@ $.widget("ui.draggable", $.ui.mouse, {
 
 	_setContainment: function() {
 
-		var over, c, ce,
+		var isUserScrollable, c, ce,
 			o = this.options,
 			document = this.document[ 0 ];
 
@@ -1988,13 +2054,23 @@ $.widget("ui.draggable", $.ui.mouse, {
 			return;
 		}
 
-		over = c.css( "overflow" ) !== "hidden";
+		isUserScrollable = /(scroll|auto)/.test( c.css( "overflow" ) );
 
 		this.containment = [
 			( parseInt( c.css( "borderLeftWidth" ), 10 ) || 0 ) + ( parseInt( c.css( "paddingLeft" ), 10 ) || 0 ),
 			( parseInt( c.css( "borderTopWidth" ), 10 ) || 0 ) + ( parseInt( c.css( "paddingTop" ), 10 ) || 0 ),
-			( over ? Math.max( ce.scrollWidth, ce.offsetWidth ) : ce.offsetWidth ) - ( parseInt( c.css( "borderRightWidth" ), 10 ) || 0 ) - ( parseInt( c.css( "paddingRight" ), 10 ) || 0 ) - this.helperProportions.width - this.margins.left - this.margins.right,
-			( over ? Math.max( ce.scrollHeight, ce.offsetHeight ) : ce.offsetHeight ) - ( parseInt( c.css( "borderBottomWidth" ), 10 ) || 0 ) - ( parseInt( c.css( "paddingBottom" ), 10 ) || 0 ) - this.helperProportions.height - this.margins.top  - this.margins.bottom
+			( isUserScrollable ? Math.max( ce.scrollWidth, ce.offsetWidth ) : ce.offsetWidth ) -
+				( parseInt( c.css( "borderRightWidth" ), 10 ) || 0 ) -
+				( parseInt( c.css( "paddingRight" ), 10 ) || 0 ) -
+				this.helperProportions.width -
+				this.margins.left -
+				this.margins.right,
+			( isUserScrollable ? Math.max( ce.scrollHeight, ce.offsetHeight ) : ce.offsetHeight ) -
+				( parseInt( c.css( "borderBottomWidth" ), 10 ) || 0 ) -
+				( parseInt( c.css( "paddingBottom" ), 10 ) || 0 ) -
+				this.helperProportions.height -
+				this.margins.top -
+				this.margins.bottom
 		];
 		this.relativeContainer = c;
 	},
@@ -2124,16 +2200,29 @@ $.widget("ui.draggable", $.ui.mouse, {
 		}
 	},
 
+	_normalizeRightBottom: function() {
+		if ( this.options.axis !== "y" && this.helper.css( "right" ) !== "auto" ) {
+			this.helper.width( this.helper.width() );
+			this.helper.css( "right", "auto" );
+		}
+		if ( this.options.axis !== "x" && this.helper.css( "bottom" ) !== "auto" ) {
+			this.helper.height( this.helper.height() );
+			this.helper.css( "bottom", "auto" );
+		}
+	},
+
 	// From now on bulk stuff - mainly helpers
 
-	_trigger: function(type, event, ui) {
+	_trigger: function( type, event, ui ) {
 		ui = ui || this._uiHash();
 		$.ui.plugin.call( this, type, [ event, ui, this ], true );
-		//The absolute position has to be recalculated after plugins
-		if (type === "drag") {
-			this.positionAbs = this._convertPositionTo("absolute");
+
+		// Absolute position and offset (see #6884 ) have to be recalculated after plugins
+		if ( /^(drag|start|stop)/.test( type ) ) {
+			this.positionAbs = this._convertPositionTo( "absolute" );
+			ui.offset = this.positionAbs;
 		}
-		return $.Widget.prototype._trigger.call(this, type, event, ui);
+		return $.Widget.prototype._trigger.call( this, type, event, ui );
 	},
 
 	plugins: {},
@@ -2149,160 +2238,197 @@ $.widget("ui.draggable", $.ui.mouse, {
 
 });
 
-$.ui.plugin.add("draggable", "connectToSortable", {
-	start: function( event, ui, inst ) {
+$.ui.plugin.add( "draggable", "connectToSortable", {
+	start: function( event, ui, draggable ) {
+		var uiSortable = $.extend( {}, ui, {
+			item: draggable.element
+		});
 
-		var o = inst.options,
-			uiSortable = $.extend({}, ui, { item: inst.element });
-		inst.sortables = [];
-		$(o.connectToSortable).each(function() {
+		draggable.sortables = [];
+		$( draggable.options.connectToSortable ).each(function() {
 			var sortable = $( this ).sortable( "instance" );
-			if (sortable && !sortable.options.disabled) {
-				inst.sortables.push({
-					instance: sortable,
-					shouldRevert: sortable.options.revert
-				});
-				sortable.refreshPositions();	// Call the sortable's refreshPositions at drag start to refresh the containerCache since the sortable container cache is used in drag and needs to be up to date (this will ensure it's initialised as well as being kept in step with any changes that might have happened on the page).
+
+			if ( sortable && !sortable.options.disabled ) {
+				draggable.sortables.push( sortable );
+
+				// refreshPositions is called at drag start to refresh the containerCache
+				// which is used in drag. This ensures it's initialized and synchronized
+				// with any changes that might have happened on the page since initialization.
+				sortable.refreshPositions();
 				sortable._trigger("activate", event, uiSortable);
 			}
 		});
-
 	},
-	stop: function( event, ui, inst ) {
-
-		//If we are still over the sortable, we fake the stop event of the sortable, but also remove helper
+	stop: function( event, ui, draggable ) {
 		var uiSortable = $.extend( {}, ui, {
-			item: inst.element
+			item: draggable.element
 		});
 
-		$.each(inst.sortables, function() {
-			if (this.instance.isOver) {
+		draggable.cancelHelperRemoval = false;
 
-				this.instance.isOver = 0;
+		$.each( draggable.sortables, function() {
+			var sortable = this;
 
-				inst.cancelHelperRemoval = true; //Don't remove the helper in the draggable instance
-				this.instance.cancelHelperRemoval = false; //Remove it in the sortable instance (so sortable plugins like revert still work)
+			if ( sortable.isOver ) {
+				sortable.isOver = 0;
 
-				//The sortable revert is supported, and we have to set a temporary dropped variable on the draggable to support revert: "valid/invalid"
-				if (this.shouldRevert) {
-					this.instance.options.revert = this.shouldRevert;
-				}
+				// Allow this sortable to handle removing the helper
+				draggable.cancelHelperRemoval = true;
+				sortable.cancelHelperRemoval = false;
 
-				//Trigger the stop of the sortable
-				this.instance._mouseStop(event);
+				// Use _storedCSS To restore properties in the sortable,
+				// as this also handles revert (#9675) since the draggable
+				// may have modified them in unexpected ways (#8809)
+				sortable._storedCSS = {
+					position: sortable.placeholder.css( "position" ),
+					top: sortable.placeholder.css( "top" ),
+					left: sortable.placeholder.css( "left" )
+				};
 
-				this.instance.options.helper = this.instance.options._helper;
+				sortable._mouseStop(event);
 
-				//If the helper has been the original item, restore properties in the sortable
-				if (inst.options.helper === "original") {
-					this.instance.currentItem.css({ top: "auto", left: "auto" });
-				}
-
+				// Once drag has ended, the sortable should return to using
+				// its original helper, not the shared helper from draggable
+				sortable.options.helper = sortable.options._helper;
 			} else {
-				this.instance.cancelHelperRemoval = false; //Remove the helper in the sortable instance
-				this.instance._trigger("deactivate", event, uiSortable);
+				// Prevent this Sortable from removing the helper.
+				// However, don't set the draggable to remove the helper
+				// either as another connected Sortable may yet handle the removal.
+				sortable.cancelHelperRemoval = true;
+
+				sortable._trigger( "deactivate", event, uiSortable );
 			}
-
 		});
-
 	},
-	drag: function( event, ui, inst ) {
-
-		var that = this;
-
-		$.each(inst.sortables, function() {
-
+	drag: function( event, ui, draggable ) {
+		$.each( draggable.sortables, function() {
 			var innermostIntersecting = false,
-				thisSortable = this;
+				sortable = this;
 
-			//Copy over some variables to allow calling the sortable's native _intersectsWith
-			this.instance.positionAbs = inst.positionAbs;
-			this.instance.helperProportions = inst.helperProportions;
-			this.instance.offset.click = inst.offset.click;
+			// Copy over variables that sortable's _intersectsWith uses
+			sortable.positionAbs = draggable.positionAbs;
+			sortable.helperProportions = draggable.helperProportions;
+			sortable.offset.click = draggable.offset.click;
 
-			if (this.instance._intersectsWith(this.instance.containerCache)) {
+			if ( sortable._intersectsWith( sortable.containerCache ) ) {
 				innermostIntersecting = true;
-				$.each(inst.sortables, function() {
-					this.instance.positionAbs = inst.positionAbs;
-					this.instance.helperProportions = inst.helperProportions;
-					this.instance.offset.click = inst.offset.click;
-					if (this !== thisSortable &&
-						this.instance._intersectsWith(this.instance.containerCache) &&
-						$.contains(thisSortable.instance.element[0], this.instance.element[0])
-					) {
+
+				$.each( draggable.sortables, function() {
+					// Copy over variables that sortable's _intersectsWith uses
+					this.positionAbs = draggable.positionAbs;
+					this.helperProportions = draggable.helperProportions;
+					this.offset.click = draggable.offset.click;
+
+					if ( this !== sortable &&
+							this._intersectsWith( this.containerCache ) &&
+							$.contains( sortable.element[ 0 ], this.element[ 0 ] ) ) {
 						innermostIntersecting = false;
 					}
+
 					return innermostIntersecting;
 				});
 			}
 
-			if (innermostIntersecting) {
-				//If it intersects, we use a little isOver variable and set it once, so our move-in stuff gets fired only once
-				if (!this.instance.isOver) {
+			if ( innermostIntersecting ) {
+				// If it intersects, we use a little isOver variable and set it once,
+				// so that the move-in stuff gets fired only once.
+				if ( !sortable.isOver ) {
+					sortable.isOver = 1;
 
-					this.instance.isOver = 1;
-					//Now we fake the start of dragging for the sortable instance,
-					//by cloning the list group item, appending it to the sortable and using it as inst.currentItem
-					//We can then fire the start event of the sortable with our passed browser event, and our own helper (so it doesn't create a new one)
-					this.instance.currentItem = $(that).clone().removeAttr("id").appendTo(this.instance.element).data("ui-sortable-item", true);
-					this.instance.options._helper = this.instance.options.helper; //Store helper option to later restore it
-					this.instance.options.helper = function() { return ui.helper[0]; };
+					sortable.currentItem = ui.helper
+						.appendTo( sortable.element )
+						.data( "ui-sortable-item", true );
 
-					event.target = this.instance.currentItem[0];
-					this.instance._mouseCapture(event, true);
-					this.instance._mouseStart(event, true, true);
+					// Store helper option to later restore it
+					sortable.options._helper = sortable.options.helper;
 
-					//Because the browser event is way off the new appended portlet, we modify a couple of variables to reflect the changes
-					this.instance.offset.click.top = inst.offset.click.top;
-					this.instance.offset.click.left = inst.offset.click.left;
-					this.instance.offset.parent.left -= inst.offset.parent.left - this.instance.offset.parent.left;
-					this.instance.offset.parent.top -= inst.offset.parent.top - this.instance.offset.parent.top;
+					sortable.options.helper = function() {
+						return ui.helper[ 0 ];
+					};
 
-					inst._trigger("toSortable", event);
-					inst.dropped = this.instance.element; //draggable revert needs that
-					//hack so receive/update callbacks work (mostly)
-					inst.currentItem = inst.element;
-					this.instance.fromOutside = inst;
+					// Fire the start events of the sortable with our passed browser event,
+					// and our own helper (so it doesn't create a new one)
+					event.target = sortable.currentItem[ 0 ];
+					sortable._mouseCapture( event, true );
+					sortable._mouseStart( event, true, true );
 
+					// Because the browser event is way off the new appended portlet,
+					// modify necessary variables to reflect the changes
+					sortable.offset.click.top = draggable.offset.click.top;
+					sortable.offset.click.left = draggable.offset.click.left;
+					sortable.offset.parent.left -= draggable.offset.parent.left -
+						sortable.offset.parent.left;
+					sortable.offset.parent.top -= draggable.offset.parent.top -
+						sortable.offset.parent.top;
+
+					draggable._trigger( "toSortable", event );
+
+					// Inform draggable that the helper is in a valid drop zone,
+					// used solely in the revert option to handle "valid/invalid".
+					draggable.dropped = sortable.element;
+
+					// Need to refreshPositions of all sortables in the case that
+					// adding to one sortable changes the location of the other sortables (#9675)
+					$.each( draggable.sortables, function() {
+						this.refreshPositions();
+					});
+
+					// hack so receive/update callbacks work (mostly)
+					draggable.currentItem = draggable.element;
+					sortable.fromOutside = draggable;
 				}
 
-				//Provided we did all the previous steps, we can fire the drag event of the sortable on every draggable drag, when it intersects with the sortable
-				if (this.instance.currentItem) {
-					this.instance._mouseDrag(event);
+				if ( sortable.currentItem ) {
+					sortable._mouseDrag( event );
+					// Copy the sortable's position because the draggable's can potentially reflect
+					// a relative position, while sortable is always absolute, which the dragged
+					// element has now become. (#8809)
+					ui.position = sortable.position;
 				}
-
 			} else {
+				// If it doesn't intersect with the sortable, and it intersected before,
+				// we fake the drag stop of the sortable, but make sure it doesn't remove
+				// the helper by using cancelHelperRemoval.
+				if ( sortable.isOver ) {
 
-				//If it doesn't intersect with the sortable, and it intersected before,
-				//we fake the drag stop of the sortable, but make sure it doesn't remove the helper by using cancelHelperRemoval
-				if (this.instance.isOver) {
+					sortable.isOver = 0;
+					sortable.cancelHelperRemoval = true;
 
-					this.instance.isOver = 0;
-					this.instance.cancelHelperRemoval = true;
+					// Calling sortable's mouseStop would trigger a revert,
+					// so revert must be temporarily false until after mouseStop is called.
+					sortable.options._revert = sortable.options.revert;
+					sortable.options.revert = false;
 
-					//Prevent reverting on this forced stop
-					this.instance.options.revert = false;
+					sortable._trigger( "out", event, sortable._uiHash( sortable ) );
+					sortable._mouseStop( event, true );
 
-					// The out event needs to be triggered independently
-					this.instance._trigger("out", event, this.instance._uiHash(this.instance));
+					// restore sortable behaviors that were modfied
+					// when the draggable entered the sortable area (#9481)
+					sortable.options.revert = sortable.options._revert;
+					sortable.options.helper = sortable.options._helper;
 
-					this.instance._mouseStop(event, true);
-					this.instance.options.helper = this.instance.options._helper;
-
-					//Now we remove our currentItem, the list group clone again, and the placeholder, and animate the helper back to it's original size
-					this.instance.currentItem.remove();
-					if (this.instance.placeholder) {
-						this.instance.placeholder.remove();
+					if ( sortable.placeholder ) {
+						sortable.placeholder.remove();
 					}
 
-					inst._trigger("fromSortable", event);
-					inst.dropped = false; //draggable revert needs that
+					// Recalculate the draggable's offset considering the sortable
+					// may have modified them in unexpected ways (#8809)
+					draggable._refreshOffsets( event );
+					ui.position = draggable._generatePosition( event, true );
+
+					draggable._trigger( "fromSortable", event );
+
+					// Inform draggable that the helper is no longer in a valid drop zone
+					draggable.dropped = false;
+
+					// Need to refreshPositions of all sortables just in case removing
+					// from one sortable changes the location of other sortables (#9675)
+					$.each( draggable.sortables, function() {
+						this.refreshPositions();
+					});
 				}
-
 			}
-
 		});
-
 	}
 });
 
@@ -2432,9 +2558,9 @@ $.ui.plugin.add("draggable", "snap", {
 
 		for (i = inst.snapElements.length - 1; i >= 0; i--){
 
-			l = inst.snapElements[i].left;
+			l = inst.snapElements[i].left - inst.margins.left;
 			r = l + inst.snapElements[i].width;
-			t = inst.snapElements[i].top;
+			t = inst.snapElements[i].top - inst.margins.top;
 			b = t + inst.snapElements[i].height;
 
 			if ( x2 < l - d || x1 > r + d || y2 < t - d || y1 > b + d || !$.contains( inst.snapElements[ i ].item.ownerDocument, inst.snapElements[ i ].item ) ) {
@@ -2451,16 +2577,16 @@ $.ui.plugin.add("draggable", "snap", {
 				ls = Math.abs(l - x2) <= d;
 				rs = Math.abs(r - x1) <= d;
 				if (ts) {
-					ui.position.top = inst._convertPositionTo("relative", { top: t - inst.helperProportions.height, left: 0 }).top - inst.margins.top;
+					ui.position.top = inst._convertPositionTo("relative", { top: t - inst.helperProportions.height, left: 0 }).top;
 				}
 				if (bs) {
-					ui.position.top = inst._convertPositionTo("relative", { top: b, left: 0 }).top - inst.margins.top;
+					ui.position.top = inst._convertPositionTo("relative", { top: b, left: 0 }).top;
 				}
 				if (ls) {
-					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: l - inst.helperProportions.width }).left - inst.margins.left;
+					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: l - inst.helperProportions.width }).left;
 				}
 				if (rs) {
-					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: r }).left - inst.margins.left;
+					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: r }).left;
 				}
 			}
 
@@ -2472,16 +2598,16 @@ $.ui.plugin.add("draggable", "snap", {
 				ls = Math.abs(l - x1) <= d;
 				rs = Math.abs(r - x2) <= d;
 				if (ts) {
-					ui.position.top = inst._convertPositionTo("relative", { top: t, left: 0 }).top - inst.margins.top;
+					ui.position.top = inst._convertPositionTo("relative", { top: t, left: 0 }).top;
 				}
 				if (bs) {
-					ui.position.top = inst._convertPositionTo("relative", { top: b - inst.helperProportions.height, left: 0 }).top - inst.margins.top;
+					ui.position.top = inst._convertPositionTo("relative", { top: b - inst.helperProportions.height, left: 0 }).top;
 				}
 				if (ls) {
-					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: l }).left - inst.margins.left;
+					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: l }).left;
 				}
 				if (rs) {
-					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: r - inst.helperProportions.width }).left - inst.margins.left;
+					ui.position.left = inst._convertPositionTo("relative", { top: 0, left: r - inst.helperProportions.width }).left;
 				}
 			}
 
@@ -2536,7 +2662,7 @@ var draggable = $.ui.draggable;
 
 
 /*!
- * jQuery UI Resizable 1.11.1
+ * jQuery UI Resizable 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -2548,7 +2674,7 @@ var draggable = $.ui.draggable;
 
 
 $.widget("ui.resizable", $.ui.mouse, {
-	version: "1.11.1",
+	version: "1.11.2",
 	widgetEventPrefix: "resize",
 	options: {
 		alsoResize: false,
@@ -3700,7 +3826,7 @@ var resizable = $.ui.resizable;
 
 
 /*!
- * jQuery UI Button 1.11.1
+ * jQuery UI Button 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -3739,7 +3865,7 @@ var lastActive,
 	};
 
 $.widget( "ui.button", {
-	version: "1.11.1",
+	version: "1.11.2",
 	defaultElement: "<button>",
 	options: {
 		disabled: null,
@@ -4035,7 +4161,7 @@ $.widget( "ui.button", {
 });
 
 $.widget( "ui.buttonset", {
-	version: "1.11.1",
+	version: "1.11.2",
 	options: {
 		items: "button, input[type=button], input[type=submit], input[type=reset], input[type=checkbox], input[type=radio], a, :data(ui-button)"
 	},
@@ -4097,7 +4223,7 @@ var button = $.ui.button;
 
 
 /*!
- * jQuery UI Dialog 1.11.1
+ * jQuery UI Dialog 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -4109,7 +4235,7 @@ var button = $.ui.button;
 
 
 var dialog = $.widget( "ui.dialog", {
-	version: "1.11.1",
+	version: "1.11.2",
 	options: {
 		appendTo: "body",
 		autoOpen: true,
@@ -4953,7 +5079,7 @@ var dialog = $.widget( "ui.dialog", {
 
 
 /*!
- * jQuery UI Menu 1.11.1
+ * jQuery UI Menu 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -4965,7 +5091,7 @@ var dialog = $.widget( "ui.dialog", {
 
 
 var menu = $.widget( "ui.menu", {
-	version: "1.11.1",
+	version: "1.11.2",
 	defaultElement: "<ul>",
 	delay: 300,
 	options: {
@@ -5040,6 +5166,12 @@ var menu = $.widget( "ui.menu", {
 				}
 			},
 			"mouseenter .ui-menu-item": function( event ) {
+				// Ignore mouse events while typeahead is active, see #10458.
+				// Prevents focusing the wrong item when typeahead causes a scroll while the mouse
+				// is over an item in the menu
+				if ( this.previousFilter ) {
+					return;
+				}
 				var target = $( event.currentTarget );
 				// Remove ui-state-active class from siblings of the newly focused menu item
 				// to avoid a jump caused by adjacent elements both having a class with a border
@@ -5119,12 +5251,8 @@ var menu = $.widget( "ui.menu", {
 	},
 
 	_keydown: function( event ) {
-		var match, prev, character, skip, regex,
+		var match, prev, character, skip,
 			preventDefault = true;
-
-		function escape( value ) {
-			return value.replace( /[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&" );
-		}
 
 		switch ( event.keyCode ) {
 		case $.ui.keyCode.PAGE_UP:
@@ -5174,10 +5302,7 @@ var menu = $.widget( "ui.menu", {
 				character = prev + character;
 			}
 
-			regex = new RegExp( "^" + escape( character ), "i" );
-			match = this.activeMenu.find( this.options.items ).filter(function() {
-				return regex.test( $( this ).text() );
-			});
+			match = this._filterMenuItems( character );
 			match = skip && match.index( this.active.next() ) !== -1 ?
 				this.active.nextAll( ".ui-menu-item" ) :
 				match;
@@ -5186,22 +5311,15 @@ var menu = $.widget( "ui.menu", {
 			// to move down the menu to the first item that starts with that character
 			if ( !match.length ) {
 				character = String.fromCharCode( event.keyCode );
-				regex = new RegExp( "^" + escape( character ), "i" );
-				match = this.activeMenu.find( this.options.items ).filter(function() {
-					return regex.test( $( this ).text() );
-				});
+				match = this._filterMenuItems( character );
 			}
 
 			if ( match.length ) {
 				this.focus( event, match );
-				if ( match.length > 1 ) {
-					this.previousFilter = character;
-					this.filterTimer = this._delay(function() {
-						delete this.previousFilter;
-					}, 1000 );
-				} else {
+				this.previousFilter = character;
+				this.filterTimer = this._delay(function() {
 					delete this.previousFilter;
-				}
+				}, 1000 );
 			} else {
 				delete this.previousFilter;
 			}
@@ -5573,12 +5691,26 @@ var menu = $.widget( "ui.menu", {
 			this.collapseAll( event, true );
 		}
 		this._trigger( "select", event, ui );
+	},
+
+	_filterMenuItems: function(character) {
+		var escapedCharacter = character.replace( /[\-\[\]{}()*+?.,\\\^$|#\s]/g, "\\$&" ),
+			regex = new RegExp( "^" + escapedCharacter, "i" );
+
+		return this.activeMenu
+			.find( this.options.items )
+
+			// Only match on items, not dividers or other content (#10571)
+			.filter( ".ui-menu-item" )
+			.filter(function() {
+				return regex.test( $.trim( $( this ).text() ) );
+			});
 	}
 });
 
 
 /*!
- * jQuery UI Progressbar 1.11.1
+ * jQuery UI Progressbar 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -5590,7 +5722,7 @@ var menu = $.widget( "ui.menu", {
 
 
 var progressbar = $.widget( "ui.progressbar", {
-	version: "1.11.1",
+	version: "1.11.2",
 	options: {
 		max: 100,
 		value: 0,
@@ -5723,563 +5855,7 @@ var progressbar = $.widget( "ui.progressbar", {
 
 
 /*!
- * jQuery UI Selectmenu 1.11.1
- * http://jqueryui.com
- *
- * Copyright 2014 jQuery Foundation and other contributors
- * Released under the MIT license.
- * http://jquery.org/license
- *
- * http://api.jqueryui.com/selectmenu
- */
-
-
-var selectmenu = $.widget( "ui.selectmenu", {
-	version: "1.11.1",
-	defaultElement: "<select>",
-	options: {
-		appendTo: null,
-		disabled: null,
-		icons: {
-			button: "ui-icon-triangle-1-s"
-		},
-		position: {
-			my: "left top",
-			at: "left bottom",
-			collision: "none"
-		},
-		width: null,
-
-		// callbacks
-		change: null,
-		close: null,
-		focus: null,
-		open: null,
-		select: null
-	},
-
-	_create: function() {
-		var selectmenuId = this.element.uniqueId().attr( "id" );
-		this.ids = {
-			element: selectmenuId,
-			button: selectmenuId + "-button",
-			menu: selectmenuId + "-menu"
-		};
-
-		this._drawButton();
-		this._drawMenu();
-
-		if ( this.options.disabled ) {
-			this.disable();
-		}
-	},
-
-	_drawButton: function() {
-		var that = this,
-			tabindex = this.element.attr( "tabindex" );
-
-		// Associate existing label with the new button
-		this.label = $( "label[for='" + this.ids.element + "']" ).attr( "for", this.ids.button );
-		this._on( this.label, {
-			click: function( event ) {
-				this.button.focus();
-				event.preventDefault();
-			}
-		});
-
-		// Hide original select element
-		this.element.hide();
-
-		// Create button
-		this.button = $( "<span>", {
-			"class": "ui-selectmenu-button ui-widget ui-state-default ui-corner-all",
-			tabindex: tabindex || this.options.disabled ? -1 : 0,
-			id: this.ids.button,
-			role: "combobox",
-			"aria-expanded": "false",
-			"aria-autocomplete": "list",
-			"aria-owns": this.ids.menu,
-			"aria-haspopup": "true"
-		})
-			.insertAfter( this.element );
-
-		$( "<span>", {
-			"class": "ui-icon " + this.options.icons.button
-		})
-			.prependTo( this.button );
-
-		this.buttonText = $( "<span>", {
-			"class": "ui-selectmenu-text"
-		})
-			.appendTo( this.button );
-
-		this._setText( this.buttonText, this.element.find( "option:selected" ).text() );
-		this._resizeButton();
-
-		this._on( this.button, this._buttonEvents );
-		this.button.one( "focusin", function() {
-
-			// Delay rendering the menu items until the button receives focus.
-			// The menu may have already been rendered via a programmatic open.
-			if ( !that.menuItems ) {
-				that._refreshMenu();
-			}
-		});
-		this._hoverable( this.button );
-		this._focusable( this.button );
-	},
-
-	_drawMenu: function() {
-		var that = this;
-
-		// Create menu
-		this.menu = $( "<ul>", {
-			"aria-hidden": "true",
-			"aria-labelledby": this.ids.button,
-			id: this.ids.menu
-		});
-
-		// Wrap menu
-		this.menuWrap = $( "<div>", {
-			"class": "ui-selectmenu-menu ui-front"
-		})
-			.append( this.menu )
-			.appendTo( this._appendTo() );
-
-		// Initialize menu widget
-		this.menuInstance = this.menu
-			.menu({
-				role: "listbox",
-				select: function( event, ui ) {
-					event.preventDefault();
-					that._select( ui.item.data( "ui-selectmenu-item" ), event );
-				},
-				focus: function( event, ui ) {
-					var item = ui.item.data( "ui-selectmenu-item" );
-
-					// Prevent inital focus from firing and check if its a newly focused item
-					if ( that.focusIndex != null && item.index !== that.focusIndex ) {
-						that._trigger( "focus", event, { item: item } );
-						if ( !that.isOpen ) {
-							that._select( item, event );
-						}
-					}
-					that.focusIndex = item.index;
-
-					that.button.attr( "aria-activedescendant",
-						that.menuItems.eq( item.index ).attr( "id" ) );
-				}
-			})
-			.menu( "instance" );
-
-		// Adjust menu styles to dropdown
-		this.menu
-			.addClass( "ui-corner-bottom" )
-			.removeClass( "ui-corner-all" );
-
-		// Don't close the menu on mouseleave
-		this.menuInstance._off( this.menu, "mouseleave" );
-
-		// Cancel the menu's collapseAll on document click
-		this.menuInstance._closeOnDocumentClick = function() {
-			return false;
-		};
-
-		// Selects often contain empty items, but never contain dividers
-		this.menuInstance._isDivider = function() {
-			return false;
-		};
-	},
-
-	refresh: function() {
-		this._refreshMenu();
-		this._setText( this.buttonText, this._getSelectedItem().text() );
-		if ( !this.options.width ) {
-			this._resizeButton();
-		}
-	},
-
-	_refreshMenu: function() {
-		this.menu.empty();
-
-		var item,
-			options = this.element.find( "option" );
-
-		if ( !options.length ) {
-			return;
-		}
-
-		this._parseOptions( options );
-		this._renderMenu( this.menu, this.items );
-
-		this.menuInstance.refresh();
-		this.menuItems = this.menu.find( "li" ).not( ".ui-selectmenu-optgroup" );
-
-		item = this._getSelectedItem();
-
-		// Update the menu to have the correct item focused
-		this.menuInstance.focus( null, item );
-		this._setAria( item.data( "ui-selectmenu-item" ) );
-
-		// Set disabled state
-		this._setOption( "disabled", this.element.prop( "disabled" ) );
-	},
-
-	open: function( event ) {
-		if ( this.options.disabled ) {
-			return;
-		}
-
-		// If this is the first time the menu is being opened, render the items
-		if ( !this.menuItems ) {
-			this._refreshMenu();
-		} else {
-
-			// Menu clears focus on close, reset focus to selected item
-			this.menu.find( ".ui-state-focus" ).removeClass( "ui-state-focus" );
-			this.menuInstance.focus( null, this._getSelectedItem() );
-		}
-
-		this.isOpen = true;
-		this._toggleAttr();
-		this._resizeMenu();
-		this._position();
-
-		this._on( this.document, this._documentClick );
-
-		this._trigger( "open", event );
-	},
-
-	_position: function() {
-		this.menuWrap.position( $.extend( { of: this.button }, this.options.position ) );
-	},
-
-	close: function( event ) {
-		if ( !this.isOpen ) {
-			return;
-		}
-
-		this.isOpen = false;
-		this._toggleAttr();
-
-		this._off( this.document );
-
-		this._trigger( "close", event );
-	},
-
-	widget: function() {
-		return this.button;
-	},
-
-	menuWidget: function() {
-		return this.menu;
-	},
-
-	_renderMenu: function( ul, items ) {
-		var that = this,
-			currentOptgroup = "";
-
-		$.each( items, function( index, item ) {
-			if ( item.optgroup !== currentOptgroup ) {
-				$( "<li>", {
-					"class": "ui-selectmenu-optgroup ui-menu-divider" +
-						( item.element.parent( "optgroup" ).prop( "disabled" ) ?
-							" ui-state-disabled" :
-							"" ),
-					text: item.optgroup
-				})
-					.appendTo( ul );
-
-				currentOptgroup = item.optgroup;
-			}
-
-			that._renderItemData( ul, item );
-		});
-	},
-
-	_renderItemData: function( ul, item ) {
-		return this._renderItem( ul, item ).data( "ui-selectmenu-item", item );
-	},
-
-	_renderItem: function( ul, item ) {
-		var li = $( "<li>" );
-
-		if ( item.disabled ) {
-			li.addClass( "ui-state-disabled" );
-		}
-		this._setText( li, item.label );
-
-		return li.appendTo( ul );
-	},
-
-	_setText: function( element, value ) {
-		if ( value ) {
-			element.text( value );
-		} else {
-			element.html( "&#160;" );
-		}
-	},
-
-	_move: function( direction, event ) {
-		var item, next,
-			filter = ".ui-menu-item";
-
-		if ( this.isOpen ) {
-			item = this.menuItems.eq( this.focusIndex );
-		} else {
-			item = this.menuItems.eq( this.element[ 0 ].selectedIndex );
-			filter += ":not(.ui-state-disabled)";
-		}
-
-		if ( direction === "first" || direction === "last" ) {
-			next = item[ direction === "first" ? "prevAll" : "nextAll" ]( filter ).eq( -1 );
-		} else {
-			next = item[ direction + "All" ]( filter ).eq( 0 );
-		}
-
-		if ( next.length ) {
-			this.menuInstance.focus( event, next );
-		}
-	},
-
-	_getSelectedItem: function() {
-		return this.menuItems.eq( this.element[ 0 ].selectedIndex );
-	},
-
-	_toggle: function( event ) {
-		this[ this.isOpen ? "close" : "open" ]( event );
-	},
-
-	_documentClick: {
-		mousedown: function( event ) {
-			if ( !this.isOpen ) {
-				return;
-			}
-
-			if ( !$( event.target ).closest( ".ui-selectmenu-menu, #" + this.ids.button ).length ) {
-				this.close( event );
-			}
-		}
-	},
-
-	_buttonEvents: {
-
-		// Prevent text selection from being reset when interacting with the selectmenu (#10144)
-		mousedown: function( event ) {
-			event.preventDefault();
-		},
-
-		click: "_toggle",
-
-		keydown: function( event ) {
-			var preventDefault = true;
-			switch ( event.keyCode ) {
-				case $.ui.keyCode.TAB:
-				case $.ui.keyCode.ESCAPE:
-					this.close( event );
-					preventDefault = false;
-					break;
-				case $.ui.keyCode.ENTER:
-					if ( this.isOpen ) {
-						this._selectFocusedItem( event );
-					}
-					break;
-				case $.ui.keyCode.UP:
-					if ( event.altKey ) {
-						this._toggle( event );
-					} else {
-						this._move( "prev", event );
-					}
-					break;
-				case $.ui.keyCode.DOWN:
-					if ( event.altKey ) {
-						this._toggle( event );
-					} else {
-						this._move( "next", event );
-					}
-					break;
-				case $.ui.keyCode.SPACE:
-					if ( this.isOpen ) {
-						this._selectFocusedItem( event );
-					} else {
-						this._toggle( event );
-					}
-					break;
-				case $.ui.keyCode.LEFT:
-					this._move( "prev", event );
-					break;
-				case $.ui.keyCode.RIGHT:
-					this._move( "next", event );
-					break;
-				case $.ui.keyCode.HOME:
-				case $.ui.keyCode.PAGE_UP:
-					this._move( "first", event );
-					break;
-				case $.ui.keyCode.END:
-				case $.ui.keyCode.PAGE_DOWN:
-					this._move( "last", event );
-					break;
-				default:
-					this.menu.trigger( event );
-					preventDefault = false;
-			}
-
-			if ( preventDefault ) {
-				event.preventDefault();
-			}
-		}
-	},
-
-	_selectFocusedItem: function( event ) {
-		var item = this.menuItems.eq( this.focusIndex );
-		if ( !item.hasClass( "ui-state-disabled" ) ) {
-			this._select( item.data( "ui-selectmenu-item" ), event );
-		}
-	},
-
-	_select: function( item, event ) {
-		var oldIndex = this.element[ 0 ].selectedIndex;
-
-		// Change native select element
-		this.element[ 0 ].selectedIndex = item.index;
-		this._setText( this.buttonText, item.label );
-		this._setAria( item );
-		this._trigger( "select", event, { item: item } );
-
-		if ( item.index !== oldIndex ) {
-			this._trigger( "change", event, { item: item } );
-		}
-
-		this.close( event );
-	},
-
-	_setAria: function( item ) {
-		var id = this.menuItems.eq( item.index ).attr( "id" );
-
-		this.button.attr({
-			"aria-labelledby": id,
-			"aria-activedescendant": id
-		});
-		this.menu.attr( "aria-activedescendant", id );
-	},
-
-	_setOption: function( key, value ) {
-		if ( key === "icons" ) {
-			this.button.find( "span.ui-icon" )
-				.removeClass( this.options.icons.button )
-				.addClass( value.button );
-		}
-
-		this._super( key, value );
-
-		if ( key === "appendTo" ) {
-			this.menuWrap.appendTo( this._appendTo() );
-		}
-
-		if ( key === "disabled" ) {
-			this.menuInstance.option( "disabled", value );
-			this.button
-				.toggleClass( "ui-state-disabled", value )
-				.attr( "aria-disabled", value );
-
-			this.element.prop( "disabled", value );
-			if ( value ) {
-				this.button.attr( "tabindex", -1 );
-				this.close();
-			} else {
-				this.button.attr( "tabindex", 0 );
-			}
-		}
-
-		if ( key === "width" ) {
-			this._resizeButton();
-		}
-	},
-
-	_appendTo: function() {
-		var element = this.options.appendTo;
-
-		if ( element ) {
-			element = element.jquery || element.nodeType ?
-				$( element ) :
-				this.document.find( element ).eq( 0 );
-		}
-
-		if ( !element || !element[ 0 ] ) {
-			element = this.element.closest( ".ui-front" );
-		}
-
-		if ( !element.length ) {
-			element = this.document[ 0 ].body;
-		}
-
-		return element;
-	},
-
-	_toggleAttr: function() {
-		this.button
-			.toggleClass( "ui-corner-top", this.isOpen )
-			.toggleClass( "ui-corner-all", !this.isOpen )
-			.attr( "aria-expanded", this.isOpen );
-		this.menuWrap.toggleClass( "ui-selectmenu-open", this.isOpen );
-		this.menu.attr( "aria-hidden", !this.isOpen );
-	},
-
-	_resizeButton: function() {
-		var width = this.options.width;
-
-		if ( !width ) {
-			width = this.element.show().outerWidth();
-			this.element.hide();
-		}
-
-		this.button.outerWidth( width );
-	},
-
-	_resizeMenu: function() {
-		this.menu.outerWidth( Math.max(
-			this.button.outerWidth(),
-
-			// support: IE10
-			// IE10 wraps long text (possibly a rounding bug)
-			// so we add 1px to avoid the wrapping
-			this.menu.width( "" ).outerWidth() + 1
-		) );
-	},
-
-	_getCreateOptions: function() {
-		return { disabled: this.element.prop( "disabled" ) };
-	},
-
-	_parseOptions: function( options ) {
-		var data = [];
-		options.each(function( index, item ) {
-			var option = $( item ),
-				optgroup = option.parent( "optgroup" );
-			data.push({
-				element: option,
-				index: index,
-				value: option.attr( "value" ),
-				label: option.text(),
-				optgroup: optgroup.attr( "label" ) || "",
-				disabled: optgroup.prop( "disabled" ) || option.prop( "disabled" )
-			});
-		});
-		this.items = data;
-	},
-
-	_destroy: function() {
-		this.menuWrap.remove();
-		this.button.remove();
-		this.element.show();
-		this.element.removeUniqueId();
-		this.label.attr( "for", this.ids.element );
-	}
-});
-
-
-/*!
- * jQuery UI Slider 1.11.1
+ * jQuery UI Slider 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -6291,7 +5867,7 @@ var selectmenu = $.widget( "ui.selectmenu", {
 
 
 var slider = $.widget( "ui.slider", $.ui.mouse, {
-	version: "1.11.1",
+	version: "1.11.2",
 	widgetEventPrefix: "slide",
 
 	options: {
@@ -6323,6 +5899,7 @@ var slider = $.widget( "ui.slider", $.ui.mouse, {
 		this._handleIndex = null;
 		this._detectOrientation();
 		this._mouseInit();
+		this._calculateNewMax();
 
 		this.element
 			.addClass( "ui-slider" +
@@ -6737,9 +6314,11 @@ var slider = $.widget( "ui.slider", $.ui.mouse, {
 				}
 				this._animateOff = false;
 				break;
+			case "step":
 			case "min":
 			case "max":
 				this._animateOff = true;
+				this._calculateNewMax();
 				this._refreshValue();
 				this._animateOff = false;
 				break;
@@ -6777,7 +6356,7 @@ var slider = $.widget( "ui.slider", $.ui.mouse, {
 			// .slice() creates a copy of the array
 			// this copy gets trimmed by min and max and then returned
 			vals = this.options.values.slice();
-			for ( i = 0; i < vals.length; i+= 1) {
+			for ( i = 0; i < vals.length; i += 1) {
 				vals[ i ] = this._trimAlignValue( vals[ i ] );
 			}
 
@@ -6808,12 +6387,17 @@ var slider = $.widget( "ui.slider", $.ui.mouse, {
 		return parseFloat( alignValue.toFixed(5) );
 	},
 
+	_calculateNewMax: function() {
+		var remainder = ( this.options.max - this._valueMin() ) % this.options.step;
+		this.max = this.options.max - remainder;
+	},
+
 	_valueMin: function() {
 		return this.options.min;
 	},
 
 	_valueMax: function() {
-		return this.options.max;
+		return this.max;
 	},
 
 	_refreshValue: function() {
@@ -6950,6 +6534,872 @@ var slider = $.widget( "ui.slider", $.ui.mouse, {
 				$( event.target ).removeClass( "ui-state-active" );
 			}
 		}
+	}
+});
+
+
+/*!
+ * jQuery UI Tabs 1.11.2
+ * http://jqueryui.com
+ *
+ * Copyright 2014 jQuery Foundation and other contributors
+ * Released under the MIT license.
+ * http://jquery.org/license
+ *
+ * http://api.jqueryui.com/tabs/
+ */
+
+
+var tabs = $.widget( "ui.tabs", {
+	version: "1.11.2",
+	delay: 300,
+	options: {
+		active: null,
+		collapsible: false,
+		event: "click",
+		heightStyle: "content",
+		hide: null,
+		show: null,
+
+		// callbacks
+		activate: null,
+		beforeActivate: null,
+		beforeLoad: null,
+		load: null
+	},
+
+	_isLocal: (function() {
+		var rhash = /#.*$/;
+
+		return function( anchor ) {
+			var anchorUrl, locationUrl;
+
+			// support: IE7
+			// IE7 doesn't normalize the href property when set via script (#9317)
+			anchor = anchor.cloneNode( false );
+
+			anchorUrl = anchor.href.replace( rhash, "" );
+			locationUrl = location.href.replace( rhash, "" );
+
+			// decoding may throw an error if the URL isn't UTF-8 (#9518)
+			try {
+				anchorUrl = decodeURIComponent( anchorUrl );
+			} catch ( error ) {}
+			try {
+				locationUrl = decodeURIComponent( locationUrl );
+			} catch ( error ) {}
+
+			return anchor.hash.length > 1 && anchorUrl === locationUrl;
+		};
+	})(),
+
+	_create: function() {
+		var that = this,
+			options = this.options;
+
+		this.running = false;
+
+		this.element
+			.addClass( "ui-tabs ui-widget ui-widget-content ui-corner-all" )
+			.toggleClass( "ui-tabs-collapsible", options.collapsible );
+
+		this._processTabs();
+		options.active = this._initialActive();
+
+		// Take disabling tabs via class attribute from HTML
+		// into account and update option properly.
+		if ( $.isArray( options.disabled ) ) {
+			options.disabled = $.unique( options.disabled.concat(
+				$.map( this.tabs.filter( ".ui-state-disabled" ), function( li ) {
+					return that.tabs.index( li );
+				})
+			) ).sort();
+		}
+
+		// check for length avoids error when initializing empty list
+		if ( this.options.active !== false && this.anchors.length ) {
+			this.active = this._findActive( options.active );
+		} else {
+			this.active = $();
+		}
+
+		this._refresh();
+
+		if ( this.active.length ) {
+			this.load( options.active );
+		}
+	},
+
+	_initialActive: function() {
+		var active = this.options.active,
+			collapsible = this.options.collapsible,
+			locationHash = location.hash.substring( 1 );
+
+		if ( active === null ) {
+			// check the fragment identifier in the URL
+			if ( locationHash ) {
+				this.tabs.each(function( i, tab ) {
+					if ( $( tab ).attr( "aria-controls" ) === locationHash ) {
+						active = i;
+						return false;
+					}
+				});
+			}
+
+			// check for a tab marked active via a class
+			if ( active === null ) {
+				active = this.tabs.index( this.tabs.filter( ".ui-tabs-active" ) );
+			}
+
+			// no active tab, set to false
+			if ( active === null || active === -1 ) {
+				active = this.tabs.length ? 0 : false;
+			}
+		}
+
+		// handle numbers: negative, out of range
+		if ( active !== false ) {
+			active = this.tabs.index( this.tabs.eq( active ) );
+			if ( active === -1 ) {
+				active = collapsible ? false : 0;
+			}
+		}
+
+		// don't allow collapsible: false and active: false
+		if ( !collapsible && active === false && this.anchors.length ) {
+			active = 0;
+		}
+
+		return active;
+	},
+
+	_getCreateEventData: function() {
+		return {
+			tab: this.active,
+			panel: !this.active.length ? $() : this._getPanelForTab( this.active )
+		};
+	},
+
+	_tabKeydown: function( event ) {
+		var focusedTab = $( this.document[0].activeElement ).closest( "li" ),
+			selectedIndex = this.tabs.index( focusedTab ),
+			goingForward = true;
+
+		if ( this._handlePageNav( event ) ) {
+			return;
+		}
+
+		switch ( event.keyCode ) {
+			case $.ui.keyCode.RIGHT:
+			case $.ui.keyCode.DOWN:
+				selectedIndex++;
+				break;
+			case $.ui.keyCode.UP:
+			case $.ui.keyCode.LEFT:
+				goingForward = false;
+				selectedIndex--;
+				break;
+			case $.ui.keyCode.END:
+				selectedIndex = this.anchors.length - 1;
+				break;
+			case $.ui.keyCode.HOME:
+				selectedIndex = 0;
+				break;
+			case $.ui.keyCode.SPACE:
+				// Activate only, no collapsing
+				event.preventDefault();
+				clearTimeout( this.activating );
+				this._activate( selectedIndex );
+				return;
+			case $.ui.keyCode.ENTER:
+				// Toggle (cancel delayed activation, allow collapsing)
+				event.preventDefault();
+				clearTimeout( this.activating );
+				// Determine if we should collapse or activate
+				this._activate( selectedIndex === this.options.active ? false : selectedIndex );
+				return;
+			default:
+				return;
+		}
+
+		// Focus the appropriate tab, based on which key was pressed
+		event.preventDefault();
+		clearTimeout( this.activating );
+		selectedIndex = this._focusNextTab( selectedIndex, goingForward );
+
+		// Navigating with control key will prevent automatic activation
+		if ( !event.ctrlKey ) {
+			// Update aria-selected immediately so that AT think the tab is already selected.
+			// Otherwise AT may confuse the user by stating that they need to activate the tab,
+			// but the tab will already be activated by the time the announcement finishes.
+			focusedTab.attr( "aria-selected", "false" );
+			this.tabs.eq( selectedIndex ).attr( "aria-selected", "true" );
+
+			this.activating = this._delay(function() {
+				this.option( "active", selectedIndex );
+			}, this.delay );
+		}
+	},
+
+	_panelKeydown: function( event ) {
+		if ( this._handlePageNav( event ) ) {
+			return;
+		}
+
+		// Ctrl+up moves focus to the current tab
+		if ( event.ctrlKey && event.keyCode === $.ui.keyCode.UP ) {
+			event.preventDefault();
+			this.active.focus();
+		}
+	},
+
+	// Alt+page up/down moves focus to the previous/next tab (and activates)
+	_handlePageNav: function( event ) {
+		if ( event.altKey && event.keyCode === $.ui.keyCode.PAGE_UP ) {
+			this._activate( this._focusNextTab( this.options.active - 1, false ) );
+			return true;
+		}
+		if ( event.altKey && event.keyCode === $.ui.keyCode.PAGE_DOWN ) {
+			this._activate( this._focusNextTab( this.options.active + 1, true ) );
+			return true;
+		}
+	},
+
+	_findNextTab: function( index, goingForward ) {
+		var lastTabIndex = this.tabs.length - 1;
+
+		function constrain() {
+			if ( index > lastTabIndex ) {
+				index = 0;
+			}
+			if ( index < 0 ) {
+				index = lastTabIndex;
+			}
+			return index;
+		}
+
+		while ( $.inArray( constrain(), this.options.disabled ) !== -1 ) {
+			index = goingForward ? index + 1 : index - 1;
+		}
+
+		return index;
+	},
+
+	_focusNextTab: function( index, goingForward ) {
+		index = this._findNextTab( index, goingForward );
+		this.tabs.eq( index ).focus();
+		return index;
+	},
+
+	_setOption: function( key, value ) {
+		if ( key === "active" ) {
+			// _activate() will handle invalid values and update this.options
+			this._activate( value );
+			return;
+		}
+
+		if ( key === "disabled" ) {
+			// don't use the widget factory's disabled handling
+			this._setupDisabled( value );
+			return;
+		}
+
+		this._super( key, value);
+
+		if ( key === "collapsible" ) {
+			this.element.toggleClass( "ui-tabs-collapsible", value );
+			// Setting collapsible: false while collapsed; open first panel
+			if ( !value && this.options.active === false ) {
+				this._activate( 0 );
+			}
+		}
+
+		if ( key === "event" ) {
+			this._setupEvents( value );
+		}
+
+		if ( key === "heightStyle" ) {
+			this._setupHeightStyle( value );
+		}
+	},
+
+	_sanitizeSelector: function( hash ) {
+		return hash ? hash.replace( /[!"$%&'()*+,.\/:;<=>?@\[\]\^`{|}~]/g, "\\$&" ) : "";
+	},
+
+	refresh: function() {
+		var options = this.options,
+			lis = this.tablist.children( ":has(a[href])" );
+
+		// get disabled tabs from class attribute from HTML
+		// this will get converted to a boolean if needed in _refresh()
+		options.disabled = $.map( lis.filter( ".ui-state-disabled" ), function( tab ) {
+			return lis.index( tab );
+		});
+
+		this._processTabs();
+
+		// was collapsed or no tabs
+		if ( options.active === false || !this.anchors.length ) {
+			options.active = false;
+			this.active = $();
+		// was active, but active tab is gone
+		} else if ( this.active.length && !$.contains( this.tablist[ 0 ], this.active[ 0 ] ) ) {
+			// all remaining tabs are disabled
+			if ( this.tabs.length === options.disabled.length ) {
+				options.active = false;
+				this.active = $();
+			// activate previous tab
+			} else {
+				this._activate( this._findNextTab( Math.max( 0, options.active - 1 ), false ) );
+			}
+		// was active, active tab still exists
+		} else {
+			// make sure active index is correct
+			options.active = this.tabs.index( this.active );
+		}
+
+		this._refresh();
+	},
+
+	_refresh: function() {
+		this._setupDisabled( this.options.disabled );
+		this._setupEvents( this.options.event );
+		this._setupHeightStyle( this.options.heightStyle );
+
+		this.tabs.not( this.active ).attr({
+			"aria-selected": "false",
+			"aria-expanded": "false",
+			tabIndex: -1
+		});
+		this.panels.not( this._getPanelForTab( this.active ) )
+			.hide()
+			.attr({
+				"aria-hidden": "true"
+			});
+
+		// Make sure one tab is in the tab order
+		if ( !this.active.length ) {
+			this.tabs.eq( 0 ).attr( "tabIndex", 0 );
+		} else {
+			this.active
+				.addClass( "ui-tabs-active ui-state-active" )
+				.attr({
+					"aria-selected": "true",
+					"aria-expanded": "true",
+					tabIndex: 0
+				});
+			this._getPanelForTab( this.active )
+				.show()
+				.attr({
+					"aria-hidden": "false"
+				});
+		}
+	},
+
+	_processTabs: function() {
+		var that = this,
+			prevTabs = this.tabs,
+			prevAnchors = this.anchors,
+			prevPanels = this.panels;
+
+		this.tablist = this._getList()
+			.addClass( "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all" )
+			.attr( "role", "tablist" )
+
+			// Prevent users from focusing disabled tabs via click
+			.delegate( "> li", "mousedown" + this.eventNamespace, function( event ) {
+				if ( $( this ).is( ".ui-state-disabled" ) ) {
+					event.preventDefault();
+				}
+			})
+
+			// support: IE <9
+			// Preventing the default action in mousedown doesn't prevent IE
+			// from focusing the element, so if the anchor gets focused, blur.
+			// We don't have to worry about focusing the previously focused
+			// element since clicking on a non-focusable element should focus
+			// the body anyway.
+			.delegate( ".ui-tabs-anchor", "focus" + this.eventNamespace, function() {
+				if ( $( this ).closest( "li" ).is( ".ui-state-disabled" ) ) {
+					this.blur();
+				}
+			});
+
+		this.tabs = this.tablist.find( "> li:has(a[href])" )
+			.addClass( "ui-state-default ui-corner-top" )
+			.attr({
+				role: "tab",
+				tabIndex: -1
+			});
+
+		this.anchors = this.tabs.map(function() {
+				return $( "a", this )[ 0 ];
+			})
+			.addClass( "ui-tabs-anchor" )
+			.attr({
+				role: "presentation",
+				tabIndex: -1
+			});
+
+		this.panels = $();
+
+		this.anchors.each(function( i, anchor ) {
+			var selector, panel, panelId,
+				anchorId = $( anchor ).uniqueId().attr( "id" ),
+				tab = $( anchor ).closest( "li" ),
+				originalAriaControls = tab.attr( "aria-controls" );
+
+			// inline tab
+			if ( that._isLocal( anchor ) ) {
+				selector = anchor.hash;
+				panelId = selector.substring( 1 );
+				panel = that.element.find( that._sanitizeSelector( selector ) );
+			// remote tab
+			} else {
+				// If the tab doesn't already have aria-controls,
+				// generate an id by using a throw-away element
+				panelId = tab.attr( "aria-controls" ) || $( {} ).uniqueId()[ 0 ].id;
+				selector = "#" + panelId;
+				panel = that.element.find( selector );
+				if ( !panel.length ) {
+					panel = that._createPanel( panelId );
+					panel.insertAfter( that.panels[ i - 1 ] || that.tablist );
+				}
+				panel.attr( "aria-live", "polite" );
+			}
+
+			if ( panel.length) {
+				that.panels = that.panels.add( panel );
+			}
+			if ( originalAriaControls ) {
+				tab.data( "ui-tabs-aria-controls", originalAriaControls );
+			}
+			tab.attr({
+				"aria-controls": panelId,
+				"aria-labelledby": anchorId
+			});
+			panel.attr( "aria-labelledby", anchorId );
+		});
+
+		this.panels
+			.addClass( "ui-tabs-panel ui-widget-content ui-corner-bottom" )
+			.attr( "role", "tabpanel" );
+
+		// Avoid memory leaks (#10056)
+		if ( prevTabs ) {
+			this._off( prevTabs.not( this.tabs ) );
+			this._off( prevAnchors.not( this.anchors ) );
+			this._off( prevPanels.not( this.panels ) );
+		}
+	},
+
+	// allow overriding how to find the list for rare usage scenarios (#7715)
+	_getList: function() {
+		return this.tablist || this.element.find( "ol,ul" ).eq( 0 );
+	},
+
+	_createPanel: function( id ) {
+		return $( "<div>" )
+			.attr( "id", id )
+			.addClass( "ui-tabs-panel ui-widget-content ui-corner-bottom" )
+			.data( "ui-tabs-destroy", true );
+	},
+
+	_setupDisabled: function( disabled ) {
+		if ( $.isArray( disabled ) ) {
+			if ( !disabled.length ) {
+				disabled = false;
+			} else if ( disabled.length === this.anchors.length ) {
+				disabled = true;
+			}
+		}
+
+		// disable tabs
+		for ( var i = 0, li; ( li = this.tabs[ i ] ); i++ ) {
+			if ( disabled === true || $.inArray( i, disabled ) !== -1 ) {
+				$( li )
+					.addClass( "ui-state-disabled" )
+					.attr( "aria-disabled", "true" );
+			} else {
+				$( li )
+					.removeClass( "ui-state-disabled" )
+					.removeAttr( "aria-disabled" );
+			}
+		}
+
+		this.options.disabled = disabled;
+	},
+
+	_setupEvents: function( event ) {
+		var events = {};
+		if ( event ) {
+			$.each( event.split(" "), function( index, eventName ) {
+				events[ eventName ] = "_eventHandler";
+			});
+		}
+
+		this._off( this.anchors.add( this.tabs ).add( this.panels ) );
+		// Always prevent the default action, even when disabled
+		this._on( true, this.anchors, {
+			click: function( event ) {
+				event.preventDefault();
+			}
+		});
+		this._on( this.anchors, events );
+		this._on( this.tabs, { keydown: "_tabKeydown" } );
+		this._on( this.panels, { keydown: "_panelKeydown" } );
+
+		this._focusable( this.tabs );
+		this._hoverable( this.tabs );
+	},
+
+	_setupHeightStyle: function( heightStyle ) {
+		var maxHeight,
+			parent = this.element.parent();
+
+		if ( heightStyle === "fill" ) {
+			maxHeight = parent.height();
+			maxHeight -= this.element.outerHeight() - this.element.height();
+
+			this.element.siblings( ":visible" ).each(function() {
+				var elem = $( this ),
+					position = elem.css( "position" );
+
+				if ( position === "absolute" || position === "fixed" ) {
+					return;
+				}
+				maxHeight -= elem.outerHeight( true );
+			});
+
+			this.element.children().not( this.panels ).each(function() {
+				maxHeight -= $( this ).outerHeight( true );
+			});
+
+			this.panels.each(function() {
+				$( this ).height( Math.max( 0, maxHeight -
+					$( this ).innerHeight() + $( this ).height() ) );
+			})
+			.css( "overflow", "auto" );
+		} else if ( heightStyle === "auto" ) {
+			maxHeight = 0;
+			this.panels.each(function() {
+				maxHeight = Math.max( maxHeight, $( this ).height( "" ).height() );
+			}).height( maxHeight );
+		}
+	},
+
+	_eventHandler: function( event ) {
+		var options = this.options,
+			active = this.active,
+			anchor = $( event.currentTarget ),
+			tab = anchor.closest( "li" ),
+			clickedIsActive = tab[ 0 ] === active[ 0 ],
+			collapsing = clickedIsActive && options.collapsible,
+			toShow = collapsing ? $() : this._getPanelForTab( tab ),
+			toHide = !active.length ? $() : this._getPanelForTab( active ),
+			eventData = {
+				oldTab: active,
+				oldPanel: toHide,
+				newTab: collapsing ? $() : tab,
+				newPanel: toShow
+			};
+
+		event.preventDefault();
+
+		if ( tab.hasClass( "ui-state-disabled" ) ||
+				// tab is already loading
+				tab.hasClass( "ui-tabs-loading" ) ||
+				// can't switch durning an animation
+				this.running ||
+				// click on active header, but not collapsible
+				( clickedIsActive && !options.collapsible ) ||
+				// allow canceling activation
+				( this._trigger( "beforeActivate", event, eventData ) === false ) ) {
+			return;
+		}
+
+		options.active = collapsing ? false : this.tabs.index( tab );
+
+		this.active = clickedIsActive ? $() : tab;
+		if ( this.xhr ) {
+			this.xhr.abort();
+		}
+
+		if ( !toHide.length && !toShow.length ) {
+			$.error( "jQuery UI Tabs: Mismatching fragment identifier." );
+		}
+
+		if ( toShow.length ) {
+			this.load( this.tabs.index( tab ), event );
+		}
+		this._toggle( event, eventData );
+	},
+
+	// handles show/hide for selecting tabs
+	_toggle: function( event, eventData ) {
+		var that = this,
+			toShow = eventData.newPanel,
+			toHide = eventData.oldPanel;
+
+		this.running = true;
+
+		function complete() {
+			that.running = false;
+			that._trigger( "activate", event, eventData );
+		}
+
+		function show() {
+			eventData.newTab.closest( "li" ).addClass( "ui-tabs-active ui-state-active" );
+
+			if ( toShow.length && that.options.show ) {
+				that._show( toShow, that.options.show, complete );
+			} else {
+				toShow.show();
+				complete();
+			}
+		}
+
+		// start out by hiding, then showing, then completing
+		if ( toHide.length && this.options.hide ) {
+			this._hide( toHide, this.options.hide, function() {
+				eventData.oldTab.closest( "li" ).removeClass( "ui-tabs-active ui-state-active" );
+				show();
+			});
+		} else {
+			eventData.oldTab.closest( "li" ).removeClass( "ui-tabs-active ui-state-active" );
+			toHide.hide();
+			show();
+		}
+
+		toHide.attr( "aria-hidden", "true" );
+		eventData.oldTab.attr({
+			"aria-selected": "false",
+			"aria-expanded": "false"
+		});
+		// If we're switching tabs, remove the old tab from the tab order.
+		// If we're opening from collapsed state, remove the previous tab from the tab order.
+		// If we're collapsing, then keep the collapsing tab in the tab order.
+		if ( toShow.length && toHide.length ) {
+			eventData.oldTab.attr( "tabIndex", -1 );
+		} else if ( toShow.length ) {
+			this.tabs.filter(function() {
+				return $( this ).attr( "tabIndex" ) === 0;
+			})
+			.attr( "tabIndex", -1 );
+		}
+
+		toShow.attr( "aria-hidden", "false" );
+		eventData.newTab.attr({
+			"aria-selected": "true",
+			"aria-expanded": "true",
+			tabIndex: 0
+		});
+	},
+
+	_activate: function( index ) {
+		var anchor,
+			active = this._findActive( index );
+
+		// trying to activate the already active panel
+		if ( active[ 0 ] === this.active[ 0 ] ) {
+			return;
+		}
+
+		// trying to collapse, simulate a click on the current active header
+		if ( !active.length ) {
+			active = this.active;
+		}
+
+		anchor = active.find( ".ui-tabs-anchor" )[ 0 ];
+		this._eventHandler({
+			target: anchor,
+			currentTarget: anchor,
+			preventDefault: $.noop
+		});
+	},
+
+	_findActive: function( index ) {
+		return index === false ? $() : this.tabs.eq( index );
+	},
+
+	_getIndex: function( index ) {
+		// meta-function to give users option to provide a href string instead of a numerical index.
+		if ( typeof index === "string" ) {
+			index = this.anchors.index( this.anchors.filter( "[href$='" + index + "']" ) );
+		}
+
+		return index;
+	},
+
+	_destroy: function() {
+		if ( this.xhr ) {
+			this.xhr.abort();
+		}
+
+		this.element.removeClass( "ui-tabs ui-widget ui-widget-content ui-corner-all ui-tabs-collapsible" );
+
+		this.tablist
+			.removeClass( "ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all" )
+			.removeAttr( "role" );
+
+		this.anchors
+			.removeClass( "ui-tabs-anchor" )
+			.removeAttr( "role" )
+			.removeAttr( "tabIndex" )
+			.removeUniqueId();
+
+		this.tablist.unbind( this.eventNamespace );
+
+		this.tabs.add( this.panels ).each(function() {
+			if ( $.data( this, "ui-tabs-destroy" ) ) {
+				$( this ).remove();
+			} else {
+				$( this )
+					.removeClass( "ui-state-default ui-state-active ui-state-disabled " +
+						"ui-corner-top ui-corner-bottom ui-widget-content ui-tabs-active ui-tabs-panel" )
+					.removeAttr( "tabIndex" )
+					.removeAttr( "aria-live" )
+					.removeAttr( "aria-busy" )
+					.removeAttr( "aria-selected" )
+					.removeAttr( "aria-labelledby" )
+					.removeAttr( "aria-hidden" )
+					.removeAttr( "aria-expanded" )
+					.removeAttr( "role" );
+			}
+		});
+
+		this.tabs.each(function() {
+			var li = $( this ),
+				prev = li.data( "ui-tabs-aria-controls" );
+			if ( prev ) {
+				li
+					.attr( "aria-controls", prev )
+					.removeData( "ui-tabs-aria-controls" );
+			} else {
+				li.removeAttr( "aria-controls" );
+			}
+		});
+
+		this.panels.show();
+
+		if ( this.options.heightStyle !== "content" ) {
+			this.panels.css( "height", "" );
+		}
+	},
+
+	enable: function( index ) {
+		var disabled = this.options.disabled;
+		if ( disabled === false ) {
+			return;
+		}
+
+		if ( index === undefined ) {
+			disabled = false;
+		} else {
+			index = this._getIndex( index );
+			if ( $.isArray( disabled ) ) {
+				disabled = $.map( disabled, function( num ) {
+					return num !== index ? num : null;
+				});
+			} else {
+				disabled = $.map( this.tabs, function( li, num ) {
+					return num !== index ? num : null;
+				});
+			}
+		}
+		this._setupDisabled( disabled );
+	},
+
+	disable: function( index ) {
+		var disabled = this.options.disabled;
+		if ( disabled === true ) {
+			return;
+		}
+
+		if ( index === undefined ) {
+			disabled = true;
+		} else {
+			index = this._getIndex( index );
+			if ( $.inArray( index, disabled ) !== -1 ) {
+				return;
+			}
+			if ( $.isArray( disabled ) ) {
+				disabled = $.merge( [ index ], disabled ).sort();
+			} else {
+				disabled = [ index ];
+			}
+		}
+		this._setupDisabled( disabled );
+	},
+
+	load: function( index, event ) {
+		index = this._getIndex( index );
+		var that = this,
+			tab = this.tabs.eq( index ),
+			anchor = tab.find( ".ui-tabs-anchor" ),
+			panel = this._getPanelForTab( tab ),
+			eventData = {
+				tab: tab,
+				panel: panel
+			};
+
+		// not remote
+		if ( this._isLocal( anchor[ 0 ] ) ) {
+			return;
+		}
+
+		this.xhr = $.ajax( this._ajaxSettings( anchor, event, eventData ) );
+
+		// support: jQuery <1.8
+		// jQuery <1.8 returns false if the request is canceled in beforeSend,
+		// but as of 1.8, $.ajax() always returns a jqXHR object.
+		if ( this.xhr && this.xhr.statusText !== "canceled" ) {
+			tab.addClass( "ui-tabs-loading" );
+			panel.attr( "aria-busy", "true" );
+
+			this.xhr
+				.success(function( response ) {
+					// support: jQuery <1.8
+					// http://bugs.jquery.com/ticket/11778
+					setTimeout(function() {
+						panel.html( response );
+						that._trigger( "load", event, eventData );
+					}, 1 );
+				})
+				.complete(function( jqXHR, status ) {
+					// support: jQuery <1.8
+					// http://bugs.jquery.com/ticket/11778
+					setTimeout(function() {
+						if ( status === "abort" ) {
+							that.panels.stop( false, true );
+						}
+
+						tab.removeClass( "ui-tabs-loading" );
+						panel.removeAttr( "aria-busy" );
+
+						if ( jqXHR === that.xhr ) {
+							delete that.xhr;
+						}
+					}, 1 );
+				});
+		}
+	},
+
+	_ajaxSettings: function( anchor, event, eventData ) {
+		var that = this;
+		return {
+			url: anchor.attr( "href" ),
+			beforeSend: function( jqXHR, settings ) {
+				return that._trigger( "beforeLoad", event,
+					$.extend( { jqXHR: jqXHR, ajaxSettings: settings }, eventData ) );
+			}
+		};
+	},
+
+	_getPanelForTab: function( tab ) {
+		var id = $( tab ).attr( "aria-controls" );
+		return this.element.find( this._sanitizeSelector( "#" + id ) );
 	}
 });
 

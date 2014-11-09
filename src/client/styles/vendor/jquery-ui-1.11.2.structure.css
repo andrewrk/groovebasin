@@ -1,5 +1,5 @@
 /*!
- * jQuery UI CSS Framework 1.11.1
+ * jQuery UI CSS Framework 1.11.2
  * http://jqueryui.com
  *
  * Copyright 2014 jQuery Foundation and other contributors
@@ -400,55 +400,6 @@ button.ui-button::-moz-focus-inner {
 .ui-progressbar-indeterminate .ui-progressbar-value {
 	background-image: none;
 }
-.ui-selectmenu-menu {
-	padding: 0;
-	margin: 0;
-	position: absolute;
-	top: 0;
-	left: 0;
-	display: none;
-}
-.ui-selectmenu-menu .ui-menu {
-	overflow: auto;
-	/* Support: IE7 */
-	overflow-x: hidden;
-	padding-bottom: 1px;
-}
-.ui-selectmenu-menu .ui-menu .ui-selectmenu-optgroup {
-	font-size: 1em;
-	font-weight: bold;
-	line-height: 1.5;
-	padding: 2px 0.4em;
-	margin: 0.5em 0 0 0;
-	height: auto;
-	border: 0;
-}
-.ui-selectmenu-open {
-	display: block;
-}
-.ui-selectmenu-button {
-	display: inline-block;
-	overflow: hidden;
-	position: relative;
-	text-decoration: none;
-	cursor: pointer;
-}
-.ui-selectmenu-button span.ui-icon {
-	right: 0.5em;
-	left: auto;
-	margin-top: -8px;
-	position: absolute;
-	top: 50%;
-}
-.ui-selectmenu-button span.ui-selectmenu-text {
-	text-align: left;
-	padding: 0.4em 2.1em 0.4em 1em;
-	display: block;
-	line-height: 1.4;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
 .ui-slider {
 	position: relative;
 	text-align: left;
@@ -513,4 +464,45 @@ button.ui-button::-moz-focus-inner {
 }
 .ui-slider-vertical .ui-slider-range-max {
 	top: 0;
+}
+.ui-tabs {
+	position: relative;/* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
+	padding: .2em;
+}
+.ui-tabs .ui-tabs-nav {
+	margin: 0;
+	padding: .2em .2em 0;
+}
+.ui-tabs .ui-tabs-nav li {
+	list-style: none;
+	float: left;
+	position: relative;
+	top: 0;
+	margin: 1px .2em 0 0;
+	border-bottom-width: 0;
+	padding: 0;
+	white-space: nowrap;
+}
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+	float: left;
+	padding: .5em 1em;
+	text-decoration: none;
+}
+.ui-tabs .ui-tabs-nav li.ui-tabs-active {
+	margin-bottom: -1px;
+	padding-bottom: 1px;
+}
+.ui-tabs .ui-tabs-nav li.ui-tabs-active .ui-tabs-anchor,
+.ui-tabs .ui-tabs-nav li.ui-state-disabled .ui-tabs-anchor,
+.ui-tabs .ui-tabs-nav li.ui-tabs-loading .ui-tabs-anchor {
+	cursor: text;
+}
+.ui-tabs-collapsible .ui-tabs-nav li.ui-tabs-active .ui-tabs-anchor {
+	cursor: pointer;
+}
+.ui-tabs .ui-tabs-panel {
+	display: block;
+	border-width: 0;
+	padding: 1em 1.4em;
+	background: none;
 }

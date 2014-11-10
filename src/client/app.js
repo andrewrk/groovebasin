@@ -3429,6 +3429,7 @@ function handleResize() {
   $library.height(tabContentsHeight - $libHeader.height());
   $upload.height(tabContentsHeight);
   $eventsList.height(tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height());
+  $playlists.height(tabContentsHeight - $newPlaylistName.outerHeight());
 
   setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());

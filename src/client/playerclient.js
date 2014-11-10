@@ -346,7 +346,7 @@ PlayerClient.prototype.updateQueueIndex = function() {
 
 PlayerClient.prototype.isScanning = function(track) {
   var scanInfo = this.scanningFromServer && this.scanningFromServer[track.key];
-  return scanInfo && (!scanInfo.fingerprintDone || !scanInfo.loudnessDone);
+  return !!scanInfo;
 };
 
 PlayerClient.prototype.search = function(query) {

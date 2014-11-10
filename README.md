@@ -1,7 +1,7 @@
 # ![Groove Basin](http://groovebasin.com.s3.amazonaws.com/img/logo-text.png)
 [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/andrewrk/groovebasin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Music player server with a web-based user interface inspired by Amarok 1.4.
+Music player server with a web-based user interface.
 
 Run it on a server connected to some speakers in your home or office.
 Guests can control the music player by connecting with a laptop, tablet,
@@ -14,13 +14,14 @@ Try out the [live demo](http://demo.groovebasin.com/).
 
 ## Feature Highlights
 
-* Fast and responsive. It feels like a desktop app, not a web app.
+* The web client feels like a desktop app, not a web app. It predicts what the
+  server will do in order to hide network lag from the user.
 
 * Dynamic Mode which automatically queues random songs, favoring songs
   that have not been queued recently.
 
 * Drag and drop upload. Drag and drop playlist editing. Keyboard shortcuts
-  galore.
+  for everything.
 
 * Lazy multi-core
   [EBU R128 loudness scanning](http://tech.ebu.ch/loudness) (tags compatible
@@ -40,7 +41,7 @@ Try out the [live demo](http://demo.groovebasin.com/).
 * [Last.fm](http://www.last.fm/) scrobbling.
 
 * File system monitoring. Add songs anywhere inside your music directory and
-  they instantly appear in your library in real time.
+  they instantly appear in your library.
 
 ## Install
 
@@ -96,8 +97,7 @@ sever. It is up to you to restart it when you modify assets or server files.
 
 ### Community
 
-Pull requests, feature requests, and bug reports are welcome! Live discussion
-in #libgroove on Freenode.
+Pull requests, feature requests, and bug reports are welcome!
 
 #### Articles
 
@@ -106,7 +106,8 @@ in #libgroove on Freenode.
 
 ### Roadmap
 
- 0. Music library organization
  0. Playlists
+ 0. Labels
+ 0. Music library organization
  0. Accoustid Integration
  0. Finalize GrooveBasin protocol spec

@@ -640,19 +640,25 @@ PlayerClient.prototype.removeIds = function(trackIds){
 
 PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
   var removals = {};
+  var playlist;
   for (var i = 0; i < trackIds.length; i += 1) {
     var playlistItemId = trackIds[i];
     var playlistItem = this.stored_playlist_item_table[playlistItemId];
-    var playlist = playlistItem.playlist;
+    playlist = playlistItem.playlist;
     var removal = removals[playlist.id];
     if (!removal) {
       removal = removals[playlist.id] = [];
     }
     removal.push(playlistItemId);
+
+    delete playlist.itemTable[playlistItemId];
+  }
+  for (var playlistId in removals) {
+    playlist = this.stored_playlist_table[playlistId];
+    this.refreshPlaylistList(playlist);
   }
   this.sendCommand('playlistRemoveItems', removals);
-
-  // TODO optimistic prediction
+  this.emit('playlistsUpdate');
 };
 
 PlayerClient.prototype.deleteTracks = function(keysList) {

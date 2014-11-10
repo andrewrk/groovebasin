@@ -643,7 +643,7 @@ function renderQueue(){
   for (i = 0; i < itemList.length; i += 1) {
     var $domItem = $($domItems[i]);
     var item = itemList[i];
-    $domItem.attr('id', 'playlist-track-' + item.id);
+    $domItem.attr('id', toPlaylistTrackId(item.id));
     $domItem.attr('data-id', item.id);
     var track = item.track;
     $domItem.find('.track').text(track.track || "");
@@ -701,18 +701,18 @@ function labelPlaylistItems() {
       item = player.queue.itemList[index];
       var itemId = item && item.id;
       if (itemId != null) {
-        $("#playlist-track-" + itemId).addClass('old');
+        $("#" + toPlaylistTrackId(itemId)).addClass('old');
       }
     }
   }
   for (var i = 0; i < player.queue.itemList.length; i += 1) {
     item = player.queue.itemList[i];
     if (item.isRandom) {
-      $("#playlist-track-" + item.id).addClass('random');
+      $("#" + toPlaylistTrackId(item.id)).addClass('random');
     }
   }
   if (curItem != null) {
-    $("#playlist-track-" + curItem.id).addClass('current');
+    $("#" + toPlaylistTrackId(curItem.id)).addClass('current');
   }
 }
 
@@ -727,42 +727,42 @@ function getSelectionHelpers(){
       ids: selection.ids.queue,
       table: player.queue.itemTable,
       $getDiv: function(id){
-        return $("#playlist-track-" + id);
+        return $("#" + toPlaylistTrackId(id));
       },
     },
     artist: {
       ids: selection.ids.artist,
       table: player.searchResults.artistTable,
       $getDiv: function(id){
-        return $("#lib-artist-" + toHtmlId(id));
+        return $("#" + toArtistId(id));
       },
     },
     album: {
       ids: selection.ids.album,
       table: player.searchResults.albumTable,
       $getDiv: function(id){
-        return $("#lib-album-" + toHtmlId(id));
+        return $("#" + toAlbumId(id));
       },
     },
     track: {
       ids: selection.ids.track,
       table: player.searchResults.trackTable,
       $getDiv: function(id){
-        return $("#lib-track-" + id);
+        return $("#" + toTrackId(id));
       },
     },
     stored_playlist: {
       ids: selection.ids.stored_playlist,
       table: player.stored_playlist_table,
       $getDiv: function(id){
-        return $("#stored-pl-pl-" + id);
+        return $("#" + toStoredPlaylistId(id));
       },
     },
     stored_playlist_item: {
       ids: selection.ids.stored_playlist_item,
       table: player.stored_playlist_item_table,
       $getDiv: function(id){
-        return $("#stored-pl-item-" + id);
+        return $("#" + toStoredPlaylistItemId(id));
       },
     },
   };
@@ -824,10 +824,6 @@ function getValidIds(selectionType) {
     case 'stored_playlist_item':  return player.stored_playlist_item_table;
   }
   throw new Error("BadSelectionType");
-}
-
-function artistId(s) {
-  return "lib-artist-" + toHtmlId(s);
 }
 
 function artistDisplayName(name) {
@@ -982,7 +978,7 @@ function renderLibrary() {
     artist = artistList[i];
     $(domItem).data('cached', false);
     var divDom = domItem.children[0];
-    divDom.setAttribute('id', artistId(artist.key));
+    divDom.setAttribute('id', toArtistId(artist.key));
     divDom.setAttribute('data-key', artist.key);
     var iconDom = divDom.children[0];
     $(iconDom)
@@ -1664,7 +1660,7 @@ function removeContextMenu() {
 }
 
 function isArtistExpanded(artist){
-  var artistHtmlId = artistId(artist.key);
+  var artistHtmlId = toArtistId(artist.key);
   var artistElem = document.getElementById(artistHtmlId);
   var $li = $(artistElem).closest('li');
   if (!$li.data('cached')) return false;
@@ -1674,7 +1670,7 @@ function isArtistExpanded(artist){
 function expandArtist(artist) {
   if (isArtistExpanded(artist)) return;
 
-  var artistElem = document.getElementById(artistId(artist.key));
+  var artistElem = document.getElementById(toArtistId(artist.key));
   var $li = $(artistElem).closest('li');
   toggleLibraryExpansion($li);
 }
@@ -2986,10 +2982,14 @@ var eventTypeMessageFns = {
     return "moved " + ev.pos + " items in " + eventPlaylistName(ev);
   },
   playlistRemoveItems: function(ev) {
-    if (ev.pos === 1) {
-      return "removed " + getEventNowPlayingText(ev) + " from " + eventPlaylistName(ev);
+    if (ev.playlist) {
+      if (ev.pos === 1) {
+        return "removed " + getEventNowPlayingText(ev) + " from " + eventPlaylistName(ev);
+      } else {
+        return "removed " + ev.pos + " tracks from " + eventPlaylistName(ev);
+      }
     } else {
-      return "removed " + ev.pos + "tracks from " + eventPlaylistName(ev);
+      return "removed " + ev.pos + " tracks from playlists";
     }
   },
   playlistRename: function(ev) {
@@ -3219,6 +3219,7 @@ function onDeletePlaylistContextMenu() {
 
 function onRemoveFromPlaylistContextMenu() {
   player.removeItemsFromPlaylists(Object.keys(selection.ids.stored_playlist_item));
+  removeContextMenu();
 }
 
 function genericTreeUi($elem, options){
@@ -3391,6 +3392,14 @@ function setUpStreamUi() {
   $clientVol.hide();
 }
 
+function toPlaylistTrackId(s) {
+  return "playlist-track-" + s;
+}
+
+function toArtistId(s) {
+  return "lib-artist-" + toHtmlId(s);
+}
+
 function toAlbumId(s) {
   return "lib-album-" + toHtmlId(s);
 }
@@ -3404,7 +3413,8 @@ function toStoredPlaylistItemId(s) {
 }
 
 function toStoredPlaylistId(s) {
-  return "stored-pl-pl-" + s;
+  // need toHtmlId because jQuery throws a fit with "(incoming)"
+  return "stored-pl-pl-" + toHtmlId(s);
 }
 
 function handleResize() {

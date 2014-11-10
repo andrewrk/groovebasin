@@ -639,15 +639,19 @@ PlayerClient.prototype.removeIds = function(trackIds){
 };
 
 PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
+  var removals = {};
   for (var i = 0; i < trackIds.length; i += 1) {
     var playlistItemId = trackIds[i];
     var playlistItem = this.stored_playlist_item_table[playlistItemId];
     var playlist = playlistItem.playlist;
-    this.sendCommand('playlistRemoveItems', {
-      id: playlist.id,
-      items: [playlistItemId],
-    });
+    var removal = removals[playlist.id];
+    if (!removal) {
+      removal = removals[playlist.id] = [];
+    }
+    removal.push(playlistItemId);
   }
+  this.sendCommand('playlistRemoveItems', removals);
+
   // TODO optimistic prediction
 };
 

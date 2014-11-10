@@ -661,6 +661,7 @@ function renderQueue(){
 
 function updateQueueDuration() {
   var duration = 0;
+  var allAreKnown = true;
 
   if (selection.isQueue()) {
     selection.toTrackKeys().forEach(addKeyDuration);
@@ -669,17 +670,22 @@ function updateQueueDuration() {
     player.queue.itemList.forEach(addItemDuration);
     $queueDurationLabel.text("Play Queue:");
   }
-  $queueDuration.text(formatTime(duration));
+  $queueDuration.text(formatTime(duration) + (allAreKnown ? "" : "?"));
 
   function addKeyDuration(key) {
     var track = player.library.trackTable[key];
     if (track) {
-      duration += track.duration;
+      addDuration(track);
     }
   }
-
   function addItemDuration(item) {
-    duration += item.track.duration;
+    addDuration(item.track);
+  }
+  function addDuration(track) {
+    duration += Math.max(0, track.duration);
+    if (player.isScanning(track)) {
+      allAreKnown = false;
+    }
   }
 }
 

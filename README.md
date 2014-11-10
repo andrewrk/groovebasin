@@ -1,4 +1,5 @@
 # ![Groove Basin](http://groovebasin.com.s3.amazonaws.com/img/logo-text.png)
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/andrewrk/groovebasin?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Music player server with a web-based user interface inspired by Amarok 1.4.
 

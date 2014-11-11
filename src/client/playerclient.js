@@ -663,12 +663,50 @@ PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
 
 PlayerClient.prototype.deleteTracks = function(keysList) {
   this.sendCommand('deleteTracks', keysList);
-  [this.library, this.searchResults].forEach(function(lib) {
-    keysList.forEach(function(key) {
-      lib.removeTrack(key);
-    });
-    lib.rebuild();
-  });
+  removeTracksInLib(this.library, keysList);
+  removeTracksInLib(this.searchResults, keysList);
+
+  var queueDirty = false;
+  var dirtyPlaylists = {};
+  for (var keysListIndex = 0; keysListIndex < keysList.length; keysListIndex += 1) {
+    var key = keysList[keysListIndex];
+
+    // delete items from the queue that are being deleted from the library
+    var i;
+    for (i = 0; i < this.queue.itemList.length; i += 1) {
+      var queueItem = this.queue.itemList[i];
+      if (queueItem.track.key === key) {
+        delete this.queue.itemTable[queueItem.id];
+        queueDirty = true;
+      }
+    }
+
+    // delete items from playlists that are being deleted from the library
+    for (var playlistIndex = 0; playlistIndex < this.stored_playlists.length; playlistIndex += 1) {
+      var storedPlaylist = this.stored_playlists[playlistIndex];
+      for (i = 0; i < storedPlaylist.itemList.length; i += 1) {
+        var plItem = storedPlaylist.itemList[i];
+        if (plItem.track.key === key) {
+          delete storedPlaylist.itemTable[plItem.id];
+          dirtyPlaylists[storedPlaylist.id] = storedPlaylist;
+        }
+      }
+    }
+  }
+  if (queueDirty) {
+    this.refreshPlaylistList(this.queue);
+    this.emit('queueUpdate');
+  }
+  var anyDirtyPlaylists = false;
+  for (var dirtyPlId in dirtyPlaylists) {
+    var dirtyPlaylist = dirtyPlaylists[dirtyPlId];
+    this.refreshPlaylistList(dirtyPlaylist);
+    anyDirtyPlaylists = true;
+  }
+  if (anyDirtyPlaylists) {
+    this.emit('playlistsUpdate');
+  }
+
   this.emit('libraryupdate');
 };
 
@@ -797,6 +835,13 @@ PlayerClient.prototype.createPlaylist = function(name) {
 
   return playlist;
 };
+
+function removeTracksInLib(lib, keysList) {
+  keysList.forEach(function(key) {
+    lib.removeTrack(key);
+  });
+  lib.rebuild();
+}
 
 function elapsedToDate(elapsed){
   return new Date(new Date() - elapsed * 1000);

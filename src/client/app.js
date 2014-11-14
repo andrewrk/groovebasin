@@ -31,15 +31,15 @@ var selection = {
   cursor: null,
   rangeSelectAnchor: null,
   rangeSelectAnchorType: null,
-  type: null,
+  cursorType: null,
   isLibrary: function(){
-    return this.type === 'artist' || this.type === 'album' || this.type === 'track';
+    return this.cursorType === 'artist' || this.cursorType === 'album' || this.cursorType === 'track';
   },
   isQueue: function(){
-    return this.type === 'queue';
+    return this.cursorType === 'queue';
   },
   isStoredPlaylist: function(){
-    return this.type === 'stored_playlist' || this.type === 'stored_playlist_item';
+    return this.cursorType === 'stored_playlist' || this.cursorType === 'stored_playlist_item';
   },
   clear: function(){
     this.ids.artist = {};
@@ -51,14 +51,14 @@ var selection = {
   },
   fullClear: function(){
     this.clear();
-    this.type = null;
+    this.cursorType = null;
     this.cursor = null;
     this.rangeSelectAnchor = null;
     this.rangeSelectAnchorType = null;
   },
   selectOnly: function(selName, key){
     this.clear();
-    this.type = selName;
+    this.cursorType = selName;
     this.ids[selName][key] = true;
     this.cursor = key;
     this.rangeSelectAnchor = key;
@@ -98,7 +98,7 @@ var selection = {
     }
   },
   getPos: function(type, key){
-    if (type == null) type = this.type;
+    if (type == null) type = this.cursorType;
     if (key == null) key = this.cursor;
     var val;
     if (this.isLibrary()) {
@@ -535,36 +535,44 @@ function loadLocalState() {
 function scrollLibraryToSelection() {
   var helpers = getSelectionHelpers();
   if (!helpers) return;
-  delete helpers.queue;
-  scrollThingToSelection($library, helpers);
+  scrollThingToSelection($library, {
+    track: helpers.track,
+    artist: helpers.artist,
+    album: helpers.album,
+  });
 }
 
-function scrollPlaylistToSelection(){
+function scrollQueueToSelection(){
   var helpers = getSelectionHelpers();
   if (!helpers) return;
-  delete helpers.track;
-  delete helpers.artist;
-  delete helpers.album;
-  scrollThingToSelection($queueItems, helpers);
+  scrollThingToSelection($queueItems, {
+    queue: helpers.queue,
+  });
+}
+
+function scrollPlaylistsToSelection(){
+  var helpers = getSelectionHelpers();
+  if (!helpers) return;
+  scrollThingToSelection($queueItems, {
+    stored_playlist: helpers.stored_playlist,
+    stored_playlist_item: helpers.stored_playlist_item,
+  });
 }
 
 function scrollThingToSelection($scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
+  var helper;
   for (var selName in helpers) {
-    var helper = helpers[selName];
+    helper = helpers[selName];
     for (var id in helper.ids) {
-      var $div = helper.$getDiv(id);
-      var itemTop = $div.offset().top;
-      var itemBottom = itemTop + $div.height();
-      if (topPos == null || itemTop < topPos) {
-        topPos = itemTop;
-      }
-      if (bottomPos == null || itemBottom > bottomPos) {
-        bottomPos = itemBottom;
-      }
+      checkPos(id);
+    }
+    if (selection.cursor && selName === selection.cursorType) {
+      checkPos(selection.cursor);
     }
   }
+
   if (topPos != null) {
     var scrollAreaTop = $scrollArea.offset().top;
     var selectionTop = topPos - scrollAreaTop;
@@ -574,6 +582,18 @@ function scrollThingToSelection($scrollArea, helpers){
       return $scrollArea.scrollTop(scrollAmt + selectionTop);
     } else if (selectionBottom > 0) {
       return $scrollArea.scrollTop(scrollAmt + selectionBottom);
+    }
+  }
+
+  function checkPos(id) {
+    var $div = helper.$getDiv(id);
+    var itemTop = $div.offset().top;
+    var itemBottom = itemTop + $div.height();
+    if (topPos == null || itemTop < topPos) {
+      topPos = itemTop;
+    }
+    if (bottomPos == null || itemBottom > bottomPos) {
+      bottomPos = itemBottom;
     }
   }
 }
@@ -778,7 +798,7 @@ function refreshSelection() {
   $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
   $libraryArtists.find(".clickable").removeClass('selected').removeClass('cursor');
   $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
-  if (selection.type == null) {
+  if (selection.cursorType == null) {
     updateQueueDuration();
     return;
   }
@@ -794,7 +814,7 @@ function refreshSelection() {
     for (id in helper.ids) {
       helper.$getDiv(id).addClass('selected');
     }
-    if (selection.cursor != null && selectionType === selection.type) {
+    if (selection.cursor != null && selectionType === selection.cursorType) {
       var validIds = getValidIds(selectionType);
       if (validIds[selection.cursor] == null) {
         // server just deleted our current cursor item.
@@ -1333,14 +1353,14 @@ var keyboardHandlers = (function(){
           selection.clear();
           selection.ids.queue[selection.cursor] = true;
           selection.rangeSelectAnchor = selection.cursor;
-          selection.rangeSelectAnchorType = selection.type;
+          selection.rangeSelectAnchorType = selection.cursorType;
         } else if (!ev.ctrlKey && ev.shiftKey) {
           // range select
           selectPlaylistRange();
         } else {
           // ghost selection
           selection.rangeSelectAnchor = selection.cursor;
-          selection.rangeSelectAnchorType = selection.type;
+          selection.rangeSelectAnchorType = selection.cursorType;
         }
       } else if (selection.isLibrary()) {
         nextPos = selection.getPos();
@@ -1351,25 +1371,25 @@ var keyboardHandlers = (function(){
         }
         if (nextPos.artist == null) return;
         if (nextPos.track != null) {
-          selection.type = 'track';
+          selection.cursorType = 'track';
           selection.cursor = nextPos.track.key;
         } else if (nextPos.album != null) {
-          selection.type = 'album';
+          selection.cursorType = 'album';
           selection.cursor = nextPos.album.key;
         } else {
-          selection.type = 'artist';
+          selection.cursorType = 'artist';
           selection.cursor = nextPos.artist.key;
         }
         if (!ev.ctrlKey && !ev.shiftKey) {
           // single select
-          selection.selectOnly(selection.type, selection.cursor);
+          selection.selectOnly(selection.cursorType, selection.cursor);
         } else if (!ev.ctrlKey && ev.shiftKey) {
           // range select
           selectTreeRange();
         } else {
           // ghost selection
           selection.rangeSelectAnchor = selection.cursor;
-          selection.rangeSelectAnchorType = selection.type;
+          selection.rangeSelectAnchorType = selection.cursorType;
         }
       } else {
         if (player.queue.itemList.length === 0) return;
@@ -1377,15 +1397,16 @@ var keyboardHandlers = (function(){
       }
       refreshSelection();
     }
-    if (selection.isQueue()) scrollPlaylistToSelection();
+    if (selection.isQueue()) scrollQueueToSelection();
     if (selection.isLibrary()) scrollLibraryToSelection();
+    if (selection.isStoredPlaylist()) scrollPlaylistsToSelection();
   }
   function leftRightHandler(ev){
     var dir = ev.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
       var helpers = getSelectionHelpers();
       if (!helpers) return;
-      var helper = helpers[selection.type];
+      var helper = helpers[selection.cursorType];
       var selected_item = helper.table[selection.cursor];
       var is_expanded_funcs = {
         artist: isArtistExpanded,
@@ -1394,7 +1415,7 @@ var keyboardHandlers = (function(){
           return true;
         }
       };
-      var is_expanded = is_expanded_funcs[selection.type](selected_item);
+      var is_expanded = is_expanded_funcs[selection.cursorType](selected_item);
       var $li = helper.$getDiv(selection.cursor).closest("li");
       if (dir > 0) {
         if (!is_expanded) {
@@ -1739,7 +1760,7 @@ function queueSelection(ev){
 
 function toggleSelectionUnderCursor() {
   var key = selection.cursor;
-  var type = selection.type;
+  var type = selection.cursorType;
   if (selection.ids[type][key] != null) {
     delete selection.ids[type][key];
   } else {
@@ -1765,7 +1786,7 @@ function selectPlaylistRange() {
 function selectTreeRange() {
   selection.clear();
   var old_pos = selection.getPos(selection.rangeSelectAnchorType, selection.rangeSelectAnchor);
-  var new_pos = selection.getPos(selection.type, selection.cursor);
+  var new_pos = selection.getPos(selection.cursorType, selection.cursor);
   if (compareArrays(selection.posToArr(old_pos), selection.posToArr(new_pos)) > 0) {
     var tmp = old_pos;
     old_pos = new_pos;
@@ -1943,7 +1964,7 @@ function setUpPlayQueueUi() {
           // individual item selection toggle
           selection.cursor = trackId;
           selection.rangeSelectAnchor = trackId;
-          selection.rangeSelectAnchorType = selection.type;
+          selection.rangeSelectAnchorType = selection.cursorType;
           toggleSelectionUnderCursor();
         }
       } else if (selection.ids.queue[trackId] == null) {
@@ -3276,7 +3297,7 @@ function genericTreeUi($elem, options){
       } else if (ev.ctrlKey || ev.shiftKey) {
         skipDrag = true;
         selection.cursor = key;
-        selection.type = type;
+        selection.cursorType = type;
         if (!ev.shiftKey && !ev.ctrlKey) {
           selection.selectOnly(type, key);
         } else if (ev.shiftKey) {

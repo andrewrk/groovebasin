@@ -570,7 +570,7 @@ function getPositions(helpers) {
   for (var selName in helpers) {
     var helper = helpers[selName];
     for (var id in helper.ids) {
-      if (selection.ghost_selection) {
+      if (selection.cursor) {
         $div = helper.$getDiv(selection.cursor);
       } else {
         $div = helper.$getDiv(id);
@@ -1352,7 +1352,6 @@ var keyboardHandlers = (function(){
           // ghost selection
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.type;
-          selection.ghost_selection = true;
         }
         scrollQueueToSelection();
       } else if (selection.isLibrary()) {
@@ -1383,7 +1382,6 @@ var keyboardHandlers = (function(){
           // ghost selection
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.type;
-          selection.ghost_selection = true;
         }
         scrollLibraryToSelection();
       } else {

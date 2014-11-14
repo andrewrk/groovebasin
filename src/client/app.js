@@ -548,22 +548,6 @@ function scrollQueueToSelection(){
 }
 
 function scrollThingToSelection($scrollArea, helpers){
-  var pos = getPositions(helpers);
-
-  if (pos.top !== null) {
-    var scrollAreaTop = $scrollArea.offset().top;
-    var selectionTop = pos.top - scrollAreaTop;
-    var selectionBottom = pos.bottom - scrollAreaTop - $scrollArea.height();
-    var scrollAmt = $scrollArea.scrollTop();
-    if (selectionTop < 0) {
-      return $scrollArea.scrollTop(scrollAmt + selectionTop);
-    } else if (selectionBottom > 0) {
-      return $scrollArea.scrollTop(scrollAmt + selectionBottom);
-    }
-  }
-}
-
-function getPositions(helpers) {
   var topPos = null;
   var bottomPos = null;
 
@@ -586,7 +570,18 @@ function getPositions(helpers) {
       }
     }
   }
-  return { top: topPos, bottom: bottomPos };
+
+  if (topPos !== null) {
+    var scrollAreaTop = $scrollArea.offset().top;
+    var selectionTop = topPos - scrollAreaTop;
+    var selectionBottom = bottomPos - scrollAreaTop - $scrollArea.height();
+    var scrollAmt = $scrollArea.scrollTop();
+    if (selectionTop < 0) {
+      return $scrollArea.scrollTop(scrollAmt + selectionTop);
+    } else if (selectionBottom > 0) {
+      return $scrollArea.scrollTop(scrollAmt + selectionBottom);
+    }
+  }
 }
 
 function getDragPosition(x, y){

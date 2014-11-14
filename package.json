@@ -26,6 +26,7 @@
     "curlydiff": "~2.0.1",
     "express": "~4.9.7",
     "findit2": "~2.2.3",
+    "googleapis": "~1.0.21",
     "groove": "~2.2.6",
     "keese": "~1.1.1",
     "lastfm": "~0.9.2",

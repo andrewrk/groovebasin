@@ -411,6 +411,7 @@ var $nowplaying_left = $nowplaying.find('.left');
 var $volSlider = $('#vol-slider');
 var $settings = $('#settings');
 var $uploadByUrl = $('#upload-by-url');
+var $importByName = $('#import-by-name');
 var $mainErrMsg = $('#main-err-msg');
 var $mainErrMsgText = $('#main-err-msg-text');
 var $playlistsList = $('#playlists-list');
@@ -2481,14 +2482,33 @@ function setUpUploadUi(){
     }
   });
 
-  function importUrl() {
-    var url = $uploadByUrl.val();
-    $uploadByUrl.val("").blur();
-    socket.send('importUrl', {
-      url: url,
-      autoQueue: !!localState.autoQueueUploads,
-    });
-  }
+  $importByName.on('keydown', function(ev) {
+    ev.stopPropagation();
+    if (ev.which === 27) {
+      $importByName.val("").blur();
+    } else if (ev.which === 13 && ev.ctrlKey) {
+      importNames();
+    }
+  });
+}
+
+function importUrl() {
+  var url = $uploadByUrl.val();
+  $uploadByUrl.val("").blur();
+  socket.send('importUrl', {
+    url: url,
+    autoQueue: !!localState.autoQueueUploads,
+  });
+}
+
+function importNames() {
+  var namesText = $importByName.val();
+  var namesList = namesText.split("\n").map(trimIt).filter(truthy);
+  $importByName.val("").blur();
+  socket.send('importNames', {
+    names: namesList,
+    autoQueue: !!localState.autoQueueUploads,
+  });
 }
 
 function updateLastFmApiKey(key) {
@@ -3753,4 +3773,12 @@ function parseQueryString(s) {
     o[keyValueArr[0]] = keyValueArr[1];
   });
   return o;
+}
+
+function trimIt(s) {
+  return s.trim();
+}
+
+function truthy(x) {
+  return !!x;
 }

@@ -539,7 +539,7 @@ function scrollLibraryToSelection() {
   scrollThingToSelection($library, helpers);
 }
 
-function scrollPlaylistToSelection(){
+function scrollQueueToSelection(){
   var helpers = getSelectionHelpers();
   if (!helpers) return;
   delete helpers.track;
@@ -551,10 +551,16 @@ function scrollPlaylistToSelection(){
 function scrollThingToSelection($scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
+
   for (var selName in helpers) {
     var helper = helpers[selName];
     for (var id in helper.ids) {
-      var $div = helper.$getDiv(id);
+      if (selection.cursor) {
+        $div = helper.$getDiv(selection.cursor);
+      } else {
+        $div = helper.$getDiv(id);
+      }
+
       var itemTop = $div.offset().top;
       var itemBottom = itemTop + $div.height();
       if (topPos == null || itemTop < topPos) {
@@ -565,7 +571,8 @@ function scrollThingToSelection($scrollArea, helpers){
       }
     }
   }
-  if (topPos != null) {
+
+  if (topPos !== null) {
     var scrollAreaTop = $scrollArea.offset().top;
     var selectionTop = topPos - scrollAreaTop;
     var selectionBottom = bottomPos - scrollAreaTop - $scrollArea.height();
@@ -1342,6 +1349,7 @@ var keyboardHandlers = (function(){
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.type;
         }
+        scrollQueueToSelection();
       } else if (selection.isLibrary()) {
         nextPos = selection.getPos();
         if (dir > 0) {
@@ -1371,14 +1379,13 @@ var keyboardHandlers = (function(){
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.type;
         }
+        scrollLibraryToSelection();
       } else {
         if (player.queue.itemList.length === 0) return;
         selection.selectOnly('queue', player.queue.itemList[defaultIndex].id);
       }
       refreshSelection();
     }
-    if (selection.isQueue()) scrollPlaylistToSelection();
-    if (selection.isLibrary()) scrollLibraryToSelection();
   }
   function leftRightHandler(ev){
     var dir = ev.which === 37 ? -1 : 1;

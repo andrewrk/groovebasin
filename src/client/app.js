@@ -340,7 +340,7 @@ var selection = {
     } else if (this.isPlaylist()) {
       return playlistToTrackKeys();
     } else {
-      throw new Error("NothingSelected");
+      return [];
     }
 
     function libraryToTrackKeys() {
@@ -1603,7 +1603,7 @@ var keyboardHandlers = (function(){
         if (selection.isQueue()) {
           player.seek(selection.cursor, 0);
           player.play();
-        } else if (selection.isLibrary()) {
+        } else {
           queueSelection(ev);
         }
         return false;

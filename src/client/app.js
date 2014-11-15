@@ -205,12 +205,49 @@ var selection = {
       }
     } else if (pos.type === 'playlist') {
       if (pos.playlistItem != null) {
-        selection.ids.playlistItem[pos.playlistItem] = true;
+        selection.ids.playlistItem[pos.playlistItem.id] = true;
       } else if (pos.playlist != null) {
-        selection.ids.playlist[pos.playlist] = true;
+        selection.ids.playlist[pos.playlist.id] = true;
       }
     } else {
       throw new Error("NothingSelected");
+    }
+  },
+  selectOnlyFirstPos: function(type) {
+    if (type === 'library') {
+      this.selectOnly('artist', player.searchResults.artistList[0].key);
+    } else if (type === 'queue') {
+      this.selectOnly('queue', player.queue.itemList[0].id);
+    } else if (type === 'playlist') {
+      this.selectOnly('playlist', player.playlistList[0].id);
+    } else {
+      throw new Error("unrecognized type: " + type);
+    }
+  },
+  selectOnlyLastPos: function(type) {
+    if (type === 'library') {
+      var lastArtist = player.searchResults.artistList[player.searchResults.artistList.length - 1];
+      if (isArtistExpanded(lastArtist)) {
+        var lastAlbum = lastArtist.albumList[lastArtist.albumList.length - 1];
+        if (isAlbumExpanded(lastAlbum)) {
+          this.selectOnly('track', lastAlbum.trackList[lastAlbum.trackList.length - 1].key);
+        } else {
+          this.selectOnly('album', lastAlbum.key);
+        }
+      } else {
+        this.selectOnly('artist', lastArtist.key);
+      }
+    } else if (type === 'queue') {
+      this.selectOnly('queue', player.queue.itemList[player.queue.itemList.length - 1].id);
+    } else if (type === 'playlist') {
+      var lastPlaylist = player.playlistList[player.playlistList.length - 1];
+      if (isPlaylistExpanded(lastPlaylist)) {
+        this.selectOnly('playlistItem', lastPlaylist.itemList[lastPlaylist.itemList.length - 1].id);
+      } else {
+        this.selectOnly('playlist', lastPlaylist.id);
+      }
+    } else {
+      throw new Error("unrecognized type: " + type);
     }
   },
   incrementPos: function(pos){
@@ -281,7 +318,14 @@ var selection = {
         }
       }
     } else if (pos.type === 'playlist') {
-      debugger; // TODO
+      if (pos.playlistItem) {
+        pos.playlistItem = pos.playlistItem.playlist.itemList[pos.playlistItem.index - 1];
+      } else if (pos.playlist) {
+        pos.playlist = player.playlistList[pos.playlist.index - 1];
+        if (pos.playlist && isPlaylistExpanded(pos.playlist)) {
+          pos.playlistItem = pos.playlist.itemList[pos.playlist.itemList.length - 1];
+        }
+      }
     } else {
       throw new Error("NothingSelected");
     }
@@ -400,7 +444,78 @@ var selection = {
       }
       return keys;
     }
-  }
+  },
+  scrollTo: function() {
+    var helpers = this.getHelpers();
+    if (!helpers) return;
+    if (this.isQueue()) {
+      scrollThingToSelection($queueItems, {
+        queue: helpers.queue,
+      });
+    } else if (this.isLibrary()) {
+      scrollThingToSelection($library, {
+        track: helpers.track,
+        artist: helpers.artist,
+        album: helpers.album,
+      });
+    } else if (this.isPlaylist()) {
+      scrollThingToSelection($playlistsList, {
+        playlist: helpers.playlist,
+        playlistItem: helpers.playlistItem,
+      });
+    }
+  },
+  getHelpers: function() {
+    if (player == null) return null;
+    if (player.queue == null) return null;
+    if (player.queue.itemTable == null) return null;
+    if (player.searchResults == null) return null;
+    if (player.searchResults.artistTable == null) return null;
+    return {
+      queue: {
+        ids: this.ids.queue,
+        table: player.queue.itemTable,
+        $getDiv: function(id){
+          return $("#" + toQueueItemId(id));
+        },
+      },
+      artist: {
+        ids: this.ids.artist,
+        table: player.searchResults.artistTable,
+        $getDiv: function(id){
+          return $("#" + toArtistId(id));
+        },
+      },
+      album: {
+        ids: this.ids.album,
+        table: player.searchResults.albumTable,
+        $getDiv: function(id){
+          return $("#" + toAlbumId(id));
+        },
+      },
+      track: {
+        ids: this.ids.track,
+        table: player.searchResults.trackTable,
+        $getDiv: function(id){
+          return $("#" + toTrackId(id));
+        },
+      },
+      playlist: {
+        ids: this.ids.playlist,
+        table: player.playlistTable,
+        $getDiv: function(id){
+          return $("#" + toPlaylistId(id));
+        },
+      },
+      playlistItem: {
+        ids: this.ids.playlistItem,
+        table: player.playlistItemTable,
+        $getDiv: function(id){
+          return $("#" + toPlaylistItemId(id));
+        },
+      },
+    };
+  },
 };
 var BASE_TITLE = document.title;
 var MARGIN = 10;
@@ -594,33 +709,6 @@ function selectAllPlaylists() {
   });
 }
 
-function scrollLibraryToSelection() {
-  var helpers = getSelectionHelpers();
-  if (!helpers) return;
-  scrollThingToSelection($library, {
-    track: helpers.track,
-    artist: helpers.artist,
-    album: helpers.album,
-  });
-}
-
-function scrollQueueToSelection(){
-  var helpers = getSelectionHelpers();
-  if (!helpers) return;
-  scrollThingToSelection($queueItems, {
-    queue: helpers.queue,
-  });
-}
-
-function scrollPlaylistsToSelection(){
-  var helpers = getSelectionHelpers();
-  if (!helpers) return;
-  scrollThingToSelection($queueItems, {
-    playlist: helpers.playlist,
-    playlistItem: helpers.playlistItem,
-  });
-}
-
 function scrollThingToSelection($scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
@@ -799,60 +887,8 @@ function labelQueueItems() {
   }
 }
 
-function getSelectionHelpers(){
-  if (player == null) return null;
-  if (player.queue == null) return null;
-  if (player.queue.itemTable == null) return null;
-  if (player.searchResults == null) return null;
-  if (player.searchResults.artistTable == null) return null;
-  return {
-    queue: {
-      ids: selection.ids.queue,
-      table: player.queue.itemTable,
-      $getDiv: function(id){
-        return $("#" + toQueueItemId(id));
-      },
-    },
-    artist: {
-      ids: selection.ids.artist,
-      table: player.searchResults.artistTable,
-      $getDiv: function(id){
-        return $("#" + toArtistId(id));
-      },
-    },
-    album: {
-      ids: selection.ids.album,
-      table: player.searchResults.albumTable,
-      $getDiv: function(id){
-        return $("#" + toAlbumId(id));
-      },
-    },
-    track: {
-      ids: selection.ids.track,
-      table: player.searchResults.trackTable,
-      $getDiv: function(id){
-        return $("#" + toTrackId(id));
-      },
-    },
-    playlist: {
-      ids: selection.ids.playlist,
-      table: player.playlistTable,
-      $getDiv: function(id){
-        return $("#" + toPlaylistId(id));
-      },
-    },
-    playlistItem: {
-      ids: selection.ids.playlistItem,
-      table: player.playlistItemTable,
-      $getDiv: function(id){
-        return $("#" + toPlaylistItemId(id));
-      },
-    },
-  };
-}
-
 function refreshSelection() {
-  var helpers = getSelectionHelpers();
+  var helpers = selection.getHelpers();
   if (!helpers) {
     updateQueueDuration();
     return;
@@ -1428,7 +1464,7 @@ var keyboardHandlers = (function(){
           selection.rangeSelectAnchor = selection.cursor;
           selection.rangeSelectAnchorType = selection.cursorType;
         } else if (!ev.ctrlKey && ev.shiftKey) {
-          // range select
+          // select range
           selectQueueRange();
         } else {
           // ghost selection
@@ -1457,7 +1493,7 @@ var keyboardHandlers = (function(){
           // single select
           selection.selectOnly(selection.cursorType, selection.cursor);
         } else if (!ev.ctrlKey && ev.shiftKey) {
-          // range select
+          // select range
           selectTreeRange();
         } else {
           // ghost selection
@@ -1465,21 +1501,40 @@ var keyboardHandlers = (function(){
           selection.rangeSelectAnchorType = selection.cursorType;
         }
       } else if (selection.isPlaylist()) {
-        debugger; // TODO
+        nextPos = selection.getPos();
+        if (dir > 0) {
+          selection.incrementPos(nextPos);
+        } else {
+          selection.decrementPos(nextPos);
+        }
+        if (!nextPos.playlist) return;
+        if (nextPos.playlistItem) {
+          selection.cursorType = 'playlistItem';
+          selection.cursor = nextPos.playlistItem.id;
+        } else {
+          selection.cursorType = 'playlist';
+          selection.cursor = nextPos.playlist.id;
+        }
+        if (!ev.ctrlKey && !ev.shiftKey) {
+          selection.selectOnly(selection.cursorType, selection.cursor);
+        } else if (!ev.ctrlKey && ev.shiftKey) {
+          selectTreeRange();
+        } else {
+          selection.rangeSelectAnchor = selection.cursor;
+          selection.rangeSelectAnchorType = selection.cursorType;
+        }
       } else {
         if (player.queue.itemList.length === 0) return;
         selection.selectOnly('queue', player.queue.itemList[defaultIndex].id);
       }
       refreshSelection();
     }
-    if (selection.isQueue()) scrollQueueToSelection();
-    if (selection.isLibrary()) scrollLibraryToSelection();
-    if (selection.isPlaylist()) scrollPlaylistsToSelection();
+    selection.scrollTo();
   }
   function leftRightHandler(ev){
     var dir = ev.which === 37 ? -1 : 1;
     if (selection.isLibrary()) {
-      var helpers = getSelectionHelpers();
+      var helpers = selection.getHelpers();
       if (!helpers) return;
       var helper = helpers[selection.cursorType];
       var selectedItem = helper.table[selection.cursor];
@@ -1765,6 +1820,12 @@ function removeContextMenu() {
   return false;
 }
 
+function isPlaylistExpanded(playlist){
+  var $li = $("#" + toPlaylistId(playlist.id)).closest("li");
+  if (!$li.data('cached')) return false;
+  return $li.find("> ul").is(":visible");
+}
+
 function isArtistExpanded(artist){
   var artistHtmlId = toArtistId(artist.key);
   var artistElem = document.getElementById(artistHtmlId);
@@ -1806,12 +1867,7 @@ function expandLibraryToSelection() {
     var album = player.library.albumTable[albumKey];
     expandArtist(album.artist);
   }
-  scrollLibraryToSelection();
-}
-
-function isPlaylistExpanded(playlist){
-  var $li = $("#" + toPlaylistId(playlist.id)).closest("li");
-  return $li.find("> ul").is(":visible");
+  selection.scrollTo();
 }
 
 function queueSelection(ev){
@@ -2121,13 +2177,14 @@ function setUpPlaylistsUi() {
       }
     } else if (ev.which === 40) {
       // down
-      selection.selectOnly('playlist', player.playlistList[0].id);
+      selection.selectOnlyFirstPos('playlist');
+      selection.scrollTo();
       refreshSelection();
       $newPlaylistName.blur();
     } else if (ev.which === 38) {
       // up
-      selection.selectOnly('playlist',
-        player.playlistList[player.playlistList.length - 1].id);
+      selection.selectOnlyLastPos('playlist');
+      selection.scrollTo();
       refreshSelection();
       $newPlaylistName.blur();
     }
@@ -3274,12 +3331,14 @@ function setUpLibraryUi(){
       }
       return false;
     case 40:
-      selection.selectOnly('artist', player.searchResults.artistList[0].key);
+      selection.selectOnlyFirstPos('library');
+      selection.scrollTo();
       refreshSelection();
       $libFilter.blur();
       return false;
     case 38:
-      selection.selectOnly('artist', player.searchResults.artistList[player.searchResults.artistList.length - 1].key);
+      selection.selectOnlyLastPos('library');
+      selection.scrollTo();
       refreshSelection();
       $libFilter.blur();
       return false;

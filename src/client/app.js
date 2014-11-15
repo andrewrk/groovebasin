@@ -1961,7 +1961,7 @@ function setUpPlayQueueUi() {
     player.seek(trackId, 0);
     player.play();
   });
-  $queueItems.on('contextmenu', function(ev){
+  $queueItems.on('contextmenu', '.pl-item', function(ev){
     return ev.altKey;
   });
   $queueItems.on('mousedown', '.pl-item', function(ev){
@@ -1993,7 +1993,7 @@ function setUpPlayQueueUi() {
       }
       refreshSelection();
       if (!skipDrag) {
-        return performDrag(ev, {
+        performDrag(ev, {
           complete: function(result, ev){
             var delta, id;
             delta = {
@@ -2013,9 +2013,10 @@ function setUpPlayQueueUi() {
             refreshSelection();
           }
         });
+        return false;
       }
     } else if (ev.which === 3) {
-      if (ev.altKey) return;
+      if (ev.altKey) return false;
       ev.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
@@ -2035,8 +2036,6 @@ function setUpPlayQueueUi() {
       });
       updateMenuDisableState($queueMenu);
     }
-  });
-  $queueItems.on('mousedown', function(){
     return false;
   });
   $queueMenu.menu();

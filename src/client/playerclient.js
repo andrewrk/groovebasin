@@ -216,7 +216,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       ev.user = this.usersTable[serverEvent.userId];
     }
     if (serverEvent.playlistId) {
-      ev.playlist = this.stored_playlist_table[serverEvent.playlistId];
+      ev.playlist = this.playlistTable[serverEvent.playlistId];
     }
     this.eventsList.push(ev);
   }
@@ -281,21 +281,21 @@ PlayerClient.prototype.updateCurrentItem = function() {
     this.queue.itemTable[this.currentItemId] : null;
 };
 
-PlayerClient.prototype.clearStoredPlaylists = function() {
-  this.stored_playlist_table = {};
-  this.stored_playlist_item_table = {};
-  this.stored_playlists = [];
+PlayerClient.prototype.clearPlaylists = function() {
+  this.playlistTable = {};
+  this.playlistItemTable = {};
+  this.playlistList = [];
 };
 
 PlayerClient.prototype.sortAndIndexPlaylists = function() {
-  this.stored_playlists.sort(compareNameAndId);
-  this.stored_playlists.forEach(function(playlist, index) {
+  this.playlistList.sort(compareNameAndId);
+  this.playlistList.forEach(function(playlist, index) {
     playlist.index = index;
   });
 };
 
 PlayerClient.prototype.updatePlaylistsIndex = function() {
-  this.clearStoredPlaylists();
+  this.clearPlaylists();
   if (!this.playlistsFromServer) return;
   for (var id in this.playlistsFromServer) {
     var playlistFromServer = this.playlistsFromServer[id];
@@ -318,11 +318,11 @@ PlayerClient.prototype.updatePlaylistsIndex = function() {
         playlist: playlist,
       };
       playlist.itemTable[itemId] = item;
-      this.stored_playlist_item_table[itemId] = item;
+      this.playlistItemTable[itemId] = item;
     }
     this.refreshPlaylistList(playlist);
-    this.stored_playlists.push(playlist);
-    this.stored_playlist_table[playlist.id] = playlist;
+    this.playlistList.push(playlist);
+    this.playlistTable[playlist.id] = playlist;
   }
   this.sortAndIndexPlaylists();
 };
@@ -398,7 +398,7 @@ PlayerClient.prototype.queueOnQueue = function(keys, previousKey, nextKey) {
 PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey, nextKey) {
   if (keys.length === 0) return;
 
-  var playlist = this.stored_playlist_table[playlistId];
+  var playlist = this.playlistTable[playlistId];
   if (previousKey == null && nextKey == null && playlist.itemList.length > 0) {
     previousKey = playlist.itemList[playlist.itemList.length - 1].sortKey;
   }
@@ -550,7 +550,7 @@ PlayerClient.prototype.shuffleQueueItems = function(ids) {
 PlayerClient.prototype.shufflePlaylists = function(playlistIdSet) {
   var updates = {};
   for (var playlistId in playlistIdSet) {
-    var playlist = this.stored_playlist_table[playlistId];
+    var playlist = this.playlistTable[playlistId];
     var items = shuffleIds(Object.keys(playlist.itemTable), playlist.itemTable);
     updates[playlistId] = items;
     this.refreshPlaylistList(playlist);
@@ -564,14 +564,14 @@ PlayerClient.prototype.shufflePlaylistItems = function(idSet) {
   var idLists = {};
   var idList;
   for (var id in idSet) {
-    var item = this.stored_playlist_item_table[id];
+    var item = this.playlistItemTable[id];
     idList = idLists[item.playlist.id] || (idLists[item.playlist.id] = []);
     idList.push(id);
   }
   var updates = {};
   for (var playlistId in idLists) {
     idList = idLists[playlistId];
-    var playlist = this.stored_playlist_table[playlistId];
+    var playlist = this.playlistTable[playlistId];
     updates[playlistId] = shuffleIds(idList, playlist.itemTable);
     this.refreshPlaylistList(playlist);
   }
@@ -679,7 +679,7 @@ PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
   var playlist;
   for (var i = 0; i < trackIds.length; i += 1) {
     var playlistItemId = trackIds[i];
-    var playlistItem = this.stored_playlist_item_table[playlistItemId];
+    var playlistItem = this.playlistItemTable[playlistItemId];
     playlist = playlistItem.playlist;
     var removal = removals[playlist.id];
     if (!removal) {
@@ -690,7 +690,7 @@ PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
     delete playlist.itemTable[playlistItemId];
   }
   for (var playlistId in removals) {
-    playlist = this.stored_playlist_table[playlistId];
+    playlist = this.playlistTable[playlistId];
     this.refreshPlaylistList(playlist);
   }
   this.sendCommand('playlistRemoveItems', removals);
@@ -718,13 +718,13 @@ PlayerClient.prototype.deleteTracks = function(keysList) {
     }
 
     // delete items from playlists that are being deleted from the library
-    for (var playlistIndex = 0; playlistIndex < this.stored_playlists.length; playlistIndex += 1) {
-      var storedPlaylist = this.stored_playlists[playlistIndex];
-      for (i = 0; i < storedPlaylist.itemList.length; i += 1) {
-        var plItem = storedPlaylist.itemList[i];
+    for (var playlistIndex = 0; playlistIndex < this.playlistList.length; playlistIndex += 1) {
+      var playlist = this.playlistList[playlistIndex];
+      for (i = 0; i < playlist.itemList.length; i += 1) {
+        var plItem = playlist.itemList[i];
         if (plItem.track.key === key) {
-          delete storedPlaylist.itemTable[plItem.id];
-          dirtyPlaylists[storedPlaylist.id] = storedPlaylist;
+          delete playlist.itemTable[plItem.id];
+          dirtyPlaylists[playlist.id] = playlist;
         }
       }
     }
@@ -750,15 +750,15 @@ PlayerClient.prototype.deletePlaylists = function(idsList) {
   this.sendCommand('playlistDelete', idsList);
   for (var i = 0; i < idsList.length; i += 1) {
     var id = idsList[i];
-    var playlist = this.stored_playlist_table[id];
+    var playlist = this.playlistTable[id];
     for (var j = 0; j < playlist.itemList; j += 1) {
       var item = playlist.itemList[j];
-      delete this.stored_playlist_item_table[item.id];
+      delete this.playlistItemTable[item.id];
     }
-    delete this.stored_playlist_table[id];
-    this.stored_playlists.splice(playlist.index, 1);
-    for (j = playlist.index; j < this.stored_playlists.length; j += 1) {
-      this.stored_playlists[j].index -= 1;
+    delete this.playlistTable[id];
+    this.playlistList.splice(playlist.index, 1);
+    for (j = playlist.index; j < this.playlistList.length; j += 1) {
+      this.playlistList[j].index -= 1;
     }
   }
   this.emit('playlistsUpdate');
@@ -847,7 +847,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.importProgressList = [];
   this.importProgressTable = {};
 
-  this.clearStoredPlaylists();
+  this.clearPlaylists();
 };
 
 PlayerClient.prototype.createPlaylist = function(name) {
@@ -864,8 +864,8 @@ PlayerClient.prototype.createPlaylist = function(name) {
     name: name,
     index: 0,
   };
-  this.stored_playlist_table[id] = playlist;
-  this.stored_playlists.push(playlist);
+  this.playlistTable[id] = playlist;
+  this.playlistList.push(playlist);
   this.sortAndIndexPlaylists();
   this.emit('playlistsUpdate');
 

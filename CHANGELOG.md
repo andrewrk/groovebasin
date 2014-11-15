@@ -13,8 +13,8 @@ protocol is not officially stable yet, only the minor version number is bumped.
      with gmpc.
    - MPD list command supports a single argument to return all tags of that
      type. Fixes compatibility with gmpc.
-   - MPD: when appending tracks with dynamic mode on, insert them before the
-     random ones.
+   - MPD: when appending tracks with Auto DJ on, insert them before the random
+     ones.
    - (breaking change) protocolupgrade UUID has changed
    - (breaking change) slashes and spaces disallowed in user names
    - fix not respecting verbose logging for play queue

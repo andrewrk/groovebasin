@@ -6,7 +6,7 @@ var PlayerClient = require('./playerclient');
 var Socket = require('./socket');
 var uuid = require('./uuid');
 
-var dynamicModeOn = false;
+var autoDjOn = false;
 var hardwarePlaybackOn = false;
 var haveAdminUser = true;
 
@@ -779,7 +779,7 @@ function getDragPosition(x, y){
 
 function renderQueueButtons(){
   $dynamicMode
-    .prop("checked", dynamicModeOn)
+    .prop("checked", autoDjOn)
     .button("refresh");
   var repeatModeName = repeatModeNames[player.repeat];
   $queueBtnRepeat
@@ -873,7 +873,7 @@ function labelQueueItems() {
     .removeClass('current')
     .removeClass('old')
     .removeClass('random');
-  if (curItem != null && dynamicModeOn) {
+  if (curItem != null && autoDjOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.queue.itemList[index];
       var itemId = item && item.id;
@@ -1430,12 +1430,12 @@ function togglePlayback(){
 }
 
 function setDynamicMode(value) {
-  dynamicModeOn = value;
-  player.sendCommand('dynamicModeOn', dynamicModeOn);
+  autoDjOn = value;
+  player.sendCommand('autoDjOn', autoDjOn);
 }
 
 function toggleDynamicMode(){
-  setDynamicMode(!dynamicModeOn);
+  setDynamicMode(!autoDjOn);
 }
 
 function nextRepeatState(){
@@ -3123,6 +3123,9 @@ function getEventNowPlayingText(ev) {
 }
 
 var eventTypeMessageFns = {
+  autoDj: function(ev) {
+    return "toggled Auto DJ";
+  },
   autoPause: function(ev) {
     return "auto pause because nobody is listening";
   },
@@ -3840,8 +3843,8 @@ $document.ready(function(){
     player.volume = vol;
     renderVolumeSlider();
   });
-  socket.on('dynamicModeOn', function(data) {
-    dynamicModeOn = data;
+  socket.on('autoDjOn', function(data) {
+    autoDjOn = data;
     renderQueueButtons();
     triggerRenderQueue();
   });
@@ -3852,7 +3855,7 @@ $document.ready(function(){
   socket.on('connect', function(){
     sendAuth();
     sendStreamingStatus();
-    socket.send('subscribe', {name: 'dynamicModeOn'});
+    socket.send('subscribe', {name: 'autoDjOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
     socket.send('subscribe', {name: 'haveAdminUser'});
     loadStatus = LoadStatus.GoodToGo;

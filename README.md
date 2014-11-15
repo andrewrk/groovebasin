@@ -17,7 +17,7 @@ Try out the [live demo](http://demo.groovebasin.com/).
 * The web client feels like a desktop app, not a web app. It predicts what the
   server will do in order to hide network lag from the user.
 
-* Dynamic Mode which automatically queues random songs, favoring songs
+* Auto DJ which automatically queues random songs, favoring songs
   that have not been queued recently.
 
 * Drag and drop upload. Drag and drop playlist editing. Keyboard shortcuts

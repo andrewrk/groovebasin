@@ -1610,6 +1610,16 @@ var keyboardHandlers = (function(){
       shift: true,
       handler: onShuffleContextMenu,
     },
+    // p
+    80: {
+      ctrl: false,
+      alt: false,
+      shift: false,
+      handler: function() {
+        clickTab(tabs.playlists);
+        $newPlaylistName.focus().select();
+      },
+    },
     // r
     82: {
       ctrl: false,
@@ -2076,12 +2086,25 @@ function setUpPlaylistsUi() {
   $newPlaylistName.on('keydown', function(ev) {
     ev.stopPropagation();
 
-    if (ev.which === 13) {
+    if (ev.which === 27) {
+      $newPlaylistName.val("").blur();
+    } else if (ev.which === 13) {
       var name = $newPlaylistName.val().trim();
       if (name.length > 0) {
         player.createPlaylist(name);
         $newPlaylistName.val("");
       }
+    } else if (ev.which === 40) {
+      // down
+      selection.selectOnly('stored_playlist', player.stored_playlists[0].id);
+      refreshSelection();
+      $newPlaylistName.blur();
+    } else if (ev.which === 38) {
+      // up
+      selection.selectOnly('stored_playlist',
+        player.stored_playlists[player.stored_playlists.length - 1].id);
+      refreshSelection();
+      $newPlaylistName.blur();
     }
   });
 

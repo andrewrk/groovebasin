@@ -564,7 +564,7 @@ var $clientVol = $('#client-vol');
 var $queueWindow = $('#queue-window');
 var $leftWindow = $('#left-window');
 var $queueItems = $('#queue-items');
-var $dynamicMode = $('#dynamic-mode');
+var $autoDj = $('#auto-dj');
 var $queueBtnRepeat = $('#queue-btn-repeat');
 var $tabs = $('#tabs');
 var $library = $('#library');
@@ -645,7 +645,7 @@ var $queueDuration = $('#queue-duration');
 var $queueDurationLabel = $('#queue-duration-label');
 var $importProgress = $('#import-progress');
 var $importProgressList = $('#import-progress-list');
-var dynamicModeLabel = document.getElementById('dynamic-mode-label');
+var autoDjLabel = document.getElementById('auto-dj-label');
 var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
 var $queueMenuPlaylistSubmenu = $('#queue-menu-playlist-submenu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
@@ -778,7 +778,7 @@ function getDragPosition(x, y){
 }
 
 function renderQueueButtons(){
-  $dynamicMode
+  $autoDj
     .prop("checked", autoDjOn)
     .button("refresh");
   var repeatModeName = repeatModeNames[player.repeat];
@@ -1429,13 +1429,13 @@ function togglePlayback(){
   // else we haven't received state from server yet
 }
 
-function setDynamicMode(value) {
+function setAutoDj(value) {
   autoDjOn = value;
   player.sendCommand('autoDjOn', autoDjOn);
 }
 
-function toggleDynamicMode(){
-  setDynamicMode(!autoDjOn);
+function toggleAutoDj(){
+  setAutoDj(!autoDjOn);
 }
 
 function nextRepeatState(){
@@ -1702,7 +1702,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: false,
-      handler: toggleDynamicMode,
+      handler: toggleAutoDj,
     },
     // e
     69: {
@@ -2052,12 +2052,12 @@ function setUpPlayQueueUi() {
   $queueBtnRepeat.on('click', nextRepeatState);
   plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
 
-  $dynamicMode.on('click', function(){
+  $autoDj.on('click', function(){
     var value = $(this).prop("checked");
-    setDynamicMode(value);
+    setAutoDj(value);
     return false;
   });
-  dynamicModeLabel.addEventListener('mousedown', stopPropagation, false);
+  autoDjLabel.addEventListener('mousedown', stopPropagation, false);
 
   $queueItems.on('dblclick', '.pl-item', function(ev){
     var trackId = $(this).attr('data-id');

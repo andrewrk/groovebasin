@@ -1587,15 +1587,6 @@ var keyboardHandlers = (function(){
         refreshSelection();
       },
     },
-    // C
-    67: {
-      ctrl: false,
-      alt: false,
-      shift: true,
-      handler: function(){
-        player.clear();
-      },
-    },
     // d
     68: {
       ctrl: false,

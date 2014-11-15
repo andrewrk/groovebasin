@@ -4,9 +4,17 @@ Contains breaking changes to the Groove Basin protocol. Since the Groove Basin
 protocol is not officially stable yet, only the minor version number is bumped.
 
  * Andrew Kelley:
-   - client: double quotes can be used to include spaces in search terms.
-   - fix symlink behavior in music library
+   - playlist support
    - support for MPD stored_playlist commands
+   - imported songs automatically added to an Incoming playlist
+   - client: double quotes can be used to include spaces in search terms.
+   - import by name feature - searches YouTube for the name and imports into
+     your library.
+   - fix symlink behavior in music library
+   - fix spacebar keyboard shortcut in Firefox
+   - fix crash when zip files contain non music files
+   - rename "Dynamic Mode" to "Auto DJ"
+   - rename "Events" pane to "Chat"
    - MPD users show up in events pane, and MPD commands show up as events for
      MPD users.
    - MPD lsinfo command allows '/' to mean root directory. Fixes compatibility
@@ -17,11 +25,20 @@ protocol is not officially stable yet, only the minor version number is bumped.
      ones.
    - (breaking change) protocolupgrade UUID has changed
    - (breaking change) slashes and spaces disallowed in user names
+   - (breaking change) clear and shuffle commands removed from protocol
+   - client: clear and shuffle buttons removed from UI
+   - client: Ctrl+A to select all. Works on queue, library, and playlists.
+   - client: shuffle works on the selection instead of the entire queue
+     and also works on playlists and playlist items.
+   - client: shuffle context menu item added to playlists and queue.
+   - client: ability to click in the empty queue area to get rid of
+     context menu
    - fix not respecting verbose logging for play queue
    - `--config` option so config file can be in a different place
    - db path is relative to config file instead of CWD
    - save `playCount` in the db
    - make importing files more efficient by disabling fs watching during
+   - server handles many commands more efficiently
    - use `xdg-user-dir` if available for default music directory
    - add `--delete-all-events` CLI argument
    - chat: invalid commands do not get cleared or sent
@@ -38,6 +55,8 @@ protocol is not officially stable yet, only the minor version number is bumped.
  * Josh Wolfe:
    - sort keys for queueing up large number of songs at once requires
      `O(n*log(n))` size over the network instead of `O(n^2)`.
+   - play queue total never displays a negative number and shows '?' if some
+     tracks need scanning.
 
 ### Version 1.4.0 (2014-10-16)
 

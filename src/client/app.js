@@ -1822,6 +1822,8 @@ var keyboardHandlers = (function(){
         } else {
           clickTab(tabs.library);
           $libFilter.focus().select();
+          selection.fullClear();
+          refreshSelection();
         }
       },
     },
@@ -3916,6 +3918,7 @@ $document.ready(function(){
   render();
   $window.resize(handleResize);
   window._debug_player = player;
+  window._debug_selection = selection;
 });
 
 function onWindowFocus() {

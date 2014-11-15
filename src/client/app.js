@@ -1463,7 +1463,7 @@ var keyboardHandlers = (function(){
       if (selection.isQueue()) {
         player.shiftIds(selection.ids.queue, dir);
       } else if (selection.isPlaylist()) {
-        debugger; // TODO
+        player.playlistShiftIds(selection.ids.playlistItem, dir);
       }
     } else {
       if (selection.isQueue()) {
@@ -1473,11 +1473,8 @@ var keyboardHandlers = (function(){
         }
         selection.cursor = player.queue.itemList[nextPos].id;
         if (!ev.ctrlKey && !ev.shiftKey) {
-          // single select
-          selection.clear();
-          selection.ids.queue[selection.cursor] = true;
-          selection.rangeSelectAnchor = selection.cursor;
-          selection.rangeSelectAnchorType = selection.cursorType;
+          // select single
+          selection.selectOnly(selection.cursorType, selection.cursor);
         } else if (!ev.ctrlKey && ev.shiftKey) {
           // select range
           selectQueueRange();
@@ -1505,7 +1502,7 @@ var keyboardHandlers = (function(){
           selection.cursor = nextPos.artist.key;
         }
         if (!ev.ctrlKey && !ev.shiftKey) {
-          // single select
+          // select single
           selection.selectOnly(selection.cursorType, selection.cursor);
         } else if (!ev.ctrlKey && ev.shiftKey) {
           // select range

@@ -579,69 +579,28 @@ PlayerClient.prototype.shufflePlaylistItems = function(idSet) {
   this.emit('playlistUpdate');
 };
 
+PlayerClient.prototype.playlistShiftIds = function(trackIdSet, offset) {
+  var perPlaylistSet = {};
+  var set;
+  for (var trackId in trackIdSet) {
+    var item = this.playlistItemTable[trackId];
+    set = perPlaylistSet[item.playlist.id] || (perPlaylistSet[item.playlist.id] = {});
+    set[trackId] = true;
+  }
+
+  var updates = {};
+  for (var playlistId in perPlaylistSet) {
+    set = perPlaylistSet[playlistId];
+    var playlist = this.playlistTable[playlistId];
+    updates[playlistId] = shiftIdsInPlaylist(this, playlist, set, offset);
+  }
+
+  this.sendCommand('playlistMoveItems', updates);
+  this.emit('playlistUpdate');
+};
+
 PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
-  // an example of shifting 5 items (a,c,f,g,i) "down":
-  // offset: +1, reverse: false, this -> way
-  // selection: *     *        *  *     *
-  //    before: a, b, c, d, e, f, g, h, i
-  //             \     \        \  \    |
-  //              \     \        \  \   |
-  //     after: b, a, d, c, e, h, f, g, i
-  // selection:    *     *        *  *  *
-  // (note that "i" does not move because it has no futher to go.)
-  //
-  // an alternate way to think about it: some items "leapfrog" backwards over the selected items.
-  // this ends up being much simpler to compute, and even more compact to communicate.
-  // selection: *     *        *  *     *
-  //    before: a, b, c, d, e, f, g, h, i
-  //              /     /        ___/
-  //             /     /        /
-  //     after: b, a, d, c, e, h, f, g, i
-  // selection:    *     *        *  *  *
-  // (note that the moved items are not the selected items)
-  var itemList = this.queue.itemList;
-  var movedItems = {};
-  var reverse = offset === -1;
-  function getKeeseBetween(itemA, itemB) {
-    if (reverse) {
-      var tmp = itemA;
-      itemA = itemB;
-      itemB = tmp;
-    }
-    var keyA = itemA == null ? null : itemA.sortKey;
-    var keyB = itemB == null ? null : itemB.sortKey;
-    return keese(keyA, keyB);
-  }
-  if (reverse) {
-    // to make this easier, just reverse the item list in place so we can write one iteration routine.
-    // note that we are editing our data model live! so don't forget to refresh it later.
-    itemList.reverse();
-  }
-  for (var i = itemList.length - 1; i >= 1; i--) {
-    var track = itemList[i];
-    if (!(track.id in trackIdSet) && (itemList[i - 1].id in trackIdSet)) {
-      // this one needs to move backwards (e.g. found "h" is not selected, and "g" is selected)
-      i--; // e.g. g
-      i--; // e.g. f
-      while (true) {
-        if (i < 0) {
-          // fell off the end (or beginning) of the list
-          track.sortKey = getKeeseBetween(null, itemList[0]);
-          break;
-        }
-        if (!(itemList[i].id in trackIdSet)) {
-          // this is where it goes (e.g. found "d" is not selected)
-          track.sortKey = getKeeseBetween(itemList[i], itemList[i + 1]);
-          break;
-        }
-        i--;
-      }
-      movedItems[track.id] = {sortKey: track.sortKey};
-      i++;
-    }
-  }
-  // we may have reversed the table and adjusted all the sort keys, so we need to refresh this.
-  this.refreshPlaylistList(this.queue);
+  var movedItems = shiftIdsInPlaylist(this, this.queue, trackIdSet, offset);
 
   this.sendCommand('move', movedItems);
   this.emit('queueUpdate');
@@ -871,6 +830,72 @@ PlayerClient.prototype.createPlaylist = function(name) {
 
   return playlist;
 };
+
+function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
+  // an example of shifting 5 items (a,c,f,g,i) "down":
+  // offset: +1, reverse: false, this -> way
+  // selection: *     *        *  *     *
+  //    before: a, b, c, d, e, f, g, h, i
+  //             \     \        \  \    |
+  //              \     \        \  \   |
+  //     after: b, a, d, c, e, h, f, g, i
+  // selection:    *     *        *  *  *
+  // (note that "i" does not move because it has no futher to go.)
+  //
+  // an alternate way to think about it: some items "leapfrog" backwards over the selected items.
+  // this ends up being much simpler to compute, and even more compact to communicate.
+  // selection: *     *        *  *     *
+  //    before: a, b, c, d, e, f, g, h, i
+  //              /     /        ___/
+  //             /     /        /
+  //     after: b, a, d, c, e, h, f, g, i
+  // selection:    *     *        *  *  *
+  // (note that the moved items are not the selected items)
+  var itemList = playlist.itemList;
+  var movedItems = {};
+  var reverse = offset === -1;
+  function getKeeseBetween(itemA, itemB) {
+    if (reverse) {
+      var tmp = itemA;
+      itemA = itemB;
+      itemB = tmp;
+    }
+    var keyA = itemA == null ? null : itemA.sortKey;
+    var keyB = itemB == null ? null : itemB.sortKey;
+    return keese(keyA, keyB);
+  }
+  if (reverse) {
+    // to make this easier, just reverse the item list in place so we can write one iteration routine.
+    // note that we are editing our data model live! so don't forget to refresh it later.
+    itemList.reverse();
+  }
+  for (var i = itemList.length - 1; i >= 1; i--) {
+    var track = itemList[i];
+    if (!(track.id in trackIdSet) && (itemList[i - 1].id in trackIdSet)) {
+      // this one needs to move backwards (e.g. found "h" is not selected, and "g" is selected)
+      i--; // e.g. g
+      i--; // e.g. f
+      while (true) {
+        if (i < 0) {
+          // fell off the end (or beginning) of the list
+          track.sortKey = getKeeseBetween(null, itemList[0]);
+          break;
+        }
+        if (!(itemList[i].id in trackIdSet)) {
+          // this is where it goes (e.g. found "d" is not selected)
+          track.sortKey = getKeeseBetween(itemList[i], itemList[i + 1]);
+          break;
+        }
+        i--;
+      }
+      movedItems[track.id] = {sortKey: track.sortKey};
+      i++;
+    }
+  }
+  // we may have reversed the table and adjusted all the sort keys, so we need to refresh this.
+  self.refreshPlaylistList(playlist);
+  return movedItems;
+}
 
 function shuffleIds(ids, table) {
   var sortKeys = [];

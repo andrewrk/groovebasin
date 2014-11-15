@@ -674,11 +674,10 @@ PlayerClient.prototype.removeIds = function(trackIds){
   this.emit('queueUpdate');
 };
 
-PlayerClient.prototype.removeItemsFromPlaylists = function(trackIds) {
+PlayerClient.prototype.removeItemsFromPlaylists = function(idSet) {
   var removals = {};
   var playlist;
-  for (var i = 0; i < trackIds.length; i += 1) {
-    var playlistItemId = trackIds[i];
+  for (var playlistItemId in idSet) {
     var playlistItem = this.playlistItemTable[playlistItemId];
     playlist = playlistItem.playlist;
     var removal = removals[playlist.id];
@@ -746,10 +745,11 @@ PlayerClient.prototype.deleteTracks = function(keysList) {
   this.emit('libraryupdate');
 };
 
-PlayerClient.prototype.deletePlaylists = function(idsList) {
-  this.sendCommand('playlistDelete', idsList);
-  for (var i = 0; i < idsList.length; i += 1) {
-    var id = idsList[i];
+PlayerClient.prototype.deletePlaylists = function(idSet) {
+  var idList = Object.keys(idSet);
+  if (idList.length === 0) return;
+  this.sendCommand('playlistDelete', idList);
+  for (var id in idSet) {
     var playlist = this.playlistTable[id];
     for (var j = 0; j < playlist.itemList; j += 1) {
       var item = playlist.itemList[j];

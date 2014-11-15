@@ -1392,9 +1392,18 @@ function handleDeletePressed(shift) {
   } else if (selection.isPlaylist()) {
     if (shift) {
       keysList = selection.toTrackKeys();
-      maybeDeleteTracks(keysList);
+      if (maybeDeleteTracks(keysList)) {
+        player.deletePlaylists(selection.ids.playlist);
+      }
     } else {
-      maybeDeleteSelectedPlaylists();
+      var table = extend({}, selection.ids.playlistItem);
+      for (var playlistId in selection.ids.playlist) {
+        var playlist = player.playlistTable[playlistId];
+        for (var itemId in playlist.itemTable) {
+          table[itemId] = true;
+        }
+      }
+      player.removeItemsFromPlaylists(table);
     }
   } else if (selection.isQueue()) {
     if (shift) {
@@ -3394,9 +3403,10 @@ function setUpLibraryUi(){
 
 function maybeDeleteSelectedPlaylists() {
   var ids = Object.keys(selection.ids.playlist);
-  var nameList = ids.map(function(id) {
-    return player.playlistTable[id].name;
-  });
+  var nameList = [];
+  for (var id in selection.ids.playlist) {
+    nameList.push(player.playlistTable[id].name);
+  }
   var listText = nameList.slice(0, 7).join("\n  ");
   if (nameList.length > 7) {
     listText += "\n  ...";
@@ -3405,7 +3415,7 @@ function maybeDeleteSelectedPlaylists() {
   var message = "You are about to delete " + nameList.length + " " + playlistText +
     " permanently:\n\n  " + listText;
   if (!confirm(message)) return false;
-  player.deletePlaylists(ids);
+  player.deletePlaylists(selection.ids.playlist);
   return true;
 }
 
@@ -3416,7 +3426,7 @@ function onDeletePlaylistContextMenu() {
 }
 
 function onRemoveFromPlaylistContextMenu() {
-  player.removeItemsFromPlaylists(Object.keys(selection.ids.playlistItem));
+  player.removeItemsFromPlaylists(selection.ids.playlistItem);
   removeContextMenu();
 }
 
@@ -3970,4 +3980,11 @@ function truthy(x) {
 
 function alwaysTrue() {
   return true;
+}
+
+function extend(dest, src) {
+  for (var name in src) {
+    dest[name] = src[name];
+  }
+  return dest;
 }

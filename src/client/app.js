@@ -465,6 +465,17 @@ var selection = {
       });
     }
   },
+  scrollToCursor: function() {
+    var helpers = this.getHelpers();
+    if (!helpers) return;
+    if (this.isQueue()) {
+      scrollThingToCursor($queueItems, helpers);
+    } else if (this.isLibrary()) {
+      scrollThingToCursor($library, helpers);
+    } else if (this.isPlaylist()) {
+      scrollThingToCursor($playlistsList, helpers);
+    }
+  },
   getHelpers: function() {
     if (player == null) return null;
     if (player.queue == null) return null;
@@ -715,42 +726,48 @@ function selectAllPlaylists() {
   });
 }
 
+function scrollThingToCursor($scrollArea, helpers) {
+  var helper = helpers[selection.cursorType];
+  var $div = helper.$getDiv(selection.cursor);
+  var itemTop = $div.offset().top;
+  var itemBottom = itemTop + $div.height();
+  scrollAreaIntoView($scrollArea, itemTop, itemBottom);
+}
+
+function scrollAreaIntoView($scrollArea, itemTop, itemBottom) {
+  var scrollAreaTop = $scrollArea.offset().top;
+  var selectionTop = itemTop - scrollAreaTop;
+  var selectionBottom = itemBottom - scrollAreaTop - $scrollArea.height();
+  var scrollAmt = $scrollArea.scrollTop();
+  if (selectionTop < 0) {
+    $scrollArea.scrollTop(scrollAmt + selectionTop);
+  } else if (selectionBottom > 0) {
+    $scrollArea.scrollTop(scrollAmt + selectionBottom);
+  }
+}
+
 function scrollThingToSelection($scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
+
   var helper;
   for (var selName in helpers) {
     helper = helpers[selName];
     for (var id in helper.ids) {
-      checkPos(id);
-    }
-    if (selection.cursor && selName === selection.cursorType) {
-      checkPos(selection.cursor);
+      var $div = helper.$getDiv(id);
+      var itemTop = $div.offset().top;
+      var itemBottom = itemTop + $div.height();
+      if (topPos == null || itemTop < topPos) {
+        topPos = itemTop;
+      }
+      if (bottomPos == null || itemBottom > bottomPos) {
+        bottomPos = itemBottom;
+      }
     }
   }
 
   if (topPos != null) {
-    var scrollAreaTop = $scrollArea.offset().top;
-    var selectionTop = topPos - scrollAreaTop;
-    var selectionBottom = bottomPos - scrollAreaTop - $scrollArea.height();
-    var scrollAmt = $scrollArea.scrollTop();
-    if (selectionTop < 0) {
-      return $scrollArea.scrollTop(scrollAmt + selectionTop);
-    } else if (selectionBottom > 0) {
-      return $scrollArea.scrollTop(scrollAmt + selectionBottom);
-    }
-  }
-
-  function checkPos(id) {
-    var $div = helper.$getDiv(id);
-    var itemTop = $div.offset().top;
-    var itemBottom = itemTop + $div.height();
-    if (topPos == null || itemTop < topPos) {
-      topPos = itemTop;
-    }
-    if (bottomPos == null || itemBottom > bottomPos) {
-      bottomPos = itemBottom;
-    }
+    scrollAreaIntoView($scrollArea, topPos, bottomPos);
   }
 }
 
@@ -1142,7 +1159,6 @@ function renderLibrary() {
       }
     }
   }
-
 }
 
 function getCurrentTrackPosition(){
@@ -1541,7 +1557,7 @@ var keyboardHandlers = (function(){
       }
       refreshSelection();
     }
-    selection.scrollTo();
+    selection.scrollToCursor();
   }
   function leftRightHandler(ev){
     var dir = ev.which === 37 ? -1 : 1;
@@ -2190,13 +2206,13 @@ function setUpPlaylistsUi() {
     } else if (ev.which === 40) {
       // down
       selection.selectOnlyFirstPos('playlist');
-      selection.scrollTo();
+      selection.scrollToCursor();
       refreshSelection();
       $newPlaylistName.blur();
     } else if (ev.which === 38) {
       // up
       selection.selectOnlyLastPos('playlist');
-      selection.scrollTo();
+      selection.scrollToCursor();
       refreshSelection();
       $newPlaylistName.blur();
     }
@@ -3347,13 +3363,13 @@ function setUpLibraryUi(){
       return false;
     case 40:
       selection.selectOnlyFirstPos('library');
-      selection.scrollTo();
+      selection.scrollToCursor();
       refreshSelection();
       $libFilter.blur();
       return false;
     case 38:
       selection.selectOnlyLastPos('library');
-      selection.scrollTo();
+      selection.scrollToCursor();
       refreshSelection();
       $libFilter.blur();
       return false;

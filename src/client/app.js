@@ -478,6 +478,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toQueueItemId(id));
         },
+        toggleExpansion: null,
       },
       artist: {
         ids: this.ids.artist,
@@ -485,6 +486,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toArtistId(id));
         },
+        toggleExpansion: toggleLibraryExpansion,
       },
       album: {
         ids: this.ids.album,
@@ -492,6 +494,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toAlbumId(id));
         },
+        toggleExpansion: toggleLibraryExpansion,
       },
       track: {
         ids: this.ids.track,
@@ -499,6 +502,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toTrackId(id));
         },
+        toggleExpansion: toggleLibraryExpansion,
       },
       playlist: {
         ids: this.ids.playlist,
@@ -506,6 +510,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toPlaylistId(id));
         },
+        toggleExpansion: togglePlaylistExpansion,
       },
       playlistItem: {
         ids: this.ids.playlistItem,
@@ -513,6 +518,7 @@ var selection = {
         $getDiv: function(id){
           return $("#" + toPlaylistItemId(id));
         },
+        toggleExpansion: togglePlaylistExpansion,
       },
     };
   },
@@ -1533,27 +1539,27 @@ var keyboardHandlers = (function(){
   }
   function leftRightHandler(ev){
     var dir = ev.which === 37 ? -1 : 1;
-    if (selection.isLibrary()) {
-      var helpers = selection.getHelpers();
-      if (!helpers) return;
-      var helper = helpers[selection.cursorType];
+    var helpers = selection.getHelpers();
+    if (!helpers) return;
+    var helper = helpers[selection.cursorType];
+    if (helper.toggleExpansion) {
       var selectedItem = helper.table[selection.cursor];
       var isExpandedFuncs = {
         artist: isArtistExpanded,
         album: isAlbumExpanded,
-        track: function(){
-          return true;
-        }
+        track: alwaysTrue,
+        playlist: isPlaylistExpanded,
+        playlistItem: alwaysTrue,
       };
       var isExpanded = isExpandedFuncs[selection.cursorType](selectedItem);
       var $li = helper.$getDiv(selection.cursor).closest("li");
       if (dir > 0) {
         if (!isExpanded) {
-          toggleLibraryExpansion($li);
+          helper.toggleExpansion($li);
         }
       } else {
         if (isExpanded) {
-          toggleLibraryExpansion($li);
+          helper.toggleExpansion($li);
         }
       }
     } else {
@@ -3960,4 +3966,8 @@ function trimIt(s) {
 
 function truthy(x) {
   return !!x;
+}
+
+function alwaysTrue() {
+  return true;
 }

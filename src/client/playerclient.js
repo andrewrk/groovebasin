@@ -4,6 +4,7 @@ var uuid = require('./uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
 var curlydiff = require('curlydiff');
+var shuffle = require('mess');
 
 module.exports = PlayerClient;
 
@@ -457,10 +458,6 @@ PlayerClient.prototype.clear = function(){
   this.emit('queueUpdate');
 };
 
-PlayerClient.prototype.shuffle = function(){
-  this.sendCommand('shuffle');
-};
-
 PlayerClient.prototype.play = function(){
   this.sendCommand('play');
   if (this.isPlaying === false) {
@@ -541,6 +538,45 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
   this.refreshPlaylistList(this.queue);
   this.sendCommand('move', items);
   this.emit('queueUpdate');
+};
+
+PlayerClient.prototype.shuffleQueueItems = function(ids) {
+  var items = shuffleIds(ids, this.queue.itemTable);
+  this.refreshPlaylistList(this.queue);
+  this.sendCommand('move', items);
+  this.emit('queueUpdate');
+};
+
+PlayerClient.prototype.shufflePlaylists = function(playlistIdSet) {
+  var updates = {};
+  for (var playlistId in playlistIdSet) {
+    var playlist = this.stored_playlist_table[playlistId];
+    var items = shuffleIds(Object.keys(playlist.itemTable), playlist.itemTable);
+    updates[playlistId] = items;
+    this.refreshPlaylistList(playlist);
+  }
+
+  this.sendCommand('playlistMoveItems', updates);
+  this.emit('playlistUpdate');
+};
+
+PlayerClient.prototype.shufflePlaylistItems = function(idSet) {
+  var idLists = {};
+  var idList;
+  for (var id in idSet) {
+    var item = this.stored_playlist_item_table[id];
+    idList = idLists[item.playlist.id] || (idLists[item.playlist.id] = []);
+    idList.push(id);
+  }
+  var updates = {};
+  for (var playlistId in idLists) {
+    idList = idLists[playlistId];
+    var playlist = this.stored_playlist_table[playlistId];
+    updates[playlistId] = shuffleIds(idList, playlist.itemTable);
+    this.refreshPlaylistList(playlist);
+  }
+  this.sendCommand('playlistMoveItems', updates);
+  this.emit('playlistUpdate');
 };
 
 PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {
@@ -835,6 +871,25 @@ PlayerClient.prototype.createPlaylist = function(name) {
 
   return playlist;
 };
+
+function shuffleIds(ids, table) {
+  var sortKeys = [];
+  var i, id, sortKey;
+  for (i = 0; i < ids.length; i += 1) {
+    id = ids[i];
+    sortKey = table[id].sortKey;
+    sortKeys.push(sortKey);
+  }
+  shuffle(sortKeys);
+  var items = {};
+  for (i = 0; i < ids.length; i += 1) {
+    id = ids[i];
+    sortKey = sortKeys[i];
+    items[id] = {sortKey: sortKey};
+    table[id].sortKey = sortKey;
+  }
+  return items;
+}
 
 function removeTracksInLib(lib, keysList) {
   keysList.forEach(function(key) {

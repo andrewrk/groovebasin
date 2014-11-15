@@ -199,8 +199,6 @@
   </div>
   <div id="queue-window" class="ui-widget-content ui-corner-all" style="display: none">
     <div class="window-header">
-      <button class="jquery-button clear">Clear</button>
-      <button class="jquery-button shuffle">Shuffle</button>
       <input class="jquery-button" type="checkbox" id="dynamic-mode"><label id="dynamic-mode-label" for="dynamic-mode">Dynamic Mode</label>
       <input class="jquery-button" type="checkbox" id="queue-btn-repeat"><label id="queue-btn-repeat-label" for="queue-btn-repeat">Repeat: Off</label>
       <span id="queue-duration-label"></span> <span id="queue-duration"></span>
@@ -265,12 +263,12 @@
       <dd>Play the selected song</dd>
     </dl>
     <dl>
-      <dt>C</dt>
-      <dd>Clear queue</dd>
+      <dt>Ctrl+A</dt>
+      <dd>Select all</dd>
     </dl>
     <dl>
       <dt>H</dt>
-      <dd>Shuffle queue</dd>
+      <dd>Shuffle selection</dd>
     </dl>
     <dl>
       <dt>d</dt>
@@ -429,6 +427,7 @@
   </div>
   <ul id="queue-menu" style="display: none">
     <li><a href="#" class="remove">Remove</a></li>
+    <li><a href="#" class="shuffle">Shuffle</a></li>
     <li>
       <a href="#" class="add-to-playlist">Add To Playlist</a>
       <ul id="queue-menu-playlist-submenu">
@@ -443,6 +442,7 @@
     <li><a href="#" class="queue-next">Queue Next</a></li>
     <li><a href="#" class="queue-random">Queue in Random Order</a></li>
     <li><a href="#" class="queue-next-random">Queue Next in Random Order</a></li>
+    <li><a href="#" class="shuffle">Shuffle</a></li>
     <li>
       <a href="#" class="add-to-playlist">Add To Playlist</a>
       <ul id="library-menu-playlist-submenu">

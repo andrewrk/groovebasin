@@ -64,6 +64,20 @@ var selection = {
     this.rangeSelectAnchor = key;
     this.rangeSelectAnchorType = selName;
   },
+  selectAll: function() {
+    this.clear();
+    if (selection.isQueue()) {
+      selectAllQueue();
+    } else if (selection.isLibrary()) {
+      selectAllLibrary();
+    } else if (selection.isStoredPlaylist()) {
+      selectAllStoredPlaylists();
+    } else if (player.queue.itemList.length > 0) {
+      this.fullClear();
+      this.selectOnly('queue', player.queue.itemList[0].id);
+      selectAllQueue();
+    }
+  },
   isMulti: function(){
     var result, k;
     if (this.isLibrary()) {
@@ -530,6 +544,24 @@ function loadLocalState() {
       localState[key] = obj[key];
     }
   }
+}
+
+function selectAllQueue() {
+  player.queue.itemList.forEach(function(item) {
+    selection.ids.queue[item.id] = true;
+  });
+}
+
+function selectAllLibrary() {
+  player.searchResults.artistList.forEach(function(artist) {
+    selection.ids.artist[artist.key] = true;
+  });
+}
+
+function selectAllStoredPlaylists() {
+  player.stored_playlists.forEach(function(playlist) {
+    selection.ids.stored_playlist[playlist.id] = true;
+  });
 }
 
 function scrollLibraryToSelection() {
@@ -1545,6 +1577,16 @@ var keyboardHandlers = (function(){
     },
     // =
     61: volumeUpHandler,
+    // Ctrl+A
+    65: {
+      ctrl: true,
+      alt: false,
+      shift: false,
+      handler: function() {
+        selection.selectAll();
+        refreshSelection();
+      },
+    },
     // C
     67: {
       ctrl: false,
@@ -1570,14 +1612,12 @@ var keyboardHandlers = (function(){
         clickTab(tabs.settings);
       },
     },
-    // S
+    // H
     72: {
       ctrl: false,
       alt: false,
       shift: true,
-      handler: function(){
-        player.shuffle();
-      },
+      handler: onShuffleContextMenu,
     },
     // r
     82: {
@@ -1915,16 +1955,6 @@ function blur() {
 }
 
 function setUpPlayQueueUi() {
-  $queueWindow.on('click', 'button.clear', function(ev){
-    player.clear();
-  });
-  $queueWindow.on('mousedown', 'button.clear', stopPropagation);
-
-  $queueWindow.on('click', 'button.shuffle', function(){
-    player.shuffle();
-  });
-  $queueWindow.on('mousedown', 'button.shuffle', stopPropagation);
-
   $queueBtnRepeat.on('click', nextRepeatState);
   plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
 
@@ -2031,6 +2061,25 @@ function setUpPlayQueueUi() {
   $queueMenu.on('click', '.delete', onDeleteContextMenu);
   $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
   $queueMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
+  $queueMenu.on('click', '.shuffle', onShuffleContextMenu);
+}
+
+function onShuffleContextMenu(ev) {
+  if (!selection.cursor || selection.isQueue()) {
+    var ids = Object.keys(selection.ids.queue);
+    if (ids.length === 0) {
+      ids = Object.keys(player.queue.itemTable);
+    }
+    player.shuffleQueueItems(ids);
+  } else if (selection.isStoredPlaylist()) {
+    if (selection.cursorType === 'stored_playlist_item') {
+      player.shufflePlaylistItems(selection.ids.stored_playlist_item);
+    } else if (selection.cursorType === 'stored_playlist') {
+      player.shufflePlaylists(selection.ids.stored_playlist);
+    }
+  }
+  removeContextMenu();
+  return false;
 }
 
 function setUpPlaylistsUi() {
@@ -3233,6 +3282,7 @@ function setUpLibraryUi(){
   $libraryMenu.on('click', '.delete-playlist', onDeletePlaylistContextMenu);
   $libraryMenu.on('click', '.remove', onRemoveFromPlaylistContextMenu);
   $libraryMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
+  $libraryMenu.on('click', '.shuffle', onShuffleContextMenu);
 }
 
 function maybeDeleteSelectedPlaylists() {
@@ -3343,6 +3393,7 @@ function genericTreeUi($elem, options){
       }
       var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
       var $removeFromPlaylistLi = $libraryMenu.find('.remove').closest('li');
+      var $shuffle = $libraryMenu.find('.shuffle').closest('li');
       if (type === 'stored_playlist') {
         $deletePlaylistLi.show();
       } else {
@@ -3352,6 +3403,12 @@ function genericTreeUi($elem, options){
         $removeFromPlaylistLi.show();
       } else {
         $removeFromPlaylistLi.hide();
+      }
+
+      if (type === 'stored_playlist' || type === 'stored_playlist_item') {
+        $shuffle.show();
+      } else {
+        $shuffle.hide();
       }
 
       var $downloadItem = $libraryMenu.find('.download');

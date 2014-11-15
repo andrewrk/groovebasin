@@ -2984,7 +2984,7 @@ function clearChatInputValue() {
 
 function renderUnseenChatCount() {
   var eventsTabText = (player.unseenChatCount > 0) ?
-    ("Events (" + player.unseenChatCount + ")") : "Events";
+    ("Chat (" + player.unseenChatCount + ")") : "Chat";
   $eventsTabSpan.text(eventsTabText);
   updateTitle();
 }

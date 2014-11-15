@@ -3069,7 +3069,11 @@ var eventTypeMessageFns = {
     return "deleted playlist " + ev.text;
   },
   playlistMoveItems: function(ev) {
-    return "moved " + ev.pos + " items in " + eventPlaylistName(ev);
+    if (ev.playlist) {
+      return "moved " + ev.pos + " tracks in " + eventPlaylistName(ev);
+    } else {
+      return "moved " + ev.pos + " tracks in playlists";
+    }
   },
   playlistRemoveItems: function(ev) {
     if (ev.playlist) {

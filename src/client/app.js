@@ -2173,9 +2173,22 @@ function popContextMenu(type, x, y) {
   }
   $libraryMenu.find('.download').attr('href', makeDownloadHref());
   updateMenuDisableState($libraryMenu);
-  $libraryMenu.menu('refresh').show().offset({
-    left: x + 1,
-    top: y + 1
+  $libraryMenu.menu('refresh');
+
+  // make it so that the mouse cursor is not immediately over the menu
+  var leftPos = x + 1;
+  var topPos = y + 1;
+  // avoid menu going outside document boundaries
+  if (leftPos + $libraryMenu.width() >= $document.width()) {
+    leftPos = x - $libraryMenu.width() - 1;
+  }
+  if (topPos + $libraryMenu.height() >= $document.height()) {
+    topPos = y - $libraryMenu.height() - 1;
+  }
+
+  $libraryMenu.show().offset({
+    left: leftPos,
+    top: topPos
   });
 }
 

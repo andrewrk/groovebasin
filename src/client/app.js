@@ -3543,7 +3543,8 @@ function makeDownloadHref() {
 function updateMenuDisableState($menu) {
   var menuPermDoms = {
     admin: $menu.find('.delete,.edit-tags'),
-    control: $menu.find('.remove,.delete-playlist'),
+    control: $menu.find('.remove,.delete-playlist,.add-to-playlist,.shuffle'),
+    add: $menu.find('.queue,.queue-next,.queue-random,.queue-next-random'),
   };
   for (var permName in menuPermDoms) {
     var $item = menuPermDoms[permName];

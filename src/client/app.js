@@ -619,7 +619,6 @@ var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
 var $shortcuts = $('#shortcuts');
 var $editTagsDialog = $('#edit-tags');
-var $queueMenu = $('#queue-menu');
 var $libraryMenu = $('#library-menu');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
@@ -658,7 +657,6 @@ var $importProgress = $('#import-progress');
 var $importProgressList = $('#import-progress-list');
 var autoDjLabel = document.getElementById('auto-dj-label');
 var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
-var $queueMenuPlaylistSubmenu = $('#queue-menu-playlist-submenu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
 var tabs = {
@@ -1002,7 +1000,6 @@ function makeRenderCall(renderFn, interval) {
 }
 
 function updatePlaylistsUi() {
-  updatePlaylistsSubmenus($queueMenu, $queueMenuPlaylistSubmenu);
   updatePlaylistsSubmenus($libraryMenu, $libraryMenuPlaylistSubmenu);
   renderPlaylists();
 }
@@ -1839,10 +1836,6 @@ function bumpVolume(v) {
 }
 
 function removeContextMenu() {
-  if ($queueMenu.is(":visible")) {
-    $queueMenu.hide();
-    return true;
-  }
   if ($libraryMenu.is(":visible")) {
     $libraryMenu.hide();
     return true;
@@ -2139,40 +2132,51 @@ function setUpPlayQueueUi() {
     } else if (ev.which === 3) {
       if (ev.altKey) return false;
       ev.preventDefault();
-      removeContextMenu();
       trackId = $(this).attr('data-id');
       if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
         selection.selectOnly('queue', trackId);
         refreshSelection();
       }
-      if (!selection.isMulti()) {
-        var item = player.queue.itemTable[trackId];
-        $queueMenu.find('.download').attr('href', encodeDownloadHref(item.track.file));
-      } else {
-        $queueMenu.find('.download').attr('href', makeMultifileDownloadHref());
-      }
-      $queueMenu.show().offset({
-        left: ev.pageX + 1,
-        top: ev.pageY + 1
-      });
-      updateMenuDisableState($queueMenu);
+      popContextMenu('queue', ev.pageX, ev.pageY);
     }
     return false;
   });
-  $queueMenu.menu();
-  $queueMenu.on('mousedown', function(){
-    return false;
+}
+
+function popContextMenu(type, x, y) {
+  removeContextMenu();
+  var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
+  var $removeFromPlaylistLi = $libraryMenu.find('.remove').closest('li');
+  var $shuffle = $libraryMenu.find('.shuffle').closest('li');
+  if (type === 'playlist') {
+    $deletePlaylistLi.show();
+  } else {
+    $deletePlaylistLi.hide();
+  }
+  if (type === 'playlistItem') {
+    $removeFromPlaylistLi.show();
+    $removeFromPlaylistLi.find('a').text("Remove from Playlist");
+  } else if (type === 'playlist') {
+    $removeFromPlaylistLi.show();
+    $removeFromPlaylistLi.find('a').text("Clear Playlist");
+  } else if (type === 'queue') {
+    $removeFromPlaylistLi.show();
+    $removeFromPlaylistLi.find('a').text("Remove from Queue");
+  } else {
+    $removeFromPlaylistLi.hide();
+  }
+
+  if (type === 'playlist' || type === 'playlistItem' || type === 'queue') {
+    $shuffle.show();
+  } else {
+    $shuffle.hide();
+  }
+  $libraryMenu.find('.download').attr('href', makeDownloadHref());
+  updateMenuDisableState($libraryMenu);
+  $libraryMenu.menu('refresh').show().offset({
+    left: x + 1,
+    top: y + 1
   });
-  $queueMenu.on('click', '.remove', function(){
-    handleDeletePressed(false);
-    removeContextMenu();
-    return false;
-  });
-  $queueMenu.on('click', '.download', onDownloadContextMenu);
-  $queueMenu.on('click', '.delete', onDeleteContextMenu);
-  $queueMenu.on('click', '.edit-tags', onEditTagsContextMenu);
-  $queueMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
-  $queueMenu.on('click', '.shuffle', onShuffleContextMenu);
 }
 
 function onShuffleContextMenu(ev) {
@@ -3387,9 +3391,7 @@ function setUpLibraryUi(){
     }
   });
   $libraryMenu.menu();
-  $libraryMenu.on('mousedown', function(){
-    return false;
-  });
+  $libraryMenu.on('mousedown', alwaysFalse);
   $libraryMenu.on('click', '.queue', function(){
     player.queueOnQueue(selection.toTrackKeys());
     removeContextMenu();
@@ -3444,8 +3446,9 @@ function onDeletePlaylistContextMenu() {
 }
 
 function onRemoveFromPlaylistContextMenu() {
-  player.removeItemsFromPlaylists(selection.ids.playlistItem);
+  handleDeletePressed(false);
   removeContextMenu();
+  return false;
 }
 
 function genericTreeUi($elem, options){
@@ -3513,55 +3516,14 @@ function genericTreeUi($elem, options){
     }
     function rightMouseDown(ev){
       ev.preventDefault();
-      removeContextMenu();
       if (!options.isSelectionOwner() || selection.ids[type][key] == null) {
         selection.selectOnly(type, key);
         refreshSelection();
       }
-      var singleTrack = null;
-      if (!selection.isMulti()) {
-        if (type === 'track') {
-          singleTrack = player.searchResults.trackTable[key];
-        } else if (type === 'playlistItem') {
-          singleTrack = player.playlistItemTable[key].track;
-        }
-      }
-      var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
-      var $removeFromPlaylistLi = $libraryMenu.find('.remove').closest('li');
-      var $shuffle = $libraryMenu.find('.shuffle').closest('li');
-      if (type === 'playlist') {
-        $deletePlaylistLi.show();
-      } else {
-        $deletePlaylistLi.hide();
-      }
-      if (type === 'playlistItem') {
-        $removeFromPlaylistLi.show();
-      } else {
-        $removeFromPlaylistLi.hide();
-      }
-
-      if (type === 'playlist' || type === 'playlistItem') {
-        $shuffle.show();
-      } else {
-        $shuffle.hide();
-      }
-
-      var $downloadItem = $libraryMenu.find('.download');
-      if (singleTrack) {
-        $downloadItem.attr('href', encodeDownloadHref(singleTrack.file));
-      } else {
-        $downloadItem.attr('href', makeMultifileDownloadHref());
-      }
-      $libraryMenu.show().offset({
-        left: ev.pageX + 1,
-        top: ev.pageY + 1
-      });
-      updateMenuDisableState($libraryMenu);
+      popContextMenu(type, ev.pageX, ev.pageY);
     }
   });
-  $elem.on('mousedown', function(){
-    return false;
-  });
+  $elem.on('mousedown', alwaysFalse);
 }
 
 function encodeDownloadHref(file) {
@@ -3569,9 +3531,13 @@ function encodeDownloadHref(file) {
   return 'library/' + encodeURI(file).replace(/#/g, "%23");
 }
 
-function makeMultifileDownloadHref() {
+function makeDownloadHref() {
   var keys = selection.toTrackKeys();
-  return "/download/keys?" + keys.join("&");
+  if (keys.length === 1) {
+    return encodeDownloadHref(player.library.trackTable[keys[0]].file);
+  } else {
+    return "/download/keys?" + keys.join("&");
+  }
 }
 
 function updateMenuDisableState($menu) {
@@ -3999,6 +3965,10 @@ function truthy(x) {
 
 function alwaysTrue() {
   return true;
+}
+
+function alwaysFalse() {
+  return false;
 }
 
 function extend(dest, src) {

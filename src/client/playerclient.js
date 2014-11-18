@@ -557,7 +557,7 @@ PlayerClient.prototype.shufflePlaylists = function(playlistIdSet) {
   }
 
   this.sendCommand('playlistMoveItems', updates);
-  this.emit('playlistUpdate');
+  this.emit('playlistsUpdate');
 };
 
 PlayerClient.prototype.shufflePlaylistItems = function(idSet) {
@@ -576,7 +576,7 @@ PlayerClient.prototype.shufflePlaylistItems = function(idSet) {
     this.refreshPlaylistList(playlist);
   }
   this.sendCommand('playlistMoveItems', updates);
-  this.emit('playlistUpdate');
+  this.emit('playlistsUpdate');
 };
 
 PlayerClient.prototype.playlistShiftIds = function(trackIdSet, offset) {
@@ -596,7 +596,7 @@ PlayerClient.prototype.playlistShiftIds = function(trackIdSet, offset) {
   }
 
   this.sendCommand('playlistMoveItems', updates);
-  this.emit('playlistUpdate');
+  this.emit('playlistsUpdate');
 };
 
 PlayerClient.prototype.shiftIds = function(trackIdSet, offset) {

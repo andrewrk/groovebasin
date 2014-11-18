@@ -1561,7 +1561,7 @@ var keyboardHandlers = (function(){
     var helpers = selection.getHelpers();
     if (!helpers) return;
     var helper = helpers[selection.cursorType];
-    if (helper.toggleExpansion) {
+    if (helper && helper.toggleExpansion) {
       var selectedItem = helper.table[selection.cursor];
       var isExpandedFuncs = {
         artist: isArtistExpanded,

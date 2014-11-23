@@ -1721,9 +1721,13 @@ var keyboardHandlers = (function(){
     69: {
       ctrl: false,
       alt: false,
-      shift: false,
-      handler: function(){
-        clickTab(tabs.settings);
+      shift: null,
+      handler: function(ev) {
+        if (ev.shiftKey) {
+          onEditTagsContextMenu();
+        } else {
+          clickTab(tabs.settings);
+        }
       },
     },
     // H

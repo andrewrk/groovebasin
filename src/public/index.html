@@ -406,49 +406,122 @@
     </dl>
   </div>
   <div id="edit-tags" style="display: none">
-    <input type="checkbox" id="edit-tag-multi-name">
-    <label accesskey="i">T<span class="accesskey">i</span>tle: <input id="edit-tag-name"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-name">
+        <label accesskey="i" for="edit-tag-name">T<span class="accesskey">i</span>tle:</label>
+      </span>
+      <input type="text" id="edit-tag-name">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-track">
-    <label accesskey="k">Trac<span class="accesskey">k</span> Number: <input id="edit-tag-track"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-track">
+        <label accesskey="k" for="edit-tag-track">Trac<span class="accesskey">k</span> Number:</label>
+      </span>
+      <input type="text" id="edit-tag-track">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-file">
-    <label>Filename: <input id="edit-tag-file"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-file">
+        <label accesskey="f" for="edit-tag-file"><span class="accesskey">F</span>ilename:</label>
+      </span>
+      <input type="text" id="edit-tag-file">
+    </div>
+
     <hr>
 
-    <input type="checkbox" id="edit-tag-multi-artistName">
-    <label accesskey="a"><span class="accesskey">A</span>rtist: <input id="edit-tag-artistName"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-artistName">
+        <label accesskey="a" for="edit-tag-artistName"><span class="accesskey">A</span>rtist:</label>
+      </span>
+      <input type="text" id="edit-tag-artistName">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-composerName">
-    <label accesskey="c"><span class="accesskey">C</span>omposer: <input id="edit-tag-composerName"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-composerName">
+        <label accesskey="c" for="edit-tag-composerName"><span class="accesskey">C</span>omposer:</label>
+      </span>
+      <input type="text" id="edit-tag-composerName">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-performerName">
-    <label>Performer: <input id="edit-tag-performerName"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-performerName">
+        <label for="edit-tag-performerName">Performer:</label>
+      </span>
+      <input type="text" id="edit-tag-performerName">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-genre">
-    <label accesskey="g"><span class="accesskey">G</span>enre: <input id="edit-tag-genre"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-genre">
+        <label accesskey="g" for="edit-tag-genre"><span class="accesskey">G</span>enre:</label>
+      </span>
+      <input type="text" id="edit-tag-genre">
+    </div>
+
     <hr>
 
-    <input type="checkbox" id="edit-tag-multi-albumName">
-    <label accesskey="b">Al<span class="accesskey">b</span>um: <input id="edit-tag-albumName"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-albumName">
+        <label accesskey="b" for="edit-tag-albumName">Al<span class="accesskey">b</span>um:</label>
+      </span>
+      <input type="text" id="edit-tag-albumName">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-albumArtistName">
-    <label>Album Artist: <input id="edit-tag-albumArtistName"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-albumArtistName">
+        <label accesskey="t" for="edit-tag-albumArtistName">Album Ar<span class="accesskey">t</span>ist:</label>
+      </span>
+      <input type="text" id="edit-tag-albumArtistName">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-trackCount">
-    <label>Track Count: <input id="edit-tag-trackCount"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-trackCount">
+        <label for="edit-tag-trackCount">Track Count:</label>
+      </span>
+      <input type="text" id="edit-tag-trackCount">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-year">
-    <label accesskey="y"><span class="accesskey">Y</span>ear: <input id="edit-tag-year"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-year">
+        <label accesskey="y" for="edit-tag-year"><span class="accesskey">Y</span>ear:</label>
+      </span>
+      <input type="text" id="edit-tag-year">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-disc">
-    <label accesskey="d"><span class="accesskey">D</span>isc Number: <input id="edit-tag-disc"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-disc">
+        <label accesskey="d" for="edit-tag-disc"><span class="accesskey">D</span>isc Number:</label>
+      </span>
+      <input type="text" id="edit-tag-disc">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-discCount">
-    <label>Disc Count: <input id="edit-tag-discCount"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-discCount">
+        <label for="edit-tag-discCount">Disc Count:</label>
+      </span>
+      <input type="text" id="edit-tag-discCount">
+    </div>
 
-    <input type="checkbox" id="edit-tag-multi-compilation">
-    <label accesskey="m">Co<span class="accesskey">m</span>pilation: <input type="checkbox" id="edit-tag-compilation"></label><br>
+    <div>
+      <span class="field">
+        <input type="checkbox" id="edit-tag-multi-compilation">
+        <label accesskey="m" for="edit-tag-compilation">Co<span class="accesskey">m</span>pilation:</label>
+      </span>
+      <input type="checkbox" id="edit-tag-compilation">
+    </div>
+
     <hr>
 
     <div style="float: right">

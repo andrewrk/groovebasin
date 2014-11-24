@@ -1717,7 +1717,7 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: toggleAutoDj,
     },
-    // e
+    // e, E
     69: {
       ctrl: false,
       alt: false,
@@ -2392,7 +2392,7 @@ function updateEditTagsUi() {
     var type = propInfo.type;
     var setter = EDIT_TAG_TYPES[type].set;
     var domItem = document.getElementById('edit-tag-' + propName);
-    domItem.disabled = !propInfo.write;
+    domItem.readOnly = !propInfo.write;
     var multiCheckBoxDom = document.getElementById('edit-tag-multi-' + propName);
     multiCheckBoxDom.style.visibility = (multiCheckBoxVisible && propInfo.write) ? 'visible' : 'hidden';
     var commonValue = null;
@@ -2416,12 +2416,13 @@ function showEditTags() {
   $editTagsDialog.dialog({
     modal: true,
     title: "Edit Tags",
-    minWidth: 800,
-    height: $document.height() - 40,
+    minWidth: 650,
+    height: Math.min(640, $document.height() - 40),
   });
   perDom.checked = false;
   updateEditTagsUi();
   editTagsFocusDom.focus();
+  editTagsFocusDom.select();
 }
 
 function setUpEditTagsUi() {
@@ -2646,13 +2647,13 @@ function uploadFiles(files) {
   req.send(formData);
   uploadInput.value = null;
 
-  function onProgress(e) {
-    if (!e.lengthComputable) return;
-    var progress = e.loaded / e.total;
+  function onProgress(ev) {
+    if (!ev.lengthComputable) return;
+    var progress = ev.loaded / ev.total;
     $progressBar.progressbar("option", "value", progress * 100);
   }
 
-  function onLoad(e) {
+  function onLoad(ev) {
     cleanup();
   }
 
@@ -2685,7 +2686,7 @@ function setUpUploadUi(){
   });
   uploadInput.addEventListener('change', onChange, false);
 
-  function onChange(e) {
+  function onChange(ev) {
     uploadFiles(this.files);
   }
 

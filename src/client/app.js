@@ -331,7 +331,6 @@ var selection = {
     }
   },
   toTrackKeys: function(random){
-    var this$ = this;
     if (random == null) random = false;
     if (this.isLibrary()) {
       return libraryToTrackKeys();
@@ -346,31 +345,6 @@ var selection = {
     function libraryToTrackKeys() {
       var key;
       var trackSet = {};
-      function selRenderArtist(artist){
-        var i, ref$, len$, album;
-        for (i = 0, len$ = (ref$ = artist.albumList).length; i < len$; ++i) {
-          album = ref$[i];
-          selRenderAlbum(album);
-        }
-      }
-      function selRenderAlbum(album){
-        var i, ref$, len$, track;
-        for (i = 0, len$ = (ref$ = album.trackList).length; i < len$; ++i) {
-          track = ref$[i];
-          selRenderTrack(track);
-        }
-      }
-      function selRenderTrack(track){
-        trackSet[track.key] = this$.posToArr(getTrackSelPos(track));
-      }
-      function getTrackSelPos(track){
-        return {
-          type: 'library',
-          artist: track.album.artist,
-          album: track.album,
-          track: track
-        };
-      }
       for (key in selection.ids.artist) {
         selRenderArtist(player.searchResults.artistTable[key]);
       }
@@ -381,6 +355,29 @@ var selection = {
         selRenderTrack(player.searchResults.trackTable[key]);
       }
       return trackSetToKeys(trackSet);
+      function selRenderArtist(artist){
+        for (var i = 0; i < artist.albumList.length; i += 1) {
+          var album = artist.albumList[i];
+          selRenderAlbum(album);
+        }
+      }
+      function selRenderAlbum(album){
+        for (var i = 0; i < album.trackList.length; i += 1) {
+          var track = album.trackList[i];
+          selRenderTrack(track);
+        }
+      }
+      function selRenderTrack(track){
+        trackSet[track.key] = selection.posToArr(getTrackSelPos(track));
+      }
+      function getTrackSelPos(track){
+        return {
+          type: 'library',
+          artist: track.album.artist,
+          album: track.album,
+          track: track
+        };
+      }
     }
     function queueToTrackKeys(){
       var keys = [];
@@ -393,14 +390,13 @@ var selection = {
     function playlistToTrackKeys(){
       var trackSet = {};
       function renderQueue(playlist){
-        var i, ref$, len$, item;
-        for (i = 0, len$ = (ref$ = playlist.itemList).length; i < len$; ++i) {
-          item = ref$[i];
+        for (var i = 0; i < playlist.itemList.length; i += 1) {
+          var item = playlist.itemList[i];
           renderPlaylistItem(item);
         }
       }
       function renderPlaylistItem(item){
-        trackSet[item.track.key] = this$.posToArr(getItemSelPos(item));
+        trackSet[item.track.key] = selection.posToArr(getItemSelPos(item));
       }
       function getItemSelPos(item){
         return {
@@ -769,11 +765,11 @@ function scrollThingToSelection($scrollArea, helpers){
   }
 }
 
-function getDragPosition(x, y){
-  var ref$;
+function getDragPosition(x, y) {
   var result = {};
-  for (var i = 0, len$ = (ref$ = $queueItems.find(".pl-item").get()).length; i < len$; ++i) {
-    var item = ref$[i];
+  var plItemDom = $queueItems.find(".pl-item").get();
+  for (var i = 0; i < plItemDom.length; ++i) {
+    var item = plItemDom[i];
     var $item = $(item);
     var middle = $item.offset().top + $item.height() / 2;
     var track = player.queue.itemTable[$item.attr('data-id')];
@@ -3344,9 +3340,8 @@ function ensureSearchHappensSoon() {
   }, 100);
 }
 
-function setUpLibraryUi(){
+function setUpLibraryUi() {
   $libFilter.on('keydown', function(ev){
-    var keys, i, ref$, len$, artist, j$, ref1$, len1$, album, k$, ref2$, len2$, track;
     ev.stopPropagation();
     switch (ev.which) {
     case 27: // Escape
@@ -3362,13 +3357,13 @@ function setUpLibraryUi(){
       }
       return false;
     case 13: // Enter
-      keys = [];
-      for (i = 0, len$ = (ref$ = player.searchResults.artistList).length; i < len$; ++i) {
-        artist = ref$[i];
-        for (j$ = 0, len1$ = (ref1$ = artist.albumList).length; j$ < len1$; ++j$) {
-          album = ref1$[j$];
-          for (k$ = 0, len2$ = (ref2$ = album.trackList).length; k$ < len2$; ++k$) {
-            track = ref2$[k$];
+      var keys = [];
+      for (var i = 0; i < player.searchResults.artistList.length; i += 1) {
+        var artist = player.searchResults.artistList[i];
+        for (var j = 0; j < artist.albumList.length; j += 1) {
+          var album = artist.albumList[j];
+          for (var k = 0; k < album.trackList.length; k += 1) {
+            var track = album.trackList[k];
             keys.push(track.key);
           }
         }

@@ -563,7 +563,6 @@ var localState = {
   authPassword: null,
   autoQueueUploads: true,
 };
-var $document = $(document);
 var $window = $(window);
 var $streamBtn = $('#stream-btn');
 var $clientVolSlider = $('#client-vol-slider');
@@ -613,7 +612,7 @@ var $settingsLastFmIn = $('#settings-lastfm-in');
 var $settingsLastFmOut = $('#settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var $toggleScrobble = $('#toggle-scrobble');
-var $shortcuts = $('#shortcuts');
+var shortcutsDom = document.getElementById('shortcuts');
 var $editTagsDialog = $('#edit-tags');
 var $libraryMenu = $('#library-menu');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
@@ -659,6 +658,9 @@ var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
+
+// needed for jQuery UI
+var $shortcuts = $(shortcutsDom);
 
 var tabs = {
   library: {
@@ -719,7 +721,6 @@ var keyboardHandlers = (function(){
         } else {
           queueSelection(ev);
         }
-        return false;
       },
     },
     // Escape
@@ -818,7 +819,7 @@ var keyboardHandlers = (function(){
       shift: null,
       handler: function(ev) {
         if (ev.shiftKey) {
-          onEditTagsContextMenu();
+          onEditTagsContextMenu(ev);
         } else {
           clickTab(tabs.settings);
         }
@@ -2126,14 +2127,15 @@ function expandLibraryToSelection() {
   selection.scrollTo();
 }
 
-function queueSelection(ev){
+function queueSelection(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
   var keys = selection.toTrackKeys(ev.altKey);
   if (ev.shiftKey) {
     player.queueTracksNext(keys);
   } else {
     player.queueOnQueue(keys);
   }
-  return false;
 }
 
 function toggleSelectionUnderCursor() {
@@ -2212,17 +2214,21 @@ function hideShowAuthEdit(visible) {
   $settingsShowAuth.toggle(!visible);
 }
 
-function performDrag(ev, callbacks){
+function performDrag(ev, callbacks) {
   abortDrag();
   var startDragX = ev.pageX;
   var startDragY = ev.pageY;
-  abortDrag = function(){
-    $document.off('mousemove', onDragMove).off('mouseup', onDragEnd);
+  abortDrag = function() {
+    window.removeEventListener('mousemove', onDragMove, false);
+    window.removeEventListener('mouseup', onDragEnd, false);
     if (startedDrag) {
-      $queueItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+      $queueItems
+        .find(".pl-item")
+        .removeClass('border-top')
+        .removeClass('border-bottom');
       startedDrag = false;
     }
-    abortDrag = function(){};
+    abortDrag = noop;
   };
   function onDragMove(ev){
     var dist, result;
@@ -2243,9 +2249,11 @@ function performDrag(ev, callbacks){
       result.$previous.addClass("border-bottom");
     }
   }
-  function onDragEnd(ev){
+  function onDragEnd(ev) {
     if (ev.which !== 1) {
-      return false;
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
     }
     if (startedDrag) {
       callbacks.complete(getDragPosition(ev.pageX, ev.pageY), ev);
@@ -2254,52 +2262,69 @@ function performDrag(ev, callbacks){
     }
     abortDrag();
   }
-  $document.on('mousemove', onDragMove).on('mouseup', onDragEnd);
+  window.addEventListener('mousemove', onDragMove, false);
+  window.addEventListener('mouseup', onDragEnd, false);
   onDragMove(ev);
 }
 
-function setUpGenericUi(){
-  $document.on('mouseover', '.hoverable', function(ev){
-    $(this).addClass("ui-state-hover");
-  });
-  $document.on('mouseout', '.hoverable', function(ev){
-    $(this).removeClass("ui-state-hover");
-  });
-  $(".jquery-button").button().on('click', blur);
-  $document.on('mousedown', function(){
-    removeContextMenu();
-    selection.fullClear();
-    refreshSelection();
-  });
-  $document.on('keydown', function(ev){
-    var handler = keyboardHandlers[ev.which];
-    if (handler == null) return true;
-    if (handler.ctrl  != null && handler.ctrl  !== ev.ctrlKey)  return true;
-    if (handler.alt   != null && handler.alt   !== ev.altKey)   return true;
-    if (handler.shift != null && handler.shift !== ev.shiftKey) return true;
-    handler.handler(ev);
-    return false;
-  });
-  $shortcuts.on('keydown', function(ev) {
-    ev.stopPropagation();
-    if (ev.which === 27) {
-      $shortcuts.dialog('close');
-    }
-  });
+function clearSelectionAndHideMenu() {
+  removeContextMenu();
+  selection.fullClear();
+  refreshSelection();
 }
 
-function blur() {
-  $(this).blur();
+function onWindowKeyDown(ev) {
+  var handler = keyboardHandlers[ev.which];
+  if (handler == null) return;
+  if (handler.ctrl  != null && handler.ctrl  !== ev.ctrlKey)  return;
+  if (handler.alt   != null && handler.alt   !== ev.altKey)   return;
+  if (handler.shift != null && handler.shift !== ev.shiftKey) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  handler.handler(ev);
+}
+
+function onShortcutsWindowKeyDown(ev) {
+  ev.stopPropagation();
+  if (ev.which === 27) {
+    $shortcuts.dialog('close');
+  }
+}
+
+function setUpGenericUi() {
+  // $ when we get rid of jQuery UI, this code should be handled in CSS instead of JavaScript
+  Array.prototype.forEach.call(document.getElementsByClassName('hoverable'), function(domItem) {
+    domItem.addEventListener('mouseover', function(ev) {
+      domItem.classList.add('ui-state-hover');
+    }, false);
+    domItem.addEventListener('mouseout', function(ev) {
+      domItem.classList.remove('ui-state-hover');
+    }, false);
+  });
+
+  $(".jquery-button")
+    .button()
+    .on('click', blurThis);
+
+  window.addEventListener('mousedown', clearSelectionAndHideMenu, false);
+  window.addEventListener('keydown', onWindowKeyDown, false);
+
+  shortcutsDom.addEventListener('keydown', onShortcutsWindowKeyDown, false);
+}
+
+function blurThis() {
+  this.blur();
 }
 
 function setUpPlayQueueUi() {
   $queueBtnRepeat.on('click', nextRepeatState);
   plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
 
-  $autoDj.on('click', function(){
+  $autoDj.on('click', function(ev) {
     var value = $(this).prop("checked");
     setAutoDj(value);
-    return false;
+    ev.preventDefault();
+    ev.stopPropagation();
   });
   autoDjLabel.addEventListener('mousedown', stopPropagation, false);
 
@@ -2312,11 +2337,12 @@ function setUpPlayQueueUi() {
     return ev.altKey;
   });
   $queueItems.on('mousedown', '.pl-item', function(ev){
+    if (startedDrag) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    document.activeElement.blur();
     var trackId, skipDrag;
-    if (startedDrag) return true;
-    $(document.activeElement).blur();
     if (ev.which === 1) {
-      ev.preventDefault();
       removeContextMenu();
       trackId = $(this).attr('data-id');
       skipDrag = false;
@@ -2347,23 +2373,16 @@ function setUpPlayQueueUi() {
               top: 0,
               bottom: 1
             };
-            player.moveIds((function(){
-              var results$ = [];
-              for (var id in selection.ids.queue) {
-                results$.push(id);
-              }
-              return results$;
-            })(), result.previousKey, result.nextKey);
+            player.moveIds(Object.keys(selection.ids.queue), result.previousKey, result.nextKey);
           },
           cancel: function(){
             selection.selectOnly('queue', trackId);
             refreshSelection();
           }
         });
-        return false;
       }
     } else if (ev.which === 3) {
-      if (ev.altKey) return false;
+      if (ev.altKey) return;
       ev.preventDefault();
       trackId = $(this).attr('data-id');
       if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
@@ -2372,7 +2391,6 @@ function setUpPlayQueueUi() {
       }
       popContextMenu('queue', ev.pageX, ev.pageY);
     }
-    return false;
   });
 }
 
@@ -2426,6 +2444,8 @@ function popContextMenu(type, x, y) {
 }
 
 function onShuffleContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
   if (!selection.cursor || selection.isQueue()) {
     var ids = Object.keys(selection.ids.queue);
     if (ids.length === 0) {
@@ -2440,7 +2460,6 @@ function onShuffleContextMenu(ev) {
     }
   }
   removeContextMenu();
-  return false;
 }
 
 function setUpPlaylistsUi() {
@@ -2482,34 +2501,36 @@ function stopPropagation(ev) {
   ev.stopPropagation();
 }
 
-function onDownloadContextMenu() {
+function onDownloadContextMenu(ev) {
   removeContextMenu();
-  return true;
 }
 
-function onDeleteContextMenu() {
-  if (!havePerm('admin')) return false;
+function onDeleteContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (!havePerm('admin')) return;
   removeContextMenu();
   handleDeletePressed(true);
-  return false;
 }
 
-function onAddToPlaylistContextMenu() {
-  if (!havePerm('control')) return false;
+function onAddToPlaylistContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (!havePerm('control')) return;
   var keysList = selection.toTrackKeys();
   var playlistId = $(this).attr('data-key');
   player.queueOnPlaylist(playlistId, keysList);
   removeContextMenu();
-  return true;
 }
 
-function onEditTagsContextMenu() {
-  if (!havePerm('admin')) return false;
+function onEditTagsContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (!havePerm('admin')) return;
   removeContextMenu();
   editTagsTrackKeys = selection.toTrackKeys();
   editTagsTrackIndex = 0;
   showEditTags();
-  return false;
 }
 
 function updateEditTagsUi() {
@@ -2712,9 +2733,10 @@ function setUpNowPlayingUi(){
   });
   setInterval(updateSliderPos, 100);
   function setUpMouseDownListener(cls, action){
-    $nowPlaying.on('mousedown', "li." + cls, function(ev){
+    $nowPlaying.on('mousedown', "li." + cls, function(ev) {
       action();
-      return false;
+      ev.preventDefault();
+      ev.stopPropagation();
     });
   }
 }
@@ -2978,7 +3000,8 @@ function setUpSettingsUi(){
     localState.lastfm.scrobbling_on = false;
     saveLocalState();
     updateLastFmSettingsUi();
-    return false;
+    ev.preventDefault();
+    ev.stopPropagation();
   });
   $toggleScrobble.on('click', function(ev) {
     var msg;
@@ -3084,6 +3107,8 @@ function updatePermsForSelectedUser() {
 }
 
 function updateSelectedUserPerms(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
   socket.send('updateUser', {
     userId: $settingsUsersSelect.val(),
     perms: {
@@ -3093,7 +3118,6 @@ function updateSelectedUserPerms(ev) {
       admin: $userPermAdmin.prop('checked'),
     },
   });
-  return false;
 }
 
 function handleUserOrPassKeyDown(ev) {
@@ -3113,28 +3137,35 @@ function setUpEventsUi() {
     ev.stopPropagation();
     if (ev.which === 27) {
       $chatBoxInput.blur();
-      return false;
+      ev.preventDefault();
+      return;
     } else if (ev.which === 13) {
       var msg = $chatBoxInput.val().trim();
-      if (!msg.length) return false;
+      if (!msg.length) {
+        ev.preventDefault();
+        return;
+      }
       var match = msg.match(/^\/([^\/]\w*)\s*(.*)$/);
       if (match) {
         var chatCommand = chatCommands[match[1]];
         if (chatCommand) {
           if (!chatCommand(match[2])) {
             // command failed; no message sent
-            return false;
+            ev.preventDefault();
+            return;
           }
         } else {
           // don't clear the text box; invalid command
-          return false;
+          ev.preventDefault();
+          return;
         }
       } else {
         // replace starting '//' with '/'
         socket.send('chat', { text: msg.replace(/^\/\//, '/') });
       }
       setTimeout(clearChatInputValue, 0);
-      return false;
+      ev.preventDefault();
+      return;
     }
   });
 }
@@ -3348,7 +3379,7 @@ function ensureSearchHappensSoon() {
 }
 
 function setUpLibraryUi() {
-  $libFilter.on('keydown', function(ev){
+  $libFilter.on('keydown', function(ev) {
     ev.stopPropagation();
     switch (ev.which) {
     case 27: // Escape
@@ -3362,7 +3393,8 @@ function setUpLibraryUi() {
           ensureSearchHappensSoon();
         }, 0);
       }
-      return false;
+      ev.preventDefault();
+      return;
     case 13: // Enter
       var keys = [];
       for (var i = 0; i < player.searchResults.artistList.length; i += 1) {
@@ -3378,7 +3410,8 @@ function setUpLibraryUi() {
       if (ev.altKey) shuffle(keys);
       if (keys.length > 2000) {
         if (!confirm("You are about to queue " + keys.length + " songs.")) {
-          return false;
+          ev.preventDefault();
+          return;
         }
       }
       if (ev.shiftKey) {
@@ -3386,19 +3419,22 @@ function setUpLibraryUi() {
       } else {
         player.queueOnQueue(keys);
       }
-      return false;
+      ev.preventDefault();
+      return;
     case 40:
       selection.selectOnlyFirstPos('library');
       selection.scrollToCursor();
       refreshSelection();
       $libFilter.blur();
-      return false;
+      ev.preventDefault();
+      return;
     case 38:
       selection.selectOnlyLastPos('library');
       selection.scrollToCursor();
       refreshSelection();
       $libFilter.blur();
-      return false;
+      ev.preventDefault();
+      return;
     }
   });
   $libFilter.on('keyup', ensureSearchHappensSoon);
@@ -3411,26 +3447,30 @@ function setUpLibraryUi() {
     }
   });
   $libraryMenu.menu();
-  $libraryMenu.on('mousedown', alwaysFalse);
-  $libraryMenu.on('click', '.queue', function(){
+  $libraryMenu.on('mousedown', preventEventDefault);
+  $libraryMenu.on('click', '.queue', function(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
     player.queueOnQueue(selection.toTrackKeys());
     removeContextMenu();
-    return false;
   });
-  $libraryMenu.on('click', '.queue-next', function(){
+  $libraryMenu.on('click', '.queue-next', function(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
     player.queueTracksNext(selection.toTrackKeys());
     removeContextMenu();
-    return false;
   });
-  $libraryMenu.on('click', '.queue-random', function(){
+  $libraryMenu.on('click', '.queue-random', function(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
     player.queueOnQueue(selection.toTrackKeys(true));
     removeContextMenu();
-    return false;
   });
-  $libraryMenu.on('click', '.queue-next-random', function(){
+  $libraryMenu.on('click', '.queue-next-random', function(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
     player.queueTracksNext(selection.toTrackKeys(true));
     removeContextMenu();
-    return false;
   });
   $libraryMenu.on('click', '.download', onDownloadContextMenu);
   $libraryMenu.on('click', '.delete', onDeleteContextMenu);
@@ -3459,32 +3499,33 @@ function maybeDeleteSelectedPlaylists() {
   return true;
 }
 
-function onDeletePlaylistContextMenu() {
+function onDeletePlaylistContextMenu(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
   maybeDeleteSelectedPlaylists();
   removeContextMenu();
-  return false;
 }
 
-function onRemoveFromPlaylistContextMenu() {
+function onRemoveFromPlaylistContextMenu(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
   handleDeletePressed(false);
   removeContextMenu();
-  return false;
 }
 
 function genericTreeUi($elem, options){
-  $elem.on('mousedown', 'div.expandable > div.ui-icon', function(ev){
+  $elem.on('mousedown', 'div.expandable > div.ui-icon', function(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
     options.toggleExpansion($(this).closest('li'));
-    return false;
   });
-  $elem.on('dblclick', 'div.expandable > div.ui-icon', function(){
-    return false;
-  });
+  $elem.on('dblclick', 'div.expandable > div.ui-icon', preventEventDefault);
   $elem.on('dblclick', 'div.clickable', queueSelection);
-  $elem.on('contextmenu', function(ev){
+  $elem.on('contextmenu', function(ev) {
     return ev.altKey;
   });
   $elem.on('mousedown', '.clickable', function(ev){
-    $(document.activeElement).blur();
+    document.activeElement.blur();
     var $this = $(this);
     var type = $this.attr('data-type');
     var key = $this.attr('data-key');
@@ -3543,7 +3584,7 @@ function genericTreeUi($elem, options){
       popContextMenu(type, ev.pageX, ev.pageY);
     }
   });
-  $elem.on('mousedown', alwaysFalse);
+  $elem.on('mousedown', preventEventDefault);
 }
 
 function encodeDownloadHref(file) {
@@ -3727,12 +3768,13 @@ function renderStreamButton(){
   $clientVol.toggle(tryingToStream);
 }
 
-function toggleStreamStatus() {
+function toggleStreamStatus(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
   tryingToStream = !tryingToStream;
   sendStreamingStatus();
   renderStreamButton();
   updateStreamPlayer();
-  return false;
 }
 
 function sendStreamingStatus() {
@@ -3984,8 +4026,9 @@ function alwaysTrue() {
   return true;
 }
 
-function alwaysFalse() {
-  return false;
+function preventEventDefault(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
 }
 
 function extend(dest, src) {
@@ -4008,3 +4051,5 @@ function documentWidth() {
   return Math.max(body.clientWidth, body.scrollWidth, body.offsetWidth,
                   html.clientWidth, html.scrollWidth, html.offsetWidth);
 }
+
+function noop() {}

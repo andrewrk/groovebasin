@@ -34,6 +34,7 @@ a:hover,a:active,a:focus
 #nowplaying
   margin 6px auto
   text-align center
+  width 0
 
   .playback-btns
     float left
@@ -50,16 +51,17 @@ a:hover,a:active,a:focus
     margin-top 8px
     font-weight bold
 
-  .time
-    margin 4px
-    font-weight bold
-    font-family monospace
+#nowplaying-time-elapsed
+  float left
+  margin 4px
+  font-weight bold
+  font-family monospace
 
-  .left
-    float right
-
-  .elapsed
-    float left
+#nowplaying-time-left
+  float right
+  margin 4px
+  font-weight bold
+  font-family monospace
 
 #client-vol, #vol
   margin 8px
@@ -122,6 +124,8 @@ a:hover,a:active,a:focus
   user-select none
   cursor default
 
+  height 0
+
   div.ui-icon
     float left
 
@@ -160,6 +164,7 @@ a:hover,a:active,a:focus
 
 #queue-window
   width 700px
+  height 0
   position absolute
 
   .window-header
@@ -371,6 +376,7 @@ a:hover,a:active,a:focus
 #events-list
   overflow-y auto
   font-size 0.9em
+  height 0
 
   .name
     width 29%

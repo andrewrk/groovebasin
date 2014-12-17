@@ -9,16 +9,16 @@
 <body>
   <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
     <ul class="playback-btns ui-widget ui-helper-clearfix">
-      <li class="ui-state-default ui-corner-all hoverable prev">
+      <li id="nowplaying-prev" class="ui-state-default ui-corner-all hoverable">
         <span class="ui-icon ui-icon-seek-prev"></span>
       </li>
-      <li class="ui-state-default ui-corner-all hoverable toggle">
+      <li id="nowplaying-toggle" class="ui-state-default ui-corner-all hoverable">
         <span class="ui-icon ui-icon-pause"></span>
       </li>
-      <li class="ui-state-default ui-corner-all hoverable stop">
+      <li id="nowplaying-stop" class="ui-state-default ui-corner-all hoverable">
         <span class="ui-icon ui-icon-stop"></span>
       </li>
-      <li class="ui-state-default ui-corner-all hoverable next">
+      <li id="nowplaying-next" class="ui-state-default ui-corner-all hoverable">
         <span class="ui-icon ui-icon-seek-next"></span>
       </li>
     </ul>
@@ -32,8 +32,8 @@
     </div>
     <h1 id="track-display"></h1>
     <div id="track-slider"></div>
-    <span class="time elapsed"></span>
-    <span class="time left"></span>
+    <span id="nowplaying-time-elapsed"></span>
+    <span id="nowplaying-time-left"></span>
     <div style="clear: both;"></div>
   </div>
   <div id="left-window" style="display: none">

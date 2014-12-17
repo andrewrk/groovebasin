@@ -449,7 +449,7 @@ var selection = {
         queue: helpers.queue,
       });
     } else if (this.isLibrary()) {
-      scrollThingToSelection($library, {
+      scrollThingToSelection($(libraryDom), {
         track: helpers.track,
         artist: helpers.artist,
         album: helpers.album,
@@ -467,7 +467,7 @@ var selection = {
     if (this.isQueue()) {
       scrollThingToCursor($queueItems, helpers);
     } else if (this.isLibrary()) {
-      scrollThingToCursor($library, helpers);
+      scrollThingToCursor($(libraryDom), helpers);
     } else if (this.isPlaylist()) {
       scrollThingToCursor($playlistsList, helpers);
     }
@@ -566,18 +566,22 @@ var localState = {
 var $streamBtn = $('#stream-btn');
 var $clientVolSlider = $('#client-vol-slider');
 var $clientVol = $('#client-vol');
-var $queueWindow = $('#queue-window');
-var $leftWindow = $('#left-window');
+var queueWindowDom = document.getElementById('queue-window');
+var leftWindowDom = document.getElementById('left-window');
 var $queueItems = $('#queue-items');
 var autoDjDom = document.getElementById('auto-dj');
 var queueBtnRepeatDom = document.getElementById('queue-btn-repeat');
 var $tabs = $('#tabs');
-var $library = $('#library');
+var libraryDom = document.getElementById('library');
 var $libFilter = $('#lib-filter');
 var $trackSlider = $('#track-slider');
-var $nowPlaying = $('#nowplaying');
-var $nowPlayingElapsed = $nowPlaying.find('.elapsed');
-var $nowPlayingLeft = $nowPlaying.find('.left');
+var nowPlayingDom = document.getElementById('nowplaying');
+var $nowPlayingElapsed = $('#nowplaying-time-elapsed');
+var $nowPlayingLeft = $('#nowplaying-time-left');
+var nowPlayingToggleDom = document.getElementById('nowplaying-toggle');
+var nowPlayingPrevDom = document.getElementById('nowplaying-prev');
+var nowPlayingNextDom = document.getElementById('nowplaying-next');
+var nowPlayingStopDom = document.getElementById('nowplaying-stop');
 var $volSlider = $('#vol-slider');
 var $settings = $('#settings');
 var uploadByUrlDom = document.getElementById('upload-by-url');
@@ -617,9 +621,9 @@ var $libraryMenu = $('#library-menu');
 var toggleHardwarePlaybackDom = document.getElementById('toggle-hardware-playback');
 var toggleHardwarePlaybackLabel = document.getElementById('toggle-hardware-playback-label');
 var newPlaylistNameDom = document.getElementById('new-playlist-name');
-var $emptyLibraryMessage = $('#empty-library-message');
-var $libraryNoItems = $('#library-no-items');
-var $libraryArtists = $('#library-artists');
+var emptyLibraryMessageDom = document.getElementById('empty-library-message');
+var libraryNoItemsDom = document.getElementById('library-no-items');
+var libraryArtistsDom = document.getElementById('library-artists');
 var $volNum = $('#vol-num');
 var $volWarning = $('#vol-warning');
 var ensureAdminDiv = document.getElementById('ensure-admin');
@@ -642,7 +646,7 @@ var $requestName = $('#request-name');
 var requestApproveDom = document.getElementById('request-approve');
 var requestDenyDom = document.getElementById('request-deny');
 var $eventsOnlineUsers = $('#events-online-users');
-var $eventsList = $('#events-list');
+var eventsListDom = document.getElementById('events-list');
 var $chatBox = $('#chat-box');
 var $chatBoxInput = $('#chat-box-input');
 var $queueDuration = $('#queue-duration');
@@ -1060,11 +1064,11 @@ var keyboardHandlers = (function(){
       var $li = helper.$getDiv(selection.cursor).closest("li");
       if (dir > 0) {
         if (!isExpanded) {
-          helper.toggleExpansion($li);
+          helper.toggleExpansion($li.get(0));
         }
       } else {
         if (isExpanded) {
-          helper.toggleExpansion($li);
+          helper.toggleExpansion($li.get(0));
         }
       }
     } else {
@@ -1402,7 +1406,7 @@ function getDragPosition(x, y) {
     var item = plItemDom[i];
     var $item = $(item);
     var middle = $item.offset().top + $item.height() / 2;
-    var track = player.queue.itemTable[$item.attr('data-id')];
+    var track = player.queue.itemTable[$item.get(0).getAttribute('data-id')];
     if (middle < y) {
       if (result.previousKey == null || track.sortKey > result.previousKey) {
         result.$previous = $item;
@@ -1451,7 +1455,6 @@ function renderQueue(){
       '</div>');
   }
   // remove the extra dom entries
-  var domItem;
   while (itemList.length < playlistItemsDom.childElementCount) {
     playlistItemsDom.removeChild(playlistItemsDom.lastChild);
   }
@@ -1459,10 +1462,11 @@ function renderQueue(){
   // overwrite existing dom entries
   var $domItems = $queueItems.children();
   for (i = 0; i < itemList.length; i += 1) {
-    var $domItem = $($domItems[i]);
+    var domItem = $domItems[i];
+    var $domItem = $(domItem);
     var item = itemList[i];
-    $domItem.attr('id', toQueueItemId(item.id));
-    $domItem.attr('data-id', item.id);
+    domItem.setAttribute('id', toQueueItemId(item.id));
+    domItem.setAttribute('data-id', item.id);
     var track = item.track;
     $domItem.find('.track').text(track.track || "");
     $domItem.find('.title').text(track.name || "");
@@ -1541,7 +1545,11 @@ function refreshSelection() {
     return;
   }
   $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
-  $libraryArtists.find(".clickable").removeClass('selected').removeClass('cursor');
+  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), function(domItem) {
+    domItem.classList.remove('selected');
+    domItem.classList.remove('cursor');
+  });
+
   $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.cursorType == null) {
     updateQueueDuration();
@@ -1683,14 +1691,13 @@ function renderPlaylists() {
   for (i = 0; i < playlistList.length; i += 1) {
     domItem = $domItems[i];
     playlist = playlistList[i];
-    $(domItem).data('cached', false);
+    domItem.setAttribute('data-cached', "");
     var divDom = domItem.children[0];
     divDom.setAttribute('id', toPlaylistId(playlist.id));
     divDom.setAttribute('data-key', playlist.id);
     var iconDom = divDom.children[0];
-    $(iconDom)
-      .addClass(ICON_COLLAPSED)
-      .removeClass(ICON_EXPANDED);
+    iconDom.classList.add(ICON_COLLAPSED);
+    iconDom.classList.remove(ICON_EXPANDED);
     var spanDom = divDom.children[1];
     spanDom.textContent = playlist.name;
     var ulDom = domItem.children[1];
@@ -1707,16 +1714,15 @@ function renderPlaylists() {
 
 function renderLibrary() {
   var artistList = player.searchResults.artistList || [];
-  var scrollTop = $library.scrollTop();
+  var scrollTop = libraryDom.scrollTop;
 
-  $emptyLibraryMessage.text(player.haveFileListCache ? "No Results" : "loading...");
-  $libraryNoItems.toggle(!artistList.length);
+  emptyLibraryMessageDom.textContent = player.haveFileListCache ? "No Results" : "loading...";
+  libraryNoItemsDom.style.display = artistList.length ? "none" : "";
 
   // add the missing dom entries
   var i;
-  var artistListDom = $libraryArtists.get(0);
-  for (i = artistListDom.childElementCount; i < artistList.length; i += 1) {
-    $libraryArtists.append(
+  for (i = libraryArtistsDom.childElementCount; i < artistList.length; i += 1) {
+    libraryArtistsDom.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="artist">' +
           '<div class="ui-icon"></div>' +
@@ -1726,25 +1732,23 @@ function renderLibrary() {
       '</li>');
   }
   // remove the extra dom entries
-  var domItem;
-  while (artistList.length < artistListDom.childElementCount) {
-    artistListDom.removeChild(artistListDom.lastChild);
+  while (artistList.length < libraryArtistsDom.childElementCount) {
+    libraryArtistsDom.removeChild(libraryArtistsDom.lastChild);
   }
 
   // overwrite existing dom entries
   var artist;
-  var $domItems = $libraryArtists.children();
+  var domItems = libraryArtistsDom.children;
   for (i = 0; i < artistList.length; i += 1) {
-    domItem = $domItems[i];
+    var domItem = domItems[i];
     artist = artistList[i];
-    $(domItem).data('cached', false);
+    domItem.setAttribute('data-cached', "");
     var divDom = domItem.children[0];
     divDom.setAttribute('id', toArtistId(artist.key));
     divDom.setAttribute('data-key', artist.key);
     var iconDom = divDom.children[0];
-    $(iconDom)
-      .addClass(ICON_COLLAPSED)
-      .removeClass(ICON_EXPANDED);
+    iconDom.classList.add(ICON_COLLAPSED);
+    iconDom.classList.remove(ICON_EXPANDED);
     var spanDom = divDom.children[1];
     spanDom.textContent = artistDisplayName(artist.name);
     var ulDom = domItem.children[1];
@@ -1754,27 +1758,22 @@ function renderLibrary() {
     }
   }
 
-  var $artists = $library.children("ul").children("li");
-  var nodeCount = $artists.length;
-  expandStuff($artists);
-  $library.scrollTop(scrollTop);
+  var nodeCount = artistList.length;
+  expandStuff(domItems);
+  libraryDom.scrollTop = scrollTop;
   refreshSelection();
   expandLibraryToSelection();
 
-  function expandStuff($liSet) {
+  function expandStuff(liSet) {
     if (nodeCount >= AUTO_EXPAND_LIMIT) return;
-    for (var i = 0; i < $liSet.length; i += 1) {
-      var li = $liSet[i];
-      var $li = $(li);
-      var $ul = $li.children("ul");
-      var $subLiSet = $ul.children("li");
-      var proposedNodeCount = nodeCount + $subLiSet.length;
-      if (proposedNodeCount <= AUTO_EXPAND_LIMIT) {
-        toggleLibraryExpansion($li);
-        $ul = $li.children("ul");
-        $subLiSet = $ul.children("li");
-        nodeCount = proposedNodeCount;
-        expandStuff($subLiSet);
+    for (var i = 0; i < liSet.length; i += 1) {
+      var li = liSet[i];
+      if (nodeCount <= AUTO_EXPAND_LIMIT) {
+        var ul = li.children[1];
+        if (!ul) continue;
+        toggleLibraryExpansion(li);
+        nodeCount += ul.children.length;
+        expandStuff(ul.children);
       }
     }
   }
@@ -1839,26 +1838,20 @@ function renderNowPlaying() {
     trackDisplay = "&nbsp;";
   }
   $trackDisplay.html(trackDisplay);
-  var oldClass;
-  var newClass;
-  if (player.isPlaying === true) {
-    oldClass = 'ui-icon-play';
-    newClass = 'ui-icon-pause';
-  } else {
-    oldClass = 'ui-icon-pause';
-    newClass = 'ui-icon-play';
-  }
-  $nowPlaying.find(".toggle span").removeClass(oldClass).addClass(newClass);
+  var oldClass = (player.isPlaying === true) ? 'ui-icon-play' : 'ui-icon-pause';
+  var newClass = (player.isPlaying === true) ? 'ui-icon-pause': 'ui-icon-play';
+  nowPlayingToggleDom.classList.remove(oldClass);
+  nowPlayingToggleDom.classList.add(newClass);
   $trackSlider.slider("option", "disabled", player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
 }
 
 function render() {
-  var hideMainErr = loadStatus === LoadStatus.GoodToGo;
-  $queueWindow.toggle(hideMainErr);
-  $leftWindow.toggle(hideMainErr);
-  $nowPlaying.toggle(hideMainErr);
+  var hideMainErr = (loadStatus === LoadStatus.GoodToGo);
+  queueWindowDom.style.display= hideMainErr ? "" : "none";
+  leftWindowDom.style.display = hideMainErr ? "" : "none";
+  nowPlayingDom.style.display = hideMainErr ? "" : "none";
   $mainErrMsg.toggle(!hideMainErr);
   if (!hideMainErr) {
     document.title = BASE_TITLE;
@@ -1874,7 +1867,8 @@ function render() {
   resizeDomElements();
 }
 
-function renderArtist($ul, albumList) {
+function renderArtist(ul, albumList) {
+  var $ul = $(ul);
   albumList.forEach(function(album) {
     $ul.append(
       '<li>' +
@@ -1918,7 +1912,8 @@ function renderArtist($ul, albumList) {
   });
 }
 
-function renderPlaylist($ul, playlist) {
+function renderPlaylist(ul, playlist) {
+  var $ul = $(ul);
   playlist.itemList.forEach(function(item) {
     $ul.append(
       '<li>' +
@@ -1937,48 +1932,52 @@ function renderPlaylist($ul, playlist) {
   });
 }
 
-function genericToggleExpansion($li, options) {
-  var topLevelType = options.topLevelType;
-  var renderDom = options.renderDom;
-  var $div = $li.find("> div");
-  var $ul = $li.find("> ul");
-  if ($div.attr('data-type') === topLevelType) {
-    if (!$li.data('cached')) {
-      $li.data('cached', true);
-      var key = $div.attr('data-key');
-      renderDom($ul, key);
-
-      $ul.toggle();
-      refreshSelection();
-    }
-  }
-  $ul.toggle();
-  var oldClass = ICON_EXPANDED;
-  var newClass = ICON_COLLAPSED;
-  if ($ul.is(":visible")) {
-    var tmp = oldClass;
-    oldClass = newClass;
-    newClass = tmp;
-  }
-  $div.find("div").removeClass(oldClass).addClass(newClass);
+function isDomItemVisible(domItem) {
+  return domItem.offsetParent !== null;
 }
 
-function toggleLibraryExpansion($li) {
-  genericToggleExpansion($li, {
+function toggleDisplay(domItem) {
+  domItem.style.display = isDomItemVisible(domItem) ? "none" : "";
+}
+
+function genericToggleExpansion(li, options) {
+  var topLevelType = options.topLevelType;
+  var renderDom = options.renderDom;
+  var div = li.children[0];
+  var ul = li.children[1];
+  if (div.getAttribute('data-type') === topLevelType &&
+      !li.getAttribute('data-cached'))
+  {
+    li.setAttribute('data-cached', "1");
+    var key = div.getAttribute('data-key');
+    renderDom(ul, key);
+    refreshSelection();
+  } else {
+    toggleDisplay(ul);
+  }
+  var isVisible = isDomItemVisible(ul);
+  var oldClass = isVisible ? ICON_COLLAPSED : ICON_EXPANDED;
+  var newClass = isVisible ? ICON_EXPANDED  : ICON_COLLAPSED;
+  div.children[0].classList.remove(oldClass);
+  div.children[0].classList.add(newClass);
+}
+
+function toggleLibraryExpansion(li) {
+  genericToggleExpansion(li, {
     topLevelType: 'artist',
-    renderDom: function($ul, key) {
+    renderDom: function(ul, key) {
       var albumList = player.searchResults.artistTable[key].albumList;
-      renderArtist($ul, albumList);
+      renderArtist(ul, albumList);
     },
   });
 }
 
-function togglePlaylistExpansion($li) {
-  genericToggleExpansion($li, {
+function togglePlaylistExpansion(li) {
+  genericToggleExpansion(li, {
     topLevelType: 'playlist',
-    renderDom: function($ul, key) {
+    renderDom: function(ul, key) {
       var playlist = player.playlistTable[key];
-      renderPlaylist($ul, playlist);
+      renderPlaylist(ul, playlist);
     },
   });
 }
@@ -2095,7 +2094,7 @@ function removeContextMenu() {
 
 function isPlaylistExpanded(playlist){
   var $li = $("#" + toPlaylistId(playlist.id)).closest("li");
-  if (!$li.data('cached')) return false;
+  if (!$li.get(0).getAttribute('data-cached')) return false;
   return $li.find("> ul").is(":visible");
 }
 
@@ -2103,7 +2102,7 @@ function isArtistExpanded(artist){
   var artistHtmlId = toArtistId(artist.key);
   var artistElem = document.getElementById(artistHtmlId);
   var $li = $(artistElem).closest('li');
-  if (!$li.data('cached')) return false;
+  if (!$li.get(0).getAttribute('data-cached')) return false;
   return $li.find("> ul").is(":visible");
 }
 
@@ -2342,8 +2341,8 @@ function setUpPlayQueueUi() {
   queueBtnRepeatDom.addEventListener('click', nextRepeatState, false);
   autoDjDom.addEventListener('click', handleAutoDjClick, false);
 
-  $queueItems.on('dblclick', '.pl-item', function(ev){
-    var trackId = $(this).attr('data-id');
+  $queueItems.on('dblclick', '.pl-item', function(ev) {
+    var trackId = this.getAttribute('data-id');
     player.seek(trackId, 0);
     player.play();
   });
@@ -2358,7 +2357,7 @@ function setUpPlayQueueUi() {
     var trackId, skipDrag;
     if (ev.which === 1) {
       removeContextMenu();
-      trackId = $(this).attr('data-id');
+      trackId = this.getAttribute('data-id');
       skipDrag = false;
       if (!selection.isQueue()) {
         selection.selectOnly('queue', trackId);
@@ -2398,7 +2397,7 @@ function setUpPlayQueueUi() {
     } else if (ev.which === 3) {
       if (ev.altKey) return;
       ev.preventDefault();
-      trackId = $(this).attr('data-id');
+      trackId = this.getAttribute('data-id');
       if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
         selection.selectOnly('queue', trackId);
         refreshSelection();
@@ -2535,7 +2534,7 @@ function onAddToPlaylistContextMenu(ev) {
   ev.stopPropagation();
   if (!havePerm('control')) return;
   var keysList = selection.toTrackKeys();
-  var playlistId = $(this).attr('data-key');
+  var playlistId = this.getAttribute('data-key');
   player.queueOnPlaylist(playlistId, keysList);
   removeContextMenu();
 }
@@ -2599,7 +2598,7 @@ function showEditTags() {
 }
 
 function setUpEditTagsUi() {
-  Array.prototype.forEach.call(editTagsDialogDom.querySelectorAll("input"), function(domItem) {
+  Array.prototype.forEach.call(editTagsDialogDom.getElementsByTagName("input"), function(domItem) {
     domItem.addEventListener('keydown', onInputKeyDown, false);
   });
   for (var propName in EDITABLE_PROPS) {
@@ -2687,23 +2686,36 @@ function updateSliderUi(value){
   $trackSlider.css('background-size', percent + "% 100%");
 }
 
-function setUpNowPlayingUi(){
-  var actions = {
-    toggle: togglePlayback,
-    prev: function(){
-      player.prev();
-    },
-    next: function(){
-      player.next();
-    },
-    stop: function(){
-      player.stop();
-    }
-  };
-  for (var cls in actions) {
-    var action = actions[cls];
-    setUpMouseDownListener(cls, action);
-  }
+function onNowPlayingToggleMouseDown(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  togglePlayback();
+}
+
+function onNowPlayingPrevMouseDown(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  player.prev();
+}
+
+function onNowPlayingNextMouseDown(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  player.next();
+}
+
+function onNowPlayingStopMouseDown(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  player.stop();
+}
+
+function setUpNowPlayingUi() {
+  nowPlayingToggleDom.addEventListener('mousedown', onNowPlayingToggleMouseDown, false);
+  nowPlayingPrevDom.addEventListener('mousedown', onNowPlayingPrevMouseDown, false);
+  nowPlayingNextDom.addEventListener('mousedown', onNowPlayingNextMouseDown, false);
+  nowPlayingStopDom.addEventListener('mousedown', onNowPlayingStopMouseDown, false);
+
   $trackSlider.slider({
     step: 0.0001,
     min: 0,
@@ -2753,13 +2765,6 @@ function setUpNowPlayingUi(){
     }
   });
   setInterval(updateSliderPos, 100);
-  function setUpMouseDownListener(cls, action){
-    $nowPlaying.on('mousedown', "li." + cls, function(ev) {
-      action();
-      ev.preventDefault();
-      ev.stopPropagation();
-    });
-  }
 }
 
 function clickTab(tab) {
@@ -3178,10 +3183,14 @@ function handleUserOrPassKeyDown(ev) {
   }
 }
 
+function onEventsListScroll(ev) {
+  eventsListScrolledToBottom =
+    (eventsListDom.scrollHeight - eventsListDom.scrollTop) === eventsListDom.offsetHeight;
+}
+
 function setUpEventsUi() {
-  $eventsList.on('scroll', function(ev) {
-    eventsListScrolledToBottom = ($eventsList.get(0).scrollHeight - $eventsList.scrollTop()) === $eventsList.outerHeight();
-  });
+  eventsListDom.addEventListener('scroll', onEventsListScroll, false);
+
   $chatBoxInput.on('keydown', function(ev) {
     ev.stopPropagation();
     if (ev.which === 27) {
@@ -3289,15 +3298,14 @@ function renderImportProgress() {
 }
 
 function renderEvents() {
-  var eventsListDom = $eventsList.get(0);
-  var scrollTop = $eventsList.scrollTop();
+  var scrollTop = eventsListDom.scrollTop;
 
   renderUnseenChatCount();
 
   // add the missing dom entries
   var i, ev;
   for (i = eventsListDom.childElementCount; i < player.eventsList.length; i += 1) {
-    $eventsList.append(
+    eventsListDom.insertAdjacentHTML('beforeend',
       '<div class="event">' +
         '<span class="name"></span>' +
         '<span class="msg"></span>' +
@@ -3305,31 +3313,29 @@ function renderEvents() {
       '</div>');
   }
   // remove extra dom entries
-  var domItem;
   while (player.eventsList.length < eventsListDom.childElementCount) {
     eventsListDom.removeChild(eventsListDom.lastChild);
   }
   // overwrite existing dom entries
-  var $domItems = $eventsList.children();
+  var domItems = eventsListDom.children;
   for (i = 0; i < player.eventsList.length; i += 1) {
-    var $domItem = $($domItems[i]);
+    var domItem = domItems[i];
     ev = player.eventsList[i];
     var userText = ev.user ? ev.user.name : "*";
 
-    $domItem.removeClass().addClass('event').addClass(ev.type);
-    $domItem.find('.name').text(userText).attr('title', ev.date.toString());
-
-    $domItem.find('.msg').html(getEventMessageHtml(ev));
-
-    if (ev.displayClass) {
-      $domItem.addClass('chat-me');
-    }
+    domItem.className = "";
+    domItem.classList.add('event');
+    domItem.classList.add(ev.type);
+    if (ev.displayClass) domItem.classList.add('chat-me');
+    domItem.children[0].textContent = userText;
+    domItem.children[0].setAttribute('title', ev.date.toString());
+    domItem.children[1].innerHTML = getEventMessageHtml(ev);
   }
 
   if (eventsListScrolledToBottom) {
     scrollEventsToBottom();
   } else {
-    $eventsList.scrollTop(scrollTop);
+    eventsListDom.scrollTop = scrollTop;
   }
 }
 
@@ -3354,7 +3360,7 @@ function escapeHtml(str) {
 
 function scrollEventsToBottom() {
   eventsListScrolledToBottom = true;
-  $eventsList.scrollTop(1000000);
+  eventsListDom.scrollTop = 1000000;
 }
 
 function eventPlaylistName(ev) {
@@ -3489,7 +3495,7 @@ function setUpLibraryUi() {
   $libFilter.on('keyup', ensureSearchHappensSoon);
   $libFilter.on('cut', ensureSearchHappensSoon);
   $libFilter.on('paste', ensureSearchHappensSoon);
-  genericTreeUi($library, {
+  genericTreeUi($(libraryDom), {
     toggleExpansion: toggleLibraryExpansion,
     isSelectionOwner: function(){
       return selection.isLibrary();
@@ -3562,11 +3568,11 @@ function onRemoveFromPlaylistContextMenu(ev) {
   removeContextMenu();
 }
 
-function genericTreeUi($elem, options){
+function genericTreeUi($elem, options) {
   $elem.on('mousedown', 'div.expandable > div.ui-icon', function(ev) {
     ev.stopPropagation();
     ev.preventDefault();
-    options.toggleExpansion($(this).closest('li'));
+    options.toggleExpansion(this.parentNode.parentNode);
   });
   $elem.on('dblclick', 'div.expandable > div.ui-icon', preventEventDefault);
   $elem.on('dblclick', 'div.clickable', queueSelection);
@@ -3575,9 +3581,8 @@ function genericTreeUi($elem, options){
   });
   $elem.on('mousedown', '.clickable', function(ev){
     document.activeElement.blur();
-    var $this = $(this);
-    var type = $this.attr('data-type');
-    var key = $this.attr('data-key');
+    var type = this.getAttribute('data-type');
+    var key = this.getAttribute('data-key');
     if (ev.which === 1) {
       leftMouseDown(ev);
     } else if (ev.which === 3) {
@@ -3728,29 +3733,26 @@ function toPlaylistId(s) {
 }
 
 function resizeDomElements() {
-  var eventsScrollTop = $eventsList.scrollTop();
+  var eventsScrollTop = eventsListDom.scrollTop;
 
-  $nowPlaying.width(window.innerWidth - MARGIN * 2);
-  var secondLayerTop = $nowPlaying.offset().top + $nowPlaying.height() + MARGIN;
-  $leftWindow.offset({
-    left: MARGIN,
-    top: secondLayerTop
-  });
-  $queueWindow.offset({
-    left: $leftWindow.offset().left + $leftWindow.width() + MARGIN,
-    top: secondLayerTop
-  });
-  $queueWindow.width(window.innerWidth - $queueWindow.offset().left - MARGIN);
-  $leftWindow.height(window.innerHeight - $leftWindow.offset().top);
-  $queueWindow.height($leftWindow.height() - MARGIN);
-  var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
-  $library.height(tabContentsHeight - $libHeader.height());
+  nowPlayingDom.style.width = (window.innerWidth - MARGIN * 2) + "px";
+  var secondLayerTop = nowPlayingDom.getBoundingClientRect().top + nowPlayingDom.clientHeight + MARGIN;
+  leftWindowDom.style.left = MARGIN + "px";
+  leftWindowDom.style.top = secondLayerTop + "px";
+  var queueWindowLeft = MARGIN + leftWindowDom.clientWidth + MARGIN;
+  queueWindowDom.style.left = queueWindowLeft + "px";
+  queueWindowDom.style.top = secondLayerTop + "px";
+  queueWindowDom.style.width = (window.innerWidth - queueWindowLeft - MARGIN) + "px";
+  leftWindowDom.style.height = (window.innerHeight - secondLayerTop) + "px";
+  queueWindowDom.style.height = (leftWindowDom.clientHeight - MARGIN) + "px";
+  var tabContentsHeight = leftWindowDom.clientHeight - $tabs.height() - MARGIN;
+  libraryDom.style.height = (tabContentsHeight - $libHeader.height()) + "px";
   $upload.height(tabContentsHeight);
-  $eventsList.height(tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height());
+  eventsListDom.style.height = (tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height()) + "px";
   $playlists.height(tabContentsHeight - newPlaylistNameDom.offsetHeight);
 
   setAllTabsHeight(tabContentsHeight);
-  $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());
+  $queueItems.height(queueWindowDom.clientHeight - $queueHeader.position().top - $queueHeader.height());
 
   if (eventsListScrolledToBottom) {
     scrollEventsToBottom();

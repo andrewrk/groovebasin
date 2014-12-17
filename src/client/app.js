@@ -1406,17 +1406,16 @@ function getDragPosition(x, y) {
   var plItemDom = queueItemsDom.querySelectorAll(".pl-item");
   for (var i = 0; i < plItemDom.length; ++i) {
     var item = plItemDom[i];
-    var $item = $(item);
-    var middle = $item.offset().top + $item.height() / 2;
-    var track = player.queue.itemTable[$item.get(0).getAttribute('data-id')];
+    var middle = item.getBoundingClientRect().top + item.clientHeight / 2;
+    var track = player.queue.itemTable[item.getAttribute('data-id')];
     if (middle < y) {
       if (result.previousKey == null || track.sortKey > result.previousKey) {
-        result.$previous = $item;
+        result.previous = item;
         result.previousKey = track.sortKey;
       }
     } else {
       if (result.nextKey == null || track.sortKey < result.nextKey) {
-        result.$next = $item;
+        result.next = item;
         result.nextKey = track.sortKey;
       }
     }
@@ -1439,7 +1438,7 @@ function updateHaveAdminUserUi() {
   ensureAdminDiv.style.display = haveAdminUser ? "none" : "";
 }
 
-function renderQueue(){
+function renderQueue() {
   var itemList = player.queue.itemList || [];
   var scrollTop = queueItemsDom.scrollTop;
 
@@ -1524,26 +1523,35 @@ function removeCurrentOldAndRandomClasses(domItem) {
 }
 
 function labelQueueItems() {
-  var item;
+  var item, domItem;
   var curItem = player.currentItem;
   Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeCurrentOldAndRandomClasses);
   if (curItem != null && autoDjOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.queue.itemList[index];
       var itemId = item && item.id;
-      if (itemId != null) {
-        $("#" + toQueueItemId(itemId)).addClass('old');
+      if (itemId) {
+        domItem = document.getElementById(toQueueItemId(itemId));
+        if (domItem) {
+          domItem.classList.add('old');
+        }
       }
     }
   }
   for (var i = 0; i < player.queue.itemList.length; i += 1) {
     item = player.queue.itemList[i];
     if (item.isRandom) {
-      $("#" + toQueueItemId(item.id)).addClass('random');
+      domItem = document.getElementById(toQueueItemId(item.id));
+      if (domItem) {
+        domItem.classList.add('random');
+      }
     }
   }
-  if (curItem != null) {
-    $("#" + toQueueItemId(curItem.id)).addClass('current');
+  if (curItem) {
+    domItem = document.getElementById(toQueueItemId(curItem.id));
+    if (domItem) {
+      domItem.classList.add('current');
+    }
   }
 }
 
@@ -1648,20 +1656,17 @@ function updatePlaylistsSubmenus($parentMenu, $menu) {
   var i;
   var menuDom = $menu.get(0);
   for (i = menuDom.childElementCount; i < playlistList.length; i += 1) {
-    $menu.append('<li></li>');
+    menuDom.appendChild(document.createElement('li'));
   }
   // remove the extra dom entries
-  var domItem;
   while (playlistList.length < menuDom.childElementCount) {
     menuDom.removeChild(menuDom.lastChild);
   }
 
   // overwrite existing dom entries
-  var playlist;
-  var $domItems = $menu.children();
   for (i = 0; i < playlistList.length; i += 1) {
-    domItem = $domItems[i];
-    playlist = playlistList[i];
+    var domItem = menuDom.children[i];
+    var playlist = playlistList[i];
     domItem.setAttribute('data-key', playlist.id);
     domItem.textContent = playlist.name;
   }
@@ -1861,7 +1866,6 @@ function render() {
     mainErrMsgTextDom.textContent = loadStatus;
     return;
   }
-  renderQueue();
   renderQueueButtons();
   renderLibrary();
   renderNowPlaying();
@@ -1871,9 +1875,8 @@ function render() {
 }
 
 function renderArtist(ul, albumList) {
-  var $ul = $(ul);
   albumList.forEach(function(album) {
-    $ul.append(
+    ul.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="album">' +
           '<div class="ui-icon ui-icon-triangle-1-e"></div>' +
@@ -1881,7 +1884,7 @@ function renderArtist(ul, albumList) {
         '</div>' +
         '<ul style="display: none;"></ul>' +
       '</li>');
-    var liDom = $ul.get(0).lastChild;
+    var liDom = ul.lastChild;
     var divDom = liDom.children[0];
     divDom.setAttribute('id', toAlbumId(album.key));
     divDom.setAttribute('data-key', album.key);
@@ -1889,9 +1892,8 @@ function renderArtist(ul, albumList) {
     spanDom.textContent = album.name || '[Unknown Album]';
 
     var artistUlDom = liDom.children[1];
-    var $artistUlDom = $(artistUlDom);
     album.trackList.forEach(function(track) {
-      $artistUlDom.append(
+      artistUlDom.insertAdjacentHTML('beforeend',
         '<li>' +
           '<div class="clickable" data-type="track">' +
             '<span></span>' +
@@ -1916,15 +1918,14 @@ function renderArtist(ul, albumList) {
 }
 
 function renderPlaylist(ul, playlist) {
-  var $ul = $(ul);
   playlist.itemList.forEach(function(item) {
-    $ul.append(
+    ul.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable" data-type="playlistItem">' +
           '<span></span>' +
         '</div>' +
       '</li>');
-    var liDom = $ul.get(0).lastChild;
+    var liDom = ul.lastChild;
     var divDom = liDom.children[0];
     divDom.setAttribute('id', toPlaylistItemId(item.id));
     divDom.setAttribute('data-key', item.id);
@@ -2096,31 +2097,29 @@ function removeContextMenu() {
 }
 
 function isPlaylistExpanded(playlist){
-  var $li = $("#" + toPlaylistId(playlist.id)).closest("li");
-  if (!$li.get(0).getAttribute('data-cached')) return false;
-  return $li.find("> ul").is(":visible");
+  var li = document.getElementById(toPlaylistId(playlist.id)).parentNode;
+  if (!li.getAttribute('data-cached')) return false;
+  return isDomItemVisible(li.lastChild);
 }
 
 function isArtistExpanded(artist){
-  var artistHtmlId = toArtistId(artist.key);
-  var artistElem = document.getElementById(artistHtmlId);
-  var $li = $(artistElem).closest('li');
-  if (!$li.get(0).getAttribute('data-cached')) return false;
-  return $li.find("> ul").is(":visible");
+  var li = document.getElementById(toArtistId(artist.key)).parentNode;
+  if (!li.getAttribute('data-cached')) return false;
+  return isDomItemVisible(li.lastChild);
+}
+
+function isAlbumExpanded(album){
+  var albumElem = document.getElementById(toAlbumId(album.key));
+  var li = albumElem.parentNode;
+  return isDomItemVisible(li.lastChild);
 }
 
 function expandArtist(artist) {
   if (isArtistExpanded(artist)) return;
 
   var artistElem = document.getElementById(toArtistId(artist.key));
-  var $li = $(artistElem).closest('li');
-  toggleLibraryExpansion($li);
-}
-
-function isAlbumExpanded(album){
-  var albumElem = document.getElementById(toAlbumId(album.key));
-  var $li = $(albumElem).closest('li');
-  return $li.find("> ul").is(":visible");
+  var li = artistElem.parentNode;
+  toggleLibraryExpansion(li);
 }
 
 function expandAlbum(album) {
@@ -2128,8 +2127,8 @@ function expandAlbum(album) {
 
   expandArtist(album.artist);
   var elem = document.getElementById(toAlbumId(album.key));
-  var $li = $(elem).closest('li');
-  toggleLibraryExpansion($li);
+  var li = elem.parentNode;
+  toggleLibraryExpansion(li);
 }
 
 function expandLibraryToSelection() {
@@ -2146,8 +2145,6 @@ function expandLibraryToSelection() {
 }
 
 function queueSelection(ev) {
-  ev.preventDefault();
-  ev.stopPropagation();
   var keys = selection.toTrackKeys(ev.altKey);
   if (ev.shiftKey) {
     player.queueTracksNext(keys);
@@ -2270,10 +2267,10 @@ function performDrag(ev, callbacks) {
     }
     result = getDragPosition(ev.pageX, ev.pageY);
     removeAllQueueItemBorders();
-    if (result.$next != null) {
-      result.$next.addClass("border-top");
-    } else if (result.$previous != null) {
-      result.$previous.addClass("border-bottom");
+    if (result.next) {
+      result.next.classList.add('border-top');
+    } else if (result.previous) {
+      result.previous.classList.add('border-bottom');
     }
   }
   function onDragEnd(ev) {
@@ -2352,6 +2349,18 @@ function getFirstChildToward(parentDom, childDom) {
     var nextNode = childDom.parentNode;
     if (nextNode === parentDom) return childDom;
     childDom = nextNode;
+  }
+}
+
+function firstElemWithClass(parentDom, className, childDom) {
+  for (;;) {
+    if (childDom.classList.contains(className)) {
+      return childDom;
+    }
+    childDom = childDom.parentNode;
+    if (!childDom || parentDom === childDom) {
+      return null;
+    }
   }
 }
 
@@ -2536,7 +2545,7 @@ function onNewPlaylistNameKeyDown(ev) {
 function setUpPlaylistsUi() {
   newPlaylistNameDom.addEventListener('keydown', onNewPlaylistNameKeyDown, false);
 
-  genericTreeUi($(playlistsListDom), {
+  genericTreeUi(playlistsListDom, {
     toggleExpansion: togglePlaylistExpansion,
     isSelectionOwner: function() {
       return selection.isPlaylist();
@@ -3522,7 +3531,7 @@ function setUpLibraryUi() {
   libFilterDom.addEventListener('keyup', ensureSearchHappensSoon, false);
   libFilterDom.addEventListener('cut', ensureSearchHappensSoon, false);
   libFilterDom.addEventListener('paste', ensureSearchHappensSoon, false);
-  genericTreeUi($(libraryDom), {
+  genericTreeUi(libraryArtistsDom, {
     toggleExpansion: toggleLibraryExpansion,
     isSelectionOwner: function(){
       return selection.isLibrary();
@@ -3595,21 +3604,35 @@ function onRemoveFromPlaylistContextMenu(ev) {
   removeContextMenu();
 }
 
-function genericTreeUi($elem, options) {
-  $elem.on('mousedown', 'div.expandable > div.ui-icon', function(ev) {
+function blockContextMenu(ev) {
+  if (ev.altKey) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+}
+
+function genericTreeUi(elem, options) {
+  elem.addEventListener('mousedown', onElemMouseDown, false);
+  elem.addEventListener('contextmenu', blockContextMenu, false);
+  elem.addEventListener('dblclick', onDblClick, false);
+
+  function onElemMouseDown(ev) {
     ev.stopPropagation();
     ev.preventDefault();
-    options.toggleExpansion(this.parentNode.parentNode);
-  });
-  $elem.on('dblclick', 'div.expandable > div.ui-icon', preventEventDefault);
-  $elem.on('dblclick', 'div.clickable', queueSelection);
-  $elem.on('contextmenu', function(ev) {
-    return ev.altKey;
-  });
-  $elem.on('mousedown', '.clickable', function(ev){
+
+    var expandableElem = firstElemWithClass(elem, 'expandable', ev.target);
+    if (expandableElem && ev.target === expandableElem.children[0]) {
+      options.toggleExpansion(expandableElem.parentNode);
+      return;
+    }
+
+    var clickableElem = firstElemWithClass(elem, 'clickable', ev.target);
+    if (!clickableElem) {
+      return;
+    }
+
     document.activeElement.blur();
-    var type = this.getAttribute('data-type');
-    var key = this.getAttribute('data-key');
+    var type = clickableElem.getAttribute('data-type');
+    var key = clickableElem.getAttribute('data-key');
     if (ev.which === 1) {
       leftMouseDown(ev);
     } else if (ev.which === 3) {
@@ -3619,7 +3642,6 @@ function genericTreeUi($elem, options) {
       rightMouseDown(ev);
     }
     function leftMouseDown(ev){
-      ev.preventDefault();
       removeContextMenu();
       var skipDrag = false;
       if (!options.isSelectionOwner()) {
@@ -3664,8 +3686,22 @@ function genericTreeUi($elem, options) {
       }
       popContextMenu(type, ev.pageX, ev.pageY);
     }
-  });
-  $elem.on('mousedown', preventEventDefault);
+
+  }
+
+  function onDblClick(ev) {
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    var expandableElem = firstElemWithClass(elem, 'expandable', ev.target);
+    if (expandableElem && ev.target === expandableElem.children[0]) {
+      return;
+    }
+    var clickableElem = firstElemWithClass(elem, 'clickable', ev.target);
+    if (clickableElem) {
+      queueSelection(ev);
+    }
+  }
 }
 
 function encodeDownloadHref(file) {

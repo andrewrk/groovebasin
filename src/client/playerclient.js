@@ -154,9 +154,6 @@ PlayerClient.prototype.resubscribe = function(){
     delta: true,
     version: this.libraryFromServerVersion,
   });
-  this.sendCommand('subscribe', {name: 'volume'});
-  this.sendCommand('subscribe', {name: 'repeat'});
-  this.sendCommand('subscribe', {name: 'currentTrack'});
   this.sendCommand('subscribe', {
     name: 'queue',
     delta: true,
@@ -167,6 +164,9 @@ PlayerClient.prototype.resubscribe = function(){
     delta: true,
     version: this.scanningFromServerVersion,
   });
+  this.sendCommand('subscribe', {name: 'volume'});
+  this.sendCommand('subscribe', {name: 'repeat'});
+  this.sendCommand('subscribe', {name: 'currentTrack'});
   this.sendCommand('subscribe', {
     name: 'playlists',
     delta: true,

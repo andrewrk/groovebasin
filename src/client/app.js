@@ -445,17 +445,17 @@ var selection = {
     var helpers = this.getHelpers();
     if (!helpers) return;
     if (this.isQueue()) {
-      scrollThingToSelection($(queueItemsDom), {
+      scrollThingToSelection(queueItemsDom, {
         queue: helpers.queue,
       });
     } else if (this.isLibrary()) {
-      scrollThingToSelection($(libraryDom), {
+      scrollThingToSelection(libraryDom, {
         track: helpers.track,
         artist: helpers.artist,
         album: helpers.album,
       });
     } else if (this.isPlaylist()) {
-      scrollThingToSelection($(playlistsListDom), {
+      scrollThingToSelection(playlistsListDom, {
         playlist: helpers.playlist,
         playlistItem: helpers.playlistItem,
       });
@@ -465,11 +465,11 @@ var selection = {
     var helpers = this.getHelpers();
     if (!helpers) return;
     if (this.isQueue()) {
-      scrollThingToCursor($(queueItemsDom), helpers);
+      scrollThingToCursor(queueItemsDom, helpers);
     } else if (this.isLibrary()) {
-      scrollThingToCursor($(libraryDom), helpers);
+      scrollThingToCursor(libraryDom, helpers);
     } else if (this.isPlaylist()) {
-      scrollThingToCursor($(playlistsListDom), helpers);
+      scrollThingToCursor(playlistsListDom, helpers);
     }
   },
   getHelpers: function() {
@@ -482,48 +482,48 @@ var selection = {
       queue: {
         ids: this.ids.queue,
         table: player.queue.itemTable,
-        $getDiv: function(id){
-          return $("#" + toQueueItemId(id));
+        getDiv: function(id) {
+          return document.getElementById(toQueueItemId(id));
         },
         toggleExpansion: null,
       },
       artist: {
         ids: this.ids.artist,
         table: player.searchResults.artistTable,
-        $getDiv: function(id){
-          return $("#" + toArtistId(id));
+        getDiv: function(id) {
+          return document.getElementById(toArtistId(id));
         },
         toggleExpansion: toggleLibraryExpansion,
       },
       album: {
         ids: this.ids.album,
         table: player.searchResults.albumTable,
-        $getDiv: function(id){
-          return $("#" + toAlbumId(id));
+        getDiv: function(id) {
+          return document.getElementById(toAlbumId(id));
         },
         toggleExpansion: toggleLibraryExpansion,
       },
       track: {
         ids: this.ids.track,
         table: player.searchResults.trackTable,
-        $getDiv: function(id){
-          return $("#" + toTrackId(id));
+        getDiv: function(id) {
+          return document.getElementById(toTrackId(id));
         },
         toggleExpansion: toggleLibraryExpansion,
       },
       playlist: {
         ids: this.ids.playlist,
         table: player.playlistTable,
-        $getDiv: function(id){
-          return $("#" + toPlaylistId(id));
+        getDiv: function(id) {
+          return document.getElementById(toPlaylistId(id));
         },
         toggleExpansion: togglePlaylistExpansion,
       },
       playlistItem: {
         ids: this.ids.playlistItem,
         table: player.playlistItemTable,
-        $getDiv: function(id){
-          return $("#" + toPlaylistItemId(id));
+        getDiv: function(id) {
+          return document.getElementById(toPlaylistItemId(id));
         },
         toggleExpansion: togglePlaylistExpansion,
       },
@@ -652,6 +652,8 @@ var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
+var eventsTabSpan = document.getElementById('events-tab-label');
+var importTabSpan = document.getElementById('import-tab-label');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
@@ -681,29 +683,27 @@ var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
 var tabs = {
   library: {
-    $pane: $('#library-pane'),
-    $tab: $('#library-tab'),
+    pane: document.getElementById('library-pane'),
+    tab: document.getElementById('library-tab'),
   },
   upload: {
-    $pane: $('#upload-pane'),
-    $tab: $('#upload-tab'),
+    pane: document.getElementById('upload-pane'),
+    tab: document.getElementById('upload-tab'),
   },
   playlists: {
-    $pane: $('#playlists-pane'),
-    $tab: $('#playlists-tab'),
+    pane: document.getElementById('playlists-pane'),
+    tab: document.getElementById('playlists-tab'),
   },
   events: {
-    $pane: $('#events-pane'),
-    $tab: $('#events-tab'),
+    pane: document.getElementById('events-pane'),
+    tab: document.getElementById('events-tab'),
   },
   settings: {
-    $pane: $('#settings-pane'),
-    $tab: $('#settings-tab'),
+    pane: document.getElementById('settings-pane'),
+    tab: document.getElementById('settings-tab'),
   },
 };
 var activeTab = tabs.library;
-var $eventsTabSpan = tabs.events.$tab.find('span');
-var $importTabSpan = tabs.upload.$tab.find('span');
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
 var triggerPlaylistsUpdate = makeRenderCall(updatePlaylistsUi, 100);
@@ -1063,14 +1063,14 @@ var keyboardHandlers = (function(){
         playlistItem: alwaysTrue,
       };
       var isExpanded = isExpandedFuncs[selection.cursorType](selectedItem);
-      var $li = helper.$getDiv(selection.cursor).closest("li");
+      var li = helper.getDiv(selection.cursor).parentNode;
       if (dir > 0) {
         if (!isExpanded) {
-          helper.toggleExpansion($li.get(0));
+          helper.toggleExpansion(li);
         }
       } else {
         if (isExpanded) {
-          helper.toggleExpansion($li.get(0));
+          helper.toggleExpansion(li);
         }
       }
     } else {
@@ -1356,27 +1356,27 @@ function selectAllPlaylists() {
   });
 }
 
-function scrollThingToCursor($scrollArea, helpers) {
+function scrollThingToCursor(scrollArea, helpers) {
   var helper = helpers[selection.cursorType];
-  var $div = helper.$getDiv(selection.cursor);
-  var itemTop = $div.offset().top;
-  var itemBottom = itemTop + $div.height();
-  scrollAreaIntoView($scrollArea, itemTop, itemBottom);
+  var div = helper.getDiv(selection.cursor);
+  var itemTop = div.getBoundingClientRect().top;
+  var itemBottom = itemTop + div.clientHeight;
+  scrollAreaIntoView(scrollArea, itemTop, itemBottom);
 }
 
-function scrollAreaIntoView($scrollArea, itemTop, itemBottom) {
-  var scrollAreaTop = $scrollArea.offset().top;
+function scrollAreaIntoView(scrollArea, itemTop, itemBottom) {
+  var scrollAreaTop = scrollArea.getBoundingClientRect().top;
   var selectionTop = itemTop - scrollAreaTop;
-  var selectionBottom = itemBottom - scrollAreaTop - $scrollArea.height();
-  var scrollAmt = $scrollArea.scrollTop();
+  var selectionBottom = itemBottom - scrollAreaTop - scrollArea.clientHeight;
+  var scrollAmt = scrollArea.scrollTop;
   if (selectionTop < 0) {
-    $scrollArea.scrollTop(scrollAmt + selectionTop);
+    scrollArea.scrollTop = scrollAmt + selectionTop;
   } else if (selectionBottom > 0) {
-    $scrollArea.scrollTop(scrollAmt + selectionBottom);
+    scrollArea.scrollTop = scrollAmt + selectionBottom;
   }
 }
 
-function scrollThingToSelection($scrollArea, helpers){
+function scrollThingToSelection(scrollArea, helpers){
   var topPos = null;
   var bottomPos = null;
 
@@ -1384,9 +1384,9 @@ function scrollThingToSelection($scrollArea, helpers){
   for (var selName in helpers) {
     helper = helpers[selName];
     for (var id in helper.ids) {
-      var $div = helper.$getDiv(id);
-      var itemTop = $div.offset().top;
-      var itemBottom = itemTop + $div.height();
+      var div = helper.getDiv(id);
+      var itemTop = div.getBoundingClientRect().top;
+      var itemBottom = itemTop + div.clientHeight;
       if (topPos == null || itemTop < topPos) {
         topPos = itemTop;
       }
@@ -1397,7 +1397,7 @@ function scrollThingToSelection($scrollArea, helpers){
   }
 
   if (topPos != null) {
-    scrollAreaIntoView($scrollArea, topPos, bottomPos);
+    scrollAreaIntoView(scrollArea, topPos, bottomPos);
   }
 }
 
@@ -1571,7 +1571,7 @@ function refreshSelection() {
       }
     }
     for (id in helper.ids) {
-      helper.$getDiv(id).addClass('selected');
+      helper.getDiv(id).classList.add('selected');
     }
     if (selection.cursor != null && selectionType === selection.cursorType) {
       var validIds = getValidIds(selectionType);
@@ -1587,7 +1587,7 @@ function refreshSelection() {
         }
       }
       if (selection.cursor != null) {
-        helper.$getDiv(selection.cursor).addClass('cursor');
+        helper.getDiv(selection.cursor).classList.add('cursor');
       }
     }
   }
@@ -2800,8 +2800,8 @@ function setUpNowPlayingUi() {
 
 function clickTab(tab) {
   unselectTabs();
-  tab.$tab.addClass('ui-state-active');
-  tab.$pane.show();
+  tab.tab.classList.add('ui-state-active');
+  tab.pane.style.display = "";
   activeTab = tab;
   triggerResize();
   if (tab === tabs.events) {
@@ -2811,9 +2811,9 @@ function clickTab(tab) {
 }
 
 function setUpTabListener(tab) {
-  tab.$tab.on('click', function(ev) {
+  tab.tab.addEventListener('click', function(ev) {
     clickTab(tab);
-  });
+  }, false);
 }
 
 function setUpTabsUi() {
@@ -2826,8 +2826,8 @@ function setUpTabsUi() {
 function unselectTabs() {
   for (var name in tabs) {
     var tab = tabs[name];
-    tab.$tab.removeClass('ui-state-active');
-    tab.$pane.hide();
+    tab.tab.classList.remove('ui-state-active');
+    tab.pane.style.display = "none";
   }
 }
 
@@ -3273,7 +3273,7 @@ function clearChatInputValue() {
 function renderUnseenChatCount() {
   var eventsTabText = (player.unseenChatCount > 0) ?
     ("Chat (" + player.unseenChatCount + ")") : "Chat";
-  $eventsTabSpan.text(eventsTabText);
+  eventsTabSpan.textContent = eventsTabText;
   updateTitle();
 }
 
@@ -3292,7 +3292,7 @@ function renderImportProgress() {
 
   var importTabText = (player.importProgressList.length > 0) ?
     ("Import (" + player.importProgressList.length + ")") : "Import";
-  $importTabSpan.text(importTabText);
+  importTabSpan.textContent = importTabText;
 
   // add the missing dom entries
   var i, ev;
@@ -3793,7 +3793,7 @@ function refreshPage() {
 function setAllTabsHeight(h) {
   for (var name in tabs) {
     var tab = tabs[name];
-    tab.$pane.height(h);
+    tab.pane.style.height = h + "px";
   }
 }
 

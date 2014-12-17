@@ -455,7 +455,7 @@ var selection = {
         album: helpers.album,
       });
     } else if (this.isPlaylist()) {
-      scrollThingToSelection($playlistsList, {
+      scrollThingToSelection($(playlistsListDom), {
         playlist: helpers.playlist,
         playlistItem: helpers.playlistItem,
       });
@@ -469,7 +469,7 @@ var selection = {
     } else if (this.isLibrary()) {
       scrollThingToCursor($(libraryDom), helpers);
     } else if (this.isPlaylist()) {
-      scrollThingToCursor($playlistsList, helpers);
+      scrollThingToCursor($(playlistsListDom), helpers);
     }
   },
   getHelpers: function() {
@@ -563,9 +563,8 @@ var localState = {
   authPassword: null,
   autoQueueUploads: true,
 };
-var $streamBtn = $('#stream-btn');
-var $clientVolSlider = $('#client-vol-slider');
-var $clientVol = $('#client-vol');
+var streamBtnDom = document.getElementById('stream-btn');
+var clientVolDom = document.getElementById('client-vol');
 var queueWindowDom = document.getElementById('queue-window');
 var leftWindowDom = document.getElementById('left-window');
 var queueItemsDom = document.getElementById('queue-items');
@@ -573,26 +572,23 @@ var autoDjDom = document.getElementById('auto-dj');
 var queueBtnRepeatDom = document.getElementById('queue-btn-repeat');
 var tabsDom = document.getElementById('tabs');
 var libraryDom = document.getElementById('library');
-var $libFilter = $('#lib-filter');
-var $trackSlider = $('#track-slider');
+var libFilterDom = document.getElementById('lib-filter');
 var nowPlayingDom = document.getElementById('nowplaying');
-var $nowPlayingElapsed = $('#nowplaying-time-elapsed');
-var $nowPlayingLeft = $('#nowplaying-time-left');
+var nowPlayingElapsedDom = document.getElementById('nowplaying-time-elapsed');
+var nowPlayingLeftDom = document.getElementById('nowplaying-time-left');
 var nowPlayingToggleDom = document.getElementById('nowplaying-toggle');
 var nowPlayingToggleIconDom = document.getElementById('nowplaying-toggle-icon');
 var nowPlayingPrevDom = document.getElementById('nowplaying-prev');
 var nowPlayingNextDom = document.getElementById('nowplaying-next');
 var nowPlayingStopDom = document.getElementById('nowplaying-stop');
-var $volSlider = $('#vol-slider');
-var $settings = $('#settings');
 var uploadByUrlDom = document.getElementById('upload-by-url');
 var importByNameDom = document.getElementById('import-by-name');
-var $mainErrMsg = $('#main-err-msg');
-var $mainErrMsgText = $('#main-err-msg-text');
-var $playlistsList = $('#playlists-list');
+var mainErrMsgDom = document.getElementById('main-err-msg');
+var mainErrMsgTextDom = document.getElementById('main-err-msg-text');
+var playlistsListDom = document.getElementById('playlists-list');
 var playlistsDom = document.getElementById('playlists');
 var uploadDom = document.getElementById('upload');
-var $trackDisplay = $('#track-display');
+var trackDisplayDom = document.getElementById('track-display');
 var libHeaderDom = document.getElementById('lib-window-header');
 var queueHeaderDom = document.getElementById('queue-header');
 var autoQueueUploadsDom = document.getElementById('auto-queue-uploads');
@@ -679,6 +675,10 @@ var $userPermAdd = $(userPermAddDom);
 var $userPermControl = $(userPermControlDom);
 var $userPermAdmin = $(userPermAdminDom);
 var $settingsDeleteUser = $(settingsDelUserDom);
+var $streamBtn = $(streamBtnDom);
+var $clientVolSlider = $('#client-vol-slider');
+var $trackSlider = $('#track-slider');
+var $volSlider = $('#vol-slider');
 
 var tabs = {
   library: {
@@ -938,7 +938,8 @@ var keyboardHandlers = (function(){
           $shortcuts.focus();
         } else {
           clickTab(tabs.library);
-          $libFilter.focus().select();
+          libFilterDom.focus();
+          libFilterDom.select();
           selection.fullClear();
           refreshSelection();
         }
@@ -1511,14 +1512,21 @@ function updateQueueDuration() {
   }
 }
 
+function removeSelectedAndCursorClasses(domItem) {
+  domItem.classList.remove('selected');
+  domItem.classList.remove('cursor');
+}
+
+function removeCurrentOldAndRandomClasses(domItem) {
+  domItem.classList.remove('current');
+  domItem.classList.remove('old');
+  domItem.classList.remove('random');
+}
+
 function labelQueueItems() {
   var item;
   var curItem = player.currentItem;
-  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), function(plItemDom) {
-    plItemDom.classList.remove('current');
-    plItemDom.classList.remove('old');
-    plItemDom.classList.remove('random');
-  });
+  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeCurrentOldAndRandomClasses);
   if (curItem != null && autoDjOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.queue.itemList[index];
@@ -1545,15 +1553,10 @@ function refreshSelection() {
     updateQueueDuration();
     return;
   }
-  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeSelectedAndCursor);
-  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), removeSelectedAndCursor);
+  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeSelectedAndCursorClasses);
+  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), removeSelectedAndCursorClasses);
+  Array.prototype.forEach.call(playlistsListDom.getElementsByClassName('clickable'), removeSelectedAndCursorClasses);
 
-  function removeSelectedAndCursor(domItem) {
-    domItem.classList.remove('selected');
-    domItem.classList.remove('cursor');
-  }
-
-  $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.cursorType == null) {
     updateQueueDuration();
     return;
@@ -1589,6 +1592,7 @@ function refreshSelection() {
     }
   }
   updateQueueDuration();
+
 }
 
 function getValidIds(selectionType) {
@@ -1671,9 +1675,8 @@ function renderPlaylists() {
 
   // add the missing dom entries
   var i;
-  var playlistListDom = $playlistsList.get(0);
-  for (i = playlistListDom.childElementCount; i < playlistList.length; i += 1) {
-    $playlistsList.append(
+  for (i = playlistsListDom.childElementCount; i < playlistList.length; i += 1) {
+    playlistsListDom.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="playlist">' +
           '<div class="ui-icon"></div>' +
@@ -1683,16 +1686,15 @@ function renderPlaylists() {
       '</li>');
   }
   // remove the extra dom entries
-  var domItem;
-  while (playlistList.length < playlistListDom.childElementCount) {
-    playlistListDom.removeChild(playlistListDom.lastChild);
+  while (playlistList.length < playlistsListDom.childElementCount) {
+    playlistsListDom.removeChild(playlistsListDom.lastChild);
   }
 
   // overwrite existing dom entries
   var playlist;
-  var $domItems = $playlistsList.children();
+  var domItems = playlistsListDom.children;
   for (i = 0; i < playlistList.length; i += 1) {
-    domItem = $domItems[i];
+    var domItem = domItems[i];
     playlist = playlistList[i];
     domItem.setAttribute('data-cached', "");
     var divDom = domItem.children[0];
@@ -1804,8 +1806,8 @@ function updateSliderPos() {
     elapsed = duration = sliderPos = 0;
   }
   $trackSlider.slider("option", "disabled", disabled).slider("option", "value", sliderPos);
-  $nowPlayingElapsed.html(formatTime(elapsed));
-  $nowPlayingLeft.html(formatTime(duration));
+  nowPlayingElapsedDom.textContent = formatTime(elapsed);
+  nowPlayingLeftDom.textContent = formatTime(duration);
 }
 
 function renderVolumeSlider() {
@@ -1834,13 +1836,11 @@ function renderNowPlaying() {
   }
 
   updateTitle();
-  var trackDisplay;
-  if (track != null) {
-    trackDisplay = getNowPlayingText(track);
+  if (track) {
+    trackDisplayDom.textContent = getNowPlayingText(track);
   } else {
-    trackDisplay = "&nbsp;";
+    trackDisplayDom.innerHTML = "&nbsp;";
   }
-  $trackDisplay.html(trackDisplay);
   var oldClass = (player.isPlaying === true) ? 'ui-icon-play' : 'ui-icon-pause';
   var newClass = (player.isPlaying === true) ? 'ui-icon-pause': 'ui-icon-play';
   nowPlayingToggleIconDom.classList.remove(oldClass);
@@ -1855,10 +1855,10 @@ function render() {
   queueWindowDom.style.display= hideMainErr ? "" : "none";
   leftWindowDom.style.display = hideMainErr ? "" : "none";
   nowPlayingDom.style.display = hideMainErr ? "" : "none";
-  $mainErrMsg.toggle(!hideMainErr);
+  mainErrMsgDom.style.display = hideMainErr ? "none" : "";
   if (!hideMainErr) {
     document.title = BASE_TITLE;
-    $mainErrMsgText.text(loadStatus);
+    mainErrMsgTextDom.textContent = loadStatus;
     return;
   }
   renderQueue();
@@ -2536,7 +2536,7 @@ function onNewPlaylistNameKeyDown(ev) {
 function setUpPlaylistsUi() {
   newPlaylistNameDom.addEventListener('keydown', onNewPlaylistNameKeyDown, false);
 
-  genericTreeUi($playlistsList, {
+  genericTreeUi($(playlistsListDom), {
     toggleExpansion: togglePlaylistExpansion,
     isSelectionOwner: function() {
       return selection.isPlaylist();
@@ -2762,7 +2762,7 @@ function setUpNowPlayingUi() {
     slide: function(ev, ui){
       updateSliderUi(ui.value);
       if (!player.currentItem) return;
-      $nowPlayingElapsed.html(formatTime(ui.value * player.currentItem.track.duration));
+      nowPlayingElapsedDom.textContent = formatTime(ui.value * player.currentItem.track.duration);
     },
     start: function(ev, ui){
       userIsSeeking = true;
@@ -3457,73 +3457,75 @@ function ensureSearchHappensSoon() {
   // give the user a small timeout between key presses to finish typing.
   // otherwise, we might be bogged down displaying the search results for "a" or the like.
   searchTimer = setTimeout(function() {
-    player.search($libFilter.val());
+    player.search(libFilterDom.value);
     searchTimer = null;
   }, 100);
 }
 
-function setUpLibraryUi() {
-  $libFilter.on('keydown', function(ev) {
-    ev.stopPropagation();
-    switch (ev.which) {
-    case 27: // Escape
-      if ($(ev.target).val().length === 0) {
-        $(ev.target).blur();
-      } else {
-        setTimeout(function(){
-          $libFilter.val("");
-          // queue up a search refresh now, because if the user holds Escape,
-          // it will blur the search box, and we won't get a keyup for Escape.
-          ensureSearchHappensSoon();
-        }, 0);
-      }
-      ev.preventDefault();
-      return;
-    case 13: // Enter
-      var keys = [];
-      for (var i = 0; i < player.searchResults.artistList.length; i += 1) {
-        var artist = player.searchResults.artistList[i];
-        for (var j = 0; j < artist.albumList.length; j += 1) {
-          var album = artist.albumList[j];
-          for (var k = 0; k < album.trackList.length; k += 1) {
-            var track = album.trackList[k];
-            keys.push(track.key);
-          }
-        }
-      }
-      if (ev.altKey) shuffle(keys);
-      if (keys.length > 2000) {
-        if (!confirm("You are about to queue " + keys.length + " songs.")) {
-          ev.preventDefault();
-          return;
-        }
-      }
-      if (ev.shiftKey) {
-        player.queueTracksNext(keys);
-      } else {
-        player.queueOnQueue(keys);
-      }
-      ev.preventDefault();
-      return;
-    case 40:
-      selection.selectOnlyFirstPos('library');
-      selection.scrollToCursor();
-      refreshSelection();
-      $libFilter.blur();
-      ev.preventDefault();
-      return;
-    case 38:
-      selection.selectOnlyLastPos('library');
-      selection.scrollToCursor();
-      refreshSelection();
-      $libFilter.blur();
-      ev.preventDefault();
-      return;
+function onLibFilterKeyDown(ev) {
+  ev.stopPropagation();
+  switch (ev.which) {
+  case 27: // Escape
+    if ($(ev.target).val().length === 0) {
+      $(ev.target).blur();
+    } else {
+      setTimeout(function(){
+        libFilterDom.value = "";
+        // queue up a search refresh now, because if the user holds Escape,
+        // it will blur the search box, and we won't get a keyup for Escape.
+        ensureSearchHappensSoon();
+      }, 0);
     }
-  });
-  $libFilter.on('keyup', ensureSearchHappensSoon);
-  $libFilter.on('cut', ensureSearchHappensSoon);
-  $libFilter.on('paste', ensureSearchHappensSoon);
+    ev.preventDefault();
+    return;
+  case 13: // Enter
+    var keys = [];
+    for (var i = 0; i < player.searchResults.artistList.length; i += 1) {
+      var artist = player.searchResults.artistList[i];
+      for (var j = 0; j < artist.albumList.length; j += 1) {
+        var album = artist.albumList[j];
+        for (var k = 0; k < album.trackList.length; k += 1) {
+          var track = album.trackList[k];
+          keys.push(track.key);
+        }
+      }
+    }
+    if (ev.altKey) shuffle(keys);
+    if (keys.length > 2000) {
+      if (!confirm("You are about to queue " + keys.length + " songs.")) {
+        ev.preventDefault();
+        return;
+      }
+    }
+    if (ev.shiftKey) {
+      player.queueTracksNext(keys);
+    } else {
+      player.queueOnQueue(keys);
+    }
+    ev.preventDefault();
+    return;
+  case 40:
+    selection.selectOnlyFirstPos('library');
+    selection.scrollToCursor();
+    refreshSelection();
+    libFilterDom.blur();
+    ev.preventDefault();
+    return;
+  case 38:
+    selection.selectOnlyLastPos('library');
+    selection.scrollToCursor();
+    refreshSelection();
+    libFilterDom.blur();
+    ev.preventDefault();
+    return;
+  }
+}
+
+function setUpLibraryUi() {
+  libFilterDom.addEventListener('keydown', onLibFilterKeyDown, false);
+  libFilterDom.addEventListener('keyup', ensureSearchHappensSoon, false);
+  libFilterDom.addEventListener('cut', ensureSearchHappensSoon, false);
+  libFilterDom.addEventListener('paste', ensureSearchHappensSoon, false);
   genericTreeUi($(libraryDom), {
     toggleExpansion: toggleLibraryExpansion,
     isSelectionOwner: function(){
@@ -3724,7 +3726,7 @@ function setUpStreamUi() {
       primary: "ui-icon-signal-diag"
     }
   });
-  $streamBtn.on('click', toggleStreamStatus);
+  streamBtnDom.addEventListener('click', toggleStreamStatus, false);
   $clientVolSlider.slider({
     step: 0.01,
     min: 0,
@@ -3733,7 +3735,7 @@ function setUpStreamUi() {
     change: setVol,
     slide: setVol,
   });
-  $clientVol.hide();
+  clientVolDom.style.display = 'none';
 }
 
 function toQueueItemId(s) {
@@ -3837,7 +3839,7 @@ function renderStreamButton(){
     .button("option", "label", label)
     .prop("checked", tryingToStream)
     .button("refresh");
-  $clientVol.toggle(tryingToStream);
+  clientVolDom.style.display = tryingToStream ? "" : "none";
 }
 
 function toggleStreamStatus(ev) {

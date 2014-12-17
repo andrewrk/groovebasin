@@ -594,63 +594,59 @@ var queueHeaderDom = document.getElementById('queue-header');
 var autoQueueUploadsDom = document.getElementById('auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var uploadWidgetDom = document.getElementById('upload-widget');
-var $settingsRegister = $('#settings-register');
-var $settingsShowAuth = $('#settings-show-auth');
+var settingsRegisterDom = document.getElementById('settings-register');
+var settingsShowAuthDom = document.getElementById('settings-show-auth');
 var settingsAuthCancelDom = document.getElementById('settings-auth-cancel');
 var settingsAuthSaveDom = document.getElementById('settings-auth-save');
 var settingsAuthEditDom = document.getElementById('settings-auth-edit');
 var settingsAuthRequestDom = document.getElementById('settings-auth-request');
 var settingsAuthLogoutDom = document.getElementById('settings-auth-logout');
 var streamUrlDom = document.getElementById('settings-stream-url');
-var $authPermRead = $('#auth-perm-read');
-var $authPermAdd = $('#auth-perm-add');
-var $authPermControl = $('#auth-perm-control');
-var $authPermAdmin = $('#auth-perm-admin');
+var authPermReadDom = document.getElementById('auth-perm-read');
+var authPermAddDom = document.getElementById('auth-perm-add');
+var authPermControlDom = document.getElementById('auth-perm-control');
+var authPermAdminDom = document.getElementById('auth-perm-admin');
 var lastFmSignOutDom = document.getElementById('lastfm-sign-out');
 var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
-var $settingsLastFmIn = $('#settings-lastfm-in');
-var $settingsLastFmOut = $('#settings-lastfm-out');
+var settingsLastFmInDom = document.getElementById('settings-lastfm-in');
+var settingsLastFmOutDom = document.getElementById('settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
 var toggleScrobbleDom = document.getElementById('toggle-scrobble');
 var shortcutsDom = document.getElementById('shortcuts');
 var editTagsDialogDom = document.getElementById('edit-tags');
-var $libraryMenu = $('#library-menu');
 var toggleHardwarePlaybackDom = document.getElementById('toggle-hardware-playback');
 var toggleHardwarePlaybackLabel = document.getElementById('toggle-hardware-playback-label');
 var newPlaylistNameDom = document.getElementById('new-playlist-name');
 var emptyLibraryMessageDom = document.getElementById('empty-library-message');
 var libraryNoItemsDom = document.getElementById('library-no-items');
 var libraryArtistsDom = document.getElementById('library-artists');
-var $volNum = $('#vol-num');
-var $volWarning = $('#vol-warning');
+var volNumDom = document.getElementById('vol-num');
+var volWarningDom = document.getElementById('vol-warning');
 var ensureAdminDiv = document.getElementById('ensure-admin');
-var $ensureAdminBtn = $('#ensure-admin-btn');
 var authShowPasswordDom = document.getElementById('auth-show-password');
 var authUsernameDom = document.getElementById('auth-username');
 var authUsernameDisplayDom = document.getElementById('auth-username-display');
 var authPasswordDom = document.getElementById('auth-password');
 var settingsUsersDom = document.getElementById('settings-users');
 var settingsUsersSelect = document.getElementById('settings-users-select');
-var $settingsRequests = $('#settings-requests');
-var $settingsRequest = $('#settings-request');
+var settingsRequestsDom = document.getElementById('settings-requests');
 var userPermReadDom = document.getElementById('user-perm-read');
 var userPermAddDom = document.getElementById('user-perm-add');
 var userPermControlDom = document.getElementById('user-perm-control');
 var userPermAdminDom = document.getElementById('user-perm-admin');
 var settingsDelUserDom = document.getElementById('settings-delete-user');
-var $requestReplace = $('#request-replace');
-var $requestName = $('#request-name');
+var requestReplaceSelect = document.getElementById('request-replace');
+var requestNameDom = document.getElementById('request-name');
 var requestApproveDom = document.getElementById('request-approve');
 var requestDenyDom = document.getElementById('request-deny');
 var eventsOnlineUsersDom = document.getElementById('events-online-users');
 var eventsListDom = document.getElementById('events-list');
 var chatBoxDom = document.getElementById('chat-box');
-var $chatBoxInput = $('#chat-box-input');
-var $queueDuration = $('#queue-duration');
-var $queueDurationLabel = $('#queue-duration-label');
-var $importProgress = $('#import-progress');
-var $importProgressList = $('#import-progress-list');
-var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
+var chatBoxInputDom = document.getElementById('chat-box-input');
+var queueDurationDom = document.getElementById('queue-duration');
+var queueDurationLabel = document.getElementById('queue-duration-label');
+var importProgressDom = document.getElementById('import-progress');
+var importProgressListDom = document.getElementById('import-progress-list');
 var perDom = document.getElementById('edit-tags-per');
 var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
@@ -679,6 +675,9 @@ var $streamBtn = $(streamBtnDom);
 var $clientVolSlider = $('#client-vol-slider');
 var $trackSlider = $('#track-slider');
 var $volSlider = $('#vol-slider');
+var $libraryMenu = $('#library-menu');
+var $ensureAdminBtn = $('#ensure-admin-btn');
+var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
 var tabs = {
   library: {
@@ -883,7 +882,8 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: function() {
         clickTab(tabs.events);
-        $chatBoxInput.focus().select();
+        chatBoxInputDom.focus();
+        chatBoxInputDom.select();
         scrollEventsToBottom();
       },
     },
@@ -1488,12 +1488,12 @@ function updateQueueDuration() {
 
   if (selection.isQueue()) {
     selection.toTrackKeys().forEach(addKeyDuration);
-    $queueDurationLabel.text("Selection:");
+    queueDurationLabel.textContent = "Selection:";
   } else {
     player.queue.itemList.forEach(addItemDuration);
-    $queueDurationLabel.text("Play Queue:");
+    queueDurationLabel.textContent = "Play Queue:";
   }
-  $queueDuration.text(formatTime(duration) + (allAreKnown ? "" : "?"));
+  queueDurationDom.textContent = formatTime(duration) + (allAreKnown ? "" : "?");
 
   function addKeyDuration(key) {
     var track = player.library.trackTable[key];
@@ -1814,8 +1814,8 @@ function renderVolumeSlider() {
   if (userIsVolumeSliding) return;
 
   $volSlider.slider('option', 'value', player.volume);
-  $volNum.text(Math.round(player.volume * 100));
-  $volWarning.toggle(player.volume > 1);
+  volNumDom.textContent = Math.round(player.volume * 100);
+  volWarningDom.style.display = (player.volume > 1) ? "" : "none";
 }
 
 function getNowPlayingText(track) {
@@ -2228,8 +2228,8 @@ function settingsAuthCancel(ev) {
 }
 
 function hideShowAuthEdit(visible) {
-  $settingsRegister.toggle(visible);
-  $settingsShowAuth.toggle(!visible);
+  settingsRegisterDom.style.display = visible ? "" : "none";
+  settingsShowAuthDom.style.display = visible ? "none" : "";
 }
 
 function removeAllQueueItemBorders() {
@@ -2779,8 +2779,8 @@ function setUpNowPlayingUi() {
       val = 1;
     }
     player.setVolume(val);
-    $volNum.text(Math.round(val * 100));
-    $volWarning.toggle(val > 1);
+    volNumDom.textContent = Math.round(val * 100);
+    volWarningDom.style.display = (val > 1) ? "" : "none";
   }
   $volSlider.slider({
     step: 0.01,
@@ -2956,13 +2956,8 @@ function updateLastFmApiKey(key) {
 }
 
 function updateLastFmSettingsUi() {
-  if (localState.lastfm.username) {
-    $settingsLastFmIn.show();
-    $settingsLastFmOut.hide();
-  } else {
-    $settingsLastFmIn.hide();
-    $settingsLastFmOut.show();
-  }
+  settingsLastFmInDom.style.display = localState.lastfm.username ? "" : "none";
+  settingsLastFmOutDom.style.display = localState.lastfm.username ? "none" : "";
   settingsLastFmUserDom.setAttribute('href', "http://last.fm/user/" +
       encodeURIComponent(localState.lastfm.username));
   settingsLastFmUserDom.textContent = localState.lastfm.username;
@@ -2977,7 +2972,7 @@ function updateLastFmSettingsUi() {
 }
 
 function updateSettingsAuthUi() {
-  var i, user;
+  var i, user, newOption;
   var request = null;
   var selectedUserId = settingsUsersSelect.value;
   while (settingsUsersSelect.options.length) {
@@ -2986,7 +2981,7 @@ function updateSettingsAuthUi() {
   for (i = 0; i < player.usersList.length; i += 1) {
     user = player.usersList[i];
     if (user.approved) {
-      var newOption = document.createElement('option');
+      newOption = document.createElement('option');
       newOption.textContent = user.name;
       newOption.value = user.id;
       settingsUsersSelect.add(newOption);
@@ -3000,34 +2995,36 @@ function updateSettingsAuthUi() {
   updatePermsForSelectedUser();
 
   if (request) {
-    $requestReplace.empty();
+    while (requestReplaceSelect.options.length) {
+      requestReplaceSelect.remove(requestReplaceSelect.options.length - 1);
+    }
     for (i = 0; i < player.usersList.length; i += 1) {
       user = player.usersList[i];
       if (user.id === PlayerClient.GUEST_USER_ID) {
         user = request;
       }
       if (user.approved || user === request) {
-        $requestReplace.append($("<option/>", {
-          value: user.id,
-          text: user.name,
-        }));
+        newOption = document.createElement('option');
+        newOption.textContent = user.name;
+        newOption.value = user.id;
+        requestReplaceSelect.add(newOption);
       }
     }
-    $requestReplace.val(request.id);
-    $requestName.val(request.name);
+    requestReplaceSelect.value = request.id;
+    requestNameDom.value = request.name;
   }
 
-  $authPermRead.toggle(havePerm('read'));
-  $authPermAdd.toggle(havePerm('add'));
-  $authPermControl.toggle(havePerm('control'));
-  $authPermAdmin.toggle(havePerm('admin'));
+  authPermReadDom.style.display = havePerm('read') ? "" : "none";
+  authPermAddDom.style.display = havePerm('add') ? "" : "none";
+  authPermControlDom.style.display = havePerm('control') ? "" : "none";
+  authPermAdminDom.style.display = havePerm('admin') ? "" : "none";
   streamUrlDom.setAttribute('href', getStreamUrl());
   settingsAuthRequestDom.style.display =
     (myUser.registered && !myUser.requested && !myUser.approved) ? "" : "none";
   settingsAuthLogoutDom.style.display = myUser.registered ? "" : "none";
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
   settingsUsersDom.style.display = havePerm('admin') ? "" : "none";
-  $settingsRequests.toggle(havePerm('admin') && !!request);
+  settingsRequestsDom.style.display = (havePerm('admin') && !!request) ? "" : "none";
 
   $toggleHardwarePlayback
     .prop('disabled', !havePerm('admin'))
@@ -3173,9 +3170,9 @@ function handleApproveDeny(approved) {
   if (!request) return;
   socket.send('approve', [{
     id: request.id,
-    replaceId: $requestReplace.val(),
+    replaceId: requestReplaceSelect.value,
     approved: approved,
-    name: $requestName.val(),
+    name: requestNameDom.value,
   }]);
 }
 
@@ -3219,44 +3216,45 @@ function onEventsListScroll(ev) {
     (eventsListDom.scrollHeight - eventsListDom.scrollTop) === eventsListDom.offsetHeight;
 }
 
-function setUpEventsUi() {
-  eventsListDom.addEventListener('scroll', onEventsListScroll, false);
-
-  $chatBoxInput.on('keydown', function(ev) {
-    ev.stopPropagation();
-    if (ev.which === 27) {
-      $chatBoxInput.blur();
+function onChatBoxInputKeyDown(ev) {
+  ev.stopPropagation();
+  if (ev.which === 27) {
+    chatBoxInputDom.blur();
+    ev.preventDefault();
+    return;
+  } else if (ev.which === 13) {
+    var msg = chatBoxInputDom.value.trim();
+    if (!msg.length) {
       ev.preventDefault();
       return;
-    } else if (ev.which === 13) {
-      var msg = $chatBoxInput.val().trim();
-      if (!msg.length) {
-        ev.preventDefault();
-        return;
-      }
-      var match = msg.match(/^\/([^\/]\w*)\s*(.*)$/);
-      if (match) {
-        var chatCommand = chatCommands[match[1]];
-        if (chatCommand) {
-          if (!chatCommand(match[2])) {
-            // command failed; no message sent
-            ev.preventDefault();
-            return;
-          }
-        } else {
-          // don't clear the text box; invalid command
+    }
+    var match = msg.match(/^\/([^\/]\w*)\s*(.*)$/);
+    if (match) {
+      var chatCommand = chatCommands[match[1]];
+      if (chatCommand) {
+        if (!chatCommand(match[2])) {
+          // command failed; no message sent
           ev.preventDefault();
           return;
         }
       } else {
-        // replace starting '//' with '/'
-        socket.send('chat', { text: msg.replace(/^\/\//, '/') });
+        // don't clear the text box; invalid command
+        ev.preventDefault();
+        return;
       }
-      setTimeout(clearChatInputValue, 0);
-      ev.preventDefault();
-      return;
+    } else {
+      // replace starting '//' with '/'
+      socket.send('chat', { text: msg.replace(/^\/\//, '/') });
     }
-  });
+    setTimeout(clearChatInputValue, 0);
+    ev.preventDefault();
+    return;
+  }
+}
+
+function setUpEventsUi() {
+  eventsListDom.addEventListener('scroll', onEventsListScroll, false);
+  chatBoxInputDom.addEventListener('keydown', onChatBoxInputKeyDown, false);
 }
 
 function displaySlashMe(message) {
@@ -3269,7 +3267,7 @@ function displaySlashMe(message) {
 }
 
 function clearChatInputValue() {
-  $chatBoxInput.val("");
+  chatBoxInputDom.value = "";
 }
 
 function renderUnseenChatCount() {
@@ -3290,8 +3288,7 @@ function updateTitle() {
 }
 
 function renderImportProgress() {
-  var importProgressListDom = $importProgressList.get(0);
-  var scrollTop = $importProgressList.scrollTop();
+  var scrollTop = importProgressListDom.scrollTop;
 
   var importTabText = (player.importProgressList.length > 0) ?
     ("Import (" + player.importProgressList.length + ")") : "Import";
@@ -3300,32 +3297,31 @@ function renderImportProgress() {
   // add the missing dom entries
   var i, ev;
   for (i = importProgressListDom.childElementCount; i < player.importProgressList.length; i += 1) {
-    $importProgressList.append(
+    importProgressListDom.insertAdjacentHTML('beforeend',
       '<li class="progress">' +
         '<span class="name"></span> ' +
         '<span class="percent"></span>' +
       '</li>');
   }
   // remove extra dom entries
-  var domItem;
   while (player.importProgressList.length < importProgressListDom.childElementCount) {
     importProgressListDom.removeChild(importProgressListDom.lastChild);
   }
   // overwrite existing dom entries
-  var $domItems = $importProgressList.children();
+  var domItems = importProgressListDom.children;
   for (i = 0; i < player.importProgressList.length; i += 1) {
-    var $domItem = $($domItems[i]);
+    var domItem = domItems[i];
     ev = player.importProgressList[i];
-    $domItem.find('.name').text(ev.filenameHintWithoutPath);
+    domItem.children[0].textContent = ev.filenameHintWithoutPath;
     var percent = humanSize(ev.bytesWritten, 1);
     if (ev.size) {
       percent += " / " + humanSize(ev.size, 1);
     }
-    $domItem.find('.percent').text(percent);
+    domItem.children[1].textContent = percent;
   }
 
-  $importProgress.toggle(player.importProgressList.length > 0);
-  $importProgressList.scrollTop(scrollTop);
+  importProgressDom.style.display = (player.importProgressList.length > 0) ? "" : "none";
+  importProgressListDom.scrollTop = scrollTop;
 }
 
 function renderEvents() {

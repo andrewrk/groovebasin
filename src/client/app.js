@@ -445,7 +445,7 @@ var selection = {
     var helpers = this.getHelpers();
     if (!helpers) return;
     if (this.isQueue()) {
-      scrollThingToSelection($queueItems, {
+      scrollThingToSelection($(queueItemsDom), {
         queue: helpers.queue,
       });
     } else if (this.isLibrary()) {
@@ -465,7 +465,7 @@ var selection = {
     var helpers = this.getHelpers();
     if (!helpers) return;
     if (this.isQueue()) {
-      scrollThingToCursor($queueItems, helpers);
+      scrollThingToCursor($(queueItemsDom), helpers);
     } else if (this.isLibrary()) {
       scrollThingToCursor($(libraryDom), helpers);
     } else if (this.isPlaylist()) {
@@ -543,7 +543,7 @@ var player = null;
 var userIsSeeking = false;
 var userIsVolumeSliding = false;
 var startedDrag = false;
-var abortDrag = function(){};
+var abortDrag = noop;
 var lastFmApiKey = null;
 var LoadStatus = {
   Init: 'Loading...',
@@ -568,10 +568,10 @@ var $clientVolSlider = $('#client-vol-slider');
 var $clientVol = $('#client-vol');
 var queueWindowDom = document.getElementById('queue-window');
 var leftWindowDom = document.getElementById('left-window');
-var $queueItems = $('#queue-items');
+var queueItemsDom = document.getElementById('queue-items');
 var autoDjDom = document.getElementById('auto-dj');
 var queueBtnRepeatDom = document.getElementById('queue-btn-repeat');
-var $tabs = $('#tabs');
+var tabsDom = document.getElementById('tabs');
 var libraryDom = document.getElementById('library');
 var $libFilter = $('#lib-filter');
 var $trackSlider = $('#track-slider');
@@ -579,6 +579,7 @@ var nowPlayingDom = document.getElementById('nowplaying');
 var $nowPlayingElapsed = $('#nowplaying-time-elapsed');
 var $nowPlayingLeft = $('#nowplaying-time-left');
 var nowPlayingToggleDom = document.getElementById('nowplaying-toggle');
+var nowPlayingToggleIconDom = document.getElementById('nowplaying-toggle-icon');
 var nowPlayingPrevDom = document.getElementById('nowplaying-prev');
 var nowPlayingNextDom = document.getElementById('nowplaying-next');
 var nowPlayingStopDom = document.getElementById('nowplaying-stop');
@@ -589,11 +590,11 @@ var importByNameDom = document.getElementById('import-by-name');
 var $mainErrMsg = $('#main-err-msg');
 var $mainErrMsgText = $('#main-err-msg-text');
 var $playlistsList = $('#playlists-list');
-var $playlists = $('#playlists');
-var $upload = $('#upload');
+var playlistsDom = document.getElementById('playlists');
+var uploadDom = document.getElementById('upload');
 var $trackDisplay = $('#track-display');
-var $libHeader = $('#lib-window-header');
-var $queueHeader = $('#queue-header');
+var libHeaderDom = document.getElementById('lib-window-header');
+var queueHeaderDom = document.getElementById('queue-header');
 var autoQueueUploadsDom = document.getElementById('auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
 var uploadWidgetDom = document.getElementById('upload-widget');
@@ -645,9 +646,9 @@ var $requestReplace = $('#request-replace');
 var $requestName = $('#request-name');
 var requestApproveDom = document.getElementById('request-approve');
 var requestDenyDom = document.getElementById('request-deny');
-var $eventsOnlineUsers = $('#events-online-users');
+var eventsOnlineUsersDom = document.getElementById('events-online-users');
 var eventsListDom = document.getElementById('events-list');
-var $chatBox = $('#chat-box');
+var chatBoxDom = document.getElementById('chat-box');
 var $chatBoxInput = $('#chat-box-input');
 var $queueDuration = $('#queue-duration');
 var $queueDurationLabel = $('#queue-duration-label');
@@ -1401,7 +1402,7 @@ function scrollThingToSelection($scrollArea, helpers){
 
 function getDragPosition(x, y) {
   var result = {};
-  var plItemDom = $queueItems.find(".pl-item").get();
+  var plItemDom = queueItemsDom.querySelectorAll(".pl-item");
   for (var i = 0; i < plItemDom.length; ++i) {
     var item = plItemDom[i];
     var $item = $(item);
@@ -1439,13 +1440,12 @@ function updateHaveAdminUserUi() {
 
 function renderQueue(){
   var itemList = player.queue.itemList || [];
-  var scrollTop = $queueItems.scrollTop();
+  var scrollTop = queueItemsDom.scrollTop;
 
   // add the missing dom entries
   var i;
-  var playlistItemsDom = $queueItems.get(0);
-  for (i = playlistItemsDom.childElementCount; i < itemList.length; i += 1) {
-    $queueItems.append(
+  for (i = queueItemsDom.childElementCount; i < itemList.length; i += 1) {
+    queueItemsDom.insertAdjacentHTML('beforeend',
       '<div class="pl-item">' +
         '<span class="track"></span>' +
         '<span class="title"></span>' +
@@ -1455,30 +1455,30 @@ function renderQueue(){
       '</div>');
   }
   // remove the extra dom entries
-  while (itemList.length < playlistItemsDom.childElementCount) {
-    playlistItemsDom.removeChild(playlistItemsDom.lastChild);
+  while (itemList.length < queueItemsDom.childElementCount) {
+    queueItemsDom.removeChild(queueItemsDom.lastChild);
   }
 
   // overwrite existing dom entries
-  var $domItems = $queueItems.children();
+  var domItems = queueItemsDom.children;
   for (i = 0; i < itemList.length; i += 1) {
-    var domItem = $domItems[i];
-    var $domItem = $(domItem);
+    var domItem = domItems[i];
     var item = itemList[i];
     domItem.setAttribute('id', toQueueItemId(item.id));
     domItem.setAttribute('data-id', item.id);
     var track = item.track;
-    $domItem.find('.track').text(track.track || "");
-    $domItem.find('.title').text(track.name || "");
-    $domItem.find('.artist').text(track.artistName || "");
-    $domItem.find('.album').text(track.albumName || "");
+    domItem.children[0].textContent = track.track || "";
+    domItem.children[1].textContent = track.name || "";
+    domItem.children[2].textContent = track.artistName || "";
+    domItem.children[3].textContent = track.albumName || "";
+
     var timeText = player.isScanning(track) ? "scan" : formatTime(track.duration);
-    $domItem.find('.time').text(timeText);
+    domItem.children[4].textContent = timeText;
   }
 
   refreshSelection();
   labelQueueItems();
-  $queueItems.scrollTop(scrollTop);
+  queueItemsDom.scrollTop = scrollTop;
 }
 
 function updateQueueDuration() {
@@ -1514,10 +1514,11 @@ function updateQueueDuration() {
 function labelQueueItems() {
   var item;
   var curItem = player.currentItem;
-  $queueItems.find(".pl-item")
-    .removeClass('current')
-    .removeClass('old')
-    .removeClass('random');
+  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), function(plItemDom) {
+    plItemDom.classList.remove('current');
+    plItemDom.classList.remove('old');
+    plItemDom.classList.remove('random');
+  });
   if (curItem != null && autoDjOn) {
     for (var index = 0; index < curItem.index; ++index) {
       item = player.queue.itemList[index];
@@ -1544,11 +1545,13 @@ function refreshSelection() {
     updateQueueDuration();
     return;
   }
-  $queueItems.find(".pl-item").removeClass('selected').removeClass('cursor');
-  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), function(domItem) {
+  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeSelectedAndCursor);
+  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), removeSelectedAndCursor);
+
+  function removeSelectedAndCursor(domItem) {
     domItem.classList.remove('selected');
     domItem.classList.remove('cursor');
-  });
+  }
 
   $playlistsList.find(".clickable").removeClass('selected').removeClass('cursor');
   if (selection.cursorType == null) {
@@ -1664,7 +1667,7 @@ function updatePlaylistsSubmenus($parentMenu, $menu) {
 
 function renderPlaylists() {
   var playlistList = player.playlistList;
-  var scrollTop = $playlists.scrollTop();
+  var scrollTop = playlistsDom.scrollTop;
 
   // add the missing dom entries
   var i;
@@ -1707,7 +1710,7 @@ function renderPlaylists() {
     }
   }
 
-  $playlists.scrollTop(scrollTop);
+  playlistsDom.scrollTop = scrollTop;
   refreshSelection();
   // TODO expandPlaylistsToSelection()
 }
@@ -1840,8 +1843,8 @@ function renderNowPlaying() {
   $trackDisplay.html(trackDisplay);
   var oldClass = (player.isPlaying === true) ? 'ui-icon-play' : 'ui-icon-pause';
   var newClass = (player.isPlaying === true) ? 'ui-icon-pause': 'ui-icon-play';
-  nowPlayingToggleDom.classList.remove(oldClass);
-  nowPlayingToggleDom.classList.add(newClass);
+  nowPlayingToggleIconDom.classList.remove(oldClass);
+  nowPlayingToggleIconDom.classList.add(newClass);
   $trackSlider.slider("option", "disabled", player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
@@ -2229,22 +2232,31 @@ function hideShowAuthEdit(visible) {
   $settingsShowAuth.toggle(!visible);
 }
 
+function removeAllQueueItemBorders() {
+  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), function(domItem) {
+    domItem.classList.remove('border-top');
+    domItem.classList.remove('border-bottom');
+  });
+}
+
 function performDrag(ev, callbacks) {
   abortDrag();
   var startDragX = ev.pageX;
   var startDragY = ev.pageY;
-  abortDrag = function() {
+  abortDrag = doAbortDrag;
+  window.addEventListener('mousemove', onDragMove, false);
+  window.addEventListener('mouseup', onDragEnd, false);
+  onDragMove(ev);
+
+  function doAbortDrag() {
     window.removeEventListener('mousemove', onDragMove, false);
     window.removeEventListener('mouseup', onDragEnd, false);
     if (startedDrag) {
-      $queueItems
-        .find(".pl-item")
-        .removeClass('border-top')
-        .removeClass('border-bottom');
+      removeAllQueueItemBorders();
       startedDrag = false;
     }
     abortDrag = noop;
-  };
+  }
   function onDragMove(ev){
     var dist, result;
     if (!startedDrag) {
@@ -2257,7 +2269,7 @@ function performDrag(ev, callbacks) {
       }
     }
     result = getDragPosition(ev.pageX, ev.pageY);
-    $queueItems.find(".pl-item").removeClass('border-top').removeClass('border-bottom');
+    removeAllQueueItemBorders();
     if (result.$next != null) {
       result.$next.addClass("border-top");
     } else if (result.$previous != null) {
@@ -2277,9 +2289,6 @@ function performDrag(ev, callbacks) {
     }
     abortDrag();
   }
-  window.addEventListener('mousemove', onDragMove, false);
-  window.addEventListener('mouseup', onDragEnd, false);
-  onDragMove(ev);
 }
 
 function clearSelectionAndHideMenu() {
@@ -2337,74 +2346,96 @@ function handleAutoDjClick(ev) {
   ev.stopPropagation();
 }
 
+function getFirstChildToward(parentDom, childDom) {
+  if (childDom === parentDom) return null;
+  for (;;) {
+    var nextNode = childDom.parentNode;
+    if (nextNode === parentDom) return childDom;
+    childDom = nextNode;
+  }
+}
+
+function onQueueItemsDblClick(ev) {
+  var clickedPlItem = getFirstChildToward(queueItemsDom, ev.target);
+  if (!clickedPlItem) return;
+
+  var trackId = clickedPlItem.getAttribute('data-id');
+  player.seek(trackId, 0);
+  player.play();
+}
+
+function onQueueItemsContextMenu(ev) {
+  if (ev.target === queueItemsDom) return;
+  if (ev.altKey) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+}
+
+function onQueueItemsMouseDown(ev) {
+  var clickedPlItem = getFirstChildToward(queueItemsDom, ev.target);
+  if (!clickedPlItem) return;
+  if (startedDrag) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  document.activeElement.blur();
+  var trackId, skipDrag;
+  if (ev.which === 1) {
+    removeContextMenu();
+    trackId = clickedPlItem.getAttribute('data-id');
+    skipDrag = false;
+    if (!selection.isQueue()) {
+      selection.selectOnly('queue', trackId);
+    } else if (ev.ctrlKey || ev.shiftKey) {
+      skipDrag = true;
+      if (ev.shiftKey && !ev.ctrlKey) {
+        // range select click
+        selection.cursor = trackId;
+        selectQueueRange();
+      } else if (!ev.shiftKey && ev.ctrlKey) {
+        // individual item selection toggle
+        selection.cursor = trackId;
+        selection.rangeSelectAnchor = trackId;
+        selection.rangeSelectAnchorType = selection.cursorType;
+        toggleSelectionUnderCursor();
+      }
+    } else if (selection.ids.queue[trackId] == null) {
+      selection.selectOnly('queue', trackId);
+    }
+    refreshSelection();
+    if (!skipDrag) {
+      performDrag(ev, {
+        complete: function(result, ev){
+          var delta, id;
+          delta = {
+            top: 0,
+            bottom: 1
+          };
+          player.moveIds(Object.keys(selection.ids.queue), result.previousKey, result.nextKey);
+        },
+        cancel: function(){
+          selection.selectOnly('queue', trackId);
+          refreshSelection();
+        }
+      });
+    }
+  } else if (ev.which === 3) {
+    if (ev.altKey) return;
+    trackId = clickedPlItem.getAttribute('data-id');
+    if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
+      selection.selectOnly('queue', trackId);
+      refreshSelection();
+    }
+    popContextMenu('queue', ev.pageX, ev.pageY);
+  }
+}
+
 function setUpPlayQueueUi() {
   queueBtnRepeatDom.addEventListener('click', nextRepeatState, false);
   autoDjDom.addEventListener('click', handleAutoDjClick, false);
 
-  $queueItems.on('dblclick', '.pl-item', function(ev) {
-    var trackId = this.getAttribute('data-id');
-    player.seek(trackId, 0);
-    player.play();
-  });
-  $queueItems.on('contextmenu', '.pl-item', function(ev){
-    return ev.altKey;
-  });
-  $queueItems.on('mousedown', '.pl-item', function(ev){
-    if (startedDrag) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    document.activeElement.blur();
-    var trackId, skipDrag;
-    if (ev.which === 1) {
-      removeContextMenu();
-      trackId = this.getAttribute('data-id');
-      skipDrag = false;
-      if (!selection.isQueue()) {
-        selection.selectOnly('queue', trackId);
-      } else if (ev.ctrlKey || ev.shiftKey) {
-        skipDrag = true;
-        if (ev.shiftKey && !ev.ctrlKey) {
-          // range select click
-          selection.cursor = trackId;
-          selectQueueRange();
-        } else if (!ev.shiftKey && ev.ctrlKey) {
-          // individual item selection toggle
-          selection.cursor = trackId;
-          selection.rangeSelectAnchor = trackId;
-          selection.rangeSelectAnchorType = selection.cursorType;
-          toggleSelectionUnderCursor();
-        }
-      } else if (selection.ids.queue[trackId] == null) {
-        selection.selectOnly('queue', trackId);
-      }
-      refreshSelection();
-      if (!skipDrag) {
-        performDrag(ev, {
-          complete: function(result, ev){
-            var delta, id;
-            delta = {
-              top: 0,
-              bottom: 1
-            };
-            player.moveIds(Object.keys(selection.ids.queue), result.previousKey, result.nextKey);
-          },
-          cancel: function(){
-            selection.selectOnly('queue', trackId);
-            refreshSelection();
-          }
-        });
-      }
-    } else if (ev.which === 3) {
-      if (ev.altKey) return;
-      ev.preventDefault();
-      trackId = this.getAttribute('data-id');
-      if (!selection.isQueue() || selection.ids.queue[trackId] == null) {
-        selection.selectOnly('queue', trackId);
-        refreshSelection();
-      }
-      popContextMenu('queue', ev.pageX, ev.pageY);
-    }
-  });
+  queueItemsDom.addEventListener('dblclick', onQueueItemsDblClick, false);
+  queueItemsDom.addEventListener('contextmenu', onQueueItemsContextMenu, false);
+  queueItemsDom.addEventListener('mousedown', onQueueItemsMouseDown, false);
 }
 
 function popContextMenu(type, x, y) {
@@ -3387,34 +3418,32 @@ function renderOnlineUsers() {
     }
   }
 
-  var scrollTop = $eventsOnlineUsers.scrollTop();
+  var scrollTop = eventsOnlineUsersDom.scrollTop;
 
 
   // add the missing dom entries
-  var onlineUserDom = $eventsOnlineUsers.get(0);
-  var heightChanged = onlineUserDom.childElementCount !== sortedConnectedUsers.length;
-  for (i = onlineUserDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
-    $eventsOnlineUsers.append(
+  var heightChanged = eventsOnlineUsersDom.childElementCount !== sortedConnectedUsers.length;
+  for (i = eventsOnlineUsersDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
+    eventsOnlineUsersDom.insertAdjacentHTML('beforeend',
       '<div class="user">' +
         '<span class="streaming ui-icon ui-icon-signal-diag"></span>' +
         '<span class="name"></span>' +
       '</div>');
   }
   // remove extra dom entries
-  var domItem;
-  while (sortedConnectedUsers.length < onlineUserDom.childElementCount) {
-    onlineUserDom.removeChild(onlineUserDom.lastChild);
+  while (sortedConnectedUsers.length < eventsOnlineUsersDom.childElementCount) {
+    eventsOnlineUsersDom.removeChild(eventsOnlineUsersDom.lastChild);
   }
   // overwrite existing dom entries
-  var $domItems = $eventsOnlineUsers.children();
+  var domItems = eventsOnlineUsersDom.children;
   for (i = 0; i < sortedConnectedUsers.length; i += 1) {
-    var $domItem = $($domItems[i]);
+    var domItem = domItems[i];
     user = sortedConnectedUsers[i];
-    $domItem.find('.name').text(user.name);
-    $domItem.find('.streaming').toggle(user.streaming);
+    domItem.children[0].style.display = user.streaming ? "" : "none";
+    domItem.children[1].textContent = user.name;
   }
 
-  $eventsOnlineUsers.scrollTop(scrollTop);
+  eventsOnlineUsersDom.scrollTop = scrollTop;
 
   if (heightChanged) {
     triggerResize();
@@ -3745,14 +3774,14 @@ function resizeDomElements() {
   queueWindowDom.style.width = (window.innerWidth - queueWindowLeft - MARGIN) + "px";
   leftWindowDom.style.height = (window.innerHeight - secondLayerTop) + "px";
   queueWindowDom.style.height = (leftWindowDom.clientHeight - MARGIN) + "px";
-  var tabContentsHeight = leftWindowDom.clientHeight - $tabs.height() - MARGIN;
-  libraryDom.style.height = (tabContentsHeight - $libHeader.height()) + "px";
-  $upload.height(tabContentsHeight);
-  eventsListDom.style.height = (tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height()) + "px";
-  $playlists.height(tabContentsHeight - newPlaylistNameDom.offsetHeight);
+  var tabContentsHeight = leftWindowDom.clientHeight - tabsDom.clientHeight - MARGIN;
+  libraryDom.style.height = (tabContentsHeight - libHeaderDom.clientHeight) + "px";
+  uploadDom.style.height = tabContentsHeight + "px";
+  eventsListDom.style.height = (tabContentsHeight - eventsOnlineUsersDom.clientHeight - chatBoxDom.clientHeight) + "px";
+  playlistsDom.style.height = (tabContentsHeight - newPlaylistNameDom.offsetHeight) + "px";
 
   setAllTabsHeight(tabContentsHeight);
-  $queueItems.height(queueWindowDom.clientHeight - $queueHeader.position().top - $queueHeader.height());
+  queueItemsDom.style.height = (queueWindowDom.clientHeight - queueHeaderDom.offsetTop - queueHeaderDom.clientHeight) + "px";
 
   if (eventsListScrolledToBottom) {
     scrollEventsToBottom();

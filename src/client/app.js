@@ -581,8 +581,8 @@ var $nowPlayingElapsed = $nowPlaying.find('.elapsed');
 var $nowPlayingLeft = $nowPlaying.find('.left');
 var $volSlider = $('#vol-slider');
 var $settings = $('#settings');
-var $uploadByUrl = $('#upload-by-url');
-var $importByName = $('#import-by-name');
+var uploadByUrlDom = document.getElementById('upload-by-url');
+var importByNameDom = document.getElementById('import-by-name');
 var $mainErrMsg = $('#main-err-msg');
 var $mainErrMsgText = $('#main-err-msg-text');
 var $playlistsList = $('#playlists-list');
@@ -591,57 +591,57 @@ var $upload = $('#upload');
 var $trackDisplay = $('#track-display');
 var $libHeader = $('#lib-window-header');
 var $queueHeader = $('#queue-header');
-var $autoQueueUploads = $('#auto-queue-uploads');
+var autoQueueUploadsDom = document.getElementById('auto-queue-uploads');
 var uploadInput = document.getElementById("upload-input");
-var $uploadWidget = $("#upload-widget");
+var uploadWidgetDom = document.getElementById('upload-widget');
 var $settingsRegister = $('#settings-register');
 var $settingsShowAuth = $('#settings-show-auth');
-var $settingsAuthCancel = $('#settings-auth-cancel');
-var $settingsAuthSave = $('#settings-auth-save');
-var $settingsAuthEdit = $('#settings-auth-edit');
-var $settingsAuthRequest = $('#settings-auth-request');
-var $settingsAuthLogout = $('#settings-auth-logout');
+var settingsAuthCancelDom = document.getElementById('settings-auth-cancel');
+var settingsAuthSaveDom = document.getElementById('settings-auth-save');
+var settingsAuthEditDom = document.getElementById('settings-auth-edit');
+var settingsAuthRequestDom = document.getElementById('settings-auth-request');
+var settingsAuthLogoutDom = document.getElementById('settings-auth-logout');
 var streamUrlDom = document.getElementById('settings-stream-url');
 var $authPermRead = $('#auth-perm-read');
 var $authPermAdd = $('#auth-perm-add');
 var $authPermControl = $('#auth-perm-control');
 var $authPermAdmin = $('#auth-perm-admin');
-var $lastFmSignOut = $('#lastfm-sign-out');
+var lastFmSignOutDom = document.getElementById('lastfm-sign-out');
 var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
 var $settingsLastFmIn = $('#settings-lastfm-in');
 var $settingsLastFmOut = $('#settings-lastfm-out');
 var settingsLastFmUserDom = document.getElementById('settings-lastfm-user');
-var $toggleScrobble = $('#toggle-scrobble');
+var toggleScrobbleDom = document.getElementById('toggle-scrobble');
 var shortcutsDom = document.getElementById('shortcuts');
-var $editTagsDialog = $('#edit-tags');
+var editTagsDialogDom = document.getElementById('edit-tags');
 var $libraryMenu = $('#library-menu');
-var $toggleHardwarePlayback = $('#toggle-hardware-playback');
-var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
+var toggleHardwarePlaybackDom = document.getElementById('toggle-hardware-playback');
+var toggleHardwarePlaybackLabel = document.getElementById('toggle-hardware-playback-label');
 var newPlaylistNameDom = document.getElementById('new-playlist-name');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
 var $volNum = $('#vol-num');
 var $volWarning = $('#vol-warning');
-var $ensureAdminDiv = $('#ensure-admin');
+var ensureAdminDiv = document.getElementById('ensure-admin');
 var $ensureAdminBtn = $('#ensure-admin-btn');
-var $authShowPassword = $('#auth-show-password');
-var $authUsername = $('#auth-username');
-var $authUsernameDisplay = $('#auth-username-display');
-var $authPassword = $('#auth-password');
-var $settingsUsers = $('#settings-users');
-var $settingsUsersSelect = $('#settings-users-select');
+var authShowPasswordDom = document.getElementById('auth-show-password');
+var authUsernameDom = document.getElementById('auth-username');
+var authUsernameDisplayDom = document.getElementById('auth-username-display');
+var authPasswordDom = document.getElementById('auth-password');
+var settingsUsersDom = document.getElementById('settings-users');
+var settingsUsersSelect = document.getElementById('settings-users-select');
 var $settingsRequests = $('#settings-requests');
 var $settingsRequest = $('#settings-request');
-var $userPermRead = $('#user-perm-read');
-var $userPermAdd = $('#user-perm-add');
-var $userPermControl = $('#user-perm-control');
-var $userPermAdmin = $('#user-perm-admin');
-var $settingsDeleteUser = $('#settings-delete-user');
+var userPermReadDom = document.getElementById('user-perm-read');
+var userPermAddDom = document.getElementById('user-perm-add');
+var userPermControlDom = document.getElementById('user-perm-control');
+var userPermAdminDom = document.getElementById('user-perm-admin');
+var settingsDelUserDom = document.getElementById('settings-delete-user');
 var $requestReplace = $('#request-replace');
 var $requestName = $('#request-name');
-var $requestApprove = $('#request-approve');
-var $requestDeny = $('#request-deny');
+var requestApproveDom = document.getElementById('request-approve');
+var requestDenyDom = document.getElementById('request-deny');
 var $eventsOnlineUsers = $('#events-online-users');
 var $eventsList = $('#events-list');
 var $chatBox = $('#chat-box');
@@ -661,6 +661,20 @@ var editTagsFocusDom = document.getElementById('edit-tag-name');
 var $shortcuts = $(shortcutsDom);
 var $queueBtnRepeat = $(queueBtnRepeatDom);
 var $autoDj = $(autoDjDom);
+var $editTagsDialog = $(editTagsDialogDom);
+var $autoQueueUploads = $(autoQueueUploadsDom);
+var $toggleScrobble = $(toggleScrobbleDom);
+var $toggleHardwarePlayback = $(toggleHardwarePlaybackDom);
+var $settingsAuthEdit = $(settingsAuthEditDom);
+var $settingsAuthSave = $(settingsAuthSaveDom);
+var $settingsAuthCancel = $(settingsAuthCancelDom);
+var $settingsAuthRequest = $(settingsAuthRequestDom);
+var $settingsAuthLogout = $(settingsAuthLogoutDom);
+var $userPermRead = $(userPermReadDom);
+var $userPermAdd = $(userPermAddDom);
+var $userPermControl = $(userPermControlDom);
+var $userPermAdmin = $(userPermAdminDom);
+var $settingsDeleteUser = $(settingsDelUserDom);
 
 var tabs = {
   library: {
@@ -875,7 +889,8 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: function(){
         clickTab(tabs.upload);
-        $uploadByUrl.focus().select();
+        uploadByUrlDom.focus();
+        uploadByUrlDom.select();
       },
     },
     // - maybe?
@@ -1415,7 +1430,7 @@ function renderQueueButtons() {
 }
 
 function updateHaveAdminUserUi() {
-  $ensureAdminDiv.toggle(!haveAdminUser);
+  ensureAdminDiv.style.display = haveAdminUser ? "none" : "";
 }
 
 function renderQueue(){
@@ -2190,9 +2205,9 @@ function sendAuth() {
   });
 }
 
-function settingsAuthSave() {
-  localState.authUsername = $authUsername.val();
-  localState.authPassword = $authPassword.val();
+function settingsAuthSave(ev) {
+  localState.authUsername = authUsernameDom.value;
+  localState.authPassword = authPasswordDom.value;
   saveLocalState();
   sendAuth();
   hideShowAuthEdit(false);
@@ -2206,7 +2221,7 @@ function changeUserName(username) {
   return true;
 }
 
-function settingsAuthCancel() {
+function settingsAuthCancel(ev) {
   hideShowAuthEdit(false);
 }
 
@@ -2318,8 +2333,7 @@ function blurThis() {
 }
 
 function handleAutoDjClick(ev) {
-  var value = $autoDj.prop("checked");
-  setAutoDj(value);
+  setAutoDj(autoDjDom.checked);
   ev.preventDefault();
   ev.stopPropagation();
 }
@@ -2585,13 +2599,8 @@ function showEditTags() {
 }
 
 function setUpEditTagsUi() {
-  $editTagsDialog.find("input").on("keydown", function(ev) {
-    ev.stopPropagation();
-    if (ev.which === 27) {
-      $editTagsDialog.dialog('close');
-    } else if (ev.which === 13) {
-      saveAndClose();
-    }
+  Array.prototype.forEach.call(editTagsDialogDom.querySelectorAll("input"), function(domItem) {
+    domItem.addEventListener('keydown', onInputKeyDown, false);
   });
   for (var propName in EDITABLE_PROPS) {
     var domItem = document.getElementById('edit-tag-' + propName);
@@ -2600,6 +2609,15 @@ function setUpEditTagsUi() {
     domItem.addEventListener('change', listener, false);
     domItem.addEventListener('keypress', listener, false);
     domItem.addEventListener('focus', onFocus, false);
+  }
+
+  function onInputKeyDown(ev) {
+    ev.stopPropagation();
+    if (ev.which === 27) {
+      $editTagsDialog.dialog('close');
+    } else if (ev.which === 13) {
+      saveAndClose();
+    }
   }
 
   function onFocus(ev) {
@@ -2611,8 +2629,8 @@ function setUpEditTagsUi() {
       multiCheckBoxDom.checked = true;
     };
   }
-  $("#edit-tags-ok").on('click', saveAndClose);
-  $("#edit-tags-cancel").on('click', closeDialog);
+  document.getElementById('edit-tags-ok').addEventListener('click', saveAndClose, false);
+  document.getElementById('edit-tags-cancel').addEventListener('click', closeDialog, false);
   perDom.addEventListener('click', updateEditTagsUi, false);
   nextDom.addEventListener('click', saveAndNext, false);
   prevDom.addEventListener('click', saveAndPrev, false);
@@ -2794,11 +2812,12 @@ function uploadFiles(files) {
 
   var $progressBar = $('<div></div>');
   $progressBar.progressbar();
-  var $cancelBtn = $('<button>Cancel</button>');
-  $cancelBtn.on('click', onCancel);
+  var cancelBtnDom = document.createElement('button');
+  cancelBtnDom.textContent = "Cancel";
+  cancelBtnDom.addEventListener('click', onCancel, false);
 
-  $uploadWidget.append($progressBar);
-  $uploadWidget.append($cancelBtn);
+  $(uploadWidgetDom).append($progressBar);
+  uploadWidgetDom.appendChild(cancelBtnDom);
 
   var req = new XMLHttpRequest();
   req.upload.addEventListener('progress', onProgress, false);
@@ -2817,14 +2836,14 @@ function uploadFiles(files) {
     cleanup();
   }
 
-  function onCancel() {
+  function onCancel(ev) {
     req.abort();
     cleanup();
   }
 
   function cleanup() {
     $progressBar.remove();
-    $cancelBtn.remove();
+    cancelBtnDom.parentNode.removeChild(cancelBtnDom);
   }
 }
 
@@ -2835,43 +2854,49 @@ function setAutoUploadBtnState() {
     .button('refresh');
 }
 
-function setUpUploadUi(){
+function onAutoQueueUploadClick(ev) {
+  localState.autoQueueUploads = autoQueueUploadsDom.checked;
+  saveLocalState();
+  setAutoUploadBtnState();
+}
+
+function onUploadByUrlKeyDown(ev) {
+  ev.stopPropagation();
+  if (ev.which === 27) {
+    uploadByUrlDom.value = "";
+    uploadByUrlDom.blur();
+  } else if (ev.which === 13) {
+    importUrl();
+  }
+}
+
+function onImportByNameKeyDown(ev) {
+  ev.stopPropagation();
+  if (ev.which === 27) {
+    importByNameDom.value = "";
+    importByNameDom.blur();
+  } else if (ev.which === 13 && ev.ctrlKey) {
+    importNames();
+  }
+}
+
+function onUploadInputChange(ev) {
+  uploadFiles(this.files);
+}
+
+function setUpUploadUi() {
   $autoQueueUploads.button({ label: "..." });
   setAutoUploadBtnState();
-  $autoQueueUploads.on('click', function(ev) {
-    var value = $(this).prop('checked');
-    localState.autoQueueUploads = value;
-    saveLocalState();
-    setAutoUploadBtnState();
-  });
-  uploadInput.addEventListener('change', onChange, false);
-
-  function onChange(ev) {
-    uploadFiles(this.files);
-  }
-
-  $uploadByUrl.on('keydown', function(ev){
-    ev.stopPropagation();
-    if (ev.which === 27) {
-      $uploadByUrl.val("").blur();
-    } else if (ev.which === 13) {
-      importUrl();
-    }
-  });
-
-  $importByName.on('keydown', function(ev) {
-    ev.stopPropagation();
-    if (ev.which === 27) {
-      $importByName.val("").blur();
-    } else if (ev.which === 13 && ev.ctrlKey) {
-      importNames();
-    }
-  });
+  autoQueueUploadsDom.addEventListener('click', onAutoQueueUploadClick, false);
+  uploadInput.addEventListener('change', onUploadInputChange, false);
+  uploadByUrlDom.addEventListener('keydown', onUploadByUrlKeyDown, false);
+  importByNameDom.addEventListener('keydown', onImportByNameKeyDown, false);
 }
 
 function importUrl() {
-  var url = $uploadByUrl.val();
-  $uploadByUrl.val("").blur();
+  var url = uploadByUrlDom.value;
+  uploadByUrlDom.value = "";
+  uploadByUrlDom.blur();
   socket.send('importUrl', {
     url: url,
     autoQueue: !!localState.autoQueueUploads,
@@ -2879,9 +2904,10 @@ function importUrl() {
 }
 
 function importNames() {
-  var namesText = $importByName.val();
+  var namesText = importByNameDom.value;
   var namesList = namesText.split("\n").map(trimIt).filter(truthy);
-  $importByName.val("").blur();
+  importByNameDom.value = "";
+  importByNameDom.blur();
   socket.send('importNames', {
     names: namesList,
     autoQueue: !!localState.autoQueueUploads,
@@ -2917,22 +2943,24 @@ function updateLastFmSettingsUi() {
 function updateSettingsAuthUi() {
   var i, user;
   var request = null;
-  var selectedUserId = $settingsUsersSelect.val();
-  $settingsUsersSelect.empty();
+  var selectedUserId = settingsUsersSelect.value;
+  while (settingsUsersSelect.options.length) {
+    settingsUsersSelect.remove(settingsUsersSelect.options.length - 1);
+  }
   for (i = 0; i < player.usersList.length; i += 1) {
     user = player.usersList[i];
     if (user.approved) {
-      $settingsUsersSelect.append($("<option/>", {
-        value: user.id,
-        text: user.name,
-      }));
+      var newOption = document.createElement('option');
+      newOption.textContent = user.name;
+      newOption.value = user.id;
+      settingsUsersSelect.add(newOption);
       selectedUserId = selectedUserId || user.id;
     }
     if (!user.approved && user.requested) {
       request = request || user;
     }
   }
-  $settingsUsersSelect.val(selectedUserId);
+  settingsUsersSelect.value = selectedUserId;
   updatePermsForSelectedUser();
 
   if (request) {
@@ -2958,16 +2986,17 @@ function updateSettingsAuthUi() {
   $authPermControl.toggle(havePerm('control'));
   $authPermAdmin.toggle(havePerm('admin'));
   streamUrlDom.setAttribute('href', getStreamUrl());
-  $settingsAuthRequest.toggle(myUser.registered && !myUser.requested && !myUser.approved);
-  $settingsAuthLogout.toggle(myUser.registered);
+  settingsAuthRequestDom.style.display =
+    (myUser.registered && !myUser.requested && !myUser.approved) ? "" : "none";
+  settingsAuthLogoutDom.style.display = myUser.registered ? "" : "none";
   $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
-  $settingsUsers.toggle(havePerm('admin'));
+  settingsUsersDom.style.display = havePerm('admin') ? "" : "none";
   $settingsRequests.toggle(havePerm('admin') && !!request);
 
   $toggleHardwarePlayback
     .prop('disabled', !havePerm('admin'))
     .button('refresh');
-  $toggleHardwarePlaybackLabel.attr('title', havePerm('admin') ? "" : "Requires admin privilege.");
+  toggleHardwarePlaybackLabel.setAttribute('title', havePerm('admin') ? "" : "Requires admin privilege.");
 }
 
 function updateSettingsAdminUi() {
@@ -2977,10 +3006,88 @@ function updateSettingsAdminUi() {
     .button('refresh');
 }
 
-function setUpSettingsUi(){
+function sendEnsureAdminUser(ev) {
+  socket.send('ensureAdminUser');
+}
+
+function onLastFmSignOutClick(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  localState.lastfm.username = null;
+  localState.lastfm.session_key = null;
+  localState.lastfm.scrobbling_on = false;
+  saveLocalState();
+  updateLastFmSettingsUi();
+}
+
+function onToggleScrobbleClick(ev) {
+  var msg;
+  var value = toggleScrobbleDom.checked;
+  if (value) {
+    msg = 'LastFmScrobblersAdd';
+    localState.lastfm.scrobbling_on = true;
+  } else {
+    msg = 'LastFmScrobblersRemove';
+    localState.lastfm.scrobbling_on = false;
+  }
+  saveLocalState();
+  var params = {
+    username: localState.lastfm.username,
+    sessionKey: localState.lastfm.session_key
+  };
+  socket.send(msg, params);
+  updateLastFmSettingsUi();
+}
+
+function onHardwarePlaybackClick(ev) {
+  socket.send('hardwarePlayback', toggleHardwarePlaybackDom.checked);
+  updateSettingsAdminUi();
+}
+
+function onSettingsAuthEditClick(ev) {
+  authUsernameDom.value = localState.authUsername;
+  authPasswordDom.value = localState.authPassword;
+  hideShowAuthEdit(true);
+  authUsernameDom.focus();
+  authUsernameDom.select();
+}
+
+function onAuthShowPasswordChange(ev) {
+  authPasswordDom.type = authShowPasswordDom.checked ? 'text' : 'password';
+}
+
+function onSettingsAuthRequestClick(ev) {
+  socket.send('requestApproval');
+  myUser.requested = true;
+  updateSettingsAuthUi();
+}
+
+function onSettingsAuthLogoutClick(ev) {
+  localState.authUsername = null;
+  localState.authPassword = null;
+  saveLocalState();
+  socket.send('logout');
+  myUser.registered = false;
+  updateSettingsAuthUi();
+}
+
+function onSettingsDelUserClick(ev) {
+  var selectedUserId = settingsUsersSelect.value;
+  socket.send('deleteUsers', [selectedUserId]);
+}
+
+function onRequestApproveClick(ev) {
+  handleApproveDeny(true);
+}
+
+function onRequestDenyClick(ev) {
+  handleApproveDeny(false);
+}
+
+function setUpSettingsUi() {
   $toggleScrobble.button();
   $toggleHardwarePlayback.button();
-  $lastFmSignOut.button();
+  $(lastFmSignOutDom).button();
   $settingsAuthCancel.button();
   $settingsAuthSave.button();
   $settingsAuthEdit.button();
@@ -2993,90 +3100,29 @@ function setUpSettingsUi(){
   $userPermAdmin.button();
   $settingsDeleteUser.button();
 
-  $ensureAdminDiv.on('click', function(ev) {
-    socket.send('ensureAdminUser');
-  });
+  ensureAdminDiv.addEventListener('click', sendEnsureAdminUser, false);
+  lastFmSignOutDom.addEventListener('click', onLastFmSignOutClick, false);
+  toggleScrobbleDom.addEventListener('click', onToggleScrobbleClick, false);
+  toggleHardwarePlaybackDom.addEventListener('click', onHardwarePlaybackClick, false);
+  settingsAuthEditDom.addEventListener('click', onSettingsAuthEditClick, false);
+  settingsAuthSaveDom.addEventListener('click', settingsAuthSave, false);
+  settingsAuthCancelDom.addEventListener('click', settingsAuthCancel, false);
+  authUsernameDom.addEventListener('keydown', handleUserOrPassKeyDown, false);
+  authPasswordDom.addEventListener('keydown', handleUserOrPassKeyDown, false);
+  authShowPasswordDom.addEventListener('change', onAuthShowPasswordChange, false);
+  settingsAuthRequestDom.addEventListener('click', onSettingsAuthRequestClick, false);
+  settingsAuthLogoutDom.addEventListener('click', onSettingsAuthLogoutClick, false);
 
-  $lastFmSignOut.on('click', function(ev) {
-    localState.lastfm.username = null;
-    localState.lastfm.session_key = null;
-    localState.lastfm.scrobbling_on = false;
-    saveLocalState();
-    updateLastFmSettingsUi();
-    ev.preventDefault();
-    ev.stopPropagation();
-  });
-  $toggleScrobble.on('click', function(ev) {
-    var msg;
-    var value = $(this).prop("checked");
-    if (value) {
-      msg = 'LastFmScrobblersAdd';
-      localState.lastfm.scrobbling_on = true;
-    } else {
-      msg = 'LastFmScrobblersRemove';
-      localState.lastfm.scrobbling_on = false;
-    }
-    saveLocalState();
-    var params = {
-      username: localState.lastfm.username,
-      sessionKey: localState.lastfm.session_key
-    };
-    socket.send(msg, params);
-    updateLastFmSettingsUi();
-  });
-  $toggleHardwarePlayback.on('click', function(ev) {
-    var value = $(this).prop('checked');
-    socket.send('hardwarePlayback', value);
-    updateSettingsAdminUi();
-  });
-  $settingsAuthEdit.on('click', function(ev) {
-    $authUsername.val(localState.authUsername);
-    $authPassword.val(localState.authPassword);
-    hideShowAuthEdit(true);
-    $authUsername.focus().select();
-  });
-  $settingsAuthSave.on('click', function(ev){
-    settingsAuthSave();
-  });
-  $settingsAuthCancel.on('click', function(ev) {
-    settingsAuthCancel();
-  });
-  $authUsername.on('keydown', handleUserOrPassKeyDown);
-  $authPassword.on('keydown', handleUserOrPassKeyDown);
-  $authShowPassword.on('change', function(ev) {
-    var showPw = $authShowPassword.prop('checked');
-    $authPassword.get(0).type = showPw ? 'text' : 'password';
-  });
-  $settingsAuthRequest.on('click', function(ev) {
-    socket.send('requestApproval');
-    myUser.requested = true;
-    updateSettingsAuthUi();
-  });
-  $settingsAuthLogout.on('click', function(ev) {
-    localState.authUsername = null;
-    localState.authPassword = null;
-    saveLocalState();
-    socket.send('logout');
-    myUser.registered = false;
-    updateSettingsAuthUi();
-  });
-  $userPermRead.on('change', updateSelectedUserPerms);
-  $userPermAdd.on('change', updateSelectedUserPerms);
-  $userPermControl.on('change', updateSelectedUserPerms);
-  $userPermAdmin.on('change', updateSelectedUserPerms);
-  $settingsUsersSelect.on('change', updatePermsForSelectedUser);
+  userPermReadDom.addEventListener('change', updateSelectedUserPerms, false);
+  userPermAddDom.addEventListener('change', updateSelectedUserPerms, false);
+  userPermControlDom.addEventListener('change', updateSelectedUserPerms, false);
+  userPermAdminDom.addEventListener('change', updateSelectedUserPerms, false);
 
-  $settingsDeleteUser.on('click', function(ev) {
-    var selectedUserId = $settingsUsersSelect.val();
-    socket.send('deleteUsers', [selectedUserId]);
-  });
+  settingsUsersSelect.addEventListener('change', updatePermsForSelectedUser, false);
+  settingsDelUserDom.addEventListener('click', onSettingsDelUserClick, false);
 
-  $requestApprove.on('click', function(ev) {
-    handleApproveDeny(true);
-  });
-  $requestDeny.on('click', function(ev) {
-    handleApproveDeny(false);
-  });
+  requestApproveDom.addEventListener('click', onRequestApproveClick, false);
+  requestDenyDom.addEventListener('click', onRequestDenyClick, false);
 }
 
 function handleApproveDeny(approved) {
@@ -3098,7 +3144,7 @@ function handleApproveDeny(approved) {
 }
 
 function updatePermsForSelectedUser() {
-  var selectedUserId = $settingsUsersSelect.val();
+  var selectedUserId = settingsUsersSelect.value;
   var user = player.usersTable[selectedUserId];
   if (!user) return;
   $userPermRead.prop('checked', user.perms.read).button('refresh');
@@ -3113,12 +3159,12 @@ function updateSelectedUserPerms(ev) {
   ev.preventDefault();
   ev.stopPropagation();
   socket.send('updateUser', {
-    userId: $settingsUsersSelect.val(),
+    userId: settingsUsersSelect.value,
     perms: {
-      read: $userPermRead.prop('checked'),
-      add: $userPermAdd.prop('checked'),
-      control: $userPermControl.prop('checked'),
-      admin: $userPermAdmin.prop('checked'),
+      read: userPermReadDom.checked,
+      add: userPermAddDom.checked,
+      control: userPermControlDom.checked,
+      admin: userPermAdminDom.checked,
     },
   });
 }
@@ -3126,9 +3172,9 @@ function updateSelectedUserPerms(ev) {
 function handleUserOrPassKeyDown(ev) {
   ev.stopPropagation();
   if (ev.which === 27) {
-    settingsAuthCancel();
+    settingsAuthCancel(ev);
   } else if (ev.which === 13) {
-    settingsAuthSave();
+    settingsAuthSave(ev);
   }
 }
 
@@ -3871,7 +3917,7 @@ function init() {
   socket.on('LastFmApiKey', updateLastFmApiKey);
   socket.on('user', function(data) {
     myUser = data;
-    $authUsernameDisplay.text(myUser.name);
+    authUsernameDisplayDom.textContent = myUser.name;
     if (!localState.authUsername || !localState.authPassword) {
       // We didn't have a user account saved. The server assigned us a name.
       // Generate a password and call dibs on the account.

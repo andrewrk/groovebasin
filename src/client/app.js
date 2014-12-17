@@ -563,7 +563,6 @@ var localState = {
   authPassword: null,
   autoQueueUploads: true,
 };
-var $window = $(window);
 var $streamBtn = $('#stream-btn');
 var $clientVolSlider = $('#client-vol-slider');
 var $clientVol = $('#client-vol');
@@ -704,6 +703,7 @@ var $importTabSpan = tabs.upload.$tab.find('span');
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
 var triggerPlaylistsUpdate = makeRenderCall(updatePlaylistsUi, 100);
+var triggerResize = makeRenderCall(resizeDomElements, 20);
 var keyboardHandlers = (function(){
   var volumeDownHandler = {
       ctrl: false,
@@ -928,7 +928,7 @@ var keyboardHandlers = (function(){
             modal: true,
             title: "Keyboard Shortcuts",
             minWidth: 600,
-            height: documentHeight() - 40,
+            height: window.innerHeight - 40,
           });
           $shortcuts.focus();
         } else {
@@ -1854,7 +1854,7 @@ function renderNowPlaying() {
   renderVolumeSlider();
 }
 
-function render(){
+function render() {
   var hideMainErr = loadStatus === LoadStatus.GoodToGo;
   $queueWindow.toggle(hideMainErr);
   $leftWindow.toggle(hideMainErr);
@@ -1871,7 +1871,7 @@ function render(){
   renderNowPlaying();
   updateSettingsAuthUi();
   updateLastFmSettingsUi();
-  handleResize();
+  resizeDomElements();
 }
 
 function renderArtist($ul, albumList) {
@@ -2444,10 +2444,10 @@ function popContextMenu(type, x, y) {
   var leftPos = x + 1;
   var topPos = y + 1;
   // avoid menu going outside document boundaries
-  if (leftPos + $libraryMenu.width() >= documentWidth()) {
+  if (leftPos + $libraryMenu.width() >= window.innerWidth) {
     leftPos = x - $libraryMenu.width() - 1;
   }
-  if (topPos + $libraryMenu.height() >= documentHeight()) {
+  if (topPos + $libraryMenu.height() >= window.innerHeight) {
     topPos = y - $libraryMenu.height() - 1;
   }
 
@@ -2590,7 +2590,7 @@ function showEditTags() {
     modal: true,
     title: "Edit Tags",
     minWidth: 650,
-    height: Math.min(640, documentHeight() - 40),
+    height: Math.min(640, window.innerHeight - 40),
   });
   perDom.checked = false;
   updateEditTagsUi();
@@ -2767,7 +2767,7 @@ function clickTab(tab) {
   tab.$tab.addClass('ui-state-active');
   tab.$pane.show();
   activeTab = tab;
-  handleResize();
+  triggerResize();
   if (tab === tabs.events) {
     player.markAllEventsSeen();
     renderUnseenChatCount();
@@ -3411,7 +3411,7 @@ function renderOnlineUsers() {
   $eventsOnlineUsers.scrollTop(scrollTop);
 
   if (heightChanged) {
-    handleResize();
+    triggerResize();
   }
 }
 
@@ -3723,22 +3723,14 @@ function toPlaylistItemId(s) {
 }
 
 function toPlaylistId(s) {
-  // need toHtmlId because jQuery throws a fit with "(incoming)"
+  // $ need toHtmlId because jQuery throws a fit with "(incoming)"
   return "pl-pl-" + toHtmlId(s);
 }
 
-function handleResize() {
+function resizeDomElements() {
   var eventsScrollTop = $eventsList.scrollTop();
 
-  $nowPlaying.width(MARGIN);
-
-  setAllTabsHeight(MARGIN);
-  $queueWindow.height(MARGIN);
-  $leftWindow.height(MARGIN);
-  $library.height(MARGIN);
-  $upload.height(MARGIN);
-  $queueItems.height(MARGIN);
-  $nowPlaying.width(documentWidth() - MARGIN * 2);
+  $nowPlaying.width(window.innerWidth - MARGIN * 2);
   var secondLayerTop = $nowPlaying.offset().top + $nowPlaying.height() + MARGIN;
   $leftWindow.offset({
     left: MARGIN,
@@ -3748,8 +3740,8 @@ function handleResize() {
     left: $leftWindow.offset().left + $leftWindow.width() + MARGIN,
     top: secondLayerTop
   });
-  $queueWindow.width($window.width() - $queueWindow.offset().left - MARGIN);
-  $leftWindow.height($window.height() - $leftWindow.offset().top);
+  $queueWindow.width(window.innerWidth - $queueWindow.offset().left - MARGIN);
+  $leftWindow.height(window.innerHeight - $leftWindow.offset().top);
   $queueWindow.height($leftWindow.height() - MARGIN);
   var tabContentsHeight = $leftWindow.height() - $tabs.height() - MARGIN;
   $library.height(tabContentsHeight - $libHeader.height());
@@ -3990,7 +3982,7 @@ function init() {
 
   setUpUi();
   render();
-  $window.resize(handleResize);
+  window.addEventListener('resize', triggerResize, false);
   window._debug_player = player;
   window._debug_selection = selection;
 }
@@ -4085,20 +4077,6 @@ function extend(dest, src) {
     dest[name] = src[name];
   }
   return dest;
-}
-
-function documentHeight() {
-  var body = document.body;
-  var html = document.documentElement;
-  return Math.max(body.clientHeight, body.scrollHeight, body.offsetHeight,
-                  html.clientHeight, html.scrollHeight, html.offsetHeight);
-}
-
-function documentWidth() {
-  var body = document.body;
-  var html = document.documentElement;
-  return Math.max(body.clientWidth, body.scrollWidth, body.offsetWidth,
-                  html.clientWidth, html.scrollWidth, html.offsetWidth);
 }
 
 function noop() {}

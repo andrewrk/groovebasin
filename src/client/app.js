@@ -570,8 +570,8 @@ var $clientVol = $('#client-vol');
 var $queueWindow = $('#queue-window');
 var $leftWindow = $('#left-window');
 var $queueItems = $('#queue-items');
-var $autoDj = $('#auto-dj');
-var $queueBtnRepeat = $('#queue-btn-repeat');
+var autoDjDom = document.getElementById('auto-dj');
+var queueBtnRepeatDom = document.getElementById('queue-btn-repeat');
 var $tabs = $('#tabs');
 var $library = $('#library');
 var $libFilter = $('#lib-filter');
@@ -617,7 +617,7 @@ var $editTagsDialog = $('#edit-tags');
 var $libraryMenu = $('#library-menu');
 var $toggleHardwarePlayback = $('#toggle-hardware-playback');
 var $toggleHardwarePlaybackLabel = $('#toggle-hardware-playback-label');
-var $newPlaylistName = $('#new-playlist-name');
+var newPlaylistNameDom = document.getElementById('new-playlist-name');
 var $emptyLibraryMessage = $('#empty-library-message');
 var $libraryNoItems = $('#library-no-items');
 var $libraryArtists = $('#library-artists');
@@ -650,8 +650,6 @@ var $queueDuration = $('#queue-duration');
 var $queueDurationLabel = $('#queue-duration-label');
 var $importProgress = $('#import-progress');
 var $importProgressList = $('#import-progress-list');
-var autoDjLabel = document.getElementById('auto-dj-label');
-var plBtnRepeatLabel = document.getElementById('queue-btn-repeat-label');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 var perDom = document.getElementById('edit-tags-per');
 var perLabelDom = document.getElementById('edit-tags-per-label');
@@ -661,6 +659,8 @@ var editTagsFocusDom = document.getElementById('edit-tag-name');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
+var $queueBtnRepeat = $(queueBtnRepeatDom);
+var $autoDj = $(autoDjDom);
 
 var tabs = {
   library: {
@@ -839,7 +839,8 @@ var keyboardHandlers = (function(){
       shift: false,
       handler: function() {
         clickTab(tabs.playlists);
-        $newPlaylistName.focus().select();
+        newPlaylistNameDom.focus();
+        newPlaylistNameDom.select();
       },
     },
     // r
@@ -1402,7 +1403,7 @@ function getDragPosition(x, y) {
   return result;
 }
 
-function renderQueueButtons(){
+function renderQueueButtons() {
   $autoDj
     .prop("checked", autoDjOn)
     .button("refresh");
@@ -2057,7 +2058,7 @@ function toggleAutoDj(){
   setAutoDj(!autoDjOn);
 }
 
-function nextRepeatState(){
+function nextRepeatState(ev) {
   player.setRepeatMode((player.repeat + 1) % repeatModeNames.length);
 }
 
@@ -2316,17 +2317,16 @@ function blurThis() {
   this.blur();
 }
 
-function setUpPlayQueueUi() {
-  $queueBtnRepeat.on('click', nextRepeatState);
-  plBtnRepeatLabel.addEventListener('mousedown', stopPropagation, false);
+function handleAutoDjClick(ev) {
+  var value = $autoDj.prop("checked");
+  setAutoDj(value);
+  ev.preventDefault();
+  ev.stopPropagation();
+}
 
-  $autoDj.on('click', function(ev) {
-    var value = $(this).prop("checked");
-    setAutoDj(value);
-    ev.preventDefault();
-    ev.stopPropagation();
-  });
-  autoDjLabel.addEventListener('mousedown', stopPropagation, false);
+function setUpPlayQueueUi() {
+  queueBtnRepeatDom.addEventListener('click', nextRepeatState, false);
+  autoDjDom.addEventListener('click', handleAutoDjClick, false);
 
   $queueItems.on('dblclick', '.pl-item', function(ev){
     var trackId = $(this).attr('data-id');
@@ -2462,32 +2462,35 @@ function onShuffleContextMenu(ev) {
   removeContextMenu();
 }
 
-function setUpPlaylistsUi() {
-  $newPlaylistName.on('keydown', function(ev) {
-    ev.stopPropagation();
+function onNewPlaylistNameKeyDown(ev) {
+  ev.stopPropagation();
 
-    if (ev.which === 27) {
-      $newPlaylistName.val("").blur();
-    } else if (ev.which === 13) {
-      var name = $newPlaylistName.val().trim();
-      if (name.length > 0) {
-        player.createPlaylist(name);
-        $newPlaylistName.val("");
-      }
-    } else if (ev.which === 40) {
-      // down
-      selection.selectOnlyFirstPos('playlist');
-      selection.scrollToCursor();
-      refreshSelection();
-      $newPlaylistName.blur();
-    } else if (ev.which === 38) {
-      // up
-      selection.selectOnlyLastPos('playlist');
-      selection.scrollToCursor();
-      refreshSelection();
-      $newPlaylistName.blur();
+  if (ev.which === 27) {
+    newPlaylistNameDom.value = "";
+    newPlaylistNameDom.blur();
+  } else if (ev.which === 13) {
+    var name = newPlaylistNameDom.value.trim();
+    if (name.length > 0) {
+      player.createPlaylist(name);
+      newPlaylistNameDom.value = "";
     }
-  });
+  } else if (ev.which === 40) {
+    // down
+    selection.selectOnlyFirstPos('playlist');
+    selection.scrollToCursor();
+    refreshSelection();
+    newPlaylistNameDom.blur();
+  } else if (ev.which === 38) {
+    // up
+    selection.selectOnlyLastPos('playlist');
+    selection.scrollToCursor();
+    refreshSelection();
+    newPlaylistNameDom.blur();
+  }
+}
+
+function setUpPlaylistsUi() {
+  newPlaylistNameDom.addEventListener('keydown', onNewPlaylistNameKeyDown, false);
 
   genericTreeUi($playlistsList, {
     toggleExpansion: togglePlaylistExpansion,
@@ -3706,7 +3709,7 @@ function handleResize() {
   $library.height(tabContentsHeight - $libHeader.height());
   $upload.height(tabContentsHeight);
   $eventsList.height(tabContentsHeight - $eventsOnlineUsers.height() - $chatBox.height());
-  $playlists.height(tabContentsHeight - $newPlaylistName.outerHeight());
+  $playlists.height(tabContentsHeight - newPlaylistNameDom.offsetHeight);
 
   setAllTabsHeight(tabContentsHeight);
   $queueItems.height($queueWindow.height() - $queueHeader.position().top - $queueHeader.height());

@@ -656,11 +656,11 @@ var editTagsFocusDom = document.getElementById('edit-tag-name');
 var eventsTabSpan = document.getElementById('events-tab-label');
 var importTabSpan = document.getElementById('import-tab-label');
 var trackSliderDom = document.getElementById('track-slider');
+var clientVolSlider = document.getElementById('client-vol-slider');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
 var $editTagsDialog = $(editTagsDialogDom);
-var $clientVolSlider = $('#client-vol-slider');
 var $volSlider = $('#vol-slider');
 var $libraryMenu = $('#library-menu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
@@ -3741,15 +3741,11 @@ function setUpUi() {
 
 function setUpStreamUi() {
   streamBtnDom.addEventListener('click', toggleStreamStatus, false);
-  $clientVolSlider.slider({
-    step: 0.01,
-    min: 0,
-    max: 1,
-    value: localState.clientVolume || 1,
-    change: setVol,
-    slide: setVol,
-  });
-  clientVolDom.style.display = 'none';
+  clientVolSlider.addEventListener('change', setVol, false);
+  clientVolSlider.addEventListener('input', setVol, false);
+
+  clientVolSlider.value = localState.clientVolume || 1;
+  setVol();
 }
 
 function toQueueItemId(s) {
@@ -3907,9 +3903,8 @@ function updateStreamPlayer() {
   renderStreamButton();
 }
 
-function setVol(ev, ui) {
-  if (ev.originalEvent == null) return;
-  setStreamVolume(ui.value);
+function setVol() {
+  setStreamVolume(clientVolSlider.value);
 }
 
 function setStreamVolume(v) {
@@ -3918,7 +3913,7 @@ function setStreamVolume(v) {
   streamAudio.volume = v;
   localState.clientVolume = v;
   saveLocalState();
-  $clientVolSlider.slider('option', 'value', streamAudio.volume);
+  clientVolSlider.value = streamAudio.volume;
 }
 
 function init() {

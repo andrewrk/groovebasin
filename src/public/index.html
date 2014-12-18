@@ -15,13 +15,13 @@
       <button class="button" id="nowplaying-next" tabindex="-1"><label class="ui-icon ui-icon-seek-next"></label></button>
       <button class="button" id="stream-btn" tabindex="-1"><span class="ui-icon ui-icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
     </div>
-    <div id="client-vol">
+    <div id="client-vol" style="display: none">
       <span class="ui-icon ui-icon-volume-off"></span>
-      <div id="client-vol-slider"></div>
+      <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
       <span class="ui-icon ui-icon-volume-on"></span>
     </div>
     <h1 id="track-display"></h1>
-    <input type="range" id="track-slider" min="0.0" max="1.0" step="0.0001" tabindex="-1">
+    <input type="range" id="track-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
     <span id="nowplaying-time-elapsed"></span>
     <span id="nowplaying-time-left"></span>
     <div style="clear: both;"></div>

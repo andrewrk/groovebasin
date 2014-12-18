@@ -8,22 +8,12 @@
 </head>
 <body>
   <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
-    <ul class="playback-btns ui-widget ui-helper-clearfix">
-      <li id="nowplaying-prev" class="ui-state-default ui-corner-all hoverable">
-        <span class="ui-icon ui-icon-seek-prev"></span>
-      </li>
-      <li id="nowplaying-toggle" class="ui-state-default ui-corner-all hoverable">
-        <span id="nowplaying-toggle-icon" class="ui-icon ui-icon-pause"></span>
-      </li>
-      <li id="nowplaying-stop" class="ui-state-default ui-corner-all hoverable">
-        <span class="ui-icon ui-icon-stop"></span>
-      </li>
-      <li id="nowplaying-next" class="ui-state-default ui-corner-all hoverable">
-        <span class="ui-icon ui-icon-seek-next"></span>
-      </li>
-    </ul>
-    <div id="more-playback-btns">
-      <input class="jquery-button" type="checkbox" id="stream-btn"><label id="stream-btn-label" for="stream-btn">Stream</label>
+    <div class="playback-btns">
+      <button class="button" id="nowplaying-prev" tabindex="-1"><label class="ui-icon ui-icon-seek-prev" for="nowplaying-prev"></label></button>
+      <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="ui-icon ui-icon-pause" for="nowplaying-toggle-icon"></label></button>
+      <button class="button" id="nowplaying-stop" tabindex="-1"><label class="ui-icon ui-icon-stop"></label></button>
+      <button class="button" id="nowplaying-next" tabindex="-1"><label class="ui-icon ui-icon-seek-next"></label></button>
+      <button class="button" id="stream-btn" tabindex="-1"><span class="ui-icon ui-icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
     </div>
     <div id="client-vol">
       <span class="ui-icon ui-icon-volume-off"></span>

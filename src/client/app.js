@@ -564,6 +564,7 @@ var localState = {
   autoQueueUploads: true,
 };
 var streamBtnDom = document.getElementById('stream-btn');
+var streamBtnLabel = document.getElementById('stream-btn-label');
 var clientVolDom = document.getElementById('client-vol');
 var queueWindowDom = document.getElementById('queue-window');
 var leftWindowDom = document.getElementById('left-window');
@@ -658,7 +659,6 @@ var importTabSpan = document.getElementById('import-tab-label');
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
 var $editTagsDialog = $(editTagsDialogDom);
-var $streamBtn = $(streamBtnDom);
 var $clientVolSlider = $('#client-vol-slider');
 var $trackSlider = $('#track-slider');
 var $volSlider = $('#vol-slider');
@@ -2299,6 +2299,11 @@ function onShortcutsWindowKeyDown(ev) {
 }
 
 function setUpGenericUi() {
+  window.addEventListener('focus', onWindowFocus, false);
+  window.addEventListener('blur', onWindowBlur, false);
+  window.addEventListener('resize', triggerResize, false);
+  streamAudio.addEventListener('playing', onStreamPlaying, false);
+
   // $ when we get rid of jQuery UI, this code should be handled in CSS instead of JavaScript
   Array.prototype.forEach.call(document.getElementsByClassName('hoverable'), function(domItem) {
     domItem.addEventListener('mouseover', function(ev) {
@@ -2309,18 +2314,10 @@ function setUpGenericUi() {
     }, false);
   });
 
-  $(".jquery-button")
-    .button()
-    .on('click', blurThis);
-
   window.addEventListener('mousedown', clearSelectionAndHideMenu, false);
   window.addEventListener('keydown', onWindowKeyDown, false);
 
   shortcutsDom.addEventListener('keydown', onShortcutsWindowKeyDown, false);
-}
-
-function blurThis() {
-  this.blur();
 }
 
 function handleAutoDjClick(ev) {
@@ -2716,32 +2713,36 @@ function updateSliderUi(value){
 function onNowPlayingToggleMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
+  nowPlayingToggleDom.blur();
   togglePlayback();
 }
 
 function onNowPlayingPrevMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
+  nowPlayingPrevDom.blur();
   player.prev();
 }
 
 function onNowPlayingNextMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
+  nowPlayingNextDom.blur();
   player.next();
 }
 
 function onNowPlayingStopMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
+  nowPlayingStopDom.blur();
   player.stop();
 }
 
 function setUpNowPlayingUi() {
-  nowPlayingToggleDom.addEventListener('mousedown', onNowPlayingToggleMouseDown, false);
-  nowPlayingPrevDom.addEventListener('mousedown', onNowPlayingPrevMouseDown, false);
-  nowPlayingNextDom.addEventListener('mousedown', onNowPlayingNextMouseDown, false);
-  nowPlayingStopDom.addEventListener('mousedown', onNowPlayingStopMouseDown, false);
+  nowPlayingToggleDom.addEventListener('click', onNowPlayingToggleMouseDown, false);
+  nowPlayingPrevDom.addEventListener('click', onNowPlayingPrevMouseDown, false);
+  nowPlayingNextDom.addEventListener('click', onNowPlayingNextMouseDown, false);
+  nowPlayingStopDom.addEventListener('click', onNowPlayingStopMouseDown, false);
 
   $trackSlider.slider({
     step: 0.0001,
@@ -3740,11 +3741,6 @@ function setUpUi() {
 }
 
 function setUpStreamUi() {
-  $streamBtn.button({
-    icons: {
-      primary: "ui-icon-signal-diag"
-    }
-  });
   streamBtnDom.addEventListener('click', toggleStreamStatus, false);
   $clientVolSlider.slider({
     step: 0.01,
@@ -3820,10 +3816,6 @@ function setAllTabsHeight(h) {
   }
 }
 
-function onStreamLabelDown(ev) {
-  ev.stopPropagation();
-}
-
 function getStreamerCount() {
   var count = player.streamers;
   player.usersList.forEach(function(user) {
@@ -3852,12 +3844,9 @@ function getStreamButtonLabel() {
   return getStreamerCount() + " Stream: " + getStreamStatusLabel();
 }
 
-function renderStreamButton(){
-  var label = getStreamButtonLabel();
-  $streamBtn
-    .button("option", "label", label)
-    .prop("checked", tryingToStream)
-    .button("refresh");
+function renderStreamButton() {
+  streamBtnLabel.textContent = getStreamButtonLabel();
+  updateBtnOn(streamBtnDom, tryingToStream);
   clientVolDom.style.display = tryingToStream ? "" : "none";
 }
 
@@ -3865,6 +3854,7 @@ function toggleStreamStatus(ev) {
   ev.stopPropagation();
   ev.preventDefault();
   tryingToStream = !tryingToStream;
+  streamBtnDom.blur();
   sendStreamingStatus();
   renderStreamButton();
   updateStreamPlayer();
@@ -3934,12 +3924,6 @@ function setStreamVolume(v) {
 }
 
 function init() {
-  window.addEventListener('focus', onWindowFocus, false);
-  window.addEventListener('blur', onWindowBlur, false);
-  window.addEventListener('resize', triggerResize, false);
-  streamAudio.addEventListener('playing', onStreamPlaying, false);
-  document.getElementById('stream-btn-label').addEventListener('mousedown', onStreamLabelDown, false);
-
   loadLocalState();
   socket = new Socket();
   var queryObj = parseQueryString();

@@ -27,14 +27,21 @@ a:hover,a:active,a:focus
 
 .button
   background #333333 url("images/ui-bg_dots-small_20_333333_2x2.png") 50% 50% repeat
-  margin 5px 1px 1px 6px
-  padding 7px
+  margin 3px 1px 1px 1px
+  padding 5px
   border 0
   border-radius 4px
   color #fff
   font-weight bold
   font-size 13px
   cursor pointer
+
+  span
+    display inline-block
+
+  label
+    cursor pointer
+    vertical-align top
 
 .button:hover
   background #00498f url("images/ui-bg_dots-small_40_00498f_2x2.png") 50% 50% repeat
@@ -44,11 +51,14 @@ a:hover,a:active,a:focus
   background-image none
 
 .button.on
-  margin 4px 0 0 5px
+  margin 2px 0 0px 0px
   border 1px solid #096ac8
   background #292929 url("images/ui-bg_flat_40_292929_40x100.png") 50% 50% repeat-x
   font-weight bold
   color #75abff
+
+#stream-btn
+  padding-right 11px
 
 #track-slider
   margin 10px 10px 5px
@@ -62,13 +72,6 @@ a:hover,a:active,a:focus
 
   .playback-btns
     float left
-
-    li
-      cursor pointer
-      float left
-      list-style none outside none
-      margin 2px
-      padding 4px
 
   h1
     letter-spacing 0.1em
@@ -112,11 +115,6 @@ a:hover,a:active,a:focus
 
 #vol-warning a
   color #57BF3B
-
-#more-playback-btns
-  float left
-  font-size .6em
-  margin 2px 0 0 8px
 
 #left-window
   width 400px

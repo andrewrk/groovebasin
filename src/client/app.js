@@ -657,8 +657,6 @@ var importTabSpan = document.getElementById('import-tab-label');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
-var $queueBtnRepeat = $(queueBtnRepeatDom);
-var $autoDj = $(autoDjDom);
 var $editTagsDialog = $(editTagsDialogDom);
 var $autoQueueUploads = $(autoQueueUploadsDom);
 var $toggleScrobble = $(toggleScrobbleDom);
@@ -1423,15 +1421,26 @@ function getDragPosition(x, y) {
   return result;
 }
 
+function renderAutoDj() {
+  if (autoDjOn) {
+    autoDjDom.classList.add('on');
+  } else {
+    autoDjDom.classList.remove('on');
+  }
+  autoDjDom.blur();
+}
+
 function renderQueueButtons() {
-  $autoDj
-    .prop("checked", autoDjOn)
-    .button("refresh");
+  renderAutoDj();
   var repeatModeName = repeatModeNames[player.repeat];
-  $queueBtnRepeat
-    .button("option", "label", "Repeat: " + repeatModeName)
-    .prop("checked", player.repeat !== PlayerClient.REPEAT_OFF)
-    .button("refresh");
+
+  queueBtnRepeatDom.value = "Repeat: " + repeatModeName;
+  if (player.repeat === PlayerClient.REPEAT_OFF) {
+    queueBtnRepeatDom.classList.remove("on");
+  } else {
+    queueBtnRepeatDom.classList.add("on");
+  }
+  queueBtnRepeatDom.blur();
 }
 
 function updateHaveAdminUserUi() {
@@ -2067,13 +2076,10 @@ function togglePlayback(){
   // else we haven't received state from server yet
 }
 
-function setAutoDj(value) {
-  autoDjOn = value;
-  player.sendCommand('autoDjOn', autoDjOn);
-}
-
 function toggleAutoDj(){
-  setAutoDj(!autoDjOn);
+  autoDjOn = !autoDjOn;
+  player.sendCommand('autoDjOn', autoDjOn);
+  renderAutoDj();
 }
 
 function nextRepeatState(ev) {
@@ -2338,7 +2344,7 @@ function blurThis() {
 }
 
 function handleAutoDjClick(ev) {
-  setAutoDj(autoDjDom.checked);
+  toggleAutoDj();
   ev.preventDefault();
   ev.stopPropagation();
 }

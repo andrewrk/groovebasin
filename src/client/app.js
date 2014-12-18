@@ -615,7 +615,6 @@ var toggleScrobbleDom = document.getElementById('toggle-scrobble');
 var shortcutsDom = document.getElementById('shortcuts');
 var editTagsDialogDom = document.getElementById('edit-tags');
 var toggleHardwarePlaybackDom = document.getElementById('toggle-hardware-playback');
-var toggleHardwarePlaybackLabel = document.getElementById('toggle-hardware-playback-label');
 var newPlaylistNameDom = document.getElementById('new-playlist-name');
 var emptyLibraryMessageDom = document.getElementById('empty-library-message');
 var libraryNoItemsDom = document.getElementById('library-no-items');
@@ -623,6 +622,7 @@ var libraryArtistsDom = document.getElementById('library-artists');
 var volNumDom = document.getElementById('vol-num');
 var volWarningDom = document.getElementById('vol-warning');
 var ensureAdminDiv = document.getElementById('ensure-admin');
+var ensureAdminBtn = document.getElementById('ensure-admin-btn');
 var authShowPasswordDom = document.getElementById('auth-show-password');
 var authUsernameDom = document.getElementById('auth-username');
 var authUsernameDisplayDom = document.getElementById('auth-username-display');
@@ -658,25 +658,11 @@ var importTabSpan = document.getElementById('import-tab-label');
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
 var $editTagsDialog = $(editTagsDialogDom);
-var $autoQueueUploads = $(autoQueueUploadsDom);
-var $toggleScrobble = $(toggleScrobbleDom);
-var $toggleHardwarePlayback = $(toggleHardwarePlaybackDom);
-var $settingsAuthEdit = $(settingsAuthEditDom);
-var $settingsAuthSave = $(settingsAuthSaveDom);
-var $settingsAuthCancel = $(settingsAuthCancelDom);
-var $settingsAuthRequest = $(settingsAuthRequestDom);
-var $settingsAuthLogout = $(settingsAuthLogoutDom);
-var $userPermRead = $(userPermReadDom);
-var $userPermAdd = $(userPermAddDom);
-var $userPermControl = $(userPermControlDom);
-var $userPermAdmin = $(userPermAdminDom);
-var $settingsDeleteUser = $(settingsDelUserDom);
 var $streamBtn = $(streamBtnDom);
 var $clientVolSlider = $('#client-vol-slider');
 var $trackSlider = $('#track-slider');
 var $volSlider = $('#vol-slider');
 var $libraryMenu = $('#library-menu');
-var $ensureAdminBtn = $('#ensure-admin-btn');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
 var tabs = {
@@ -1308,11 +1294,6 @@ var eventTypeMessageFns = {
 };
 var searchTimer = null;
 
-window.addEventListener('focus', onWindowFocus, false);
-window.addEventListener('blur', onWindowBlur, false);
-streamAudio.addEventListener('playing', onStreamPlaying, false);
-document.getElementById('stream-btn-label').addEventListener('mousedown', onStreamLabelDown, false);
-
 init();
 
 function saveLocalState(){
@@ -1728,7 +1709,6 @@ function renderPlaylists() {
 
   playlistsDom.scrollTop = scrollTop;
   refreshSelection();
-  // TODO expandPlaylistsToSelection()
 }
 
 function renderLibrary() {
@@ -2630,6 +2610,7 @@ function updateEditTagsUi() {
     setter(domItem, consistent ? commonValue : null);
   }
 }
+
 function showEditTags() {
   $editTagsDialog.dialog({
     modal: true,
@@ -2899,14 +2880,17 @@ function uploadFiles(files) {
 }
 
 function setAutoUploadBtnState() {
-  $autoQueueUploads
-    .button('option', 'label', localState.autoQueueUploads ? 'On' : 'Off')
-    .prop('checked', localState.autoQueueUploads)
-    .button('refresh');
+  if (localState.autoQueueUploads) {
+    autoQueueUploadsDom.classList.add('on');
+    autoQueueUploadsDom.value = "On";
+  } else {
+    autoQueueUploadsDom.classList.remove('on');
+    autoQueueUploadsDom.value = "Off";
+  }
 }
 
 function onAutoQueueUploadClick(ev) {
-  localState.autoQueueUploads = autoQueueUploadsDom.checked;
+  localState.autoQueueUploads = !localState.autoQueueUploads;
   saveLocalState();
   setAutoUploadBtnState();
 }
@@ -2936,7 +2920,6 @@ function onUploadInputChange(ev) {
 }
 
 function setUpUploadUi() {
-  $autoQueueUploads.button({ label: "..." });
   setAutoUploadBtnState();
   autoQueueUploadsDom.addEventListener('click', onAutoQueueUploadClick, false);
   uploadInput.addEventListener('change', onUploadInputChange, false);
@@ -2980,10 +2963,14 @@ function updateLastFmSettingsUi() {
         encodeURIComponent(lastFmApiKey) + "&cb=" +
         encodeURIComponent(location.protocol + "//" + location.host + "/");
   lastFmAuthUrlDom.setAttribute('href', authUrl);
-  $toggleScrobble
-    .button('option', 'label', localState.lastfm.scrobbling_on ? 'On' : 'Off')
-    .prop('checked', localState.lastfm.scrobbling_on)
-    .button('refresh');
+
+  if (localState.lastfm.scrobbling_on) {
+    toggleScrobbleDom.classList.add('on');
+    toggleScrobbleDom.value = "On";
+  } else {
+    toggleScrobbleDom.classList.remove('on');
+    toggleScrobbleDom.value = "Off";
+  }
 }
 
 function updateSettingsAuthUi() {
@@ -3037,21 +3024,22 @@ function updateSettingsAuthUi() {
   settingsAuthRequestDom.style.display =
     (myUser.registered && !myUser.requested && !myUser.approved) ? "" : "none";
   settingsAuthLogoutDom.style.display = myUser.registered ? "" : "none";
-  $settingsAuthEdit.button('option', 'label', myUser.registered ? 'Edit' : 'Register');
+  settingsAuthEditDom.value = myUser.registered ? 'Edit' : 'Register';
   settingsUsersDom.style.display = havePerm('admin') ? "" : "none";
   settingsRequestsDom.style.display = (havePerm('admin') && !!request) ? "" : "none";
 
-  $toggleHardwarePlayback
-    .prop('disabled', !havePerm('admin'))
-    .button('refresh');
-  toggleHardwarePlaybackLabel.setAttribute('title', havePerm('admin') ? "" : "Requires admin privilege.");
+  toggleHardwarePlaybackDom.disabled = !havePerm('admin');
+  toggleHardwarePlaybackDom.setAttribute('title', havePerm('admin') ? "" : "Requires admin privilege.");
 }
 
 function updateSettingsAdminUi() {
-  $toggleHardwarePlayback
-    .button('option', 'label', hardwarePlaybackOn ? 'On' : 'Off')
-    .prop('checked', hardwarePlaybackOn)
-    .button('refresh');
+  if (hardwarePlaybackOn) {
+    toggleHardwarePlaybackDom.classList.add('on');
+    toggleHardwarePlaybackDom.value = "On";
+  } else {
+    toggleHardwarePlaybackDom.classList.remove('on');
+    toggleHardwarePlaybackDom.value = "Off";
+  }
 }
 
 function sendEnsureAdminUser(ev) {
@@ -3069,16 +3057,9 @@ function onLastFmSignOutClick(ev) {
 }
 
 function onToggleScrobbleClick(ev) {
-  var msg;
-  var value = toggleScrobbleDom.checked;
-  if (value) {
-    msg = 'LastFmScrobblersAdd';
-    localState.lastfm.scrobbling_on = true;
-  } else {
-    msg = 'LastFmScrobblersRemove';
-    localState.lastfm.scrobbling_on = false;
-  }
+  localState.lastfm.scrobbling_on = !localState.lastfm.scrobbling_on;
   saveLocalState();
+  var msg = localState.lastfm.scrobbling_on ? 'LastFmScrobblersAdd' : 'LastFmScrobblersRemove';
   var params = {
     username: localState.lastfm.username,
     sessionKey: localState.lastfm.session_key
@@ -3088,7 +3069,8 @@ function onToggleScrobbleClick(ev) {
 }
 
 function onHardwarePlaybackClick(ev) {
-  socket.send('hardwarePlayback', toggleHardwarePlaybackDom.checked);
+  hardwarePlaybackOn = !hardwarePlaybackOn;
+  socket.send('hardwarePlayback', hardwarePlaybackOn);
   updateSettingsAdminUi();
 }
 
@@ -3101,7 +3083,9 @@ function onSettingsAuthEditClick(ev) {
 }
 
 function onAuthShowPasswordChange(ev) {
-  authPasswordDom.type = authShowPasswordDom.checked ? 'text' : 'password';
+  var revealPassword = !isBtnOn(authShowPasswordDom);
+  updateBtnOn(authShowPasswordDom, revealPassword);
+  authPasswordDom.type = revealPassword ? 'text' : 'password';
 }
 
 function onSettingsAuthRequestClick(ev) {
@@ -3133,22 +3117,7 @@ function onRequestDenyClick(ev) {
 }
 
 function setUpSettingsUi() {
-  $toggleScrobble.button();
-  $toggleHardwarePlayback.button();
-  $(lastFmSignOutDom).button();
-  $settingsAuthCancel.button();
-  $settingsAuthSave.button();
-  $settingsAuthEdit.button();
-  $settingsAuthLogout.button();
-  $ensureAdminBtn.button();
-  $settingsAuthRequest.button();
-  $userPermRead.button();
-  $userPermAdd.button();
-  $userPermControl.button();
-  $userPermAdmin.button();
-  $settingsDeleteUser.button();
-
-  ensureAdminDiv.addEventListener('click', sendEnsureAdminUser, false);
+  ensureAdminBtn.addEventListener('click', sendEnsureAdminUser, false);
   lastFmSignOutDom.addEventListener('click', onLastFmSignOutClick, false);
   toggleScrobbleDom.addEventListener('click', onToggleScrobbleClick, false);
   toggleHardwarePlaybackDom.addEventListener('click', onHardwarePlaybackClick, false);
@@ -3157,14 +3126,14 @@ function setUpSettingsUi() {
   settingsAuthCancelDom.addEventListener('click', settingsAuthCancel, false);
   authUsernameDom.addEventListener('keydown', handleUserOrPassKeyDown, false);
   authPasswordDom.addEventListener('keydown', handleUserOrPassKeyDown, false);
-  authShowPasswordDom.addEventListener('change', onAuthShowPasswordChange, false);
+  authShowPasswordDom.addEventListener('click', onAuthShowPasswordChange, false);
   settingsAuthRequestDom.addEventListener('click', onSettingsAuthRequestClick, false);
   settingsAuthLogoutDom.addEventListener('click', onSettingsAuthLogoutClick, false);
 
-  userPermReadDom.addEventListener('change', updateSelectedUserPerms, false);
-  userPermAddDom.addEventListener('change', updateSelectedUserPerms, false);
-  userPermControlDom.addEventListener('change', updateSelectedUserPerms, false);
-  userPermAdminDom.addEventListener('change', updateSelectedUserPerms, false);
+  userPermReadDom.addEventListener('click', updateSelectedUserPerms, false);
+  userPermAddDom.addEventListener('click', updateSelectedUserPerms, false);
+  userPermControlDom.addEventListener('click', updateSelectedUserPerms, false);
+  userPermAdminDom.addEventListener('click', updateSelectedUserPerms, false);
 
   settingsUsersSelect.addEventListener('change', updatePermsForSelectedUser, false);
   settingsDelUserDom.addEventListener('click', onSettingsDelUserClick, false);
@@ -3191,28 +3160,40 @@ function handleApproveDeny(approved) {
   }]);
 }
 
+function isBtnOn(btn) {
+  return btn.classList.contains('on');
+}
+
+function updateBtnOn(btn, on) {
+  if (on) {
+    btn.classList.add('on');
+  } else {
+    btn.classList.remove('on');
+  }
+}
+
 function updatePermsForSelectedUser() {
   var selectedUserId = settingsUsersSelect.value;
   var user = player.usersTable[selectedUserId];
   if (!user) return;
-  $userPermRead.prop('checked', user.perms.read).button('refresh');
-  $userPermAdd.prop('checked', user.perms.add).button('refresh');
-  $userPermControl.prop('checked', user.perms.control).button('refresh');
-  $userPermAdmin.prop('checked', user.perms.admin).button('refresh');
 
-  $settingsDeleteUser.prop('disabled', selectedUserId === PlayerClient.GUEST_USER_ID).button('refresh');
+  updateBtnOn(userPermReadDom, user.perms.read);
+  updateBtnOn(userPermAddDom, user.perms.add);
+  updateBtnOn(userPermControlDom, user.perms.control);
+  updateBtnOn(userPermAdminDom, user.perms.admin);
+
+  settingsDelUserDom.disabled = (selectedUserId === PlayerClient.GUEST_USER_ID);
 }
 
 function updateSelectedUserPerms(ev) {
-  ev.preventDefault();
-  ev.stopPropagation();
+  updateBtnOn(ev.target, !isBtnOn(ev.target));
   socket.send('updateUser', {
     userId: settingsUsersSelect.value,
     perms: {
-      read: userPermReadDom.checked,
-      add: userPermAddDom.checked,
-      control: userPermControlDom.checked,
-      admin: userPermAdminDom.checked,
+      read: isBtnOn(userPermReadDom),
+      add: isBtnOn(userPermAddDom),
+      control: isBtnOn(userPermControlDom),
+      admin: isBtnOn(userPermAdminDom),
     },
   });
 }
@@ -3744,7 +3725,7 @@ function updateMenuDisableState($menu) {
   }
 }
 
-function setUpUi(){
+function setUpUi() {
   setUpGenericUi();
   setUpPlayQueueUi();
   setUpPlaylistsUi();
@@ -3953,6 +3934,12 @@ function setStreamVolume(v) {
 }
 
 function init() {
+  window.addEventListener('focus', onWindowFocus, false);
+  window.addEventListener('blur', onWindowBlur, false);
+  window.addEventListener('resize', triggerResize, false);
+  streamAudio.addEventListener('playing', onStreamPlaying, false);
+  document.getElementById('stream-btn-label').addEventListener('mousedown', onStreamLabelDown, false);
+
   loadLocalState();
   socket = new Socket();
   var queryObj = parseQueryString();
@@ -4053,7 +4040,6 @@ function init() {
 
   setUpUi();
   render();
-  window.addEventListener('resize', triggerResize, false);
   window._debug_player = player;
   window._debug_selection = selection;
 }

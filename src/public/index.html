@@ -81,7 +81,7 @@
         <textarea id="import-by-name" placeholder="Put a list of artist - title track names here, newline delimited. Ctrl+enter when done."></textarea>
         <h1>Options</h1>
         <div>
-          Automatically queue imported songs: <input class="jquery-button" type="checkbox" id="auto-queue-uploads"><label for="auto-queue-uploads">On</label>
+          Automatically queue imported songs: <input class="button" type="button" id="auto-queue-uploads" value="On">
         </div>
         <div id="import-progress" style="display: none">
           <h1>Ongoing Imports</h1>
@@ -110,14 +110,14 @@
             There is currently no admin account. Press this button to create the
             admin account and print the username and password to the server log:
             </p>
-            <button id="ensure-admin-btn">Make Admin Account</button>
+            <input class="button" type="button" id="ensure-admin-btn" value="Make Admin Account">
           </div>
           <div id="settings-register" style="display: none">
             <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
             <input type="password" id="auth-password" placeholder="password">
-            <input type="checkbox" id="auth-show-password" class="jquery-button"><label for="auth-show-password">Reveal</label><br>
-            <button id="settings-auth-save">Save</button>
-            <button id="settings-auth-cancel">Cancel</button>
+            <input class="button" type="button" id="auth-show-password" value="Reveal"><br>
+            <input class="button" type="button" id="settings-auth-save" value="Save">
+            <input class="button" type="button"  id="settings-auth-cancel" value="Cancel">
           </div>
           <div id="settings-show-auth">
             <p>Authenticated as <span id="auth-username-display">...</span></p>
@@ -127,26 +127,26 @@
               <span class="perm" id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
               <span class="perm" id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
             </p>
-            <button id="settings-auth-edit">Edit</button>
-            <button id="settings-auth-logout">Logout</button>
-            <button id="settings-auth-request">Request Validation</button>
+            <input class="button" type="button" id="settings-auth-edit" value="Edit">
+            <input class="button" type="button" id="settings-auth-logout" value="Logout">
+            <input class="button" type="button" id="settings-auth-request" value="Request Validation">
           </div>
           <div id="settings-users">
             <h1>Users</h1>
             <select id="settings-users-select"></select><br>
-            <button id="settings-delete-user">Delete</button>
-            <input id="user-perm-read" type="checkbox"><label for="user-perm-read" title="Reading the library, current queue, and playback status.">read</label>
-            <input id="user-perm-add" type="checkbox"><label for="user-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</label>
-            <input id="user-perm-control" type="checkbox"><label for="user-perm-control" title="Control playback state, and manipulate playlists.">control</label>
-            <input id="user-perm-admin" type="checkbox"><label for="user-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</label>
+            <input class="button" type="button" id="settings-delete-user" value="Delete">
+            <input class="button" type="button" id="user-perm-read" value="read" title="Reading the library, current queue, and playback status.">
+            <input class="button" type="button" id="user-perm-add" value="add" title="Adding songs, loading playlists, and uploading songs.">
+            <input class="button" type="button" id="user-perm-control" value="control" title="Control playback state, and manipulate playlists.">
+            <input class="button" type="button" id="user-perm-admin" value="admin" title="Deleting songs, updating tags, organizing library.">
           </div>
           <div id="settings-requests">
             <h1>Requests</h1>
             <div id="settings-request">
               <input type="text" id="request-name"> Name<br>
               <select id="request-replace"></select> Account<br>
-              <button class="jquery-button" id="request-approve">Approve</button>
-              <button class="jquery-button" id="request-deny">Deny</button>
+              <input class="button" type="button" id="request-approve" value="Approve">
+              <input class="button" type="button" id="request-deny" value="Deny">
             </div>
           </div>
         </div>
@@ -156,11 +156,11 @@
             <p>
               Authenticated as
               <a id="settings-lastfm-user" href="#">...</a>.
-              <button id="lastfm-sign-out">Sign out</button>
+              <input class="button" type="button" id="lastfm-sign-out" value="Sign out">
             </p>
             <p>
               Scrobbling is
-              <input class="jquery-button" type="checkbox" id="toggle-scrobble"><label for="toggle-scrobble">Off</label>
+              <input class="button" type="button" id="toggle-scrobble" value="Off">
             </p>
           </div>
           <div id="settings-lastfm-out">
@@ -173,7 +173,7 @@
           <h1>Sound</h1>
           <div>
             Hardware audio playback is
-            <input type="checkbox" id="toggle-hardware-playback"><label for="toggle-hardware-playback" id="toggle-hardware-playback-label">On</label>
+            <input class="button" type="button" id="toggle-hardware-playback" value="On">
           </div>
           <div>Volume: <span id="vol-num"></span>%</div>
           <div id="vol-warning" style="display: none">

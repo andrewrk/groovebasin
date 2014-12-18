@@ -2709,7 +2709,7 @@ function setUpEditTagsUi() {
 
 function updateSliderUi() {
   var percent = trackSliderDom.value * 100;
-  trackSliderDom.style['background-size'] = percent + "% 100%";
+  trackSliderDom.style.backgroundSize = percent + "% 100%";
 }
 
 function onNowPlayingToggleMouseDown(ev) {

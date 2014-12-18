@@ -655,12 +655,12 @@ var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
 var eventsTabSpan = document.getElementById('events-tab-label');
 var importTabSpan = document.getElementById('import-tab-label');
+var trackSliderDom = document.getElementById('track-slider');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
 var $editTagsDialog = $(editTagsDialogDom);
 var $clientVolSlider = $('#client-vol-slider');
-var $trackSlider = $('#track-slider');
 var $volSlider = $('#vol-slider');
 var $libraryMenu = $('#library-menu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
@@ -1799,7 +1799,10 @@ function updateSliderPos() {
     disabled = true;
     elapsed = duration = sliderPos = 0;
   }
-  $trackSlider.slider("option", "disabled", disabled).slider("option", "value", sliderPos);
+
+  trackSliderDom.disabled = disabled;
+  trackSliderDom.value = sliderPos;
+
   nowPlayingElapsedDom.textContent = formatTime(elapsed);
   nowPlayingLeftDom.textContent = formatTime(duration);
 }
@@ -1839,7 +1842,7 @@ function renderNowPlaying() {
   var newClass = (player.isPlaying === true) ? 'ui-icon-pause': 'ui-icon-play';
   nowPlayingToggleIconDom.classList.remove(oldClass);
   nowPlayingToggleIconDom.classList.add(newClass);
-  $trackSlider.slider("option", "disabled", player.isPlaying == null);
+  trackSliderDom.disabled = (player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
 }
@@ -2707,7 +2710,7 @@ function setUpEditTagsUi() {
 
 function updateSliderUi(value){
   var percent = value * 100;
-  $trackSlider.css('background-size', percent + "% 100%");
+  // TODO color thing
 }
 
 function onNowPlayingToggleMouseDown(ev) {
@@ -2738,36 +2741,37 @@ function onNowPlayingStopMouseDown(ev) {
   player.stop();
 }
 
+function onTrackSliderChange(ev) {
+  updateSliderUi(trackSliderDom.value);
+  if (!player.currentItem) return;
+  player.seek(null, trackSliderDom.value * player.currentItem.track.duration);
+}
+
+function onTrackSliderInput(ev) {
+  updateSliderUi(trackSliderDom.value);
+  if (!player.currentItem) return;
+  nowPlayingElapsedDom.textContent = formatTime(trackSliderDom.value * player.currentItem.track.duration);
+}
+
+function onTrackSliderMouseDown(ev) {
+  userIsSeeking = true;
+}
+
+function onTrackSliderMouseUp(ev) {
+  userIsSeeking = false;
+}
+
 function setUpNowPlayingUi() {
   nowPlayingToggleDom.addEventListener('click', onNowPlayingToggleMouseDown, false);
   nowPlayingPrevDom.addEventListener('click', onNowPlayingPrevMouseDown, false);
   nowPlayingNextDom.addEventListener('click', onNowPlayingNextMouseDown, false);
   nowPlayingStopDom.addEventListener('click', onNowPlayingStopMouseDown, false);
 
-  $trackSlider.slider({
-    step: 0.0001,
-    min: 0,
-    max: 1,
-    change: function(ev, ui){
-      updateSliderUi(ui.value);
-      if (ev.originalEvent == null) {
-        return;
-      }
-      if (!player.currentItem) return;
-      player.seek(null, ui.value * player.currentItem.track.duration);
-    },
-    slide: function(ev, ui){
-      updateSliderUi(ui.value);
-      if (!player.currentItem) return;
-      nowPlayingElapsedDom.textContent = formatTime(ui.value * player.currentItem.track.duration);
-    },
-    start: function(ev, ui){
-      userIsSeeking = true;
-    },
-    stop: function(ev, ui){
-      userIsSeeking = false;
-    }
-  });
+  trackSliderDom.addEventListener('change', onTrackSliderChange, false);
+  trackSliderDom.addEventListener('input', onTrackSliderInput, false);
+  trackSliderDom.addEventListener('mousedown', onTrackSliderMouseDown, false);
+  trackSliderDom.addEventListener('mouseup', onTrackSliderMouseUp, false);
+
   function setVol(ev, ui){
     if (ev.originalEvent == null) return;
     var snap = 0.05;

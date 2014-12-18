@@ -657,11 +657,11 @@ var eventsTabSpan = document.getElementById('events-tab-label');
 var importTabSpan = document.getElementById('import-tab-label');
 var trackSliderDom = document.getElementById('track-slider');
 var clientVolSlider = document.getElementById('client-vol-slider');
+var volSlider = document.getElementById('vol-slider');
 
 // needed for jQuery UI
 var $shortcuts = $(shortcutsDom);
 var $editTagsDialog = $(editTagsDialogDom);
-var $volSlider = $('#vol-slider');
 var $libraryMenu = $('#library-menu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
@@ -1809,7 +1809,7 @@ function updateSliderPos() {
 function renderVolumeSlider() {
   if (userIsVolumeSliding) return;
 
-  $volSlider.slider('option', 'value', player.volume);
+  volSlider.value = player.volume;
   volNumDom.textContent = Math.round(player.volume * 100);
   volWarningDom.style.display = (player.volume > 1) ? "" : "none";
 }
@@ -2708,7 +2708,7 @@ function setUpEditTagsUi() {
 }
 
 function updateSliderUi() {
-  var percent = trackSliderDom.value * 100;
+  var percent = parseFloat(trackSliderDom.value) * 100;
   trackSliderDom.style.backgroundSize = percent + "% 100%";
 }
 
@@ -2739,13 +2739,13 @@ function onNowPlayingStopMouseDown(ev) {
 function onTrackSliderChange(ev) {
   updateSliderUi();
   if (!player.currentItem) return;
-  player.seek(null, trackSliderDom.value * player.currentItem.track.duration);
+  player.seek(null, parseFloat(trackSliderDom.value) * player.currentItem.track.duration);
 }
 
 function onTrackSliderInput(ev) {
   updateSliderUi();
   if (!player.currentItem) return;
-  nowPlayingElapsedDom.textContent = formatTime(trackSliderDom.value * player.currentItem.track.duration);
+  nowPlayingElapsedDom.textContent = formatTime(parseFloat(trackSliderDom.value) * player.currentItem.track.duration);
 }
 
 function onTrackSliderMouseDown(ev) {
@@ -2755,6 +2755,18 @@ function onTrackSliderMouseDown(ev) {
 function onTrackSliderMouseUp(ev) {
   userIsSeeking = false;
 }
+
+function setServerVol(ev) {
+  var snap = 0.05;
+  var val = parseFloat(volSlider.value);
+  if (Math.abs(val - 1) < snap) {
+    val = 1;
+  }
+  player.setVolume(val);
+  volNumDom.textContent = Math.round(val * 100);
+  volWarningDom.style.display = (val > 1) ? "" : "none";
+}
+
 
 function setUpNowPlayingUi() {
   nowPlayingToggleDom.addEventListener('click', onNowPlayingToggleMouseDown, false);
@@ -2767,31 +2779,20 @@ function setUpNowPlayingUi() {
   trackSliderDom.addEventListener('mousedown', onTrackSliderMouseDown, false);
   trackSliderDom.addEventListener('mouseup', onTrackSliderMouseUp, false);
 
-  function setVol(ev, ui){
-    if (ev.originalEvent == null) return;
-    var snap = 0.05;
-    var val = ui.value;
-    if (Math.abs(val - 1) < snap) {
-      val = 1;
-    }
-    player.setVolume(val);
-    volNumDom.textContent = Math.round(val * 100);
-    volWarningDom.style.display = (val > 1) ? "" : "none";
-  }
-  $volSlider.slider({
-    step: 0.01,
-    min: 0,
-    max: 2,
-    change: setVol,
-    slide: setVol,
-    start: function(ev, ui){
-      userIsVolumeSliding = true;
-    },
-    stop: function(ev, ui){
-      userIsVolumeSliding = false;
-    }
-  });
+  volSlider.addEventListener('change', setServerVol, false);
+  volSlider.addEventListener('input', setServerVol, false);
+  volSlider.addEventListener('mousedown', onVolSliderMouseDown, false);
+  volSlider.addEventListener('mouseup', onVolSliderMouseUp, false);
+
   setInterval(updateSliderPos, 100);
+}
+
+function onVolSliderMouseDown(ev) {
+  userIsVolumeSliding = true;
+}
+
+function onVolSliderMouseUp(ev) {
+  userIsVolumeSliding = false;
 }
 
 function clickTab(tab) {
@@ -3741,11 +3742,11 @@ function setUpUi() {
 
 function setUpStreamUi() {
   streamBtnDom.addEventListener('click', toggleStreamStatus, false);
-  clientVolSlider.addEventListener('change', setVol, false);
-  clientVolSlider.addEventListener('input', setVol, false);
+  clientVolSlider.addEventListener('change', setClientVol, false);
+  clientVolSlider.addEventListener('input', setClientVol, false);
 
   clientVolSlider.value = localState.clientVolume || 1;
-  setVol();
+  setClientVol();
 }
 
 function toQueueItemId(s) {
@@ -3903,7 +3904,7 @@ function updateStreamPlayer() {
   renderStreamButton();
 }
 
-function setVol() {
+function setClientVol() {
   setStreamVolume(clientVolSlider.value);
 }
 

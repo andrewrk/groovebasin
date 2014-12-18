@@ -1408,7 +1408,6 @@ function renderAutoDj() {
   } else {
     autoDjDom.classList.remove('on');
   }
-  autoDjDom.blur();
 }
 
 function renderQueueButtons() {
@@ -1421,7 +1420,6 @@ function renderQueueButtons() {
   } else {
     queueBtnRepeatDom.classList.add("on");
   }
-  queueBtnRepeatDom.blur();
 }
 
 function updateHaveAdminUserUi() {
@@ -1802,6 +1800,7 @@ function updateSliderPos() {
 
   trackSliderDom.disabled = disabled;
   trackSliderDom.value = sliderPos;
+  updateSliderUi();
 
   nowPlayingElapsedDom.textContent = formatTime(elapsed);
   nowPlayingLeftDom.textContent = formatTime(duration);
@@ -2708,47 +2707,43 @@ function setUpEditTagsUi() {
   }
 }
 
-function updateSliderUi(value){
-  var percent = value * 100;
-  // TODO color thing
+function updateSliderUi() {
+  var percent = trackSliderDom.value * 100;
+  trackSliderDom.style['background-size'] = percent + "% 100%";
 }
 
 function onNowPlayingToggleMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  nowPlayingToggleDom.blur();
   togglePlayback();
 }
 
 function onNowPlayingPrevMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  nowPlayingPrevDom.blur();
   player.prev();
 }
 
 function onNowPlayingNextMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  nowPlayingNextDom.blur();
   player.next();
 }
 
 function onNowPlayingStopMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  nowPlayingStopDom.blur();
   player.stop();
 }
 
 function onTrackSliderChange(ev) {
-  updateSliderUi(trackSliderDom.value);
+  updateSliderUi();
   if (!player.currentItem) return;
   player.seek(null, trackSliderDom.value * player.currentItem.track.duration);
 }
 
 function onTrackSliderInput(ev) {
-  updateSliderUi(trackSliderDom.value);
+  updateSliderUi();
   if (!player.currentItem) return;
   nowPlayingElapsedDom.textContent = formatTime(trackSliderDom.value * player.currentItem.track.duration);
 }
@@ -3858,7 +3853,6 @@ function toggleStreamStatus(ev) {
   ev.stopPropagation();
   ev.preventDefault();
   tryingToStream = !tryingToStream;
-  streamBtnDom.blur();
   sendStreamingStatus();
   renderStreamButton();
   updateStreamPlayer();

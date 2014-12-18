@@ -50,6 +50,9 @@ a:hover,a:active,a:focus
   opacity .35
   background-image none
 
+.button:focus
+  outline 0
+
 .button.on
   margin 2px 0 0px 0px
   border 1px solid #096ac8
@@ -60,21 +63,22 @@ a:hover,a:active,a:focus
 #stream-btn
   padding-right 11px
 
-#track-slider
-  margin 10px 10px 5px
-
-  width calc(100% - 20px)
-  /*
-  background url("img/bright-10.png") left no-repeat
-  background-size 0% 100%
-  */
-
 input[type=range]
   -webkit-appearance none
-  border-radius 2px
+  margin 10px 10px 5px
+  width calc(100% - 20px)
   height 14px
+  border-radius 4px
   border 1px solid #000
-  background-color #282828
+  background #282828 url("img/bright-10.png") left no-repeat
+  background-size 0% 100%
+
+input[type=range]::-moz-range-track
+  border none
+  background transparent
+
+#track-slider:focus
+  outline 0
 
 #nowplaying
   margin 6px auto

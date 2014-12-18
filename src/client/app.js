@@ -3770,8 +3770,7 @@ function toPlaylistItemId(s) {
 }
 
 function toPlaylistId(s) {
-  // $ need toHtmlId because jQuery throws a fit with "(incoming)"
-  return "pl-pl-" + toHtmlId(s);
+  return "pl-pl-" + s;
 }
 
 function resizeDomElements() {

@@ -1,7 +1,3 @@
-@import "vendor/jquery-ui-1.11.2.custom.css"
-@import "vendor/jquery-ui-1.11.2.structure.css"
-@import "vendor/jquery-ui-1.11.2.theme.css"
-
 lightGray = #292929
 
 user-select()
@@ -29,14 +25,14 @@ body
   font-family Arial, Helvetica, sans-serif
 
 div, dl, dt, dd, ul, ol, li, h1, h2, h3, h4, h5, h6, pre, code, form, fieldset, legend, input, textarea, p, blockquote, th, td
-	margin 0
-	padding 0
+  margin 0
+  padding 0
 
 ol, ul
   list-style none
 
 input, textarea, select
-	font-size inherit
+  font-size inherit
 
 a:hover,a:active,a:focus
   outline 0
@@ -117,6 +113,53 @@ input[type=range]:focus
 
   a
     color #96b7eb
+
+.icon
+  width 16px
+  height 16px
+  background-image url("images/ui-icons_9ccdfc_256x240.png")
+  display block
+  background-repeat no-repeat
+
+button:hover .icon
+  background-image url("images/ui-icons_ffffff_256x240.png")
+
+.icon-seek-next
+  background-position -32px -160px
+
+.icon-seek-prev
+  background-position -48px -160px
+
+.icon-play
+  background-position 0 -160px
+
+.icon-pause
+  background-position -16px -160px
+
+.icon-stop
+  background-position -96px -160px
+
+.icon-signal-diag
+  background-position -16px -176px
+
+.icon-volume-off
+  background-position -128px -160px
+
+.icon-volume-on
+  background-position -144px -160px
+
+.icon-info
+  background-position -16px -144px
+
+.icon-alert
+  background-position 0 -144px
+
+.icon-triangle-1-e
+  background-position -32px -16px
+
+.icon-triangle-1-se
+  background-position -48px -16px
+
 
 #client-vol-slider
   margin 3px
@@ -215,10 +258,14 @@ input[type=range]:focus
   user-select none
   cursor default
 
-  div.ui-icon
+  div.icon
     float left
 
   p
+    border 1px solid #052f57
+    background #0b58a2 url("images/ui-bg_dots-medium_30_0b58a2_4x4.png") 50% 50% repeat
+    color #ffffff
+    border-radius 4px
     text-align center
     margin 20px auto 0
     padding 4px
@@ -226,6 +273,7 @@ input[type=range]:focus
     span
       float left
       margin-right .3em
+      background-image url("images/ui-icons_ffffff_256x240.png")
     strong
       font-weight bold
 
@@ -391,12 +439,17 @@ input[type=range]:focus
       display inline
 
 #main-err-msg
+  border 1px solid #cd0a0a
+  background #a32d00 url("images/ui-bg_dots-small_30_a32d00_2x2.png") 50% 50% repeat
+  color #ffffff
+  border-radius 4px
   margin 200px auto
-  width 300px
+  width 142px
   padding 4px
   span
     float left
     margin-right .3em
+    background-image url("images/ui-icons_ffffff_256x240.png")
   strong
     font-weight bold
 

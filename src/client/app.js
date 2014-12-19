@@ -533,8 +533,8 @@ var selection = {
 var BASE_TITLE = document.title;
 var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
-var ICON_COLLAPSED = 'ui-icon-triangle-1-e';
-var ICON_EXPANDED = 'ui-icon-triangle-1-se';
+var ICON_COLLAPSED = 'icon-triangle-1-e';
+var ICON_EXPANDED = 'icon-triangle-1-se';
 var myUser = {
   perms: {},
 };
@@ -1670,7 +1670,7 @@ function renderPlaylists() {
     playlistsListDom.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="playlist">' +
-          '<div class="ui-icon"></div>' +
+          '<div class="icon"></div>' +
           '<span></span>' +
         '</div>' +
         '<ul></ul>' +
@@ -1720,7 +1720,7 @@ function renderLibrary() {
     libraryArtistsDom.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="artist">' +
-          '<div class="ui-icon"></div>' +
+          '<div class="icon"></div>' +
           '<span></span>' +
         '</div>' +
         '<ul></ul>' +
@@ -1835,8 +1835,8 @@ function renderNowPlaying() {
   } else {
     trackDisplayDom.innerHTML = "&nbsp;";
   }
-  var oldClass = (player.isPlaying === true) ? 'ui-icon-play' : 'ui-icon-pause';
-  var newClass = (player.isPlaying === true) ? 'ui-icon-pause': 'ui-icon-play';
+  var oldClass = (player.isPlaying === true) ? 'icon-play' : 'icon-pause';
+  var newClass = (player.isPlaying === true) ? 'icon-pause': 'icon-play';
   nowPlayingToggleIconDom.classList.remove(oldClass);
   nowPlayingToggleIconDom.classList.add(newClass);
   trackSliderDom.disabled = (player.isPlaying == null);
@@ -1868,7 +1868,7 @@ function renderArtist(ul, albumList) {
     ul.insertAdjacentHTML('beforeend',
       '<li>' +
         '<div class="clickable expandable" data-type="album">' +
-          '<div class="ui-icon ui-icon-triangle-1-e"></div>' +
+          '<div class="icon icon-triangle-1-e"></div>' +
           '<span></span>' +
         '</div>' +
         '<ul style="display: none;"></ul>' +
@@ -3405,7 +3405,7 @@ function renderOnlineUsers() {
   for (i = eventsOnlineUsersDom.childElementCount; i < sortedConnectedUsers.length; i += 1) {
     eventsOnlineUsersDom.insertAdjacentHTML('beforeend',
       '<div class="user">' +
-        '<span class="streaming ui-icon ui-icon-signal-diag"></span>' +
+        '<span class="streaming icon icon-signal-diag"></span>' +
         '<span class="name"></span>' +
       '</div>');
   }

@@ -2843,13 +2843,13 @@ function uploadFiles(files) {
     formData.append("file", file);
   }
 
-  var $progressBar = $('<div></div>');
-  $progressBar.progressbar();
+  var progressBar = document.createElement('progress');
   var cancelBtnDom = document.createElement('button');
+  cancelBtnDom.classList.add('button');
   cancelBtnDom.textContent = "Cancel";
   cancelBtnDom.addEventListener('click', onCancel, false);
 
-  $(uploadWidgetDom).append($progressBar);
+  uploadWidgetDom.appendChild(progressBar);
   uploadWidgetDom.appendChild(cancelBtnDom);
 
   var req = new XMLHttpRequest();
@@ -2862,7 +2862,7 @@ function uploadFiles(files) {
   function onProgress(ev) {
     if (!ev.lengthComputable) return;
     var progress = ev.loaded / ev.total;
-    $progressBar.progressbar("option", "value", progress * 100);
+    progressBar.value = progress;
   }
 
   function onLoad(ev) {
@@ -2875,7 +2875,7 @@ function uploadFiles(files) {
   }
 
   function cleanup() {
-    $progressBar.remove();
+    progressBar.parentNode.removeChild(progressBar);
     cancelBtnDom.parentNode.removeChild(cancelBtnDom);
   }
 }

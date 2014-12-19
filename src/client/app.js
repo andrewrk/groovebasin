@@ -653,8 +653,6 @@ var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
-var eventsTabSpan = document.getElementById('events-tab-label');
-var importTabSpan = document.getElementById('import-tab-label');
 var trackSliderDom = document.getElementById('track-slider');
 var clientVolSlider = document.getElementById('client-vol-slider');
 var volSlider = document.getElementById('vol-slider');
@@ -692,12 +690,12 @@ var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
 var triggerPlaylistsUpdate = makeRenderCall(updatePlaylistsUi, 100);
 var triggerResize = makeRenderCall(resizeDomElements, 20);
-var keyboardHandlers = (function(){
+var keyboardHandlers = (function() {
   var volumeDownHandler = {
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(){
+      handler: function() {
         bumpVolume(-0.1);
       }
   };
@@ -705,7 +703,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(){
+      handler: function() {
         bumpVolume(0.1);
       }
   };
@@ -716,7 +714,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: null,
       shift: null,
-      handler: function(ev){
+      handler: function(ev) {
         if (selection.isQueue()) {
           player.seek(selection.cursor, 0);
           player.play();
@@ -876,7 +874,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: false,
-      handler: function(){
+      handler: function() {
         clickTab(tabs.upload);
         uploadByUrlDom.focus();
         uploadByUrlDom.select();
@@ -890,8 +888,8 @@ var keyboardHandlers = (function(){
     188: {
       ctrl: false,
       alt: false,
-      shift: null,
-      handler: function(){
+      shift: true,
+      handler: function() {
         player.prev();
       },
     },
@@ -901,8 +899,8 @@ var keyboardHandlers = (function(){
     190: {
       ctrl: false,
       alt: false,
-      shift: null,
-      handler: function(){
+      shift: true,
+      handler: function() {
         player.next();
       },
     },
@@ -911,7 +909,7 @@ var keyboardHandlers = (function(){
       ctrl: false,
       alt: false,
       shift: null,
-      handler: function(ev){
+      handler: function(ev) {
         if (ev.shiftKey) {
           $shortcuts.dialog({
             modal: true,
@@ -2304,21 +2302,9 @@ function setUpGenericUi() {
   window.addEventListener('focus', onWindowFocus, false);
   window.addEventListener('blur', onWindowBlur, false);
   window.addEventListener('resize', triggerResize, false);
-  streamAudio.addEventListener('playing', onStreamPlaying, false);
-
-  // $ when we get rid of jQuery UI, this code should be handled in CSS instead of JavaScript
-  Array.prototype.forEach.call(document.getElementsByClassName('hoverable'), function(domItem) {
-    domItem.addEventListener('mouseover', function(ev) {
-      domItem.classList.add('ui-state-hover');
-    }, false);
-    domItem.addEventListener('mouseout', function(ev) {
-      domItem.classList.remove('ui-state-hover');
-    }, false);
-  });
-
   window.addEventListener('mousedown', clearSelectionAndHideMenu, false);
   window.addEventListener('keydown', onWindowKeyDown, false);
-
+  streamAudio.addEventListener('playing', onStreamPlaying, false);
   shortcutsDom.addEventListener('keydown', onShortcutsWindowKeyDown, false);
 }
 
@@ -2797,7 +2783,7 @@ function onVolSliderMouseUp(ev) {
 
 function clickTab(tab) {
   unselectTabs();
-  tab.tab.classList.add('ui-state-active');
+  tab.tab.classList.add('active');
   tab.pane.style.display = "";
   activeTab = tab;
   triggerResize();
@@ -2823,7 +2809,7 @@ function setUpTabsUi() {
 function unselectTabs() {
   for (var name in tabs) {
     var tab = tabs[name];
-    tab.tab.classList.remove('ui-state-active');
+    tab.tab.classList.remove('active');
     tab.pane.style.display = "none";
   }
 }
@@ -3270,7 +3256,7 @@ function clearChatInputValue() {
 function renderUnseenChatCount() {
   var eventsTabText = (player.unseenChatCount > 0) ?
     ("Chat (" + player.unseenChatCount + ")") : "Chat";
-  eventsTabSpan.textContent = eventsTabText;
+  tabs.events.tab.textContent = eventsTabText;
   updateTitle();
 }
 
@@ -3289,7 +3275,7 @@ function renderImportProgress() {
 
   var importTabText = (player.importProgressList.length > 0) ?
     ("Import (" + player.importProgressList.length + ")") : "Import";
-  importTabSpan.textContent = importTabText;
+  tabs.upload.tab.textContent = importTabText;
 
   // add the missing dom entries
   var i, ev;
@@ -3459,15 +3445,12 @@ function onLibFilterKeyDown(ev) {
   ev.stopPropagation();
   switch (ev.which) {
   case 27: // Escape
-    if ($(ev.target).val().length === 0) {
-      $(ev.target).blur();
+    if (libFilterDom.value.length === 0) {
+      libFilterDom.blur();
     } else {
-      setTimeout(function(){
-        libFilterDom.value = "";
-        // queue up a search refresh now, because if the user holds Escape,
-        // it will blur the search box, and we won't get a keyup for Escape.
-        ensureSearchHappensSoon();
-      }, 0);
+      // queue up a search refresh now, because if the user holds Escape,
+      // it will blur the search box, and we won't get a keyup for Escape.
+      setTimeout(clearBoxAndSearch, 0);
     }
     ev.preventDefault();
     return;
@@ -3511,6 +3494,11 @@ function onLibFilterKeyDown(ev) {
     libFilterDom.blur();
     ev.preventDefault();
     return;
+  }
+
+  function clearBoxAndSearch() {
+    libFilterDom.value = "";
+    ensureSearchHappensSoon();
   }
 }
 

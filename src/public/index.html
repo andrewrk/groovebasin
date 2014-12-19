@@ -7,7 +7,7 @@
   <link rel="shortcut icon" href="/favicon.png">
 </head>
 <body>
-  <div id="nowplaying" class="ui-widget-content ui-corner-all" style="display: none">
+  <div id="nowplaying" class="widget" style="display: none">
     <div class="playback-btns">
       <button class="button" id="nowplaying-prev" tabindex="-1"><label class="ui-icon ui-icon-seek-prev" for="nowplaying-prev"></label></button>
       <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="ui-icon ui-icon-pause" for="nowplaying-toggle-icon"></label></button>
@@ -36,7 +36,7 @@
         <li id="settings-tab">Settings</li>
       </ul>
     </div>
-    <div id="library-pane" class="ui-widget-content ui-corner-all">
+    <div id="library-pane" class="widget">
       <div id="lib-window-header" class="window-header">
         <input type="text" id="lib-filter" placeholder="filter">
         <select id="organize">
@@ -52,14 +52,14 @@
         </p>
       </div>
     </div>
-    <div id="playlists-pane" class="ui-widget-content ui-corner-all" style="display: none">
+    <div id="playlists-pane" class="widget" style="display: none">
       <input type="text" id="new-playlist-name" placeholder="New Playlist">
       <div id="playlists">
         <ul id="playlists-list">
         </ul>
       </div>
     </div>
-    <div id="upload-pane" class="ui-widget-content ui-corner-all" style="display: none">
+    <div id="upload-pane" class="widget" style="display: none">
       <div id="upload">
         <h1>Import by URL</h1>
         <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
@@ -82,7 +82,7 @@
         </div>
       </div>
     </div>
-    <div id="events-pane" class="ui-widget-content ui-corner-all" style="display: none">
+    <div id="events-pane" class="widget" style="display: none">
         <div id="events-online-users">
         </div>
         <div id="events-list">
@@ -91,7 +91,7 @@
           <input type="text" id="chat-box-input" placeholder="chat">
         </div>
     </div>
-    <div id="settings-pane" class="ui-widget-content ui-corner-all" style="display: none">
+    <div id="settings-pane" class="widget" style="display: none">
       <div id="settings">
         <div class="section">
           <h1>Authentication</h1>
@@ -187,7 +187,7 @@
       </div>
     </div>
   </div>
-  <div id="queue-window" class="ui-widget-content ui-corner-all" style="display: none">
+  <div id="queue-window" class="widget" style="display: none">
     <div class="window-header">
       <input class="button" type="button" id="auto-dj" value="Auto DJ" tabindex="-1">
       <input class="button" type="button" id="queue-btn-repeat" value="Repeat: Off" tabindex="-1">

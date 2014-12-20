@@ -11,8 +11,8 @@
     <div class="playback-btns">
       <button class="button" id="nowplaying-prev" tabindex="-1"><label class="icon icon-seek-prev" for="nowplaying-prev"></label></button>
       <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="icon icon-pause" for="nowplaying-toggle-icon"></label></button>
-      <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop"></label></button>
-      <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next"></label></button>
+      <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
+      <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
       <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
     </div>
     <div id="client-vol" style="display: none">
@@ -211,6 +211,14 @@
       <span class="icon icon-alert"></span>
       <div id="main-err-msg-text">Loading...</div>
     </p>
+  </div>
+  <div id="blackout" style="display: none"></div>
+  <div id="modal" class="widget" style="display: none" tabindex="-1">
+    <div id="modal-header">
+      <span id="modal-title">Keyboard Shortcuts</span>
+      <button id="modal-close" class="button"><label class="icon icon-closethick"></label></button>
+    </div>
+    <div id="modal-content"></div>
   </div>
   <div id="shortcuts" style="display: none" tabindex="-1">
     <h1>Playback</h1>
@@ -515,12 +523,12 @@
     <hr>
 
     <div style="float: right">
-      <button id="edit-tags-ok" accesskey="v">Sa<span class="accesskey">v</span>e &amp; Close</button>
-      <button id="edit-tags-cancel">Cancel</button>
+      <button class="button" id="edit-tags-ok" accesskey="v">Sa<span class="accesskey">v</span>e &amp; Close</button>
+      <button class="button" id="edit-tags-cancel">Cancel</button>
     </div>
-    <button id="edit-tags-prev" type="button" accesskey="p"><span class="accesskey">P</span>revious</button>
-    <button id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
-    <label accesskey="r" id="edit-tags-per-label"><input id="edit-tags-per" type="checkbox">Pe<span class="accesskey">r</span> Track</label>
+    <button class="button" id="edit-tags-prev" type="button" accesskey="p"><span class="accesskey">P</span>revious</button>
+    <button class="button" id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
+    <button class="button" id="edit-tags-per"><label id="edit-tags-per-label" accesskey="r" for="edit-tags-per">Pe<span class="accesskey">r</span> Track</label></button>
   </div>
   <ul id="library-menu" style="display: none">
     <li><a href="#" class="queue">Queue</a></li>

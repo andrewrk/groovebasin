@@ -157,6 +157,41 @@ button:hover .icon
 .icon-triangle-1-se
   background-position -48px -16px
 
+.icon-closethick
+  background-position -96px -128px
+
+#blackout
+  position fixed
+  left 0
+  top 0
+  width 100%
+  height 100%
+  background-color rgba(0, 0, 0, 0.5)
+  z-index 1
+
+#modal
+  z-index 2
+  position fixed
+
+#modal-header
+  border-radius 4px
+  border 1px solid #0b3e6f
+  background #0b3e6f url("images/ui-bg_diagonals-thick_15_0b3e6f_40x40.png") 50% 50% repeat
+  color #f6f6f6
+  font-weight bold
+  font-size 21px
+  padding 13px
+
+#modal-close
+  float right
+
+#modal-content
+  padding 4px 20px
+  overflow-x auto
+  overflow-y auto
+
+#modal-content div:focus
+  outline 0
 
 #client-vol-slider
   margin 3px
@@ -410,12 +445,13 @@ button:hover .icon
 
 #shortcuts
   h1
+    font-size 21px
     margin-bottom 10px
     margin-top 10px
     font-weight bold
 
   dl
-    font-size .8em
+    font-size 17px
     margin-bottom 4px
 
     dt
@@ -424,6 +460,7 @@ button:hover .icon
       padding 3px
       background-color #272727
       font-weight bold
+      font-size 14px
       text-shadow 1px 1px 0 #000000
       border-radius 4px
 
@@ -434,6 +471,9 @@ button:hover .icon
 
     dd
       display inline
+
+#edit-tags
+  font-size 21px
 
 #main-err-msg
   border 1px solid #cd0a0a

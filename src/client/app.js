@@ -544,6 +544,7 @@ var userIsSeeking = false;
 var userIsVolumeSliding = false;
 var startedDrag = false;
 var abortDrag = noop;
+var closeOpenDialog = noop;
 var lastFmApiKey = null;
 var LoadStatus = {
   Init: 'Loading...',
@@ -649,17 +650,19 @@ var queueDurationLabel = document.getElementById('queue-duration-label');
 var importProgressDom = document.getElementById('import-progress');
 var importProgressListDom = document.getElementById('import-progress-list');
 var perDom = document.getElementById('edit-tags-per');
-var perLabelDom = document.getElementById('edit-tags-per-label');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
 var trackSliderDom = document.getElementById('track-slider');
 var clientVolSlider = document.getElementById('client-vol-slider');
 var volSlider = document.getElementById('vol-slider');
+var modalDom = document.getElementById('modal');
+var modalContentDom = document.getElementById('modal-content');
+var modalTitleDom = document.getElementById('modal-title');
+var modalHeaderDom = document.getElementById('modal-header');
+var blackoutDom = document.getElementById('blackout');
 
 // needed for jQuery UI
-var $shortcuts = $(shortcutsDom);
-var $editTagsDialog = $(editTagsDialogDom);
 var $libraryMenu = $('#library-menu');
 var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
 
@@ -911,13 +914,7 @@ var keyboardHandlers = (function() {
       shift: null,
       handler: function(ev) {
         if (ev.shiftKey) {
-          $shortcuts.dialog({
-            modal: true,
-            title: "Keyboard Shortcuts",
-            minWidth: 600,
-            height: window.innerHeight - 40,
-          });
-          $shortcuts.focus();
+          popDialog(shortcutsDom, "Keyboard Shortcuts", 600, window.innerHeight - 40);
         } else {
           clickTab(tabs.library);
           libFilterDom.focus();
@@ -2294,7 +2291,17 @@ function onWindowKeyDown(ev) {
 function onShortcutsWindowKeyDown(ev) {
   ev.stopPropagation();
   if (ev.which === 27) {
-    $shortcuts.dialog('close');
+    closeOpenDialog();
+  }
+}
+
+function callCloseOpenDialog() {
+  closeOpenDialog();
+}
+
+function onBlackoutKeyDown(ev) {
+  if (ev.which === 27) {
+    closeOpenDialog();
   }
 }
 
@@ -2306,6 +2313,9 @@ function setUpGenericUi() {
   window.addEventListener('keydown', onWindowKeyDown, false);
   streamAudio.addEventListener('playing', onStreamPlaying, false);
   shortcutsDom.addEventListener('keydown', onShortcutsWindowKeyDown, false);
+  document.getElementById('modal-close').addEventListener('click', callCloseOpenDialog, false);
+  blackoutDom.addEventListener('keydown', onBlackoutKeyDown, false);
+  blackoutDom.addEventListener('mousedown', callCloseOpenDialog, false);
 }
 
 function handleAutoDjClick(ev) {
@@ -2562,13 +2572,13 @@ function onEditTagsContextMenu(ev) {
 
 function updateEditTagsUi() {
   var multiple = editTagsTrackKeys.length > 1;
-  prevDom.disabled = !perDom.checked || editTagsTrackIndex === 0;
-  nextDom.disabled = !perDom.checked || (editTagsTrackIndex === editTagsTrackKeys.length - 1);
+  prevDom.disabled = !isBtnOn(perDom) || editTagsTrackIndex === 0;
+  nextDom.disabled = !isBtnOn(perDom) || (editTagsTrackIndex === editTagsTrackKeys.length - 1);
   prevDom.style.visibility = multiple ? 'visible' : 'hidden';
   nextDom.style.visibility = multiple ? 'visible' : 'hidden';
-  perLabelDom.style.visibility = multiple ? 'visible' : 'hidden';
-  var multiCheckBoxVisible = multiple && !perDom.checked;
-  var trackKeysToUse = perDom.checked ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
+  perDom.style.visibility = multiple ? 'visible' : 'hidden';
+  var multiCheckBoxVisible = multiple && !isBtnOn(perDom);
+  var trackKeysToUse = isBtnOn(perDom) ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
 
   for (var propName in EDITABLE_PROPS) {
     var propInfo = EDITABLE_PROPS[propName];
@@ -2597,13 +2607,8 @@ function updateEditTagsUi() {
 }
 
 function showEditTags() {
-  $editTagsDialog.dialog({
-    modal: true,
-    title: "Edit Tags",
-    minWidth: 650,
-    height: Math.min(640, window.innerHeight - 40),
-  });
-  perDom.checked = false;
+  popDialog(editTagsDialogDom, "Edit Tags", 650, Math.min(640, window.innerHeight - 40));
+  updateBtnOn(perDom, false);
   updateEditTagsUi();
   editTagsFocusDom.focus();
   editTagsFocusDom.select();
@@ -2625,7 +2630,7 @@ function setUpEditTagsUi() {
   function onInputKeyDown(ev) {
     ev.stopPropagation();
     if (ev.which === 27) {
-      $editTagsDialog.dialog('close');
+      closeOpenDialog();
     } else if (ev.which === 13) {
       saveAndClose();
     }
@@ -2640,9 +2645,15 @@ function setUpEditTagsUi() {
       multiCheckBoxDom.checked = true;
     };
   }
+
+  function togglePerTrack(ev) {
+    updateBtnOn(perDom, !isBtnOn(perDom));
+    updateEditTagsUi();
+  }
+
   document.getElementById('edit-tags-ok').addEventListener('click', saveAndClose, false);
-  document.getElementById('edit-tags-cancel').addEventListener('click', closeDialog, false);
-  perDom.addEventListener('click', updateEditTagsUi, false);
+  document.getElementById('edit-tags-cancel').addEventListener('click', callCloseOpenDialog, false);
+  perDom.addEventListener('click', togglePerTrack, false);
   nextDom.addEventListener('click', saveAndNext, false);
   prevDom.addEventListener('click', saveAndPrev, false);
 
@@ -2663,7 +2674,7 @@ function setUpEditTagsUi() {
   }
 
   function save() {
-    var trackKeysToUse = perDom.checked ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
+    var trackKeysToUse = isBtnOn(perDom) ? [editTagsTrackKeys[editTagsTrackIndex]] : editTagsTrackKeys;
     var cmd = {};
     for (var i = 0; i < trackKeysToUse.length; i += 1) {
       var key = trackKeysToUse[i];
@@ -2685,11 +2696,7 @@ function setUpEditTagsUi() {
 
   function saveAndClose() {
     save();
-    closeDialog();
-  }
-
-  function closeDialog() {
-    $editTagsDialog.dialog('close');
+    closeOpenDialog();
   }
 }
 
@@ -4102,3 +4109,34 @@ function extend(dest, src) {
 }
 
 function noop() {}
+
+function popDialog(dom, title, width, height) {
+  blackoutDom.style.display = "";
+
+  dom.parentNode.removeChild(dom);
+  modalContentDom.appendChild(dom);
+
+  modalTitleDom.textContent = title;
+
+  modalDom.style.left = (window.innerWidth / 2 - width / 2) + "px";
+  modalDom.style.top = (window.innerHeight / 2 - height / 2) + "px";
+  modalDom.style.width = width + "px";
+  modalDom.style.height = height + "px";
+  modalDom.style.display = "";
+
+  modalContentDom.style.height = (height - modalHeaderDom.clientHeight - 20) + "px";
+
+  dom.style.display = "";
+  dom.focus();
+
+  closeOpenDialog = function() {
+    blackoutDom.style.display = "none";
+    modalDom.style.display = "none";
+    modalDom.style.display = "none";
+    dom.style.display = "none";
+    dom.parentNode.removeChild(dom);
+    document.body.appendChild(dom);
+
+    closeOpenDialog = noop;
+  };
+}

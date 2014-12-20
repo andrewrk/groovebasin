@@ -935,7 +935,7 @@ var keyboardHandlers = (function() {
       shift: null,
       handler: function(ev) {
         if (ev.shiftKey) {
-          showKeyboardShortcuts();
+          showKeyboardShortcuts(ev);
         } else {
           clickTab(tabs.library);
           libFilterDom.focus();

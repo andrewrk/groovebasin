@@ -76,10 +76,10 @@ var selection = {
       selectAllQueue();
     }
   },
-  isMulti: function(){
+  isAtLeastNumSelected: function(num) {
     var result, k;
     if (this.isLibrary()) {
-      result = 2;
+      result = num;
       for (k in this.ids.artist) {
         if (!--result) return true;
       }
@@ -91,13 +91,13 @@ var selection = {
       }
       return false;
     } else if (this.isQueue()) {
-      result = 2;
+      result = num;
       for (k in this.ids.queue) {
         if (!--result) return true;
       }
       return false;
     } else if (this.isPlaylist()) {
-      result = 2;
+      result = num;
       for (k in this.ids.playlist) {
         if (!--result) return true;
       }
@@ -108,6 +108,12 @@ var selection = {
     } else {
       return false;
     }
+  },
+  isMulti: function() {
+    return this.isAtLeastNumSelected(2);
+  },
+  isEmpty: function() {
+    return !this.isAtLeastNumSelected(1);
   },
   getPos: function(type, key){
     if (type == null) type = this.cursorType;
@@ -672,6 +678,10 @@ var menuDelete = document.getElementById('menu-delete');
 var menuDeletePlaylist = document.getElementById('menu-delete-playlist');
 var menuDownload = document.getElementById('menu-download');
 var menuEditTags = document.getElementById('menu-edit-tags');
+var addToPlaylistDialog = document.getElementById('add-to-playlist-dialog');
+var addToPlaylistFilter = document.getElementById('add-to-playlist-filter');
+var addToPlaylistList = document.getElementById('add-to-playlist-list');
+var addToPlaylistNew = document.getElementById('add-to-playlist-new');
 
 var tabs = {
   library: {
@@ -805,14 +815,18 @@ var keyboardHandlers = (function() {
     },
     // =
     61: volumeUpHandler,
-    // Ctrl+A
+    // a
     65: {
-      ctrl: true,
+      ctrl: null,
       alt: false,
       shift: false,
-      handler: function() {
-        selection.selectAll();
-        refreshSelection();
+      handler: function(ev) {
+        if (ev.ctrl) {
+          selection.selectAll();
+          refreshSelection();
+        } else {
+          onAddToPlaylistContextMenu(ev);
+        }
       },
     },
     // d
@@ -1302,6 +1316,8 @@ var menuPermSelectors = {
   add: [menuQueue, menuQueueNext, menuQueueRandom, menuQueueNextRandom],
 };
 
+var addToPlaylistDialogFilteredList = [];
+
 init();
 
 function saveLocalState(){
@@ -1641,38 +1657,51 @@ function makeRenderCall(renderFn, interval) {
 }
 
 function updatePlaylistsUi() {
-  /* TODO
-  updatePlaylistsSubmenus($contextMenuDom, $libraryMenuPlaylistSubmenu);
-  */
   renderPlaylists();
+  updateAddToPlaylistDialogDisplay();
 }
 
-/* TODO
-function updatePlaylistsSubmenus($parentMenu, $menu) {
-  var playlistList = player.playlistList;
+function popAddToPlaylistDialog() {
+  popDialog(addToPlaylistDialog, "Add to Playlist", 400, Math.min(500, window.innerHeight - 40));
+  addToPlaylistFilter.focus();
+  addToPlaylistFilter.select();
+}
+
+function updateAddToPlaylistDialogDisplay() {
+  var loweredFilter = addToPlaylistFilter.value.toLowerCase();
+  addToPlaylistDialogFilteredList = [];
+  var exactMatch = false;
+  player.playlistList.forEach(function(playlist) {
+    if (playlist.name.toLowerCase().indexOf(loweredFilter) >= 0) {
+      addToPlaylistDialogFilteredList.push(playlist);
+      if (addToPlaylistFilter.value === playlist.name) {
+        exactMatch = true;
+      }
+    }
+  });
+
+  addToPlaylistNew.textContent = "\"" + addToPlaylistFilter.value + "\" (create new)";
+  addToPlaylistNew.style.display = (exactMatch || loweredFilter === "") ? "none" : "";
+
 
   // add the missing dom entries
   var i;
-  var menuDom = $menu.get(0);
-  for (i = menuDom.childElementCount; i < playlistList.length; i += 1) {
-    menuDom.appendChild(document.createElement('li'));
+  for (i = addToPlaylistList.childElementCount; i < addToPlaylistDialogFilteredList.length; i += 1) {
+    addToPlaylistList.appendChild(document.createElement('li'));
   }
   // remove the extra dom entries
-  while (playlistList.length < menuDom.childElementCount) {
-    menuDom.removeChild(menuDom.lastChild);
+  while (addToPlaylistDialogFilteredList.length < addToPlaylistList.childElementCount) {
+    addToPlaylistList.removeChild(addToPlaylistList.lastChild);
   }
 
   // overwrite existing dom entries
-  for (i = 0; i < playlistList.length; i += 1) {
-    var domItem = menuDom.children[i];
-    var playlist = playlistList[i];
+  for (i = 0; i < addToPlaylistDialogFilteredList.length; i += 1) {
+    var domItem = addToPlaylistList.children[i];
+    var playlist = addToPlaylistDialogFilteredList[i];
     domItem.setAttribute('data-key', playlist.id);
     domItem.textContent = playlist.name;
   }
-
-  $parentMenu.menu('refresh');
 }
-*/
 
 function renderPlaylists() {
   var playlistList = player.playlistList;
@@ -2334,6 +2363,58 @@ function setUpGenericUi() {
   document.getElementById('modal-close').addEventListener('click', callCloseOpenDialog, false);
   blackoutDom.addEventListener('keydown', onBlackoutKeyDown, false);
   blackoutDom.addEventListener('mousedown', callCloseOpenDialog, false);
+  addToPlaylistFilter.addEventListener('keydown', onAddToPlaylistFilterKeyDown, false);
+  addToPlaylistFilter.addEventListener('keyup', updateAddToPlaylistDialogDisplay, false);
+  addToPlaylistFilter.addEventListener('cut', updateAddToPlaylistDialogDisplay, false);
+  addToPlaylistFilter.addEventListener('paste', updateAddToPlaylistDialogDisplay, false);
+  addToPlaylistNew.addEventListener('mousedown', onAddToPlaylistNewClick, false);
+  addToPlaylistList.addEventListener('mousedown', onAddToPlaylistListClick, false);
+}
+
+function onAddToPlaylistListClick(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+  var clickedLi = getFirstChildToward(addToPlaylistList, ev.target);
+  if (!clickedLi) return;
+  if (!havePerm('control')) return;
+  if (!ev.shiftKey) closeOpenDialog();
+  var playlistId = clickedLi.getAttribute('data-key');
+  player.queueOnPlaylist(playlistId, selection.toTrackKeys());
+}
+
+function onAddToPlaylistNewClick(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+  if (!havePerm('control')) return;
+  if (!ev.shiftKey) closeOpenDialog();
+  var playlist = player.createPlaylist(addToPlaylistFilter.value);
+  player.queueOnPlaylist(playlist.id, selection.toTrackKeys());
+}
+
+function onAddToPlaylistFilterKeyDown(ev) {
+  ev.stopPropagation();
+  switch (ev.which) {
+  case 27: // Escape
+    ev.preventDefault();
+    if (addToPlaylistFilter.value === "") {
+      closeOpenDialog();
+    } else {
+      addToPlaylistFilter.value = "";
+    }
+    return;
+  case 13: // Enter
+    ev.preventDefault();
+    if (addToPlaylistDialogFilteredList.length === 0) {
+      onAddToPlaylistNewClick(ev);
+    } else {
+      var playlistId = addToPlaylistDialogFilteredList[0].id;
+      player.queueOnPlaylist(playlistId, selection.toTrackKeys());
+      if (!ev.shiftKey) {
+        closeOpenDialog();
+      }
+    }
+    return;
+  }
 }
 
 function handleAutoDjClick(ev) {
@@ -2558,20 +2639,11 @@ function onDeleteContextMenu(ev) {
   handleDeletePressed(true);
 }
 
-function onAddToPlaylistContextMenu(ev) {
-  ev.preventDefault();
-  ev.stopPropagation();
-  if (!havePerm('control')) return;
-  var keysList = selection.toTrackKeys();
-  var playlistId = this.getAttribute('data-key');
-  player.queueOnPlaylist(playlistId, keysList);
-  removeContextMenu();
-}
-
 function onEditTagsContextMenu(ev) {
   ev.preventDefault();
   ev.stopPropagation();
   if (!havePerm('admin')) return;
+  if (selection.isEmpty()) return;
   removeContextMenu();
   editTagsTrackKeys = selection.toTrackKeys();
   editTagsTrackIndex = 0;
@@ -3468,6 +3540,7 @@ function onLibFilterKeyDown(ev) {
   ev.stopPropagation();
   switch (ev.which) {
   case 27: // Escape
+    ev.preventDefault();
     if (libFilterDom.value.length === 0) {
       libFilterDom.blur();
     } else {
@@ -3475,9 +3548,9 @@ function onLibFilterKeyDown(ev) {
       // it will blur the search box, and we won't get a keyup for Escape.
       setTimeout(clearBoxAndSearch, 0);
     }
-    ev.preventDefault();
     return;
   case 13: // Enter
+    ev.preventDefault();
     var keys = [];
     for (var i = 0; i < player.searchResults.artistList.length; i += 1) {
       var artist = player.searchResults.artistList[i];
@@ -3492,7 +3565,6 @@ function onLibFilterKeyDown(ev) {
     if (ev.altKey) shuffle(keys);
     if (keys.length > 2000) {
       if (!confirm("You are about to queue " + keys.length + " songs.")) {
-        ev.preventDefault();
         return;
       }
     }
@@ -3501,21 +3573,20 @@ function onLibFilterKeyDown(ev) {
     } else {
       player.queueOnQueue(keys);
     }
-    ev.preventDefault();
     return;
   case 40:
+    ev.preventDefault();
     selection.selectOnlyFirstPos('library');
     selection.scrollToCursor();
     refreshSelection();
     libFilterDom.blur();
-    ev.preventDefault();
     return;
   case 38:
+    ev.preventDefault();
     selection.selectOnlyLastPos('library');
     selection.scrollToCursor();
     refreshSelection();
     libFilterDom.blur();
-    ev.preventDefault();
     return;
   }
 
@@ -3568,6 +3639,16 @@ function setUpLibraryUi() {
   menuDeletePlaylist.addEventListener('click', onDeletePlaylistContextMenu, false);
   menuRemove.addEventListener('click', onRemoveFromPlaylistContextMenu, false);
   menuShuffle.addEventListener('click', onShuffleContextMenu, false);
+  menuAddToPlaylist.addEventListener('click', onAddToPlaylistContextMenu, false);
+}
+
+function onAddToPlaylistContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (!havePerm('control')) return;
+  if (selection.isEmpty()) return;
+  removeContextMenu();
+  popAddToPlaylistDialog();
 }
 
 function maybeDeleteSelectedPlaylists() {

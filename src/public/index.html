@@ -544,8 +544,14 @@
     <li id="menu-download"><a href="#" target="_blank">Download</a></li>
     <li id="menu-edit-tags"><a href="#">Edit Tags</a></li>
   </ul>
-  <ul id="add-to-playlist-menu" style="display: none">
-  </ul>
+  <div id="add-to-playlist-dialog" style="display: none">
+    <div>
+      <input type="text" id="add-to-playlist-filter" placeholder="filter">
+    </div>
+    <ul id="add-to-playlist-list">
+    </ul>
+    <div id="add-to-playlist-new"></div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,5 +1,3 @@
-var $ = window.$;
-
 var shuffle = require('mess');
 var humanSize = require('human-size');
 var PlayerClient = require('./playerclient');
@@ -661,10 +659,19 @@ var modalContentDom = document.getElementById('modal-content');
 var modalTitleDom = document.getElementById('modal-title');
 var modalHeaderDom = document.getElementById('modal-header');
 var blackoutDom = document.getElementById('blackout');
-
-// needed for jQuery UI
-var $libraryMenu = $('#library-menu');
-var $libraryMenuPlaylistSubmenu = $('#library-menu-playlist-submenu');
+var contextMenuDom = document.getElementById('context-menu');
+var addToPlaylistMenu = document.getElementById('add-to-playlist-menu');
+var menuQueue = document.getElementById('menu-queue');
+var menuQueueNext = document.getElementById('menu-queue-next');
+var menuQueueRandom = document.getElementById('menu-queue-random');
+var menuQueueNextRandom = document.getElementById('menu-queue-next-random');
+var menuRemove = document.getElementById('menu-remove');
+var menuAddToPlaylist = document.getElementById('menu-add-to-playlist');
+var menuShuffle = document.getElementById('menu-shuffle');
+var menuDelete = document.getElementById('menu-delete');
+var menuDeletePlaylist = document.getElementById('menu-delete-playlist');
+var menuDownload = document.getElementById('menu-download');
+var menuEditTags = document.getElementById('menu-edit-tags');
 
 var tabs = {
   library: {
@@ -1289,6 +1296,12 @@ var eventTypeMessageFns = {
 };
 var searchTimer = null;
 
+var menuPermSelectors = {
+  admin: [menuDelete, menuEditTags],
+  control: [menuRemove, menuDeletePlaylist, menuAddToPlaylist, menuShuffle],
+  add: [menuQueue, menuQueueNext, menuQueueRandom, menuQueueNextRandom],
+};
+
 init();
 
 function saveLocalState(){
@@ -1628,10 +1641,13 @@ function makeRenderCall(renderFn, interval) {
 }
 
 function updatePlaylistsUi() {
-  updatePlaylistsSubmenus($libraryMenu, $libraryMenuPlaylistSubmenu);
+  /* TODO
+  updatePlaylistsSubmenus($contextMenuDom, $libraryMenuPlaylistSubmenu);
+  */
   renderPlaylists();
 }
 
+/* TODO
 function updatePlaylistsSubmenus($parentMenu, $menu) {
   var playlistList = player.playlistList;
 
@@ -1656,6 +1672,7 @@ function updatePlaylistsSubmenus($parentMenu, $menu) {
 
   $parentMenu.menu('refresh');
 }
+*/
 
 function renderPlaylists() {
   var playlistList = player.playlistList;
@@ -1923,6 +1940,7 @@ function renderPlaylist(ul, playlist) {
 }
 
 function isDomItemVisible(domItem) {
+  // only works if the domItem is not position absolute or fixed
   return domItem.offsetParent !== null;
 }
 
@@ -2072,8 +2090,8 @@ function bumpVolume(v) {
 }
 
 function removeContextMenu() {
-  if ($libraryMenu.is(":visible")) {
-    $libraryMenu.hide();
+  if (contextMenuDom.style.display !== 'none') {
+    contextMenuDom.style.display = "none";
     return true;
   }
   return false;
@@ -2430,51 +2448,41 @@ function setUpPlayQueueUi() {
 
 function popContextMenu(type, x, y) {
   removeContextMenu();
-  var $deletePlaylistLi = $libraryMenu.find('.delete-playlist').closest('li');
-  var $removeFromPlaylistLi = $libraryMenu.find('.remove').closest('li');
-  var $shuffle = $libraryMenu.find('.shuffle').closest('li');
-  if (type === 'playlist') {
-    $deletePlaylistLi.show();
-  } else {
-    $deletePlaylistLi.hide();
-  }
+
+  menuDeletePlaylist.style.display = (type === 'playlist') ? "" : "none";
   if (type === 'playlistItem') {
-    $removeFromPlaylistLi.show();
-    $removeFromPlaylistLi.find('a').text("Remove from Playlist");
+    menuRemove.style.display = "";
+    menuRemove.firstChild.textContent = "Remove from Playlist";
   } else if (type === 'playlist') {
-    $removeFromPlaylistLi.show();
-    $removeFromPlaylistLi.find('a').text("Clear Playlist");
+    menuRemove.style.display = "";
+    menuRemove.firstChild.textContent = "Clear Playlist";
   } else if (type === 'queue') {
-    $removeFromPlaylistLi.show();
-    $removeFromPlaylistLi.find('a').text("Remove from Queue");
+    menuRemove.style.display = "";
+    menuRemove.firstChild.textContent = "Remove from Queue";
   } else {
-    $removeFromPlaylistLi.hide();
+    menuRemove.style.display = "none";
   }
 
-  if (type === 'playlist' || type === 'playlistItem' || type === 'queue') {
-    $shuffle.show();
-  } else {
-    $shuffle.hide();
-  }
-  $libraryMenu.find('.download').attr('href', makeDownloadHref());
-  updateMenuDisableState($libraryMenu);
-  $libraryMenu.menu('refresh');
+  menuShuffle.style.display =
+    (type === 'playlist' || type === 'playlistItem' || type === 'queue') ? "" : "none";
+
+  menuDownload.firstChild.setAttribute('href', makeDownloadHref());
+  updateMenuDisableState(contextMenuDom);
 
   // make it so that the mouse cursor is not immediately over the menu
   var leftPos = x + 1;
   var topPos = y + 1;
   // avoid menu going outside document boundaries
-  if (leftPos + $libraryMenu.width() >= window.innerWidth) {
-    leftPos = x - $libraryMenu.width() - 1;
+  if (leftPos + contextMenuDom.offsetWidth >= window.innerWidth) {
+    leftPos = x - contextMenuDom.offsetWidth - 1;
   }
-  if (topPos + $libraryMenu.height() >= window.innerHeight) {
-    topPos = y - $libraryMenu.height() - 1;
+  if (topPos + contextMenuDom.offsetHeight >= window.innerHeight) {
+    topPos = y - contextMenuDom.offsetHeight - 1;
   }
 
-  $libraryMenu.show().offset({
-    left: leftPos,
-    top: topPos
-  });
+  contextMenuDom.style.left = leftPos + "px";
+  contextMenuDom.style.top = topPos + "px";
+  contextMenuDom.style.display = "";
 }
 
 function onShuffleContextMenu(ev) {
@@ -3528,39 +3536,38 @@ function setUpLibraryUi() {
       return selection.isLibrary();
     }
   });
-  $libraryMenu.menu();
-  $libraryMenu.on('mousedown', preventEventDefault);
-  $libraryMenu.on('click', '.queue', function(ev) {
+  contextMenuDom.addEventListener('mousedown', preventEventDefault, false);
+
+  menuQueue.addEventListener('click', function(ev) {
     ev.stopPropagation();
     ev.preventDefault();
     player.queueOnQueue(selection.toTrackKeys());
     removeContextMenu();
-  });
-  $libraryMenu.on('click', '.queue-next', function(ev) {
+  }, false);
+  menuQueueNext.addEventListener('click', function(ev) {
     ev.stopPropagation();
     ev.preventDefault();
     player.queueTracksNext(selection.toTrackKeys());
     removeContextMenu();
-  });
-  $libraryMenu.on('click', '.queue-random', function(ev) {
+  }, false);
+  menuQueueRandom.addEventListener('click', function(ev) {
     ev.stopPropagation();
     ev.preventDefault();
     player.queueOnQueue(selection.toTrackKeys(true));
     removeContextMenu();
-  });
-  $libraryMenu.on('click', '.queue-next-random', function(ev) {
+  }, false);
+  menuQueueNextRandom.addEventListener('click', function(ev) {
     ev.stopPropagation();
     ev.preventDefault();
     player.queueTracksNext(selection.toTrackKeys(true));
     removeContextMenu();
-  });
-  $libraryMenu.on('click', '.download', onDownloadContextMenu);
-  $libraryMenu.on('click', '.delete', onDeleteContextMenu);
-  $libraryMenu.on('click', '.edit-tags', onEditTagsContextMenu);
-  $libraryMenu.on('click', '.delete-playlist', onDeletePlaylistContextMenu);
-  $libraryMenu.on('click', '.remove', onRemoveFromPlaylistContextMenu);
-  $libraryMenuPlaylistSubmenu.on('click', 'li', onAddToPlaylistContextMenu);
-  $libraryMenu.on('click', '.shuffle', onShuffleContextMenu);
+  }, false);
+  menuDownload.addEventListener('click', onDownloadContextMenu, false);
+  menuDelete.addEventListener('click', onDeleteContextMenu, false);
+  menuEditTags.addEventListener('click', onEditTagsContextMenu, false);
+  menuDeletePlaylist.addEventListener('click', onDeletePlaylistContextMenu, false);
+  menuRemove.addEventListener('click', onRemoveFromPlaylistContextMenu, false);
+  menuShuffle.addEventListener('click', onShuffleContextMenu, false);
 }
 
 function maybeDeleteSelectedPlaylists() {
@@ -3709,23 +3716,21 @@ function makeDownloadHref() {
   }
 }
 
-function updateMenuDisableState($menu) {
-  var menuPermDoms = {
-    admin: $menu.find('.delete,.edit-tags'),
-    control: $menu.find('.remove,.delete-playlist,.add-to-playlist,.shuffle'),
-    add: $menu.find('.queue,.queue-next,.queue-random,.queue-next-random'),
-  };
-  for (var permName in menuPermDoms) {
-    var $item = menuPermDoms[permName];
-    if (havePerm(permName)) {
-      $item
-        .removeClass('ui-state-disabled')
-        .attr('title', '');
-    } else {
-      $item
-        .addClass('ui-state-disabled')
-        .attr('title', "Insufficient privileges. See Settings.");
-    }
+function updateMenuDisableState(menu) {
+  for (var permName in menuPermSelectors) {
+    var menuItemList = menuPermSelectors[permName];
+    enableDisable(menuItemList, havePerm(permName));
+  }
+
+  function enableDisable(menuItemList, enable) {
+    menuItemList.forEach(function(menuItem) {
+      menuItem.setAttribute('title', enable ? '' : "Insufficient privileges. See Settings.");
+      if (enable) {
+        menuItem.classList.remove('disabled');
+      } else {
+        menuItem.classList.add('disabled');
+      }
+    });
   }
 }
 

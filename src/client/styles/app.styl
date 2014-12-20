@@ -167,10 +167,10 @@ button:hover .icon
   width 100%
   height 100%
   background-color rgba(0, 0, 0, 0.5)
-  z-index 1
+  z-index 2
 
 #modal
-  z-index 2
+  z-index 3
   position fixed
 
 #modal-header
@@ -192,6 +192,25 @@ button:hover .icon
 
 #modal-content div:focus
   outline 0
+
+#context-menu
+  position fixed
+  z-index 1
+  font-weight normal
+  width 274px
+
+  li
+    a
+      font-size 16px
+      text-decoration none
+      display block
+      color #d9d9d9
+      padding 3px 12px
+
+#context-menu li a:hover
+  font-weight bold
+  color #ffffff
+  background #00498f url("images/ui-bg_dots-small_40_00498f_2x2.png") 50% 50% repeat
 
 #client-vol-slider
   margin 3px
@@ -434,14 +453,6 @@ button:hover .icon
 
 #upload-by-url, #import-by-name
   width 370px
-
-.ui-menu
-  font-weight normal
-  width 274px
-  font-size 1em
-  a
-    text-decoration none
-    display block
 
 #shortcuts
   h1

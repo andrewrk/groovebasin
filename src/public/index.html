@@ -531,25 +531,21 @@
     <button class="button" id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
     <button class="button" id="edit-tags-per"><label id="edit-tags-per-label" accesskey="r" for="edit-tags-per">Pe<span class="accesskey">r</span> Track</label></button>
   </div>
-  <ul id="library-menu" style="display: none">
-    <li><a href="#" class="queue">Queue</a></li>
-    <li><a href="#" class="queue-next">Queue Next</a></li>
-    <li><a href="#" class="queue-random">Queue in Random Order</a></li>
-    <li><a href="#" class="queue-next-random">Queue Next in Random Order</a></li>
-    <li><a href="#" class="remove">Remove from Playlist</a></li>
-    <li>
-      <a href="#" class="add-to-playlist">Add to Playlist</a>
-      <ul id="library-menu-playlist-submenu">
-      </ul>
-    </li>
-    <li><a href="#" class="shuffle">Shuffle</a></li>
-    <li><a href="#" class="delete">Delete from Library</a></li>
-    <li><a href="#" class="delete-playlist">Delete Playlist</a></li>
-    <li><a href="#" class="download" target="_blank">Download</a></li>
-    <li><a href="#" class="edit-tags">Edit Tags</a></li>
+  <ul id="context-menu" class="widget" style="display: none">
+    <li id="menu-queue"><a href="#">Queue</a></li>
+    <li id="menu-queue-next"><a href="#">Queue Next</a></li>
+    <li id="menu-queue-random"><a href="#">Queue in Random Order</a></li>
+    <li id="menu-queue-next-random"><a href="#">Queue Next in Random Order</a></li>
+    <li id="menu-remove"><a href="#">Remove from Playlist</a></li>
+    <li id="menu-add-to-playlist"><a href="#">Add to Playlist...</a></li>
+    <li id="menu-shuffle"><a href="#">Shuffle</a></li>
+    <li id="menu-delete"><a href="#">Delete from Library</a></li>
+    <li id="menu-delete-playlist"><a href="#">Delete Playlist</a></li>
+    <li id="menu-download"><a href="#" target="_blank">Download</a></li>
+    <li id="menu-edit-tags"><a href="#">Edit Tags</a></li>
   </ul>
-  <script src="vendor/jquery-2.1.1.min.js"></script>
-  <script src="vendor/jquery-ui-1.11.2.custom.min.js"></script>
+  <ul id="add-to-playlist-menu" style="display: none">
+  </ul>
   <script src="app.js"></script>
 </body>
 </html>

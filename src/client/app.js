@@ -914,7 +914,7 @@ var keyboardHandlers = (function() {
       shift: null,
       handler: function(ev) {
         if (ev.shiftKey) {
-          popDialog(shortcutsDom, "Keyboard Shortcuts", 600, window.innerHeight - 40);
+          showKeyboardShortcuts();
         } else {
           clickTab(tabs.library);
           libFilterDom.focus();
@@ -3134,6 +3134,14 @@ function setUpSettingsUi() {
 
   requestApproveDom.addEventListener('click', onRequestApproveClick, false);
   requestDenyDom.addEventListener('click', onRequestDenyClick, false);
+
+  document.getElementById('keyboard-shortcuts-link').addEventListener('click', showKeyboardShortcuts, false);
+}
+
+function showKeyboardShortcuts(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  popDialog(shortcutsDom, "Keyboard Shortcuts", 600, window.innerHeight - 40);
 }
 
 function handleApproveDeny(approved) {

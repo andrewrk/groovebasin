@@ -2984,7 +2984,7 @@ function onImportByNameKeyDown(ev) {
   if (ev.which === 27) {
     importByNameDom.value = "";
     importByNameDom.blur();
-  } else if (ev.which === 13 && ev.ctrlKey) {
+  } else if (ev.which === 13 && !ev.shiftKey) {
     importNames();
   }
 }

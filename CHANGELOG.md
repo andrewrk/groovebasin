@@ -10,6 +10,7 @@ protocol is not officially stable yet, only the minor version number is bumped.
    - client: double quotes can be used to include spaces in search terms.
    - import by name feature - searches YouTube for the name and imports into
      your library.
+   - client: fix security bug where title display was not escaping HTML
    - fix symlink behavior in music library
    - fix spacebar keyboard shortcut in Firefox
    - fix crash when zip files contain non music files
@@ -26,6 +27,7 @@ protocol is not officially stable yet, only the minor version number is bumped.
    - (breaking change) protocolupgrade UUID has changed
    - (breaking change) slashes and spaces disallowed in user names
    - (breaking change) clear and shuffle commands removed from protocol
+   - HTTP redirect to HTTPS on the same port
    - client: clear and shuffle buttons removed from UI
    - client: Ctrl+A to select all. Works on queue, library, and playlists.
    - client: shuffle works on the selection instead of the entire queue
@@ -33,6 +35,20 @@ protocol is not officially stable yet, only the minor version number is bumped.
    - client: shuffle context menu item added to playlists and queue.
    - client: ability to click in the empty queue area to get rid of
      context menu
+   - client: scroll to cursor instead of selection
+   - client: clear selection when focusing search box
+   - client: disable context menu items lacking permission
+   - client: fix context menu popping up outside document boundary
+   - client: fix playlist item movement not anticipating correctly
+   - client: 'E' keyboard shortcut to edit tags
+   - client: prettier edit tags dialog
+   - client: no longer depends on jQuery, jQuery UI, and cssreset. The code is
+     now smaller, less buggy, and more performant.
+   - client: fix not all DOM elements resizing correctly
+   - client: `>` and `<` keyboard shortcuts require pressing shift
+   - client: ability to show keyboard shortcuts from settings
+   - client: add to playlist UI allows better keyboard interaction
+   - fix crash when encountering paid YouTube videos
    - fix not respecting verbose logging for play queue
    - `--config` option so config file can be in a different place
    - db path is relative to config file instead of CWD
@@ -47,10 +63,12 @@ protocol is not officially stable yet, only the minor version number is bumped.
      several security vulnerabilities fixed.
    - deleting multiple tracks from the library is more efficient and results in
      `O(1)` messages to connected clients instead of `O(n)`.
+   - ability to add SSL CA certificates
 
  * Melissa Noelle:
    - chat: support /me events
    - chat: convert URLs to links
+   - client: style the slider widget
 
  * Josh Wolfe:
    - sort keys for queueing up large number of songs at once requires

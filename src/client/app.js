@@ -2550,6 +2550,9 @@ function popContextMenu(type, x, y) {
   menuDownload.firstChild.setAttribute('href', makeDownloadHref());
   updateMenuDisableState(contextMenuDom);
 
+  // must make it visible for width and height properties to exist
+  contextMenuDom.style.display = "";
+
   // make it so that the mouse cursor is not immediately over the menu
   var leftPos = x + 1;
   var topPos = y + 1;
@@ -2560,10 +2563,8 @@ function popContextMenu(type, x, y) {
   if (topPos + contextMenuDom.offsetHeight >= window.innerHeight) {
     topPos = y - contextMenuDom.offsetHeight - 1;
   }
-
   contextMenuDom.style.left = leftPos + "px";
   contextMenuDom.style.top = topPos + "px";
-  contextMenuDom.style.display = "";
 }
 
 function onShuffleContextMenu(ev) {

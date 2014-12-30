@@ -821,7 +821,7 @@ var keyboardHandlers = (function() {
       alt: false,
       shift: false,
       handler: function(ev) {
-        if (ev.ctrl) {
+        if (ev.ctrlKey) {
           selection.selectAll();
           refreshSelection();
         } else {

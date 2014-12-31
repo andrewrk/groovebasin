@@ -473,7 +473,7 @@ var selection = {
     } else if (this.isLibrary()) {
       scrollThingToCursor(libraryDom, helpers);
     } else if (this.isPlaylist()) {
-      scrollThingToCursor(playlistsListDom, helpers);
+      scrollThingToCursor(playlistsDom, helpers);
     }
   },
   getHelpers: function() {

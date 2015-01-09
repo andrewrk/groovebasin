@@ -1801,6 +1801,7 @@ function renderPlaylists() {
 
   playlistsDom.scrollTop = scrollTop;
   refreshSelection();
+  expandPlaylistsToSelection();
 }
 
 function renderLibrary() {
@@ -2205,6 +2206,25 @@ function expandAlbum(album) {
   var elem = document.getElementById(toAlbumId(album.key));
   var li = elem.parentNode;
   toggleLibraryExpansion(li);
+}
+
+function expandPlaylist(playlist) {
+  if (isPlaylistExpanded(playlist)) return;
+
+  var playlistElem = document.getElementById(toPlaylistId(playlist.id));
+  var li = playlistElem.parentNode;
+  togglePlaylistExpansion(li);
+}
+
+function expandPlaylistsToSelection() {
+  if (!selection.isPlaylist()) return;
+
+  for (var itemId in selection.ids.playlistItem) {
+    var playlist = player.playlistItemTable[itemId].playlist;
+    expandPlaylist(playlist);
+  }
+
+  selection.scrollTo();
 }
 
 function expandLibraryToSelection() {

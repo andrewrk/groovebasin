@@ -725,6 +725,7 @@ var menuAddToPlaylist = document.getElementById('menu-add-to-playlist');
 var menuShuffle = document.getElementById('menu-shuffle');
 var menuDelete = document.getElementById('menu-delete');
 var menuDeletePlaylist = document.getElementById('menu-delete-playlist');
+var menuRenamePlaylist = document.getElementById('menu-rename-playlist');
 var menuDownload = document.getElementById('menu-download');
 var menuEditTags = document.getElementById('menu-edit-tags');
 var addToPlaylistDialog = document.getElementById('add-to-playlist-dialog');
@@ -916,12 +917,18 @@ var keyboardHandlers = (function() {
         newPlaylistNameDom.select();
       },
     },
-    // r
+    // r, R
     82: {
       ctrl: false,
       alt: false,
-      shift: false,
-      handler: nextRepeatState
+      shift: null,
+      handler: function(ev) {
+        if (ev.shiftKey) {
+          maybeRenamePlaylistAtCursor();
+        } else {
+          nextRepeatState();
+        }
+      },
     },
     // s
     83: {
@@ -2599,6 +2606,7 @@ function popContextMenu(type, x, y) {
   removeContextMenu();
 
   menuDeletePlaylist.style.display = (type === 'playlist') ? "" : "none";
+  menuRenamePlaylist.style.display = (type === 'playlist') ? "" : "none";
   if (type === 'playlistItem') {
     menuRemove.style.display = "";
     menuRemove.firstChild.textContent = "Remove from Playlist";
@@ -3710,6 +3718,7 @@ function setUpLibraryUi() {
   menuDelete.addEventListener('click', onDeleteContextMenu, false);
   menuEditTags.addEventListener('click', onEditTagsContextMenu, false);
   menuDeletePlaylist.addEventListener('click', onDeletePlaylistContextMenu, false);
+  menuRenamePlaylist.addEventListener('click', onRenamePlaylistContextMenu, false);
   menuRemove.addEventListener('click', onRemoveFromPlaylistContextMenu, false);
   menuShuffle.addEventListener('click', onShuffleContextMenu, false);
   menuAddToPlaylist.addEventListener('click', onAddToPlaylistContextMenu, false);
@@ -3722,6 +3731,15 @@ function onAddToPlaylistContextMenu(ev) {
   if (selection.isEmpty()) return;
   removeContextMenu();
   popAddToPlaylistDialog();
+}
+
+function maybeRenamePlaylistAtCursor() {
+  if (selection.cursorType !== 'playlist') return;
+  var playlist = player.playlistTable[selection.cursor];
+  var newName = prompt("Rename playlist \"" + playlist.name + "\" to:", playlist.name);
+  if (newName) {
+    player.renamePlaylist(playlist, newName);
+  }
 }
 
 function maybeDeleteSelectedPlaylists() {
@@ -3740,6 +3758,13 @@ function maybeDeleteSelectedPlaylists() {
   if (!confirm(message)) return false;
   player.deletePlaylists(selection.ids.playlist);
   return true;
+}
+
+function onRenamePlaylistContextMenu(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+  maybeRenamePlaylistAtCursor();
+  removeContextMenu();
 }
 
 function onDeletePlaylistContextMenu(ev) {

@@ -412,6 +412,17 @@ PlayerClient.prototype.queueOnPlaylist = function(playlistId, keys, previousKey,
   this.emit('playlistsUpdate');
 };
 
+PlayerClient.prototype.renamePlaylist = function(playlist, newName) {
+  playlist.name = newName;
+
+  this.sendCommand('playlistRename', {
+    id: playlist.id,
+    name: playlist.name,
+  });
+
+  this.emit('playlistUpdate');
+};
+
 PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextKey) {
   var items = {}; // we'll send this to the server
   var sortKeys = keese(previousKey, nextKey, keys.length);

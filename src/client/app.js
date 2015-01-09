@@ -54,13 +54,18 @@ var selection = {
     this.rangeSelectAnchor = null;
     this.rangeSelectAnchorType = null;
   },
-  selectOnly: function(selName, key){
-    this.clear();
-    this.cursorType = selName;
+  selectOne: function(selName, key, selectOnly) {
+    if (selectOnly) {
+      this.clear();
+      this.cursorType = selName;
+      this.cursor = key;
+      this.rangeSelectAnchor = key;
+      this.rangeSelectAnchorType = selName;
+    }
     this.ids[selName][key] = true;
-    this.cursor = key;
-    this.rangeSelectAnchor = key;
-    this.rangeSelectAnchorType = selName;
+  },
+  selectOnly: function(selName, key) {
+    return selection.selectOne(selName, key, true);
   },
   selectAll: function() {
     this.clear();
@@ -163,6 +168,11 @@ var selection = {
       } else {
         val.playlist = player.playlistList[0];
       }
+    } else if (this.isQueue()) {
+      val = {
+        type: 'queue',
+        queue: key ? player.queue.itemTable[key] : player.queue.itemList[0],
+      };
     } else {
       throw new Error("NothingSelected");
     }
@@ -194,25 +204,32 @@ var selection = {
       return pos.artist != null;
     } else if (pos.type === 'playlist') {
       return pos.playlist != null;
+    } else if (pos.type === 'queue') {
+      return pos.queue != null;
     } else {
       throw new Error("NothingSelected");
     }
   },
-  selectPos: function(pos){
+  selectOnlyPos: function(pos) {
+    return this.selectPos(pos, true);
+  },
+  selectPos: function(pos, selectOnly) {
     if (pos.type === 'library') {
-      if (pos.track != null) {
-        selection.ids.track[pos.track.key] = true;
-      } else if (pos.album != null) {
-        selection.ids.album[pos.album.key] = true;
-      } else if (pos.artist != null) {
-        selection.ids.artist[pos.artist.key] = true;
+      if (pos.track) {
+        return selection.selectOne('track', pos.track.key, selectOnly);
+      } else if (pos.album) {
+        return selection.selectOne('album', pos.album.key, selectOnly);
+      } else if (pos.artist) {
+        return selection.selectOne('artist', pos.artist.key, selectOnly);
       }
     } else if (pos.type === 'playlist') {
-      if (pos.playlistItem != null) {
-        selection.ids.playlistItem[pos.playlistItem.id] = true;
-      } else if (pos.playlist != null) {
-        selection.ids.playlist[pos.playlist.id] = true;
+      if (pos.playlistItem) {
+        return selection.selectOne('playlistItem', pos.playlistItem.id, selectOnly);
+      } else if (pos.playlist) {
+        return selection.selectOne('playlist', pos.playlist.id, selectOnly);
       }
+    } else if (pos.type === 'queue') {
+      return selection.selectOne('queue', pos.queue.id, selectOnly);
     } else {
       throw new Error("NothingSelected");
     }
@@ -256,15 +273,15 @@ var selection = {
   },
   incrementPos: function(pos){
     if (pos.type === 'library') {
-      if (pos.track != null) {
+      if (pos.track) {
         pos.track = pos.track.album.trackList[pos.track.index + 1];
-        if (pos.track == null) {
+        if (!pos.track) {
           pos.album = pos.artist.albumList[pos.album.index + 1];
-          if (pos.album == null) {
+          if (!pos.album) {
             pos.artist = player.searchResults.artistList[pos.artist.index + 1];
           }
         }
-      } else if (pos.album != null) {
+      } else if (pos.album) {
         if (isAlbumExpanded(pos.album)) {
           pos.track = pos.album.trackList[0];
         } else {
@@ -276,7 +293,7 @@ var selection = {
             pos.album = null;
           }
         }
-      } else if (pos.artist != null) {
+      } else if (pos.artist) {
         if (isArtistExpanded(pos.artist)) {
           pos.album = pos.artist.albumList[0];
         } else {
@@ -284,20 +301,24 @@ var selection = {
         }
       }
     } else if (pos.type === 'playlist') {
-      if (pos.playlistItem != null) {
+      if (pos.playlistItem) {
         pos.playlistItem = pos.playlistItem.playlist.itemList[pos.playlistItem.index + 1];
-        if (pos.playlistItem == null) {
+        if (!pos.playlistItem) {
           pos.playlist = player.playlistList[pos.playlist.index + 1];
         }
-      } else if (pos.playlist != null) {
+      } else if (pos.playlist) {
         if (isPlaylistExpanded(pos.playlist)) {
           pos.playlistItem = pos.playlist.itemList[0];
-          if (pos.playlistItem == null) {
+          if (!pos.playlistItem) {
             pos.playlist = player.playlistList[pos.playlist.index + 1];
           }
         } else {
           pos.playlist = player.playlistList[pos.playlist.index + 1];
         }
+      }
+    } else if (pos.type === 'queue') {
+      if (pos.queue) {
+        pos.queue = player.queue.itemList[pos.queue.index + 1];
       }
     } else {
       throw new Error("NothingSelected");
@@ -330,6 +351,32 @@ var selection = {
           pos.playlistItem = pos.playlist.itemList[pos.playlist.itemList.length - 1];
         }
       }
+    } else if (pos.type === 'queue') {
+      if (pos.queue) {
+        pos.queue = player.queue.itemList[pos.queue.index - 1];
+      }
+    } else {
+      throw new Error("NothingSelected");
+    }
+  },
+  containsPos: function(pos) {
+    if (!this.posInBounds(pos)) return false;
+    if (pos.type === 'library') {
+      if (pos.track) {
+        return this.ids.track[pos.track.key];
+      } else if (pos.album) {
+        return this.ids.album[pos.album.key];
+      } else if (pos.artist) {
+        return this.ids.artist[pos.artist.key];
+      }
+    } else if (pos.type === 'playlist') {
+      if (pos.playlistItem) {
+        return this.ids.playlistItem[pos.playlistItem.id];
+      } else if (pos.playlist) {
+        return this.ids.playlist[pos.playlist.id];
+      }
+    } else if (pos.type === 'queue') {
+      return this.ids.queue[pos.queue.id];
     } else {
       throw new Error("NothingSelected");
     }
@@ -1591,7 +1638,10 @@ function refreshSelection() {
       }
     }
     for (id in helper.ids) {
-      helper.getDiv(id).classList.add('selected');
+      var selectedDomItem = helper.getDiv(id);
+      if (selectedDomItem) {
+        selectedDomItem.classList.add('selected');
+      }
     }
     if (selection.cursor != null && selectionType === selection.cursorType) {
       var validIds = getValidIds(selectionType);
@@ -1607,7 +1657,10 @@ function refreshSelection() {
         }
       }
       if (selection.cursor != null) {
-        helper.getDiv(selection.cursor).classList.add('cursor');
+        var cursorDomItem = helper.getDiv(selection.cursor);
+        if (cursorDomItem) {
+          cursorDomItem.classList.add('cursor');
+        }
       }
     }
   }
@@ -2037,22 +2090,13 @@ function maybeDeleteTracks(keysList) {
 }
 
 function assumeCurrentSelectionIsDeleted() {
-  if (selection.isQueue()) {
-    var sortKey = player.queue.itemTable[selection.cursor].sortKey;
-    var item = null;
-    for (var i = 0; i < player.queue.itemList.length; i++) {
-      item = player.queue.itemList[i];
-      if (item.sortKey > sortKey) {
-        // select the very next one
-        break;
-      }
-      // if we deleted the last item, select the new last item.
-    }
-    // if there's no items, select nothing.
-    if (item != null) {
-      selection.selectOnly('queue', item.id);
-    }
-    refreshSelection();
+  var nextPos = selection.getPos();
+  while (selection.containsPos(nextPos)) {
+    selection.incrementPos(nextPos);
+  }
+  selection.clear();
+  if (selection.posInBounds(nextPos)) {
+    selection.selectOnlyPos(nextPos);
   }
 }
 
@@ -2075,6 +2119,7 @@ function handleDeletePressed(shift) {
           table[itemId] = true;
         }
       }
+      assumeCurrentSelectionIsDeleted();
       player.removeItemsFromPlaylists(table);
     }
   } else if (selection.isQueue()) {

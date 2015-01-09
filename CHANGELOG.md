@@ -1,4 +1,4 @@
-### Version 1.5.0 (UNRELEASED)
+### Version 1.5.0 (2015-01-09)
 
 Contains breaking changes to the Groove Basin protocol. Since the Groove Basin
 protocol is not officially stable yet, only the minor version number is bumped.
@@ -64,6 +64,17 @@ protocol is not officially stable yet, only the minor version number is bumped.
    - deleting multiple tracks from the library is more efficient and results in
      `O(1)` messages to connected clients instead of `O(n)`.
    - ability to add SSL CA certificates
+   - better shuffle behavior
+     * When Auto DJ is on, it re-rolls all the random songs without
+       interrupting history or current track.
+     * When Auto DJ is off, it preserves sort keys; just shuffling them around.
+   - rescan command deletes mtimes in the db instead of relying on a flag in
+     memory. This way if you kill the server in the middle of a rescan, it
+     picks up where it left off.
+   - add `--spawn`, `--print-url`, and `--start` command line options
+   - client: smoother track slider
+   - client: improved page performance due to no longer gzipping assets which
+     are already compressed.
 
  * Melissa Noelle:
    - chat: support /me events
@@ -75,6 +86,9 @@ protocol is not officially stable yet, only the minor version number is bumped.
      `O(n*log(n))` size over the network instead of `O(n^2)`.
    - play queue total never displays a negative number and shows '?' if some
      tracks need scanning.
+
+ * moshev
+   - Fixed a regression in uploading.
 
 ### Version 1.4.0 (2014-10-16)
 

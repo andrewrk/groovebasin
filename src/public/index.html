@@ -112,10 +112,11 @@
           <div id="settings-show-auth">
             <p>Authenticated as <span id="auth-username-display">...</span></p>
             <p>Permissions:
-              <span class="perm" id="auth-perm-read" title="Reading the library, current queue, and playback status.">read</span>
-              <span class="perm" id="auth-perm-add" title="Adding songs, loading playlists, and uploading songs.">add</span>
-              <span class="perm" id="auth-perm-control" title="Control playback state, and manipulate playlists.">control</span>
-              <span class="perm" id="auth-perm-admin" title="Deleting songs, updating tags, organizing library.">admin</span>
+              <span class="perm" id="auth-perm-read" title="Read access to everything">read</span>
+              <span class="perm" id="auth-perm-add" title="Import new songs">add</span>
+              <span class="perm" id="auth-perm-control" title="Control playback and the queue">control</span>
+              <span class="perm" id="auth-perm-playlist" title="Create, update, delete playlists">playlist</span>
+              <span class="perm" id="auth-perm-admin" title="Delete songs, update tags, organize library">admin</span>
             </p>
             <input class="button" type="button" id="settings-auth-edit" value="Edit">
             <input class="button" type="button" id="settings-auth-logout" value="Logout">
@@ -125,10 +126,11 @@
             <h1>Users</h1>
             <select id="settings-users-select"></select><br>
             <input class="button" type="button" id="settings-delete-user" value="Delete">
-            <input class="button" type="button" id="user-perm-read" value="read" title="Reading the library, current queue, and playback status.">
-            <input class="button" type="button" id="user-perm-add" value="add" title="Adding songs, loading playlists, and uploading songs.">
-            <input class="button" type="button" id="user-perm-control" value="control" title="Control playback state, and manipulate playlists.">
-            <input class="button" type="button" id="user-perm-admin" value="admin" title="Deleting songs, updating tags, organizing library.">
+            <input class="button" type="button" id="user-perm-read" value="read" title="Read access to everything">
+            <input class="button" type="button" id="user-perm-add" value="add" title="Import new songs">
+            <input class="button" type="button" id="user-perm-control" value="control" title="Control playback and the queue">
+            <input class="button" type="button" id="user-perm-playlist" value="playlist" title="Create, update, delete playlists">
+            <input class="button" type="button" id="user-perm-admin" value="admin" title="Delete songs, update tags, organize library">
           </div>
           <div id="settings-requests">
             <h1>Requests</h1>

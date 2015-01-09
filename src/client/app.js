@@ -658,6 +658,7 @@ var streamUrlDom = document.getElementById('settings-stream-url');
 var authPermReadDom = document.getElementById('auth-perm-read');
 var authPermAddDom = document.getElementById('auth-perm-add');
 var authPermControlDom = document.getElementById('auth-perm-control');
+var authPermPlaylistDom = document.getElementById('auth-perm-playlist');
 var authPermAdminDom = document.getElementById('auth-perm-admin');
 var lastFmSignOutDom = document.getElementById('lastfm-sign-out');
 var lastFmAuthUrlDom = document.getElementById('lastfm-auth-url');
@@ -686,6 +687,7 @@ var settingsRequestsDom = document.getElementById('settings-requests');
 var userPermReadDom = document.getElementById('user-perm-read');
 var userPermAddDom = document.getElementById('user-perm-add');
 var userPermControlDom = document.getElementById('user-perm-control');
+var userPermPlaylistDom = document.getElementById('user-perm-playlist');
 var userPermAdminDom = document.getElementById('user-perm-admin');
 var settingsDelUserDom = document.getElementById('settings-delete-user');
 var requestReplaceSelect = document.getElementById('request-replace');
@@ -1359,8 +1361,8 @@ var searchTimer = null;
 
 var menuPermSelectors = {
   admin: [menuDelete, menuEditTags],
-  control: [menuRemove, menuDeletePlaylist, menuAddToPlaylist, menuShuffle],
-  add: [menuQueue, menuQueueNext, menuQueueRandom, menuQueueNextRandom],
+  control: [menuRemove, menuShuffle, menuQueue, menuQueueNext, menuQueueRandom, menuQueueNextRandom],
+  playlist: [menuDeletePlaylist, menuAddToPlaylist],
 };
 
 var addToPlaylistDialogFilteredList = [];
@@ -2442,7 +2444,7 @@ function onAddToPlaylistListClick(ev) {
   ev.preventDefault();
   var clickedLi = getFirstChildToward(addToPlaylistList, ev.target);
   if (!clickedLi) return;
-  if (!havePerm('control')) return;
+  if (!havePerm('playlist')) return;
   if (!ev.shiftKey) closeOpenDialog();
   var playlistId = clickedLi.getAttribute('data-key');
   player.queueOnPlaylist(playlistId, selection.toTrackKeys());
@@ -2451,7 +2453,7 @@ function onAddToPlaylistListClick(ev) {
 function onAddToPlaylistNewClick(ev) {
   ev.stopPropagation();
   ev.preventDefault();
-  if (!havePerm('control')) return;
+  if (!havePerm('playlist')) return;
   if (!ev.shiftKey) closeOpenDialog();
   var playlist = player.createPlaylist(addToPlaylistFilter.value);
   player.queueOnPlaylist(playlist.id, selection.toTrackKeys());
@@ -3160,6 +3162,7 @@ function updateSettingsAuthUi() {
   authPermReadDom.style.display = havePerm('read') ? "" : "none";
   authPermAddDom.style.display = havePerm('add') ? "" : "none";
   authPermControlDom.style.display = havePerm('control') ? "" : "none";
+  authPermPlaylistDom.style.display = havePerm('playlist') ? "" : "none";
   authPermAdminDom.style.display = havePerm('admin') ? "" : "none";
   streamUrlDom.setAttribute('href', getStreamUrl());
   settingsAuthRequestDom.style.display =
@@ -3274,6 +3277,7 @@ function setUpSettingsUi() {
   userPermReadDom.addEventListener('click', updateSelectedUserPerms, false);
   userPermAddDom.addEventListener('click', updateSelectedUserPerms, false);
   userPermControlDom.addEventListener('click', updateSelectedUserPerms, false);
+  userPermPlaylistDom.addEventListener('click', updateSelectedUserPerms, false);
   userPermAdminDom.addEventListener('click', updateSelectedUserPerms, false);
 
   settingsUsersSelect.addEventListener('change', updatePermsForSelectedUser, false);
@@ -3329,6 +3333,7 @@ function updatePermsForSelectedUser() {
   updateBtnOn(userPermReadDom, user.perms.read);
   updateBtnOn(userPermAddDom, user.perms.add);
   updateBtnOn(userPermControlDom, user.perms.control);
+  updateBtnOn(userPermPlaylistDom, user.perms.playlist);
   updateBtnOn(userPermAdminDom, user.perms.admin);
 
   settingsDelUserDom.disabled = (selectedUserId === PlayerClient.GUEST_USER_ID);
@@ -3342,6 +3347,7 @@ function updateSelectedUserPerms(ev) {
       read: isBtnOn(userPermReadDom),
       add: isBtnOn(userPermAddDom),
       control: isBtnOn(userPermControlDom),
+      playlist: isBtnOn(userPermPlaylistDom),
       admin: isBtnOn(userPermAdminDom),
     },
   });
@@ -3712,7 +3718,7 @@ function setUpLibraryUi() {
 function onAddToPlaylistContextMenu(ev) {
   ev.preventDefault();
   ev.stopPropagation();
-  if (!havePerm('control')) return;
+  if (!havePerm('playlist')) return;
   if (selection.isEmpty()) return;
   removeContextMenu();
   popAddToPlaylistDialog();

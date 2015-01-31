@@ -106,7 +106,6 @@ Live discussion in #libgroove on Freenode.
 
 ### Roadmap
 
- 0. Playlists
  0. Labels
  0. Music library organization
  0. Accoustid Integration

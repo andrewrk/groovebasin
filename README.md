@@ -57,8 +57,10 @@ groovebasin
 
 ### From Source
 
-1. Install [Node.js](http://nodejs.org) v0.10.x. On Debian and
-   Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`.
+1. Install one of these:
+   * [Node.js](http://nodejs.org) v0.10.36 or v0.12.x
+   * [io.js](https://iojs.org) v1.x.x
+   * On Debian and Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`
 2. Install [libgroove](https://github.com/andrewrk/libgroove).
    libgroove is available in many package managers. See the libgroove README
    for more details.

@@ -54,6 +54,6 @@
   "scripts": {
     "start": "node lib/server.js",
     "build": "npm install && ./build",
-    "dev": "npm run build && node lib/server.js --verbose"
+    "dev": "npm run build && node --debug=5858 lib/server.js --verbose"
   }
 }

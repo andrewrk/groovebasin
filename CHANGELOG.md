@@ -1,3 +1,20 @@
+### Version 1.5.1 (2015-05-15)
+
+ * Andrew Kelley:
+   - update dependencies
+   - update to work with both io.js and node.js v0.12
+   - fix error handling logic for attaching/detaching encoder
+   - groovebasin protocol: add 'libraryQueue' subscription item. It gives you
+     library information about the subset of items that are in the play queue.
+   - groovebasin protocol: fix messages not being delimited by newlines.
+   - MPD protocol: fix crash when queuing songs
+   - add `encodeBitRate` config option defaulting to 256 which is the old
+     hardcoded value.
+   - add `--dump-users` CLI argument which can recover passwords. Note: next
+     version of groove basin will hash passwords. See #434
+   - fix the high CPU usage bug. Special thanks to Felipe Sateler for
+     diagnosing the cause after all my failed attempts.
+
 ### Version 1.5.0 (2015-01-09)
 
 Contains breaking changes to the Groove Basin protocol. Since the Groove Basin

@@ -1888,28 +1888,45 @@ function getCurrentTrackPosition(){
   }
 }
 
-function updateSliderPos() {
-  window.requestAnimationFrame(updateSliderPos);
 
+function updateSliderPos() {
   if (userIsSeeking) return;
 
-  var duration, disabled, elapsed, sliderPos;
-  if (player.currentItem && player.isPlaying != null && player.currentItem.track) {
-    disabled = false;
-    elapsed = getCurrentTrackPosition();
-    duration = player.currentItem.track.duration;
-    sliderPos = elapsed / duration;
-  } else {
-    disabled = true;
-    elapsed = duration = sliderPos = 0;
+  var lastUpdate = 0;
+
+  function doUpdate(timestamp) {
+    var duration, 
+      disabled, 
+      elapsed, 
+      sliderPos, 
+      updateInterval = 1000;
+
+    if (player.currentItem && player.isPlaying != null && player.currentItem.track) {
+      disabled = false;
+      elapsed = getCurrentTrackPosition();
+      duration = player.currentItem.track.duration;
+      sliderPos = elapsed / duration;
+    } else {
+      disabled = true;
+      elapsed = duration = sliderPos = 0;
+    }
+
+    // update only at 1000ms intervals to prevent unnecessary browser repaints
+    if (timestamp > lastUpdate + updateInterval) {
+      trackSliderDom.disabled = disabled;
+      trackSliderDom.value = sliderPos;
+      updateSliderUi();
+
+      nowPlayingElapsedDom.textContent = formatTime(elapsed);
+      nowPlayingLeftDom.textContent = formatTime(duration);
+
+      lastUpdate = timestamp;
+    }
+
+    window.requestAnimationFrame(doUpdate);
   }
 
-  trackSliderDom.disabled = disabled;
-  trackSliderDom.value = sliderPos;
-  updateSliderUi();
-
-  nowPlayingElapsedDom.textContent = formatTime(elapsed);
-  nowPlayingLeftDom.textContent = formatTime(duration);
+  doUpdate();
 }
 
 function renderVolumeSlider() {

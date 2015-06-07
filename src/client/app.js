@@ -1889,8 +1889,6 @@ function getCurrentTrackPosition(){
 }
 
 function updateSliderPos() {
-  window.requestAnimationFrame(updateSliderPos);
-
   if (userIsSeeking) return;
 
   var duration, disabled, elapsed, sliderPos;
@@ -1948,6 +1946,7 @@ function renderNowPlaying() {
   nowPlayingToggleIconDom.classList.remove(oldClass);
   nowPlayingToggleIconDom.classList.add(newClass);
   trackSliderDom.disabled = (player.isPlaying == null);
+  updateSliderPos();
   renderVolumeSlider();
 }
 
@@ -2934,7 +2933,7 @@ function setUpNowPlayingUi() {
   volSlider.addEventListener('mousedown', onVolSliderMouseDown, false);
   volSlider.addEventListener('mouseup', onVolSliderMouseUp, false);
 
-  updateSliderPos();
+  setInterval(updateSliderPos, 100);
 }
 
 function onVolSliderMouseDown(ev) {

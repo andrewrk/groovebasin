@@ -602,7 +602,7 @@ var LoadStatus = {
   NoServer: 'Server is down.',
   GoodToGo: '[good to go]'
 };
-var repeatModeNames = ["Off", "One", "All"];
+var repeatModeNames = ["Off", "All", "One"];
 var loadStatus = LoadStatus.Init;
 
 var localState = {

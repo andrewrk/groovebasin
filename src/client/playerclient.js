@@ -26,6 +26,7 @@ function PlayerClient(socket) {
   self.socket = socket;
   self.serverTimeOffset = 0;
   self.serverTrackStartDate = null;
+  self.streamUrl = null;
 
   self.queueFromServer = undefined;
   self.queueFromServerVersion = null;
@@ -51,6 +52,10 @@ function PlayerClient(socket) {
   } else {
     self.socket.on('connect', self.resubscribe.bind(self));
   }
+  self.socket.on('streamUrl', function(o) {
+    self.streamUrl = o;
+    self.emit('streamUrl');
+  });
   self.socket.on('time', function(o) {
     self.serverTimeOffset = new Date(o) - new Date();
     self.updateTrackStartDate();
@@ -149,6 +154,7 @@ function PlayerClient(socket) {
 }
 
 PlayerClient.prototype.resubscribe = function(){
+  this.sendCommand('subscribe', {name: 'streamUrl'});
   this.sendCommand('subscribe', {
     name: 'library',
     delta: true,

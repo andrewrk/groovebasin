@@ -4046,7 +4046,7 @@ function sendStreamingStatus() {
 
 function getStreamUrl() {
   // keep the URL relative so that reverse proxies can work
-  return "stream.mp3";
+  return player.streamUrl;
 }
 
 function onStreamPlaying() {
@@ -4064,23 +4064,28 @@ function clearStreamBuffer() {
 }
 
 function updateStreamPlayer() {
+  var streamUrl = getStreamUrl();
   if (actuallyStreaming !== tryingToStream || actuallyPlaying !== player.isPlaying) {
     if (tryingToStream) {
-      streamAudio.src = getStreamUrl();
-      streamAudio.load();
+      if (streamUrl) {
+        streamAudio.src = streamUrl;
+        streamAudio.load();
+      }
       if (player.isPlaying) {
-        streamAudio.play();
+        if (streamUrl) streamAudio.play();
         stillBuffering = true;
         actuallyPlaying = true;
       } else {
-        streamAudio.pause();
+        if (streamUrl) streamAudio.pause();
         stillBuffering = false;
         actuallyPlaying = false;
       }
     } else {
-      streamAudio.pause();
-      streamAudio.src = "";
-      streamAudio.load();
+      if (streamUrl) {
+        streamAudio.pause();
+        streamAudio.src = "";
+        streamAudio.load();
+      }
       stillBuffering = false;
       actuallyPlaying = false;
     }
@@ -4168,6 +4173,9 @@ function init() {
     ensureSearchHappensSoon();
   });
   player = new PlayerClient(socket);
+  player.on('streamUrl', function() {
+    clearStreamBuffer();
+  });
   player.on('users', function() {
     updateSettingsAuthUi();
     renderEvents();

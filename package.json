@@ -3,12 +3,7 @@
   "description": "Music player server with a web-based interface inspired by Amarok 1.4",
   "author": "Andrew Kelley <superjoe30@gmail.com>",
   "version": "1.5.1",
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "https://raw.github.com/andrewrk/groovebasin/master/LICENSE"
-    }
-  ],
+  "license": "MIT",
   "engines": {
     "node": ">=0.10.20"
   },

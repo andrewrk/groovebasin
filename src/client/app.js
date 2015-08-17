@@ -7,6 +7,7 @@ var uuid = require('./uuid');
 var autoDjOn = false;
 var hardwarePlaybackOn = false;
 var haveAdminUser = true;
+var streamEndpoint = null;
 
 var eventsListScrolledToBottom = true;
 var isBrowserTabActive = true;
@@ -3171,7 +3172,6 @@ function updateSettingsAuthUi() {
   authPermControlDom.style.display = havePerm('control') ? "" : "none";
   authPermPlaylistDom.style.display = havePerm('playlist') ? "" : "none";
   authPermAdminDom.style.display = havePerm('admin') ? "" : "none";
-  streamUrlDom.setAttribute('href', getStreamUrl());
   settingsAuthRequestDom.style.display =
     (myUser.registered && !myUser.requested && !myUser.approved) ? "" : "none";
   settingsAuthLogoutDom.style.display = myUser.registered ? "" : "none";
@@ -3181,6 +3181,12 @@ function updateSettingsAuthUi() {
 
   toggleHardwarePlaybackDom.disabled = !havePerm('admin');
   toggleHardwarePlaybackDom.setAttribute('title', havePerm('admin') ? "" : "Requires admin privilege.");
+
+  updateStreamUrlUi();
+}
+
+function updateStreamUrlUi() {
+  streamUrlDom.setAttribute('href', streamEndpoint);
 }
 
 function updateSettingsAdminUi() {
@@ -3210,7 +3216,7 @@ function onLastFmSignOutClick(ev) {
 function onToggleScrobbleClick(ev) {
   localState.lastfm.scrobbling_on = !localState.lastfm.scrobbling_on;
   saveLocalState();
-  var msg = localState.lastfm.scrobbling_on ? 'LastFmScrobblersAdd' : 'LastFmScrobblersRemove';
+  var msg = localState.lastfm.scrobbling_on ? 'lastFmScrobblersAdd' : 'lastFmScrobblersRemove';
   var params = {
     username: localState.lastfm.username,
     sessionKey: localState.lastfm.session_key
@@ -3998,7 +4004,7 @@ function setAllTabsHeight(h) {
 }
 
 function getStreamerCount() {
-  var count = player.streamers;
+  var count = player.anonStreamers;
   player.usersList.forEach(function(user) {
     if (user.streaming) count += 1;
   });
@@ -4044,11 +4050,6 @@ function sendStreamingStatus() {
   socket.send("setStreaming", tryingToStream);
 }
 
-function getStreamUrl() {
-  // keep the URL relative so that reverse proxies can work
-  return "stream.mp3";
-}
-
 function onStreamPlaying() {
   stillBuffering = false;
   renderStreamButton();
@@ -4066,7 +4067,7 @@ function clearStreamBuffer() {
 function updateStreamPlayer() {
   if (actuallyStreaming !== tryingToStream || actuallyPlaying !== player.isPlaying) {
     if (tryingToStream) {
-      streamAudio.src = getStreamUrl();
+      streamAudio.src = streamEndpoint;
       streamAudio.load();
       if (player.isPlaying) {
         streamAudio.play();
@@ -4108,16 +4109,16 @@ function init() {
   var queryObj = parseQueryString();
   if (queryObj.token) {
     socket.on('connect', function() {
-      socket.send('LastFmGetSession', queryObj.token);
+      socket.send('lastFmGetSession', queryObj.token);
     });
-    socket.on('LastFmGetSessionSuccess', function(params){
+    socket.on('lastFmGetSessionSuccess', function(params){
       localState.lastfm.username = params.session.name;
       localState.lastfm.session_key = params.session.key;
       localState.lastfm.scrobbling_on = false;
       saveLocalState();
       refreshPage();
     });
-    socket.on('LastFmGetSessionError', function(message){
+    socket.on('lastFmGetSessionError', function(message){
       alert("Error authenticating: " + message);
       refreshPage();
     });
@@ -4127,7 +4128,7 @@ function init() {
     hardwarePlaybackOn = isOn;
     updateSettingsAdminUi();
   });
-  socket.on('LastFmApiKey', updateLastFmApiKey);
+  socket.on('lastFmApiKey', updateLastFmApiKey);
   socket.on('user', function(data) {
     myUser = data;
     authUsernameDisplayDom.textContent = myUser.name;
@@ -4144,9 +4145,10 @@ function init() {
   socket.on('token', function(token) {
     document.cookie = "token=" + token + "; path=/";
   });
-  socket.on('volumeUpdate', function(vol) {
-    player.volume = vol;
-    renderVolumeSlider();
+  socket.on('streamEndpoint', function(data) {
+    streamEndpoint = data;
+    updateStreamPlayer();
+    updateStreamUrlUi();
   });
   socket.on('autoDjOn', function(data) {
     autoDjOn = data;
@@ -4160,6 +4162,7 @@ function init() {
   socket.on('connect', function(){
     sendAuth();
     sendStreamingStatus();
+    socket.send('subscribe', {name: 'streamEndpoint'});
     socket.send('subscribe', {name: 'autoDjOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
     socket.send('subscribe', {name: 'haveAdminUser'});
@@ -4179,6 +4182,7 @@ function init() {
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
   player.on('playlistsUpdate', triggerPlaylistsUpdate);
+  player.on('volumeUpdate', renderVolumeSlider);
   player.on('statusupdate', function(){
     renderNowPlaying();
     renderQueueButtons();
@@ -4191,7 +4195,7 @@ function init() {
     renderEvents();
   });
   player.on('currentTrack', updateStreamPlayer);
-  player.on('streamers', renderStreamButton);
+  player.on('anonStreamers', renderStreamButton);
   socket.on('seek', clearStreamBuffer);
   socket.on('disconnect', function(){
     loadStatus = LoadStatus.NoServer;

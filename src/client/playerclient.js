@@ -13,8 +13,8 @@ var compareNameAndId = makeCompareProps(['name', 'id']);
 var compareDates = makeCompareProps(['date', 'id']);
 
 PlayerClient.REPEAT_OFF = 0;
-PlayerClient.REPEAT_ONE = 1;
-PlayerClient.REPEAT_ALL = 2;
+PlayerClient.REPEAT_ALL = 1;
+PlayerClient.REPEAT_ONE = 2;
 
 PlayerClient.GUEST_USER_ID = "(guest)";
 
@@ -59,15 +59,15 @@ function PlayerClient(socket) {
   });
   self.socket.on('volume', function(volume) {
     self.volume = volume;
-    self.emit('statusupdate');
+    self.emit('volumeUpdate');
   });
   self.socket.on('repeat', function(repeat) {
     self.repeat = repeat;
     self.emit('statusupdate');
   });
-  self.socket.on('streamers', function(streamers) {
-    self.streamers = streamers;
-    self.emit('streamers');
+  self.socket.on('anonStreamers', function(anonStreamers) {
+    self.anonStreamers = anonStreamers;
+    self.emit('anonStreamers');
   });
 
   self.socket.on('currentTrack', function(o) {
@@ -172,7 +172,7 @@ PlayerClient.prototype.resubscribe = function(){
     delta: true,
     version: this.playlistsFromServerVersion,
   });
-  this.sendCommand('subscribe', {name: 'streamers'});
+  this.sendCommand('subscribe', {name: 'anonStreamers'});
   this.sendCommand('subscribe', {
     name: 'users',
     delta: true,
@@ -759,7 +759,7 @@ PlayerClient.prototype.setVolume = function(vol){
   if (vol > 2.0) vol = 2.0;
   if (vol < 0.0) vol = 0.0;
   this.volume = vol;
-  this.sendCommand('setvol', this.volume);
+  this.sendCommand('setVolume', this.volume);
   this.emit('statusupdate');
 };
 
@@ -808,7 +808,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.repeat = 0;
   this.currentItem = null;
   this.currentItemId = null;
-  this.streamers = 0;
+  this.anonStreamers = 0;
   this.usersList = [];
   this.usersTable = {};
   this.eventsList = [];

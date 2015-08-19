@@ -139,9 +139,8 @@ The Groove Basin Protocol allows you to do these things:
 Groove Basin itself serves as an example implementation of the Groove Basin
 Protocol. It contains both a client and a server.
 
-Additionally, there is
-[gbremote](https://github.com/andrewrk/groovebasin/blob/master/doc/protocol.md),
-a simple Node.js module and command line client demonstrating how to use the
+Additionally, there is [gbremote](https://github.com/andrewrk/gbremote), a
+simple Node.js module and command line client demonstrating how to use the
 Groove Basin Protocol.
 
 ### Establishing a Connection

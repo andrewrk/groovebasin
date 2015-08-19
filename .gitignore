@@ -1,6 +1,7 @@
 /node_modules
 /groovebasin.db
 /config.json
+/npm-debug.log
 
 # not shared with .npmignore
 /public/app.js

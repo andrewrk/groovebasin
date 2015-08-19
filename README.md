@@ -32,7 +32,9 @@ Try out the [live demo](http://demo.groovebasin.com/).
   your friends - even when you are not physically near your home speakers.
 
 * Groove Basin protocol. Write your own client using the
-  [protocol specification](doc/protocol.md).
+  [protocol specification](doc/protocol.md), or check out
+  [gbremote](https://github.com/andrewrk/gbremote), a simple command-line
+  remote control.
 
 * MPD protocol support. This means you already have a selection of
   [clients](http://mpd.wikia.com/wiki/Clients) which integrate with

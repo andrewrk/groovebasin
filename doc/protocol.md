@@ -125,7 +125,7 @@ with fewer features and music players with more features than Groove Basin.
 
 ## Overview
 
-The Groove Basin protocol allows you to do these things:
+The Groove Basin Protocol allows you to do these things:
 
  * Authenticate or remain as a guest.
  * Obtain information about the music library, playlists, settings, chat, and
@@ -135,6 +135,14 @@ The Groove Basin protocol allows you to do these things:
  * Import new music.
  * Download music.
  * Connect to the music stream.
+
+Groove Basin itself serves as an example implementation of the Groove Basin
+Protocol. It contains both a client and a server.
+
+Additionally, there is
+[gbremote](https://github.com/andrewrk/groovebasin/blob/master/doc/protocol.md),
+a simple Node.js module and command line client demonstrating how to use the
+Groove Basin Protocol.
 
 ### Establishing a Connection
 

@@ -566,6 +566,41 @@ Delete any number of playlists.
  * `sortKey`: `string`. New [keese](https://github.com/thejoshwolfe/node-keese)
    value used to order the playlist item in the playlist.
 
+### labelCreate
+
+ * Permission: `playlist`
+ * Type: `{id, name}`
+ * `id`: `string`. [Randomly generated UUID](#generating-uuids) to identify the
+   new label.
+ * `name`: `string`.
+
+### labelRename
+
+ * Permission: `playlist`
+ * Type: `{id, name}`
+ * `id`: `string`. ID of the label to rename.
+ * `name`: `string`. New name.
+
+### labelDelete
+
+ * Permission: `playlist`
+ * Type: `[id]`
+ * `id`: `string`. A label ID to delete.
+
+### labelAdd
+
+ * Permission: `playlist`
+ * Type: `{songId: [labelId]}`
+ * `songId`: `string`. ID of the song to add labels to.
+ * `labelId`: `string`. ID of a label to add to the song.
+
+### labelRemove
+
+ * Permission: `playlist`
+ * Type: `{songId: [labelId]}`
+ * `songId`: `string`. ID of the song to remove labels from.
+ * `labelId`: `string`. ID of a label to remove from the song.
+
 ### lastFmGetSession
 
  * Permission: `read`
@@ -806,6 +841,7 @@ Type:
     file,
     composerName,
     performerName,
+    labels: [labelId],
   },
   ...
 }
@@ -827,6 +863,10 @@ Type:
  * `discCount`: `number`. How many total discs there are in this compilation.
  * `year`: `number`. What year this track was released.
  * `genre`: `string`
+ * `composerName`: `string`
+ * `performerName`: `string`
+ * `labels`: `array`
+   - `labelId`: `string`. ID of a label that applies to this song.
 
 It is strongly recommended to use the delta subscription mode with this
 information.
@@ -958,6 +998,8 @@ to properly detect and support them.
  * `pos`: `number`. Sometimes used; see below.
  * `displayClass`: `string`. Sometimes used; see below.
  * `playlistId`: `string`. Sometimes used; see below.
+ * `labelId`: `string`. Sometimes used; see below.
+ * `subCount`: `number`. Sometimes used; see below.
 
 Event history.
 
@@ -1110,6 +1152,46 @@ of the [move](#move-1) event.
  * `userId`: ID of the user that imported tracks.
  * `trackKey`: If only one imported track, the ID of the song.
  * `pos`: The number of songs imported.
+
+#### labelCreate
+
+ * `userId`: ID of the user that created a label.
+ * `labelId`: ID of the label that was created.
+ * `text`: name of the label that was created.
+
+#### labelRename
+
+ * `userId`: ID of the user that renamed a label.
+ * `labelId`: ID of the label that was renamed.
+ * `text`: old name of the label.
+
+#### labelDelete
+
+ * `userId`: ID of the user that deleted a label.
+ * `labelId`: ID of the label that was deleted.
+ * `text`: name of the deleted label.
+
+#### labelAdd
+
+ * `userId`: ID of the user that added labels to songs.
+ * `trackKey`: If label added to only one track, the key of the track that
+    received a label.
+ * `pos`: Number of tracks that received labels.
+ * `labelId`: If only one label added to only one track, the ID of the label
+   that was added.
+ * `subCount`: If only one track received labels, the number of labels that
+   track received.
+
+#### labelRemove
+
+ * `userId`: ID of the user that removed labels from songs.
+ * `trackKey`: If label removed from only one track, the key of the track that
+    had a label removed.
+ * `pos`: Number of tracks from which labels were removed.
+ * `labelId`: If only one label removed from only one track, the ID of the label
+   that was removed.
+ * `subCount`: If only one track had labels removed, the number of labels that
+   track had removed.
 
 ## Client-to-Server HTTP Messages
 

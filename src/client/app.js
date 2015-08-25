@@ -1270,6 +1270,37 @@ var eventTypeMessageFns = {
       return prefix + getEventNowPlayingText(ev);
     }
   },
+  labelCreate: function(ev) {
+    return "created " + eventLabelName(ev);
+  },
+  labelRename: function(ev) {
+    return "renamed " + eventLabelName(ev, ev.text) + " to " + eventLabelName(ev);
+  },
+  labelDelete: function(ev) {
+    return "deleted " + eventLabelName(ev, ev.text);
+  },
+  labelAdd: function(ev) {
+    if (ev.pos === 1) {
+      if (ev.subCount === 1) {
+        return "added " + eventLabelName(ev) + " to " + getEventNowPlayingText(ev);
+      } else {
+        return "added labels to " + getEventNowPlayingText(ev);
+      }
+    } else {
+      return "added labels to " + ev.pos + " tracks";
+    }
+  },
+  labelRemove: function(ev) {
+    if (ev.pos === 1) {
+      if (ev.subCount === 1) {
+        return "removed " + eventLabelName(ev) + " from " + getEventNowPlayingText(ev);
+      } else {
+        return "removed labels from " + getEventNowPlayingText(ev);
+      }
+    } else {
+      return "removed labels from " + ev.pos + " tracks";
+    }
+  },
   login: function(ev) {
     return "logged in";
   },
@@ -3556,6 +3587,14 @@ function scrollEventsToBottom() {
 
 function eventPlaylistName(ev) {
   return ev.playlist ? ("playlist " + ev.playlist.name) : "(deleted playlist)";
+}
+
+function eventLabelName(ev, name) {
+  if (name) {
+    return "label " + name;
+  } else {
+    return ev.label ? ("label " + ev.label.name) : "(deleted label)";
+  }
 }
 
 function getEventNowPlayingText(ev) {

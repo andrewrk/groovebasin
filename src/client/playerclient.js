@@ -35,6 +35,8 @@ function PlayerClient(socket) {
   self.scanningFromServerVersion = null;
   self.playlistsFromServer = undefined;
   self.playlistsFromServerVersion = null;
+  self.labelsFromServer = undefined;
+  self.labelsFromServerVersion = null;
   self.eventsFromServer = undefined;
   self.eventsFromServerVersion = null;
   self.usersFromServer = undefined;
@@ -122,6 +124,14 @@ function PlayerClient(socket) {
     self.emit('playlistsUpdate');
   });
 
+  self.socket.on('labels', function(o) {
+    if (o.reset) self.labelsFromServer = undefined;
+    self.labelsFromServer = curlydiff.apply(self.labelsFromServer, o.delta);
+    self.labelsFromServerVersion = o.version;
+    self.updateLabelsIndex();
+    self.emit('labelsUpdate');
+  });
+
   self.socket.on('events', function(o) {
     if (o.reset) self.eventsFromServer = undefined;
     self.eventsFromServer = curlydiff.apply(self.eventsFromServer, o.delta);
@@ -149,6 +159,11 @@ function PlayerClient(socket) {
 }
 
 PlayerClient.prototype.resubscribe = function(){
+  this.sendCommand('subscribe', {
+    name: 'labels',
+    delta: true,
+    version: this.labelsFromServerVersion,
+  });
   this.sendCommand('subscribe', {
     name: 'library',
     delta: true,
@@ -205,6 +220,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       pos: serverEvent.pos ? serverEvent.pos : 0,
       seen: seen,
       displayClass: serverEvent.displayClass,
+      subCount: serverEvent.subCount ? serverEvent.subCount : 0,
     };
     if (!seen && serverEvent.type === 'chat') {
       this.unseenChatCount += 1;
@@ -217,6 +233,9 @@ PlayerClient.prototype.sortEventsFromServer = function() {
     }
     if (serverEvent.playlistId) {
       ev.playlist = this.playlistTable[serverEvent.playlistId];
+    }
+    if (serverEvent.labelId) {
+      ev.label = this.labelTable[serverEvent.labelId];
     }
     this.eventsList.push(ev);
   }
@@ -287,10 +306,22 @@ PlayerClient.prototype.clearPlaylists = function() {
   this.playlistList = [];
 };
 
+PlayerClient.prototype.clearLabels = function() {
+  this.labelTable = {};
+  this.labelList = [];
+};
+
 PlayerClient.prototype.sortAndIndexPlaylists = function() {
   this.playlistList.sort(compareNameAndId);
   this.playlistList.forEach(function(playlist, index) {
     playlist.index = index;
+  });
+};
+
+PlayerClient.prototype.sortAndIndexLabels = function() {
+  this.labelList.sort(compareNameAndId);
+  this.labelList.forEach(function(label, index) {
+    label.index = index;
   });
 };
 
@@ -325,6 +356,22 @@ PlayerClient.prototype.updatePlaylistsIndex = function() {
     this.playlistTable[playlist.id] = playlist;
   }
   this.sortAndIndexPlaylists();
+};
+
+PlayerClient.prototype.updateLabelsIndex = function() {
+  this.clearLabels();
+  if (!this.labelsFromServer) return;
+  for (var id in this.labelsFromServer) {
+    var labelFromServer = this.labelsFromServer[id];
+    var label = {
+      id: id,
+      name: labelFromServer.name,
+      index: 0, // we'll set this correctly later
+    };
+    this.labelList.push(label);
+    this.labelTable[id] = label;
+  }
+  this.sortAndIndexLabels();
 };
 
 PlayerClient.prototype.updateQueueIndex = function() {
@@ -818,6 +865,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.importProgressTable = {};
 
   this.clearPlaylists();
+  this.clearLabels();
 };
 
 PlayerClient.prototype.createPlaylist = function(name) {

@@ -851,7 +851,7 @@ Type:
     file,
     composerName,
     performerName,
-    labels: {labelId: true},
+    labels: {labelId: 1},
   },
   ...
 }
@@ -875,7 +875,7 @@ Type:
  * `genre`: `string`
  * `composerName`: `string`
  * `performerName`: `string`
- * `labels`: `object`. The value is always `true`.
+ * `labels`: `object`. The value is always `1`.
    - `labelId`: `string`. ID of a label that applies to this song.
 
 It is strongly recommended to use the delta subscription mode with this

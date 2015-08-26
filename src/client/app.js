@@ -1564,10 +1564,12 @@ function renderQueue() {
     queueItemsDom.insertAdjacentHTML('beforeend',
       '<div class="pl-item">' +
         '<span class="track"></span>' +
-        '<span class="title"></span>' +
-        '<span class="artist"></span>' +
-        '<span class="album"></span>' +
         '<span class="time"></span>' +
+        '<span class="middle">' +
+          '<span class="title"></span>' +
+          '<span class="artist"></span>' +
+          '<span class="album"></span>' +
+        '</span>' +
       '</div>');
   }
   // remove the extra dom entries
@@ -1584,12 +1586,15 @@ function renderQueue() {
     domItem.setAttribute('data-id', item.id);
     var track = item.track;
     domItem.children[0].textContent = track.track || "";
-    domItem.children[1].textContent = track.name || "";
-    domItem.children[2].textContent = track.artistName || "";
-    domItem.children[3].textContent = track.albumName || "";
 
     var timeText = player.isScanning(track) ? "scan" : formatTime(track.duration);
-    domItem.children[4].textContent = timeText;
+    domItem.children[1].textContent = timeText;
+
+    var middleDom = domItem.children[2];
+    middleDom.children[0].textContent = track.name || "";
+    middleDom.children[1].textContent = track.artistName || "";
+    middleDom.children[2].textContent = track.albumName || "";
+
   }
 
   refreshSelection();

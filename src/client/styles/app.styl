@@ -371,27 +371,36 @@ button:hover .icon
     overflow-y hidden
     height 1.2em
 
-  span.track
+  .track
     width 26px
+    float left
 
-  span.title
+  .title
+    width calc(40% - 12px)
+    float left
+
+  .artist
     width 30%
+    float left
 
-  span.artist
+  .album
     width 30%
+    float left
 
-  span.album
-    width 30%
+  .time
+    min-width 41px
+    float right
 
-  span.time
-    width 36px
+  .middle
+    overflow hidden
+    display block
 
-  span
+  .track, .title, .artist, .album, .time
     white-space nowrap
     height 1.2em
     overflow-x hidden
     overflow-y hidden
-    float left
+    display block
     margin-right 4px
 
 #queue-items
@@ -413,35 +422,35 @@ button:hover .icon
   div:nth-child(2n+1)
     background-color #2A2A2A
 
-  div.random
+  .random
     color #96B7EB
 
-  div.old
+  .old
     color #555555
 
-  div.selected
+  .selected
     selected-div()
 
-  div.current
+  .current
     border 1px solid #096AC8
     background-color lightGray
     font-weight bold
     color #75abff
 
-  div.cursor
+  .cursor
     span
       text-decoration underline
 
-  div.border-bottom
+  .border-bottom
     border-bottom 2px dashed #ffffff
 
-  div.border-top
+  .border-top
     border-top 2px dashed #ffffff
 
-  span.track
+  .track
     text-align right
 
-  span.time
+  .time
     text-align right
 
 #upload

@@ -723,6 +723,7 @@ var menuQueueRandom = document.getElementById('menu-queue-random');
 var menuQueueNextRandom = document.getElementById('menu-queue-next-random');
 var menuRemove = document.getElementById('menu-remove');
 var menuAddToPlaylist = document.getElementById('menu-add-to-playlist');
+var menuAddRemoveLabel = document.getElementById('menu-add-remove-label');
 var menuShuffle = document.getElementById('menu-shuffle');
 var menuDelete = document.getElementById('menu-delete');
 var menuDeletePlaylist = document.getElementById('menu-delete-playlist');
@@ -733,6 +734,10 @@ var addToPlaylistDialog = document.getElementById('add-to-playlist-dialog');
 var addToPlaylistFilter = document.getElementById('add-to-playlist-filter');
 var addToPlaylistList = document.getElementById('add-to-playlist-list');
 var addToPlaylistNew = document.getElementById('add-to-playlist-new');
+var addRemoveLabelDialog = document.getElementById('add-remove-label-dialog');
+var addRemoveLabelFilter = document.getElementById('add-remove-label-filter');
+var addRemoveLabelList = document.getElementById('add-remove-label-list');
+var addRemoveLabelNew = document.getElementById('add-remove-label-new');
 
 var tabs = {
   library: {
@@ -760,6 +765,7 @@ var activeTab = tabs.library;
 var triggerRenderLibrary = makeRenderCall(renderLibrary, 100);
 var triggerRenderQueue = makeRenderCall(renderQueue, 100);
 var triggerPlaylistsUpdate = makeRenderCall(updatePlaylistsUi, 100);
+var triggerLabelsUpdate = makeRenderCall(updateLabelsUi, 100);
 var triggerResize = makeRenderCall(resizeDomElements, 20);
 var keyboardHandlers = (function() {
   var volumeDownHandler = {
@@ -906,6 +912,15 @@ var keyboardHandlers = (function() {
       alt: false,
       shift: true,
       handler: onShuffleContextMenu,
+    },
+    // l
+    76: {
+      ctrl: false,
+      alt: false,
+      shift: false,
+      handler: function(ev) {
+        onAddRemoveLabelContextMenu(ev);
+      },
     },
     // p
     80: {
@@ -1401,10 +1416,11 @@ var searchTimer = null;
 var menuPermSelectors = {
   admin: [menuDelete, menuEditTags],
   control: [menuRemove, menuShuffle, menuQueue, menuQueueNext, menuQueueRandom, menuQueueNextRandom],
-  playlist: [menuDeletePlaylist, menuAddToPlaylist],
+  playlist: [menuDeletePlaylist, menuAddToPlaylist, menuAddRemoveLabel],
 };
 
 var addToPlaylistDialogFilteredList = [];
+var addRemoveLabelDialogFilteredList = [];
 
 init();
 
@@ -1755,10 +1771,20 @@ function updatePlaylistsUi() {
   updateAddToPlaylistDialogDisplay();
 }
 
+function updateLabelsUi() {
+  updateAddRemoveLabelDialogDisplay();
+}
+
 function popAddToPlaylistDialog() {
   popDialog(addToPlaylistDialog, "Add to Playlist", 400, Math.min(500, window.innerHeight - 40));
   addToPlaylistFilter.focus();
   addToPlaylistFilter.select();
+}
+
+function popAddRemoveLabelDialog() {
+  popDialog(addRemoveLabelDialog, "Add/Remove Labels", 400, Math.min(500, window.innerHeight - 40));
+  addRemoveLabelFilter.focus();
+  addRemoveLabelFilter.select();
 }
 
 function updateAddToPlaylistDialogDisplay() {
@@ -2469,15 +2495,36 @@ function setUpGenericUi() {
   document.getElementById('modal-close').addEventListener('click', callCloseOpenDialog, false);
   blackoutDom.addEventListener('keydown', onBlackoutKeyDown, false);
   blackoutDom.addEventListener('mousedown', callCloseOpenDialog, false);
+
+  modalDom.addEventListener('keydown', onModalKeyDown, false);
+
   addToPlaylistFilter.addEventListener('keydown', onAddToPlaylistFilterKeyDown, false);
   addToPlaylistFilter.addEventListener('keyup', updateAddToPlaylistDialogDisplay, false);
   addToPlaylistFilter.addEventListener('cut', updateAddToPlaylistDialogDisplay, false);
   addToPlaylistFilter.addEventListener('paste', updateAddToPlaylistDialogDisplay, false);
   addToPlaylistNew.addEventListener('mousedown', onAddToPlaylistNewClick, false);
   addToPlaylistList.addEventListener('mousedown', onAddToPlaylistListClick, false);
+
+  addRemoveLabelFilter.addEventListener('keydown', onAddRemoveLabelFilterKeyDown, false);
+  addRemoveLabelFilter.addEventListener('keyup', updateAddRemoveLabelDialogDisplay, false);
+  addRemoveLabelFilter.addEventListener('cut', updateAddRemoveLabelDialogDisplay, false);
+  addRemoveLabelFilter.addEventListener('paste', updateAddRemoveLabelDialogDisplay, false);
+  addRemoveLabelNew.addEventListener('mousedown', onAddRemoveLabelNewClick, false);
+  addRemoveLabelList.addEventListener('mousedown', onAddRemoveLabelListClick, false);
+}
+
+function onModalKeyDown(ev) {
+  ev.stopPropagation();
+  switch (ev.which) {
+  case 27: // Escape
+    ev.preventDefault();
+    closeOpenDialog();
+    return;
+  }
 }
 
 function onAddToPlaylistListClick(ev) {
+  if (ev.button !== 0) return;
   ev.stopPropagation();
   ev.preventDefault();
   var clickedLi = getFirstChildToward(addToPlaylistList, ev.target);
@@ -2521,6 +2568,89 @@ function onAddToPlaylistFilterKeyDown(ev) {
     }
     return;
   }
+}
+
+function onAddRemoveLabelFilterKeyDown(ev) {
+  ev.stopPropagation();
+  switch (ev.which) {
+  case 27: // Escape
+    ev.preventDefault();
+    if (addRemoveLabelFilter.value === "") {
+      closeOpenDialog();
+    } else {
+      addRemoveLabelFilter.value = "";
+    }
+    return;
+  case 13: // Enter
+    ev.preventDefault();
+    if (addRemoveLabelDialogFilteredList.length === 0) {
+      onAddRemoveLabelNewClick(ev);
+    } else {
+      var labelId = addRemoveLabelDialogFilteredList[0].id;
+      player.addLabel(labelId, selection.toTrackKeys());
+      if (!ev.shiftKey) {
+        closeOpenDialog();
+      }
+    }
+    return;
+  }
+}
+
+function updateAddRemoveLabelDialogDisplay(ev) {
+  var loweredFilter = addRemoveLabelFilter.value.toLowerCase();
+  addRemoveLabelDialogFilteredList = [];
+  var exactMatch = false;
+  player.labelList.forEach(function(label) {
+    if (label.name.toLowerCase().indexOf(loweredFilter) >= 0) {
+      addRemoveLabelDialogFilteredList.push(label);
+      if (addRemoveLabelFilter.value === label.name) {
+        exactMatch = true;
+      }
+    }
+  });
+
+  addRemoveLabelNew.textContent = "\"" + addRemoveLabelFilter.value + "\" (create new)";
+  addRemoveLabelNew.style.display = (exactMatch || loweredFilter === "") ? "none" : "";
+
+
+  // add the missing dom entries
+  var i;
+  for (i = addRemoveLabelList.childElementCount; i < addRemoveLabelDialogFilteredList.length; i += 1) {
+    addRemoveLabelList.appendChild(document.createElement('li'));
+  }
+  // remove the extra dom entries
+  while (addRemoveLabelDialogFilteredList.length < addRemoveLabelList.childElementCount) {
+    addRemoveLabelList.removeChild(addRemoveLabelList.lastChild);
+  }
+
+  // overwrite existing dom entries
+  for (i = 0; i < addRemoveLabelDialogFilteredList.length; i += 1) {
+    var domItem = addRemoveLabelList.children[i];
+    var label = addRemoveLabelDialogFilteredList[i];
+    domItem.setAttribute('data-key', label.id);
+    domItem.textContent = label.name;
+  }
+}
+
+function onAddRemoveLabelListClick(ev) {
+  if (ev.button !== 0) return;
+  ev.stopPropagation();
+  ev.preventDefault();
+  var clickedLi = getFirstChildToward(addRemoveLabelList, ev.target);
+  if (!clickedLi) return;
+  if (!havePerm('playlist')) return;
+  if (!ev.shiftKey) closeOpenDialog();
+  var labelId = clickedLi.getAttribute('data-key');
+  player.addLabel(labelId, selection.toTrackKeys());
+}
+
+function onAddRemoveLabelNewClick(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+  if (!havePerm('playlist')) return;
+  if (!ev.shiftKey) closeOpenDialog();
+  var label = player.createLabel(addRemoveLabelFilter.value);
+  player.addLabel(label.id, selection.toTrackKeys());
 }
 
 function handleAutoDjClick(ev) {
@@ -3766,6 +3896,7 @@ function setUpLibraryUi() {
   menuRemove.addEventListener('click', onRemoveFromPlaylistContextMenu, false);
   menuShuffle.addEventListener('click', onShuffleContextMenu, false);
   menuAddToPlaylist.addEventListener('click', onAddToPlaylistContextMenu, false);
+  menuAddRemoveLabel.addEventListener('click', onAddRemoveLabelContextMenu, false);
 }
 
 function onAddToPlaylistContextMenu(ev) {
@@ -3775,6 +3906,15 @@ function onAddToPlaylistContextMenu(ev) {
   if (selection.isEmpty()) return;
   removeContextMenu();
   popAddToPlaylistDialog();
+}
+
+function onAddRemoveLabelContextMenu(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (!havePerm('playlist')) return;
+  if (selection.isEmpty()) return;
+  removeContextMenu();
+  popAddRemoveLabelDialog();
 }
 
 function maybeRenamePlaylistAtCursor() {
@@ -4217,12 +4357,13 @@ function init() {
     renderStreamButton();
   });
   player.on('importProgress', renderImportProgress);
-  player.on('libraryupdate', triggerRenderLibrary);
+  player.on('libraryUpdate', triggerRenderLibrary);
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
   player.on('playlistsUpdate', triggerPlaylistsUpdate);
+  player.on('labelsUpdate', triggerLabelsUpdate);
   player.on('volumeUpdate', renderVolumeSlider);
-  player.on('statusupdate', function(){
+  player.on('statusUpdate', function(){
     renderNowPlaying();
     renderQueueButtons();
     labelQueueItems();

@@ -57,7 +57,7 @@ function PlayerClient(socket) {
     self.serverTimeOffset = new Date(o) - new Date();
     self.updateTrackStartDate();
     self.sortEventsFromServer(); // because they rely on serverTimeOffset
-    self.emit('statusupdate');
+    self.emit('statusUpdate');
   });
   self.socket.on('volume', function(volume) {
     self.volume = volume;
@@ -65,7 +65,7 @@ function PlayerClient(socket) {
   });
   self.socket.on('repeat', function(repeat) {
     self.repeat = repeat;
-    self.emit('statusupdate');
+    self.emit('statusUpdate');
   });
   self.socket.on('anonStreamers', function(anonStreamers) {
     self.anonStreamers = anonStreamers;
@@ -79,7 +79,7 @@ function PlayerClient(socket) {
     self.currentItemId = o.currentItemId;
     self.updateTrackStartDate();
     self.updateCurrentItem();
-    self.emit('statusupdate');
+    self.emit('statusUpdate');
     self.emit('currentTrack');
   });
 
@@ -88,7 +88,7 @@ function PlayerClient(socket) {
     self.queueFromServer = curlydiff.apply(self.queueFromServer, o.delta);
     self.queueFromServerVersion = o.version;
     self.updateQueueIndex();
-    self.emit('statusupdate');
+    self.emit('statusUpdate');
     self.emit('queueUpdate');
   });
 
@@ -404,9 +404,9 @@ PlayerClient.prototype.search = function(query) {
 
   this.lastQuery = query;
   this.searchResults = this.library.search(query);
-  this.emit('libraryupdate');
+  this.emit('libraryUpdate');
   this.emit('queueUpdate');
-  this.emit('statusupdate');
+  this.emit('statusUpdate');
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {
@@ -521,7 +521,7 @@ PlayerClient.prototype.play = function(){
   if (this.isPlaying === false) {
     this.trackStartDate = elapsedToDate(this.pausedTime);
     this.isPlaying = true;
-    this.emit('statusupdate');
+    this.emit('statusUpdate');
   }
 };
 
@@ -530,7 +530,7 @@ PlayerClient.prototype.stop = function(){
   if (this.isPlaying === true) {
     this.pausedTime = 0;
     this.isPlaying = false;
-    this.emit('statusupdate');
+    this.emit('statusUpdate');
   }
 };
 
@@ -539,7 +539,7 @@ PlayerClient.prototype.pause = function(){
   if (this.isPlaying === true) {
     this.pausedTime = dateToElapsed(this.trackStartDate);
     this.isPlaying = false;
-    this.emit('statusupdate');
+    this.emit('statusUpdate');
   }
 };
 
@@ -759,7 +759,7 @@ PlayerClient.prototype.deleteTracks = function(keysList) {
     this.emit('playlistsUpdate');
   }
 
-  this.emit('libraryupdate');
+  this.emit('libraryUpdate');
 };
 
 PlayerClient.prototype.deletePlaylists = function(idSet) {
@@ -799,7 +799,7 @@ PlayerClient.prototype.seek = function(id, pos) {
   } else {
     this.pausedTime = pos;
   }
-  this.emit('statusupdate');
+  this.emit('statusUpdate');
 };
 
 PlayerClient.prototype.setVolume = function(vol){
@@ -807,13 +807,13 @@ PlayerClient.prototype.setVolume = function(vol){
   if (vol < 0.0) vol = 0.0;
   this.volume = vol;
   this.sendCommand('setVolume', this.volume);
-  this.emit('statusupdate');
+  this.emit('statusUpdate');
 };
 
 PlayerClient.prototype.setRepeatMode = function(mode) {
   this.repeat = mode;
   this.sendCommand('repeat', mode);
-  this.emit('statusupdate');
+  this.emit('statusUpdate');
 };
 
 PlayerClient.prototype.sendCommand = function(name, args) {
@@ -888,6 +888,42 @@ PlayerClient.prototype.createPlaylist = function(name) {
   this.emit('playlistsUpdate');
 
   return playlist;
+};
+
+PlayerClient.prototype.addLabel = function(labelId, keys) {
+  if (keys.length === 0) return;
+
+  var label = this.labelTable[labelId];
+
+  var additions = {};
+  for (var i = 0; i < keys.length; i += 1) {
+    var key = keys[i];
+    additions[key] = [labelId];
+  }
+
+  this.sendCommand('labelAdd', additions);
+
+  // TODO anticipate server response
+};
+
+PlayerClient.prototype.createLabel = function(name) {
+  var id = uuid();
+  this.sendCommand('labelCreate', {
+    id: id,
+    name: name,
+  });
+  // anticipate server response
+  var label = {
+    id: id,
+    name: name,
+    index: 0,
+  };
+  this.labelTable[id] = label;
+  this.labelList.push(label);
+  this.sortAndIndexLabels();
+  this.emit('labelsUpdate');
+
+  return label;
 };
 
 function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {

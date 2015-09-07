@@ -711,7 +711,6 @@ var perDom = document.getElementById('edit-tags-per');
 var prevDom = document.getElementById('edit-tags-prev');
 var nextDom = document.getElementById('edit-tags-next');
 var editTagsFocusDom = document.getElementById('edit-tag-name');
-var trackSliderDom = document.getElementById('track-slider');
 var clientVolSlider = document.getElementById('client-vol-slider');
 var volSlider = document.getElementById('vol-slider');
 var modalDom = document.getElementById('modal');
@@ -1434,6 +1433,9 @@ var addToPlaylistDialogFilteredList = [];
 var addRemoveLabelDialogFilteredList = [];
 var currentWaveformArray = null;
 
+var seekSliderDisabled = true;
+var seekSliderValue = 0;
+
 init();
 
 function saveLocalState(){
@@ -2012,8 +2014,8 @@ function updateSliderPos() {
     elapsed = duration = sliderPos = 0;
   }
 
-  trackSliderDom.disabled = disabled;
-  trackSliderDom.value = sliderPos;
+  seekSliderDisabled = disabled;
+  seekSliderValue = sliderPos;
   updateSliderUi();
 
   nowPlayingElapsedDom.textContent = formatTime(elapsed);
@@ -2121,7 +2123,7 @@ function renderNowPlaying() {
   var newClass = (player.isPlaying === true) ? 'icon-pause': 'icon-play';
   nowPlayingToggleIconDom.classList.remove(oldClass);
   nowPlayingToggleIconDom.classList.add(newClass);
-  trackSliderDom.disabled = (player.isPlaying == null);
+  seekSliderDisabled = (player.isPlaying == null);
   updateSliderPos();
   renderVolumeSlider();
 }
@@ -3252,8 +3254,7 @@ function setUpEditTagsUi() {
 }
 
 function updateSliderUi() {
-  var percent = parseFloat(trackSliderDom.value) * 100;
-  trackSliderDom.style.backgroundSize = percent + "% 100%";
+  var percent = seekSliderValue * 100;
   waveformInnerDom.style.width = percent + "%";
 }
 
@@ -3281,24 +3282,43 @@ function onNowPlayingStopMouseDown(ev) {
   player.stop();
 }
 
-function onTrackSliderChange(ev) {
-  updateSliderUi();
-  if (!player.currentItem) return;
-  player.seek(null, parseFloat(trackSliderDom.value) * player.currentItem.track.duration);
-}
-
-function onTrackSliderInput(ev) {
-  updateSliderUi();
-  if (!player.currentItem) return;
-  nowPlayingElapsedDom.textContent = formatTime(parseFloat(trackSliderDom.value) * player.currentItem.track.duration);
-}
-
 function onTrackSliderMouseDown(ev) {
+  ev.preventDefault();
+  ev.stopPropagation();
   userIsSeeking = true;
-}
+  seekSliderValue = (ev.pageX - waveformDom.offsetLeft) / waveformDom.clientWidth;
+  mouseMoveSliderValue();
 
-function onTrackSliderMouseUp(ev) {
-  userIsSeeking = false;
+  window.addEventListener('mousemove', onTrackSliderMouseMove, false);
+  window.addEventListener('mouseup', onTrackSliderMouseUp, false);
+
+  function getSeekPercent(ev) {
+    return (ev.clientX - waveformDom.offsetLeft) / waveformDom.clientWidth;
+  }
+
+  function onTrackSliderMouseUp(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    seekSliderValue = getSeekPercent(ev);
+    updateSliderUi();
+    userIsSeeking = false;
+    window.removeEventListener('mousemove', onTrackSliderMouseMove, false);
+    window.removeEventListener('mouseup', onTrackSliderMouseUp, false);
+    player.seek(null, seekSliderValue * player.currentItem.track.duration);
+  }
+
+  function onTrackSliderMouseMove(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    seekSliderValue = getSeekPercent(ev);
+    mouseMoveSliderValue();
+  }
+
+  function mouseMoveSliderValue() {
+    updateSliderUi();
+    if (!player.currentItem) return;
+    nowPlayingElapsedDom.textContent = formatTime(seekSliderValue * player.currentItem.track.duration);
+  }
 }
 
 function setServerVol(ev) {
@@ -3312,17 +3332,13 @@ function setServerVol(ev) {
   volWarningDom.style.display = (val > 1) ? "" : "none";
 }
 
-
 function setUpNowPlayingUi() {
   nowPlayingToggleDom.addEventListener('click', onNowPlayingToggleMouseDown, false);
   nowPlayingPrevDom.addEventListener('click', onNowPlayingPrevMouseDown, false);
   nowPlayingNextDom.addEventListener('click', onNowPlayingNextMouseDown, false);
   nowPlayingStopDom.addEventListener('click', onNowPlayingStopMouseDown, false);
 
-  trackSliderDom.addEventListener('change', onTrackSliderChange, false);
-  trackSliderDom.addEventListener('input', onTrackSliderInput, false);
-  trackSliderDom.addEventListener('mousedown', onTrackSliderMouseDown, false);
-  trackSliderDom.addEventListener('mouseup', onTrackSliderMouseUp, false);
+  waveformDom.addEventListener('mousedown', onTrackSliderMouseDown, false);
 
   volSlider.addEventListener('change', setServerVol, false);
   volSlider.addEventListener('input', setServerVol, false);
@@ -4448,7 +4464,7 @@ function getStreamButtonLabel() {
 function renderStreamButton() {
   streamBtnLabel.textContent = getStreamButtonLabel();
   updateBtnOn(streamBtnDom, tryingToStream);
-  clientVolDom.style.display = tryingToStream ? "" : "none";
+  clientVolDom.style.visibility = tryingToStream ? "visible" : "hidden";
 }
 
 function toggleStreamStatus() {

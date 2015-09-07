@@ -227,8 +227,15 @@ button:hover .icon
 #vol-slider
   margin 3px 0 0 0
 
-#client-vol, #vol
+
+#vol
   margin 8px
+  span
+    float left
+
+#client-vol
+  height: 16px
+  display inline-block
   span
     float left
 
@@ -664,7 +671,7 @@ button:hover .icon
   width: 100%
   height: 100%
   background-color #000000
-  opacity: 0.3
+  opacity: 0.4
   position: absolute
   z-index: 0
 
@@ -686,6 +693,8 @@ button:hover .icon
   font-weight bold
   padding-top: 22px
   text-shadow: 0 0 34px #000
+  user-select none
+  cursor default
 
 #track-display-subtitle
   font-size 14px
@@ -694,6 +703,8 @@ button:hover .icon
   font-weight bold
   padding-top: 10px
   text-shadow: 0 0 34px #000
+  user-select none
+  cursor default
 
 #nowplaying-time-elapsed, #nowplaying-time-left
   margin 0
@@ -703,6 +714,8 @@ button:hover .icon
   z-index 1
   font-size 16px
   padding-top 35px
+  user-select none
+  cursor default
 
 #nowplaying-time-elapsed
   padding-left 4px

@@ -8,24 +8,36 @@
 </head>
 <body>
   <div id="nowplaying" class="widget" style="display: none">
-    <div class="playback-btns">
-      <button class="button" id="nowplaying-prev" tabindex="-1"><label class="icon icon-seek-prev" for="nowplaying-prev"></label></button>
-      <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="icon icon-pause" for="nowplaying-toggle-icon"></label></button>
-      <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
-      <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
-      <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
+    <div id="nowplaying-controls">
+      <div class="playback-btns">
+        <button class="button" id="nowplaying-prev" tabindex="-1"><label class="icon icon-seek-prev" for="nowplaying-prev"></label></button>
+        <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="icon icon-pause" for="nowplaying-toggle-icon"></label></button>
+        <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
+        <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
+      </div>
+      <div id="stream-controls">
+        <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
+        <div id="client-vol" style="display: none">
+          <span class="icon icon-volume-off"></span>
+          <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
+          <span class="icon icon-volume-on"></span>
+        </div>
+      </div>
     </div>
-    <div id="client-vol" style="display: none">
-      <span class="icon icon-volume-off"></span>
-      <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
-      <span class="icon icon-volume-on"></span>
+    <div id="waveform-outer">
+      <div id="waveform" style="visibility: hidden">
+        <div id="track-display">
+          <div id="track-display-title"></div>
+          <div id="track-display-subtitle"></div>
+        </div>
+        <div id="nowplaying-time-elapsed"></div>
+        <div id="nowplaying-time-left"></div>
+        <div id="waveform-inner"></div>
+      </div>
     </div>
-    <h1 id="track-display"></h1>
-    <input type="range" id="track-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
-    <span id="nowplaying-time-elapsed"></span>
-    <span id="nowplaying-time-left"></span>
     <div style="clear: both;"></div>
   </div>
+    <input type="range" id="track-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
   <div id="left-window" style="display: none">
     <div id="tabs">
       <ul>

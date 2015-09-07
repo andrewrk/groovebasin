@@ -2095,11 +2095,15 @@ function updateWaveform(track) {
     currentWaveformArray = track.waveform;
 
     renderWaveform(track);
-    waveformDom.style.visibility = "visible";
   } else {
-    if (!currentWaveformArray) return;
+    if (!currentWaveformArray) {
+      return;
+    }
     currentWaveformArray = null;
-    waveformDom.style.visibility = "hidden";
+    seekSliderDisabled = true;
+    seekSliderValue = 0;
+    waveformDom.style.backgroundImage = "none";
+    updateSliderUi();
   }
 }
 
@@ -3286,14 +3290,26 @@ function onTrackSliderMouseDown(ev) {
   ev.preventDefault();
   ev.stopPropagation();
   userIsSeeking = true;
-  seekSliderValue = (ev.pageX - waveformDom.offsetLeft) / waveformDom.clientWidth;
+  seekSliderValue = getSeekPercent(ev);
   mouseMoveSliderValue();
+  startedDrag = true;
+  abortDrag = doAbortDrag;
 
   window.addEventListener('mousemove', onTrackSliderMouseMove, false);
   window.addEventListener('mouseup', onTrackSliderMouseUp, false);
 
+  function doAbortDrag() {
+    userIsSeeking = false;
+    window.removeEventListener('mousemove', onTrackSliderMouseMove, false);
+    window.removeEventListener('mouseup', onTrackSliderMouseUp, false);
+    abortDrag = noop;
+  }
+
   function getSeekPercent(ev) {
-    return (ev.clientX - waveformDom.offsetLeft) / waveformDom.clientWidth;
+    var value = (ev.pageX - waveformDom.offsetLeft) / waveformDom.clientWidth;
+    value = Math.min(value, 1);
+    value = Math.max(value, 0);
+    return value;
   }
 
   function onTrackSliderMouseUp(ev) {
@@ -3301,9 +3317,7 @@ function onTrackSliderMouseDown(ev) {
     ev.stopPropagation();
     seekSliderValue = getSeekPercent(ev);
     updateSliderUi();
-    userIsSeeking = false;
-    window.removeEventListener('mousemove', onTrackSliderMouseMove, false);
-    window.removeEventListener('mouseup', onTrackSliderMouseUp, false);
+    doAbortDrag();
     player.seek(null, seekSliderValue * player.currentItem.track.duration);
   }
 

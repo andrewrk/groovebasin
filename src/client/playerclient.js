@@ -393,8 +393,6 @@ PlayerClient.prototype.search = function(query) {
   this.lastQuery = query;
   this.searchResults = this.library.search(query);
   this.emit('libraryUpdate');
-  this.emit('queueUpdate');
-  this.emit('statusUpdate');
 };
 
 PlayerClient.prototype.getDefaultQueuePosition = function() {
@@ -890,6 +888,22 @@ PlayerClient.prototype.removeLabel = function(labelId, keys) {
 
   this.sendCommand('labelRemove', removals);
 
+  // TODO anticipate server response
+};
+
+PlayerClient.prototype.updateLabelColor = function(labelId, color) {
+  this.sendCommand('labelColorUpdate', {
+    id: labelId,
+    color: color,
+  });
+  // TODO anticipate server response
+};
+
+PlayerClient.prototype.renameLabel = function(labelId, name) {
+  this.sendCommand('labelRename', {
+    id: labelId,
+    name: name,
+  });
   // TODO anticipate server response
 };
 

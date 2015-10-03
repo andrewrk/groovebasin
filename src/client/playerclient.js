@@ -366,6 +366,7 @@ PlayerClient.prototype.updateLabelsIndex = function() {
     var label = {
       id: id,
       name: labelFromServer.name,
+      color: labelFromServer.color,
       index: 0, // we'll set this correctly later
     };
     this.labelList.push(label);

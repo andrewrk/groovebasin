@@ -58,6 +58,7 @@ with fewer features and music players with more features than Groove Basin.
   - [playlistMoveItems](#playlistmoveitems)
   - [labelCreate](#labelcreate)
   - [labelRename](#labelrename)
+  - [labelColorUpdate](#labelcolorupdate)
   - [labelDelete](#labeldelete)
   - [labelAdd](#labeladd)
   - [labelRemove](#labelremove)
@@ -120,6 +121,7 @@ with fewer features and music players with more features than Groove Basin.
     - [import](#import)
     - [labelCreate](#labelcreate-1)
     - [labelRename](#labelrename-1)
+    - [labelColorUpdate](#labelcolorupdate-1)
     - [labelDelete](#labeldelete-1)
     - [labelAdd](#labeladd-1)
     - [labelRemove](#labelremove-1)
@@ -590,6 +592,13 @@ Delete any number of playlists.
  * Type: `{id, name}`
  * `id`: `string`. ID of the label to rename.
  * `name`: `string`. New name.
+
+### labelColorUpdate
+
+ * Permission: `playlist`
+ * Type: `{id, color}`
+ * `id`: `string`. ID of the label to rename.
+ * `color`: `string`. New color.
 
 ### labelDelete
 
@@ -1174,6 +1183,12 @@ of the [move](#move-1) event.
  * `userId`: ID of the user that renamed a label.
  * `labelId`: ID of the label that was renamed.
  * `text`: old name of the label.
+
+#### labelColorUpdate
+
+ * `userId`: ID of the user that changed a label's color.
+ * `labelId`: ID of the label whose color was changed.
+ * `text`: old color of the label
 
 #### labelDelete
 

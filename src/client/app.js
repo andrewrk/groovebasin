@@ -1600,6 +1600,7 @@ function renderQueue() {
       var label = trackLabels[label_i];
       var labelBoxDom = document.createElement('span');
       labelBoxDom.classList.add("label-box");
+      labelBoxDom.style.backgroundColor = label.color;
       labelBoxDom.setAttribute('title', label.name);
       middleDom.children[0].appendChild(labelBoxDom);
     }

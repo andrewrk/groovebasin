@@ -913,6 +913,14 @@ PlayerClient.prototype.updateLabelColor = function(labelId, color) {
   // TODO anticipate server response
 };
 
+PlayerClient.prototype.renameLabel = function(labelId, name) {
+  this.sendCommand('labelRename', {
+    id: labelId,
+    name: name,
+  });
+  // TODO anticipate server response
+};
+
 PlayerClient.prototype.addLabel = function(labelId, keys) {
   if (keys.length === 0) return;
 

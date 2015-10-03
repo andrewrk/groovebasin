@@ -2455,7 +2455,12 @@ function performDrag(ev, callbacks) {
   }
 }
 
+function isDialogOpen() {
+  return closeOpenDialog !== noop;
+}
+
 function clearSelectionAndHideMenu() {
+  if (isDialogOpen()) return;
   removeContextMenu();
   selection.fullClear();
   refreshSelection();
@@ -2516,6 +2521,7 @@ function setUpGenericUi() {
   addRemoveLabelFilter.addEventListener('paste', updateAddRemoveLabelDialogDisplay, false);
   addRemoveLabelNew.addEventListener('mousedown', onAddRemoveLabelNewClick, false);
   addRemoveLabelList.addEventListener('mousedown', onAddRemoveLabelListClick, false);
+  addRemoveLabelList.addEventListener('change', onAddRemoveLabelListChange, false);
 }
 
 function onModalKeyDown(ev) {
@@ -2592,7 +2598,7 @@ function onAddRemoveLabelFilterKeyDown(ev) {
       onAddRemoveLabelNewClick(ev);
     } else {
       var labelId = addRemoveLabelDialogFilteredList[0].id;
-      player.addLabel(labelId, selection.toTrackKeys());
+      toggleLabelOnSelection(labelId);
       if (!ev.shiftKey) {
         closeOpenDialog();
       }
@@ -2635,6 +2641,10 @@ function updateAddRemoveLabelDialogDisplay(ev) {
     addRemoveLabelList.removeChild(addRemoveLabelList.lastChild);
   }
 
+  var selectedTracks = selection.toTrackKeys().map(function(key) {
+    return player.library.trackTable[key];
+  });
+
   // overwrite existing dom entries
   for (i = 0; i < addRemoveLabelDialogFilteredList.length; i += 1) {
     var domItem = addRemoveLabelList.children[i];
@@ -2642,7 +2652,40 @@ function updateAddRemoveLabelDialogDisplay(ev) {
     var label = addRemoveLabelDialogFilteredList[i];
     domItem.setAttribute('data-key', label.id);
     labelDomItem.textContent = label.name;
+    var checkboxDom = domItem.children[0];
+    var allHaveLabel = true;
+    var allMissingLabel = true;
+    for (var track_i = 0; track_i < selectedTracks.length; track_i += 1) {
+      var selectedTrack = selectedTracks[track_i];
+      if (selectedTrack.labels[label.id]) {
+        allMissingLabel = false;
+      } else {
+        allHaveLabel = false;
+      }
+    }
+    if (allHaveLabel) {
+      checkboxDom.checked = true;
+      checkboxDom.indeterminate = false;
+    } else if (allMissingLabel) {
+      checkboxDom.checked = false;
+      checkboxDom.indeterminate = false;
+    } else {
+      checkboxDom.checked = false;
+      checkboxDom.indeterminate = true;
+    }
   }
+}
+
+function onAddRemoveLabelListChange(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+
+  var clickedItem = getFirstChildToward(addRemoveLabelList, ev.target);
+  if (!clickedItem) return;
+  if (!havePerm('playlist')) return;
+  var labelId = clickedItem.getAttribute('data-key');
+
+  toggleLabelOnSelection(labelId);
 }
 
 function onAddRemoveLabelListClick(ev) {
@@ -2662,14 +2705,34 @@ function onAddRemoveLabelListClick(ev) {
       return;
     }
     player.deleteLabels([labelId]);
-    return;
-  } else {
-    debugger;
+  } else if (!ev.target.classList.contains("label-dialog-checkbox")) {
+    var keepOpen = ev.shiftKey;
+    if (!keepOpen) closeOpenDialog();
+
+    toggleLabelOnSelection(labelId);
+
   }
+}
 
+function toggleLabelOnSelection(labelId) {
+  var selectionTrackKeys = selection.toTrackKeys();
+  var selectedTracks = selectionTrackKeys.map(function(key) {
+    return player.library.trackTable[key];
+  });
 
-  if (!ev.shiftKey) closeOpenDialog();
-  player.addLabel(labelId, selection.toTrackKeys());
+  var allHaveLabel = true;
+  for (var track_i = 0; track_i < selectedTracks.length; track_i += 1) {
+    var selectedTrack = selectedTracks[track_i];
+    if (!selectedTrack.labels[labelId]) {
+      allHaveLabel = false;
+      break;
+    }
+  }
+  if (allHaveLabel) {
+    player.removeLabel(labelId, selectionTrackKeys);
+  } else {
+    player.addLabel(labelId, selectionTrackKeys);
+  }
 }
 
 function onAddRemoveLabelNewClick(ev) {
@@ -4385,7 +4448,10 @@ function init() {
     renderStreamButton();
   });
   player.on('importProgress', renderImportProgress);
-  player.on('libraryUpdate', triggerRenderLibrary);
+  player.on('libraryUpdate', function() {
+    triggerRenderLibrary();
+    triggerLabelsUpdate();
+  });
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
   player.on('playlistsUpdate', triggerPlaylistsUpdate);

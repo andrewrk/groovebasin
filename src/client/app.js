@@ -1291,6 +1291,13 @@ var eventTypeMessageFns = {
   labelRename: function(ev) {
     return "renamed " + eventLabelName(ev, ev.text) + " to " + eventLabelName(ev);
   },
+  labelColorUpdate: function(ev) {
+    if (ev.label) {
+      return "changed color of " + eventLabelName(ev) + " from " + ev.text + " to " + ev.label.color;
+    } else {
+      return "changed color of (deleted label)";
+    }
+  },
   labelDelete: function(ev) {
     return "deleted " + eventLabelName(ev, ev.text);
   },
@@ -2668,6 +2675,7 @@ function updateAddRemoveLabelDialogDisplay(ev) {
         '<button class="button label-dialog-trash">' +
           '<label class="icon icon-trash"></label>' +
         '</button>' +
+        '<input type="color" class="label-dialog-color"></span>' +
         '<span class="label-dialog-name"></span>' +
       '</div>');
   }
@@ -2683,10 +2691,14 @@ function updateAddRemoveLabelDialogDisplay(ev) {
   // overwrite existing dom entries
   for (i = 0; i < addRemoveLabelDialogFilteredList.length; i += 1) {
     var domItem = addRemoveLabelList.children[i];
-    var labelDomItem = domItem.children[2];
+    var labelDomItem = domItem.children[3];
     var label = addRemoveLabelDialogFilteredList[i];
     domItem.setAttribute('data-key', label.id);
     labelDomItem.textContent = label.name;
+
+    var colorDomItem = domItem.children[2];
+    colorDomItem.value = label.color;
+
     var checkboxDom = domItem.children[0];
     var allHaveLabel = true;
     var allMissingLabel = true;
@@ -2720,7 +2732,11 @@ function onAddRemoveLabelListChange(ev) {
   if (!havePerm('playlist')) return;
   var labelId = clickedItem.getAttribute('data-key');
 
-  toggleLabelOnSelection(labelId);
+  if (ev.target.classList.contains('label-dialog-color')) {
+    player.updateLabelColor(labelId, ev.target.value);
+  } else if (ev.target.classList.contains('label-dialog-checkbox')) {
+    toggleLabelOnSelection(labelId);
+  }
 }
 
 function onAddRemoveLabelListClick(ev) {
@@ -2740,7 +2756,9 @@ function onAddRemoveLabelListClick(ev) {
       return;
     }
     player.deleteLabels([labelId]);
-  } else if (!ev.target.classList.contains("label-dialog-checkbox")) {
+  } else if (!ev.target.classList.contains("label-dialog-color") &&
+             !ev.target.classList.contains("label-dialog-checkbox"))
+  {
     var keepOpen = ev.shiftKey;
     if (!keepOpen) closeOpenDialog();
 
@@ -4486,11 +4504,17 @@ function init() {
   player.on('libraryUpdate', function() {
     triggerRenderLibrary();
     triggerLabelsUpdate();
+    triggerRenderQueue();
+    renderNowPlaying();
+    renderQueueButtons();
   });
   player.on('queueUpdate', triggerRenderQueue);
   player.on('scanningUpdate', triggerRenderQueue);
   player.on('playlistsUpdate', triggerPlaylistsUpdate);
-  player.on('labelsUpdate', triggerLabelsUpdate);
+  player.on('labelsUpdate', function() {
+    triggerLabelsUpdate();
+    triggerRenderQueue();
+  });
   player.on('volumeUpdate', renderVolumeSlider);
   player.on('statusUpdate', function(){
     renderNowPlaying();

@@ -1595,11 +1595,45 @@ function renderQueue() {
     middleDom.children[1].textContent = track.artistName || "";
     middleDom.children[2].textContent = track.albumName || "";
 
+    var trackLabels = getTrackLabels(track);
+    for (var label_i = 0; label_i < trackLabels.length; label_i += 1) {
+      var label = trackLabels[label_i];
+      var labelBoxDom = document.createElement('span');
+      labelBoxDom.classList.add("label-box");
+      labelBoxDom.setAttribute('title', label.name);
+      middleDom.children[0].appendChild(labelBoxDom);
+    }
   }
 
   refreshSelection();
   labelQueueItems();
   queueItemsDom.scrollTop = scrollTop;
+}
+
+function getTrackLabels(track) {
+  var labelList = Object.keys(track.labels).map(getLabelById);
+  labelList.sort(compareNameAndId);
+  return labelList;
+}
+
+function compareNameAndId(a, b) {
+  var result = operatorCompare(a.name, b.name);
+  if (result) return result;
+  return operatorCompare(a.id, b.id);
+}
+
+function operatorCompare(a, b){
+  if (a === b) {
+    return 0;
+  } else if (a > b) {
+    return -1;
+  } else {
+    return 1;
+  }
+}
+
+function getLabelById(labelId) {
+  return player.labelTable[labelId];
 }
 
 function updateQueueDuration() {

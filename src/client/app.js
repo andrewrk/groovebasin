@@ -2621,7 +2621,14 @@ function updateAddRemoveLabelDialogDisplay(ev) {
   // add the missing dom entries
   var i;
   for (i = addRemoveLabelList.childElementCount; i < addRemoveLabelDialogFilteredList.length; i += 1) {
-    addRemoveLabelList.appendChild(document.createElement('li'));
+    addRemoveLabelList.insertAdjacentHTML('beforeend',
+      '<div class="label-dialog-item">' +
+        '<input type="checkbox" class="label-dialog-checkbox">' +
+        '<button class="button label-dialog-trash">' +
+          '<label class="icon icon-trash"></label>' +
+        '</button>' +
+        '<span class="label-dialog-name"></span>' +
+      '</div>');
   }
   // remove the extra dom entries
   while (addRemoveLabelDialogFilteredList.length < addRemoveLabelList.childElementCount) {
@@ -2631,21 +2638,37 @@ function updateAddRemoveLabelDialogDisplay(ev) {
   // overwrite existing dom entries
   for (i = 0; i < addRemoveLabelDialogFilteredList.length; i += 1) {
     var domItem = addRemoveLabelList.children[i];
+    var labelDomItem = domItem.children[2];
     var label = addRemoveLabelDialogFilteredList[i];
     domItem.setAttribute('data-key', label.id);
-    domItem.textContent = label.name;
+    labelDomItem.textContent = label.name;
   }
 }
 
 function onAddRemoveLabelListClick(ev) {
   if (ev.button !== 0) return;
+
   ev.stopPropagation();
   ev.preventDefault();
-  var clickedLi = getFirstChildToward(addRemoveLabelList, ev.target);
-  if (!clickedLi) return;
+
+  var clickedItem = getFirstChildToward(addRemoveLabelList, ev.target);
+  if (!clickedItem) return;
   if (!havePerm('playlist')) return;
+  var labelId = clickedItem.getAttribute('data-key');
+  var label = player.labelTable[labelId];
+
+  if (ev.target.tagName === 'LABEL') {
+    if (!confirm("You are about to delete the label \"" + label.name + "\"")) {
+      return;
+    }
+    player.deleteLabels([labelId]);
+    return;
+  } else {
+    debugger;
+  }
+
+
   if (!ev.shiftKey) closeOpenDialog();
-  var labelId = clickedLi.getAttribute('data-key');
   player.addLabel(labelId, selection.toTrackKeys());
 }
 

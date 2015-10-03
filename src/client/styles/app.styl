@@ -160,6 +160,10 @@ button:hover .icon
 .icon-closethick
   background-position -96px -128px
 
+.icon-trash
+  background-position -176px -96px
+
+
 #blackout
   position fixed
   left 0
@@ -620,7 +624,7 @@ button:hover .icon
   input[type='text']
     width 400px
 
-#add-to-playlist-list li, #add-to-playlist-new, #add-remove-label-list li, #add-remove-label-new
+#add-to-playlist-list li, #add-to-playlist-new, .label-dialog-name, #add-remove-label-new
   font-size 16px
   text-decoration none
   display block
@@ -629,7 +633,28 @@ button:hover .icon
   cursor pointer
   user-select none
 
-#add-to-playlist-list li:hover, #add-to-playlist-new:hover, #add-remove-label-list li:hover, #add-remove-label-new:hover
+#add-to-playlist-list li:hover, #add-to-playlist-new:hover, .label-dialog-name:hover, #add-remove-label-new:hover
   font-weight bold
   color #ffffff
   background #00498f url("img/ui-bg_dots-small_40_00498f_2x2.png") 50% 50% repeat
+
+.label-dialog-trash
+  float right
+  display block
+  margin -1px 0 0 0
+
+.label-dialog-name
+  display block
+  overflow hidden
+
+.label-dialog-checkbox
+  float left
+  display block
+  margin 6px 0 0 4px
+
+.label-dialog-item
+  clear both
+  height 32px
+
+#add-remove-label-new
+  clear both

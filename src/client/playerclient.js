@@ -926,6 +926,12 @@ PlayerClient.prototype.createLabel = function(name) {
   return label;
 };
 
+PlayerClient.prototype.deleteLabels = function(labelIds) {
+  if (labelIds.length === 0) return;
+  this.sendCommand('labelDelete', labelIds);
+  // TODO anticipate server response
+};
+
 function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
   // an example of shifting 5 items (a,c,f,g,i) "down":
   // offset: +1, reverse: false, this -> way

@@ -1634,7 +1634,7 @@ function operatorCompare(a, b){
 }
 
 function getLabelById(labelId) {
-  return player.labelTable[labelId];
+  return player.library.labelTable[labelId];
 }
 
 function updateQueueDuration() {
@@ -2646,7 +2646,7 @@ function updateAddRemoveLabelDialogDisplay(ev) {
   var loweredFilter = addRemoveLabelFilter.value.toLowerCase();
   addRemoveLabelDialogFilteredList = [];
   var exactMatch = false;
-  player.labelList.forEach(function(label) {
+  player.library.labelList.forEach(function(label) {
     if (label.name.toLowerCase().indexOf(loweredFilter) >= 0) {
       addRemoveLabelDialogFilteredList.push(label);
       if (addRemoveLabelFilter.value === label.name) {
@@ -2733,7 +2733,7 @@ function onAddRemoveLabelListClick(ev) {
   if (!clickedItem) return;
   if (!havePerm('playlist')) return;
   var labelId = clickedItem.getAttribute('data-key');
-  var label = player.labelTable[labelId];
+  var label = player.library.labelTable[labelId];
 
   if (ev.target.tagName === 'LABEL') {
     if (!confirm("You are about to delete the label \"" + label.name + "\"")) {

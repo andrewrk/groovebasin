@@ -96,12 +96,12 @@ function PlayerClient(socket) {
     if (o.reset) self.libraryFromServer = undefined;
     self.libraryFromServer = curlydiff.apply(self.libraryFromServer, o.delta);
     self.libraryFromServerVersion = o.version;
-    self.library.clear();
+    self.library.clearTracks();
     for (var key in self.libraryFromServer) {
       var track = self.libraryFromServer[key];
       self.library.addTrack(track);
     }
-    self.library.rebuild();
+    self.library.rebuildTracks();
     self.updateQueueIndex();
     self.haveFileListCache = true;
     var lastQuery = self.lastQuery;
@@ -235,7 +235,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       ev.playlist = this.playlistTable[serverEvent.playlistId];
     }
     if (serverEvent.labelId) {
-      ev.label = this.labelTable[serverEvent.labelId];
+      ev.label = this.library.labelTable[serverEvent.labelId];
     }
     this.eventsList.push(ev);
   }
@@ -306,22 +306,10 @@ PlayerClient.prototype.clearPlaylists = function() {
   this.playlistList = [];
 };
 
-PlayerClient.prototype.clearLabels = function() {
-  this.labelTable = {};
-  this.labelList = [];
-};
-
 PlayerClient.prototype.sortAndIndexPlaylists = function() {
   this.playlistList.sort(compareNameAndId);
   this.playlistList.forEach(function(playlist, index) {
     playlist.index = index;
-  });
-};
-
-PlayerClient.prototype.sortAndIndexLabels = function() {
-  this.labelList.sort(compareNameAndId);
-  this.labelList.forEach(function(label, index) {
-    label.index = index;
   });
 };
 
@@ -359,7 +347,7 @@ PlayerClient.prototype.updatePlaylistsIndex = function() {
 };
 
 PlayerClient.prototype.updateLabelsIndex = function() {
-  this.clearLabels();
+  this.library.clearLabels();
   if (!this.labelsFromServer) return;
   for (var id in this.labelsFromServer) {
     var labelFromServer = this.labelsFromServer[id];
@@ -367,12 +355,11 @@ PlayerClient.prototype.updateLabelsIndex = function() {
       id: id,
       name: labelFromServer.name,
       color: labelFromServer.color,
-      index: 0, // we'll set this correctly later
+      index: 0, // this gets set during rebuildLabels()
     };
-    this.labelList.push(label);
-    this.labelTable[id] = label;
+    this.library.addLabel(label);
   }
-  this.sortAndIndexLabels();
+  this.library.rebuildLabels();
 };
 
 PlayerClient.prototype.updateQueueIndex = function() {
@@ -866,7 +853,6 @@ PlayerClient.prototype.resetServerState = function(){
   this.importProgressTable = {};
 
   this.clearPlaylists();
-  this.clearLabels();
 };
 
 PlayerClient.prototype.createPlaylist = function(name) {
@@ -894,7 +880,7 @@ PlayerClient.prototype.createPlaylist = function(name) {
 PlayerClient.prototype.removeLabel = function(labelId, keys) {
   if (keys.length === 0) return;
 
-  var label = this.labelTable[labelId];
+  var label = this.library.labelTable[labelId];
 
   var removals = {};
   for (var i = 0; i < keys.length; i += 1) {
@@ -910,7 +896,7 @@ PlayerClient.prototype.removeLabel = function(labelId, keys) {
 PlayerClient.prototype.addLabel = function(labelId, keys) {
   if (keys.length === 0) return;
 
-  var label = this.labelTable[labelId];
+  var label = this.library.labelTable[labelId];
 
   var additions = {};
   for (var i = 0; i < keys.length; i += 1) {
@@ -935,9 +921,8 @@ PlayerClient.prototype.createLabel = function(name) {
     name: name,
     index: 0,
   };
-  this.labelTable[id] = label;
-  this.labelList.push(label);
-  this.sortAndIndexLabels();
+  this.library.addLabel(label);
+  this.library.rebuildLabels();
   this.emit('labelsUpdate');
 
   return label;
@@ -1038,7 +1023,7 @@ function removeTracksInLib(lib, keysList) {
   keysList.forEach(function(key) {
     lib.removeTrack(key);
   });
-  lib.rebuild();
+  lib.rebuildTracks();
 }
 
 function elapsedToDate(elapsed){

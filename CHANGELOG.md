@@ -1,3 +1,40 @@
+### Version 1.6.0 (UNRELEASED)
+
+Contains breaking changes to the Groove Basin protocol. Since the Groove Basin
+protocol is not officially stable yet, only the minor version number is bumped.
+
+ * Andrew Kelley:
+   - Users can now add labels to tracks, and labels show up in the play queue.
+   - Client: Revert smoother track slider. The choppier track slider is worth
+     the CPU cycles it saves.
+   - Better SSL defaults.
+     - Instead of defaulting to HTTPS with a self-signed certificate, default to
+       using HTTP.
+     - By default bind to 127.0.0.1 instead of 0.0.0.0.
+     - If you bind to something other than localhost without enabling SSL, you
+       get a warning message.
+     - Users are encouraged to either use Groove Basin with a proxy and SSL
+       enabled on that proxy, or enable SSL directly in Groove Basin.
+     - MPD server defaults to 127.0.0.1 instead of 0.0.0.0 since the MPD
+       protocol is insecure.
+   - Add the first draft of the Groove Basin Protocol Specification
+   - Groove Basin protocol no longer operates via the MPD protocol. Instead,
+     clients must use the HTTP/HTTPS and WebSockets interface.
+   - Groove Basin Protocol provides a way to obtain the stream URL.
+   - The gbremote command line tool is an example client and can be used as a
+     command line remote control for a Groove Basin server. Perfect for setting
+     up keyboard shortcuts to control your music.
+   - Add `ignoreExtensions` config setting.
+   - Client: fix time column being cut off.
+   - Recognize more compilation tags.
+
+ * Josh Wolfe:
+   - Label support.
+   - Implement searching syntax for labels.
+
+ * Caleb Morris:
+   - Repeat order is Off, All, One, instead of Off, One, All.
+
 ### Version 1.5.1 (2015-05-15)
 
  * Andrew Kelley:

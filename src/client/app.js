@@ -4069,6 +4069,7 @@ function onAddRemoveLabelContextMenu(ev) {
   if (!havePerm('playlist')) return;
   if (selection.isEmpty()) return;
   removeContextMenu();
+  updateLabelsUi();
   popAddRemoveLabelDialog();
 }
 

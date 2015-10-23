@@ -39,7 +39,7 @@
     "yauzl": "~2.3.0",
     "yawl": "~1.0.2",
     "yazl": "~2.2.2",
-    "ytdl-core": ">=0.5.1"
+    "ytdl-core": ">=0.7.3"
   },
   "devDependencies": {
     "browserify-lite": "~0.2.4",

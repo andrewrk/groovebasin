@@ -406,7 +406,7 @@ var selection = {
       for (key in selection.ids.track) {
         selRenderTrack(player.searchResults.trackTable[key]);
       }
-      return trackSetToKeys(trackSet);
+      return getKeysInOrder(trackSet);
       function selRenderArtist(artist){
         for (var i = 0; i < artist.albumList.length; i += 1) {
           var album = artist.albumList[i];
@@ -440,15 +440,15 @@ var selection = {
       return keys;
     }
     function playlistToTrackKeys(){
-      var trackSet = {};
-      function renderQueue(playlist){
+      var playlistItemSet = {};
+      function renderPlaylist(playlist){
         for (var i = 0; i < playlist.itemList.length; i += 1) {
           var item = playlist.itemList[i];
           renderPlaylistItem(item);
         }
       }
       function renderPlaylistItem(item){
-        trackSet[item.track.key] = selection.posToArr(getItemSelPos(item));
+        playlistItemSet[item.id] = selection.posToArr(getItemSelPos(item));
       }
       function getItemSelPos(item){
         return {
@@ -458,15 +458,16 @@ var selection = {
         };
       }
       for (var key in selection.ids.playlist) {
-        renderQueue(player.playlistTable[key]);
+        renderPlaylist(player.playlistTable[key]);
       }
       for (key in selection.ids.playlistItem) {
         renderPlaylistItem(player.playlistItemTable[key]);
       }
-      return trackSetToKeys(trackSet);
+      var playlistItemKeys = getKeysInOrder(playlistItemSet);
+      return playlistItemKeys.map(function(playlistItemKey) { return player.playlistItemTable[playlistItemKey].track.key; });
     }
 
-    function trackSetToKeys(trackSet){
+    function getKeysInOrder(trackSet){
       var key;
       var keys = [];
       if (random) {

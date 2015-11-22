@@ -952,7 +952,7 @@ var keyboardHandlers = (function() {
       ctrl: false,
       alt: false,
       shift: false,
-      handler: toggleStreamStatus
+      handler: toggleStreamStatusEvent
     },
     // t
     84: {
@@ -2252,10 +2252,17 @@ function handleDeletePressed(shift) {
   }
 }
 
+function nobodyListening() {
+  return getStreamerCount() === 0 && !hardwarePlaybackOn;
+}
+
 function togglePlayback(){
   if (player.isPlaying === true) {
     player.pause();
   } else if (player.isPlaying === false) {
+    if (nobodyListening()) {
+      toggleStreamStatus();
+    }
     player.play();
   }
   // else we haven't received state from server yet
@@ -4269,7 +4276,7 @@ function setUpUi() {
 }
 
 function setUpStreamUi() {
-  streamBtnDom.addEventListener('click', toggleStreamStatus, false);
+  streamBtnDom.addEventListener('click', toggleStreamStatusEvent, false);
   clientVolSlider.addEventListener('change', setClientVol, false);
   clientVolSlider.addEventListener('input', setClientVol, false);
 
@@ -4373,13 +4380,17 @@ function renderStreamButton() {
   clientVolDom.style.display = tryingToStream ? "" : "none";
 }
 
-function toggleStreamStatus(ev) {
-  ev.stopPropagation();
-  ev.preventDefault();
+function toggleStreamStatus() {
   tryingToStream = !tryingToStream;
   sendStreamingStatus();
   renderStreamButton();
   updateStreamPlayer();
+}
+
+function toggleStreamStatusEvent(ev) {
+  ev.stopPropagation();
+  ev.preventDefault();
+  toggleStreamStatus();
 }
 
 function sendStreamingStatus() {

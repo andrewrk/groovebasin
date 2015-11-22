@@ -114,3 +114,13 @@ Live discussion in #libgroove on Freenode.
  0. Music library organization
  0. Accoustid Integration
  0. Finalize GrooveBasin protocol spec
+
+### Merge to Master Blocking Bugs
+
+ * Segfault when playing a track
+ * Hanging on startup
+ * waveform disappears when queueing an unscanned track
+ * javascript client side error something to do with album tree node
+ * encoder time drift when reopening device
+ * don't put the waveform data inline with the library index. instead an id and
+   ability to look up that id. this is how album art will work too.

@@ -31,6 +31,9 @@ Try out the [live demo](http://demo.groovebasin.com/).
 * Streaming support. You can listen to your music library - or share it with
   your friends - even when you are not physically near your home speakers.
 
+* Label support. Each song can have a set of labels and you can filter your
+  library using these labels using a filter syntax.
+
 * Groove Basin protocol. Write your own client using the
   [protocol specification](doc/protocol.md), or check out
   [gbremote](https://github.com/andrewrk/gbremote), a simple command-line
@@ -124,3 +127,4 @@ Live discussion in #libgroove on Freenode.
  * encoder time drift when reopening device
  * don't put the waveform data inline with the library index. instead an id and
    ability to look up that id. this is how album art will work too.
+ * streaming is completely fucked

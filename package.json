@@ -38,7 +38,7 @@
     "serve-static": "~1.9.3",
     "yauzl": "~2.6.0",
     "yawl": "~1.0.2",
-    "yazl": "~2.4.0",
+    "yazl": "~2.4.1",
     "ytdl-core": "~0.7.9"
   },
   "devDependencies": {

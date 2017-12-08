@@ -9,8 +9,6 @@ or smart phone. Further, you can stream your music library remotely.
 Groove Basin works with your personal music library; not an external music
 service. Groove Basin will never support DRM content.
 
-Try out the [live demo](http://demo.groovebasin.com/).
-
 ## Feature Highlights
 
 * The web client feels like a desktop app, not a web app. It predicts what the

@@ -45,31 +45,14 @@ Try out the [live demo](http://demo.groovebasin.com/).
 * File system monitoring. Add songs anywhere inside your music directory and
   they instantly appear in your library.
 
-## Install
+## Installation on Ubuntu
 
-### Pre-Built Packages
+Last updated for Zesty 17.04.
 
-#### Ubuntu
-
-```
-sudo apt-add-repository ppa:andrewrk/libgroove
-sudo apt-get update
-sudo apt-get install groovebasin
-groovebasin
-```
-
-### From Source
-
-1. Install one of these:
-   * [Node.js](http://nodejs.org) v0.10.36 or v0.12.x
-   * [io.js](https://iojs.org) v1.x.x
-   * On Debian and Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`
-2. Install [libgroove](https://github.com/andrewrk/libgroove).
-   libgroove is available in many package managers. See the libgroove README
-   for more details.
-3. Clone the source and cd to it.
-4. `npm run build`
-5. `npm start`
+1. `sudo apt-get install nodejs libgrooveloudness-dev libgroovefingerprinter-dev libgrooveplayer-dev libgroove-dev`
+2. Clone this repo and cd to it.
+3. `npm run build`
+4. `npm start`
 
 ## Configuration
 

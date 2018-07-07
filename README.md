@@ -45,12 +45,20 @@ service. Groove Basin will never support DRM content.
 
 ## Installation on Ubuntu
 
-Last updated for Zesty 17.04.
+For Ubuntu 17.04 Zesty:
 
 1. `sudo apt-get install nodejs libgrooveloudness-dev libgroovefingerprinter-dev libgrooveplayer-dev libgroove-dev`
 2. Clone this repo and cd to it.
 3. `npm run build`
 4. `npm start`
+
+For Ubuntu 18.04 Bionic:
+
+* Install node-groove and its dependencies from source by following these instructions:
+  https://github.com/andrewrk/node-groove/blob/2.x/README.md#ubuntu-1804
+* Edit `pckage.json`, and change the `"groove"` dependency to point to the directory where node-groove is installed.
+  (The path is instead of a version number.)
+* Resume step 2 above.
 
 ## Configuration
 

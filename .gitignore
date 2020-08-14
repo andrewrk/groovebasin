@@ -1,7 +1,0 @@
-/node_modules
-/groovebasin.db
-/config.json
-
-# not shared with .npmignore
-/public/app.js
-/public/app.css

@@ -1,4 +1,0 @@
-#!/bin/sh
-mkdir -p public
-./node_modules/.bin/stylus -o public/ -c --include-css src/client/styles
-./node_modules/.bin/browserify-lite ./src/client/app.js --outfile public/app.js

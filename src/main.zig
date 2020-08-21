@@ -22,16 +22,47 @@ pub fn main() anyerror!void {
     while (true) {
         const connection = try server.accept();
         defer connection.file.close();
-        var buf: [0x4000]u8 = undefined;
-        const amt = try connection.file.read(&buf);
-        const msg = buf[0..amt];
-        std.debug.print("{}\n", .{msg});
-
-        try connection.file.writeAll("" ++
-            "HTTP/1.1 200 OK\r\n" ++
-            "Content-Type: text/html\r\n" ++
-            "\r\n" ++
-            "<html><body><select id=\"organize\"><option selected=\"selected\">Artist / Album / Song</option></select></body></html>\r\n" ++
-            "\r\n");
+        handleConnection(connection) catch |err| {
+            std.log.err("handling connection failed: {}", .{err});
+        };
     }
+}
+
+fn handleConnection(connection: std.net.StreamServer.Connection) !void {
+    var buf: [0x4000]u8 = undefined;
+    const amt = try connection.file.read(&buf);
+    const msg = buf[0..amt];
+    const first_line = std.mem.split(msg, "\r\n").next() orelse return;
+
+    // TODO: read the spec
+    // eg: "GET /favicon.png HTTP/1.1"
+    var it = std.mem.tokenize(first_line, " \t");
+    const method = it.next() orelse return;
+    const path = it.next() orelse return;
+    const http_version = it.next() orelse return;
+
+    if (!std.mem.eql(u8, method, "GET")) return;
+    if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
+
+    std.log.info("GET: {}", .{path});
+
+    try connection.file.writeAll(try resolvePath(path));
+}
+
+const http_response_header = "" ++
+    "HTTP/1.1 200 OK\r\n" ++
+    "Content-Type: text/html\r\n" ++
+    "\r\n";
+const http_response_header_compressed = "" ++
+    "HTTP/1.1 200 OK\r\n" ++
+    "Content-Type: text/html\r\n" ++
+    "Content-Encoding: gzip\r\n" ++
+    "\r\n";
+
+fn resolvePath(path: []const u8) ![]const u8 {
+    if (std.mem.eql(u8, path, "/")) return http_response_header ++ @embedFile("./public/index.html");
+    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_compressed ++ @embedFile("./public/app.css");
+    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_compressed ++ @embedFile("./public/app.js");
+    if (std.mem.eql(u8, path, "/favicon.png")) return http_response_header ++ @embedFile("./public/favicon.png");
+    return error.NotFound;
 }

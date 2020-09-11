@@ -2,7 +2,6 @@
 var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 var crypto = window.crypto;
 var arr = new Uint8Array(24);
-module.exports = uuid;
 function uuid() {
   crypto.getRandomValues(arr);
   var s = "";
@@ -24,3 +23,5 @@ function uuid() {
   }
   return s;
 }
+
+return uuid;

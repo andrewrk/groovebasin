@@ -3,7 +3,8 @@ const net = std.net;
 const fs = std.fs;
 const os = std.os;
 
-pub const io_mode = .evented;
+// FIXME: seems to be a bug with long writeAll calls.
+// pub const io_mode = .evented;
 
 var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -88,10 +89,9 @@ const http_response_header_css_compressed = "" ++
     "Content-Type: text/css\r\n" ++
     "Content-Encoding: gzip\r\n" ++
     "\r\n";
-const http_response_header_javascript_compressed = "" ++
+const http_response_header_javascript = "" ++
     "HTTP/1.1 200 OK\r\n" ++
     "Content-Type: application/javascript\r\n" ++
-    "Content-Encoding: gzip\r\n" ++
     "\r\n";
 const http_response_header_png = "" ++
     "HTTP/1.1 200 OK\r\n" ++
@@ -101,7 +101,7 @@ const http_response_header_png = "" ++
 fn resolvePath(path: []const u8) ![]const u8 {
     if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("./public/index.html");
     if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("./public/app.css");
-    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript_compressed ++ @embedFile("./public/app.js");
+    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("./public/app.js");
     if (std.mem.eql(u8, path, "/favicon.png")) return http_response_header_png ++ @embedFile("./public/favicon.png");
     return error.NotFound;
 }

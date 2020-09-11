@@ -1,7 +1,5 @@
 var slice = Array.prototype.slice;
 
-module.exports = EventEmitter;
-
 function EventEmitter() {
   this.listeners = {};
 }
@@ -28,3 +26,5 @@ EventEmitter.prototype.removeListener = function(name, listener) {
   if (badIndex === -1) return;
   listeners.splice(badIndex, 1);
 };
+
+return EventEmitter;

@@ -21,4 +21,27 @@ pub fn build(b: *Builder) void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    {
+        const paste_js_exe = b.addExecutable("paste-js", "tools/paste-js.zig");
+        paste_js_exe.setTarget(target);
+        paste_js_exe.setBuildMode(mode);
+        paste_js_exe.install();
+
+        const paste_js_cmd = paste_js_exe.run();
+        paste_js_cmd.addArgs(&[_][]const u8{
+            "src/client",
+            "app.js",
+            "event_emitter.js",
+            "human-size.js",
+            "inherits.js",
+            "keese.js",
+            "playerclient.js",
+            "shuffle.js",
+            "socket.js",
+            "uuid.js",
+        });
+        const paste_js_step = b.step("paste-js", "compile the js");
+        paste_js_step.dependOn(&paste_js_cmd.step);
+    }
 }

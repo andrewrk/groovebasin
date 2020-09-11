@@ -1,12 +1,10 @@
-var EventEmitter = require('./event_emitter');
-var inherits = require('./inherits');
-var uuid = require('./uuid');
+var EventEmitter = require('event_emitter');
+var inherits = require('inherits');
+var uuid = require('uuid');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
 var curlydiff = require('curlydiff');
-var shuffle = require('mess');
-
-module.exports = PlayerClient;
+var shuffle = require('shuffle');
 
 var compareSortKeyAndId = makeCompareProps(['sortKey', 'id']);
 var compareNameAndId = makeCompareProps(['name', 'id']);
@@ -1088,3 +1086,5 @@ function compareUserNames(a, b) {
     return 0;
   }
 }
+
+return PlayerClient;

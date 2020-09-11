@@ -1,4 +1,4 @@
-module.exports = function inherits(ctor, superCtor) {
+function inherits(ctor, superCtor) {
   ctor.super_ = superCtor;
   ctor.prototype = Object.create(superCtor.prototype, {
     constructor: {
@@ -9,3 +9,5 @@ module.exports = function inherits(ctor, superCtor) {
     },
   });
 };
+
+return inherits;

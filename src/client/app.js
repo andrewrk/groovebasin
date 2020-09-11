@@ -1,8 +1,8 @@
-var shuffle = require('mess');
+var shuffle = require('shuffle');
 var humanSize = require('human-size');
-var PlayerClient = require('./playerclient');
-var Socket = require('./socket');
-var uuid = require('./uuid');
+var PlayerClient = require('playerclient');
+var Socket = require('socket');
+var uuid = require('uuid');
 
 var autoDjOn = false;
 var hardwarePlaybackOn = false;

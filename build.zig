@@ -32,10 +32,13 @@ pub fn build(b: *Builder) void {
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client",
             "app.js",
+            "curlydiff.js",
             "event_emitter.js",
             "human-size.js",
             "inherits.js",
             "keese.js",
+            "music-library-index.js",
+            "removediacritics.js",
             "playerclient.js",
             "shuffle.js",
             "socket.js",
@@ -43,5 +46,7 @@ pub fn build(b: *Builder) void {
         });
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);
+
+        run_cmd.step.dependOn(&paste_js_cmd.step);
     }
 }

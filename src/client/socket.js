@@ -1,7 +1,5 @@
-var EventEmitter = require('./event_emitter');
-var inherits = require('./inherits');
-
-module.exports = Socket;
+var EventEmitter = require('event_emitter');
+var inherits = require('inherits');
 
 inherits(Socket, EventEmitter);
 function Socket() {
@@ -56,3 +54,5 @@ Socket.prototype.send = function(name, args) {
     args: args,
   }));
 };
+
+return Socket;

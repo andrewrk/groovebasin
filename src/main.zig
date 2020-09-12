@@ -14,7 +14,7 @@ pub fn main() anyerror!void {
         _ = general_purpose_allocator.deinit();
     };
 
-    var server = net.StreamServer.init(.{});
+    var server = net.StreamServer.init(.{.reuse_address=true});
     defer server.deinit();
 
     try server.listen(net.Address.parseIp("127.0.0.1", 8000) catch unreachable);
@@ -120,8 +120,18 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
     var base64_digest: [28]u8 = undefined;
     std.base64.standard_encoder.encode(&base64_digest, &digest);
 
-    try connection.file.writeAll(http_response_header_upgrade);
-    try connection.file.writeAll("Sec-WebSocket-Accept: ");
-    try connection.file.writeAll(&base64_digest);
-    try connection.file.writeAll("\r\n" ++ "\r\n");
+    var iovecs = [_] std.os.iovec_const{
+        strToIovec(http_response_header_upgrade),
+        strToIovec("Sec-WebSocket-Accept: "),
+        strToIovec(&base64_digest),
+        strToIovec("\r\n" ++ "\r\n"),
+    };
+    try connection.file.writevAll(&iovecs);
+}
+
+fn strToIovec(s: []const u8) std.os.iovec_const {
+    return .{
+        .iov_base = s.ptr,
+        .iov_len = s.len,
+    };
 }

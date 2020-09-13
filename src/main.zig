@@ -98,12 +98,34 @@ const http_response_header_png = "" ++
     "Content-Type: image/png\r\n" ++
     "\r\n";
 
+const http_response_not_found = "" ++
+    "HTTP/1.1 404 Not Found\r\n" ++
+    "\r\n";
+
 fn resolvePath(path: []const u8) ![]const u8 {
     if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("./public/index.html");
     if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("./public/app.css");
     if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("./public/app.js");
-    if (std.mem.eql(u8, path, "/favicon.png")) return http_response_header_png ++ @embedFile("./public/favicon.png");
-    return error.NotFound;
+    inline for ([_][]const u8 {
+        "/favicon.png",
+        "/img/ui-icons_ffffff_256x240.png",
+        "/img/ui-bg_dots-small_30_a32d00_2x2.png",
+        "/img/ui-bg_flat_0_aaaaaa_40x100.png",
+        "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
+        "/img/ui-icons_98d2fb_256x240.png",
+        "/img/ui-icons_00498f_256x240.png",
+        "/img/ui-bg_gloss-wave_20_111111_500x100.png",
+        "/img/bright-10.png",
+        "/img/ui-icons_9ccdfc_256x240.png",
+        "/img/ui-bg_dots-small_40_00498f_2x2.png",
+        "/img/ui-bg_dots-small_20_333333_2x2.png",
+        "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
+        "/img/ui-bg_flat_40_292929_40x100.png",
+    }) |img_path| {
+        if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("./public" ++ img_path);
+    }
+
+    return http_response_not_found;
 }
 
 const http_response_header_upgrade = "" ++

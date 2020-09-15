@@ -6,15 +6,8 @@ const os = std.os;
 // FIXME: seems to be a bug with long writeAll calls.
 // pub const io_mode = .evented;
 
-var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-
 pub fn main() anyerror!void {
-    const allocator = if (std.builtin.link_libc) std.heap.c_allocator else &general_purpose_allocator.allocator;
-    defer if (!std.builtin.link_libc) {
-        _ = general_purpose_allocator.deinit();
-    };
-
-    var server = net.StreamServer.init(.{.reuse_address=true});
+    var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
     try server.listen(net.Address.parseIp("127.0.0.1", 8000) catch unreachable);
@@ -106,7 +99,7 @@ fn resolvePath(path: []const u8) ![]const u8 {
     if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("./public/index.html");
     if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("./public/app.css");
     if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("./public/app.js");
-    inline for ([_][]const u8 {
+    inline for ([_][]const u8{
         "/favicon.png",
         "/img/ui-icons_ffffff_256x240.png",
         "/img/ui-bg_dots-small_30_a32d00_2x2.png",
@@ -142,13 +135,82 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
     var base64_digest: [28]u8 = undefined;
     std.base64.standard_encoder.encode(&base64_digest, &digest);
 
-    var iovecs = [_] std.os.iovec_const{
+    var iovecs = [_]std.os.iovec_const{
         strToIovec(http_response_header_upgrade),
         strToIovec("Sec-WebSocket-Accept: "),
         strToIovec(&base64_digest),
         strToIovec("\r\n" ++ "\r\n"),
     };
     try connection.file.writevAll(&iovecs);
+
+    while (true) {
+        // read first byte.
+        var header = [_]u8{0} ** 2;
+        readAllNoEof(connection.file, header[0..]) catch |err| switch (err) {
+            error.UnexpectedEof => break,
+            else => return err,
+        };
+        const opcode_byte = header[0];
+        // 0b10000000: FIN - this is a complete message.
+        // 0b00000001: opcode=1 - this is a UTF-8 text message.
+        const expected_opcode_byte = 0b10000001;
+        if (opcode_byte != expected_opcode_byte) {
+            std.log.warn("bad opcode byte: {}", .{opcode_byte});
+            return;
+        }
+
+        // read length
+        const short_len_byte = header[1];
+        if (short_len_byte & 0b10000000 != 0b10000000) {
+            std.log.warn("frames from client must be masked: {}", .{short_len_byte});
+            return;
+        }
+        var len: u64 = switch (short_len_byte & 0b01111111) {
+            127 => blk: {
+                var len_buffer = [_]u8{0} ** 8;
+                try readAllNoEof(connection.file, len_buffer[0..]);
+                break :blk std.mem.readIntBig(u64, &len_buffer);
+            },
+            126 => blk: {
+                var len_buffer = [_]u8{0} ** 2;
+                try readAllNoEof(connection.file, len_buffer[0..]);
+                break :blk std.mem.readIntBig(u16, &len_buffer);
+            },
+            else => |short_len| blk: {
+                break :blk short_len;
+            },
+        };
+        const max_payload_size = 16 * 1024;
+        if (len > max_payload_size) {
+            std.log.warn("payload too big: {}", .{len});
+            return;
+        }
+
+        // read mask
+        var mask_buffer = [_]u8{0} ** 4;
+        try readAllNoEof(connection.file, mask_buffer[0..]);
+        const mask_native = std.mem.readIntNative(u32, &mask_buffer);
+
+        // read payload
+        var payload_buffer = [_]u8{0} ** max_payload_size;
+        const payload = payload_buffer[0..len];
+        try readAllNoEof(connection.file, payload);
+
+        // unmask
+        {
+            var i: usize = 0;
+            const last_bit_size = payload.len & 3;
+            while (i < payload.len - last_bit_size) : (i += 4) {
+                std.mem.writeIntNative(u32, payload[i..][0..4], mask_native ^ std.mem.readIntNative(u32, payload[i..][0..4]));
+            }
+            var last_bit_i: u2 = 0;
+            while (i + last_bit_i < payload.len) : (last_bit_i += 1) {
+                payload[i + last_bit_i] ^= mask_buffer[last_bit_i];
+            }
+        }
+
+        std.log.info("message: {}", .{payload});
+    }
 }
 
 fn strToIovec(s: []const u8) std.os.iovec_const {
@@ -156,4 +218,8 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
+}
+
+fn readAllNoEof(file: std.fs.File, buffer: []u8) !void {
+    if (buffer.len > try file.readAll(buffer)) return error.UnexpectedEof;
 }

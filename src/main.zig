@@ -192,16 +192,17 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
         const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
         // read payload
-        var payload_buffer = [_]u8{0} ** max_payload_size;
+        var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = payload_buffer[0..len];
         try readAllNoEof(connection.file, payload);
-        const payload_aligned = payload_buffer[0..std.mem.alignForward(len, 4)];
 
         // unmask
+        // The last item may contain a partial word of unused data.
+        const payload_aligned = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
         {
             var i: usize = 0;
-            while (i < payload_aligned.len) : (i += 4) {
-                std.mem.writeIntNative(u32, payload_aligned[i..][0..4], mask_native ^ std.mem.readIntNative(u32, payload_aligned[i..][0..4]));
+            while (i < payload_aligned.len) : (i += 1) {
+                payload_aligned[i] ^= mask_native;
             }
         }
 

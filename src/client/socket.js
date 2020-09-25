@@ -26,16 +26,19 @@ function Socket() {
     self.ws.addEventListener('open', onOpen, false);
 
     function onOpen() {
+      console.log("opened websocket");
       self.isConnected = true;
       self.emit('connect');
     }
 
     function onMessage(ev) {
+      console.log("message:", ev.data);
       var msg = JSON.parse(ev.data);
       self.emit(msg.name, msg.args);
     }
 
-    function timeoutThenCreateNew() {
+    function timeoutThenCreateNew(ev) {
+      console.log("closing websocket", ev);
       self.ws.removeEventListener('error', timeoutThenCreateNew, false);
       self.ws.removeEventListener('close', timeoutThenCreateNew, false);
       self.ws.removeEventListener('open', onOpen, false);

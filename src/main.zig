@@ -90,6 +90,10 @@ const http_response_header_png = "" ++
     "HTTP/1.1 200 OK\r\n" ++
     "Content-Type: image/png\r\n" ++
     "\r\n";
+const http_response_header_wasm = "" ++
+    "HTTP/1.1 200 OK\r\n" ++
+    "Content-Type: application/wasm\r\n" ++
+    "\r\n";
 
 const http_response_not_found = "" ++
     "HTTP/1.1 404 Not Found\r\n" ++
@@ -117,6 +121,8 @@ fn resolvePath(path: []const u8) ![]const u8 {
     }) |img_path| {
         if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("./public" ++ img_path);
     }
+
+    if (std.mem.eql(u8, path, "/client.wasm")) return http_response_header_wasm ++ @embedFile(@import("build_options").client_wasm_path);
 
     return http_response_not_found;
 }

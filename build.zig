@@ -11,9 +11,16 @@ pub fn build(b: *Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
+    const client = b.addStaticLibrary("client", "src/client/client.zig");
+    client.setTarget(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+    });
+
     const exe = b.addExecutable("groovebasin", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
+    exe.addBuildOptionArtifact("client_wasm_path", client);
     exe.install();
 
     const run_cmd = exe.run();
@@ -47,6 +54,6 @@ pub fn build(b: *Builder) void {
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);
 
-        run_cmd.step.dependOn(&paste_js_cmd.step);
+        exe.step.dependOn(&paste_js_cmd.step);
     }
 }

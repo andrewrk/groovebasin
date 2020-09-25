@@ -1,3 +1,9 @@
+var importObject = {};
+WebAssembly.instantiateStreaming(fetch('client.wasm'), importObject).then(results => {
+  window.client_wasm = results.instance.exports;
+  console.log("client wasm:", window.client_wasm.hello());
+});
+
 var shuffle = require('shuffle');
 var humanSize = require('human-size');
 var PlayerClient = require('playerclient');

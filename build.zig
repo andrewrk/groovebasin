@@ -39,8 +39,10 @@ pub fn build(b: *Builder) void {
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client",
             "bootstrap_wasm.js",
+            "callback.js",
             "memory.js",
             "string.js",
+            "websocket.js",
         });
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);

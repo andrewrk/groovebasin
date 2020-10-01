@@ -11,7 +11,7 @@ pub fn build(b: *Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const client = b.addStaticLibrary("client", "src/client/client.zig");
+    const client = b.addStaticLibrary("client", "src/client/client_main.zig");
     client.setTarget(.{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
@@ -38,18 +38,9 @@ pub fn build(b: *Builder) void {
         const paste_js_cmd = paste_js_exe.run();
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client",
-            "app.js",
-            "curlydiff.js",
-            "event_emitter.js",
-            "human-size.js",
-            "inherits.js",
-            "keese.js",
-            "music-library-index.js",
-            "removediacritics.js",
-            "playerclient.js",
-            "shuffle.js",
-            "socket.js",
-            "uuid.js",
+            "bootstrap_wasm.js",
+            "memory.js",
+            "string.js",
         });
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);

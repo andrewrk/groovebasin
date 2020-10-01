@@ -1,9 +1,9 @@
 
-function wrapCallback(id, context) {
-    return () => exports.delegateCallback(id, context);
+function wrapCallback(callbackPtr, context) {
+    return () => exports.delegateCallback(callbackPtr, context);
 }
-function wrapCallbackI32(id, context) {
-    return (arg) => exports.delegateCallbackI32(id, context, arg);
+function wrapCallbackI32(callbackPtr, context) {
+    return (arg) => exports.delegateCallbackI32(callbackPtr, context, arg);
 }
 
 const exports = {

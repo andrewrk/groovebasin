@@ -7,9 +7,9 @@ const browser = @import("browser.zig");
 export fn main() void {
     browser.print("hello world");
     browser.serveWebSocket(
-        websocket.onOpen_id,
+        &websocket.onOpen,
         undefined,
-        websocket.onClose_id,
+        &websocket.onClose,
         undefined,
     );
 }

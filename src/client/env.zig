@@ -1,10 +1,12 @@
 // this is the {env} passed into the wasm instantiation.
 // use @import("browser.zig") instead of this.
 
+const callback = @import("callback.zig");
+
 pub extern fn print(ptr: [*]const u8, len: usize) void;
 pub extern fn serveWebSocket(
-    openCallbackId: i32,
-    openCallbackContext: *@Type(.Opaque),
-    closeCallbackId: i32,
-    closeCallbackContext: *@Type(.Opaque),
+    openCallback: *const callback.CallbackFn,
+    openCallbackContext: *callback.Context,
+    closeCallbackId: *const callback.CallbackFnI32,
+    closeCallbackContext: *callback.Context,
 ) void;

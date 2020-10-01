@@ -10,14 +10,14 @@ const env = {
         console.log(msg);
     },
     serveWebSocket(
-        openCallbackId, openCallbackContext,
-        closeCallbackId, closeCallbackContext,
-        // errorCallbackId, errorCallbackContext,
-        // messageCallbackId, messageCallbackContext,
+        openCallbackPtr, openCallbackContext,
+        closeCallbackPtr, closeCallbackContext,
+        // errorCallbackPtr, errorCallbackContext,
+        // messageCallbackPtr, messageCallbackContext,
     ) {
         serveWebSocket(
-            callback.wrapCallback(openCallbackId, openCallbackContext),
-            callback.wrapCallbackI32(closeCallbackId, closeCallbackContext),
+            callback.wrapCallback(openCallbackPtr, openCallbackContext),
+            callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
             // null,
             // null,
         );

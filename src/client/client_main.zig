@@ -11,5 +11,9 @@ export fn main() void {
         undefined,
         &websocket.onClose,
         undefined,
+        &websocket.onError,
+        undefined,
+        &websocket.onMessage,
+        undefined,
     );
 }

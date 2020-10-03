@@ -1,9 +1,9 @@
 
-const memory = require("memory");
+const wasmExports = require("wasmExports");
 
 const decoder = new TextDecoder();
 function decodeString(ptr, len) {
-    return decoder.decode(new Uint8Array(memory.buffer, ptr, len));
+    return decoder.decode(new Uint8Array(wasmExports.memory.buffer, ptr, len));
 }
 
 return {

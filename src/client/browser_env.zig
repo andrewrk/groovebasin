@@ -9,4 +9,10 @@ pub extern fn serveWebSocket(
     openCallbackContext: *callback.Context,
     closeCallbackId: *const callback.CallbackFnI32,
     closeCallbackContext: *callback.Context,
+    errorCallback: *const callback.CallbackFn,
+    errorCallbackContext: *callback.Context,
+    messageCallbackId: *const callback.CallbackFnI32I32,
+    messageCallbackContext: *callback.Context,
 ) void;
+
+pub extern fn readBlob(handle: i32, ptr: [*]u8, len: usize) void;

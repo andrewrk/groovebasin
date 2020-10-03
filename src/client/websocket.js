@@ -1,3 +1,4 @@
+const {createBlob} = require("blob");
 
 const wsUrl = (() => {
     var host = window.document.location.host;
@@ -17,14 +18,14 @@ function serveWebSocket(openCallback, closeCallbackI32, errorCallback, messageCa
 
     ws.addEventListener("open", onOpen);
     ws.addEventListener("close", onClose);
-    // ws.addEventListener("error", onError);
-    // ws.addEventListener("message", onMessage);
+    ws.addEventListener("error", onError);
+    ws.addEventListener("message", onMessage);
 
     function cleanup() {
         ws.removeEventListener("open", onOpen);
         ws.removeEventListener("close", onClose);
-        // ws.removeEventListener("error", onError);
-        // ws.removeEventListener("message", onMessage);
+        ws.removeEventListener("error", onError);
+        ws.removeEventListener("message", onMessage);
     }
 
     function onOpen() {
@@ -46,7 +47,12 @@ function serveWebSocket(openCallback, closeCallbackI32, errorCallback, messageCa
 
     function onMessage(ev) {
         console.log("websocket message:", ev.data);
-        messageCallback(ev.data);
+        const blob = createBlob(ev.data);
+        try {
+            messageCallback(blob.handle, blob.length);
+        } finally {
+            blob.dispose();
+        }
     }
 }
 

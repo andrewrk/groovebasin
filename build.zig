@@ -38,6 +38,7 @@ pub fn build(b: *Builder) void {
         const paste_js_cmd = paste_js_exe.run();
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client",
+            "blob.js",
             "bootstrap_wasm.js",
             "callback.js",
             "string.js",

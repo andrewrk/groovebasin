@@ -1,17 +1,13 @@
+const wasmExports = require("wasmExports");
 
 function wrapCallback(callbackPtr, context) {
-    return () => exports.delegateCallback(callbackPtr, context);
+    return () => wasmExports.delegateCallback(callbackPtr, context);
 }
 function wrapCallbackI32(callbackPtr, context) {
-    return (arg) => exports.delegateCallbackI32(callbackPtr, context, arg);
+    return (arg) => wasmExports.delegateCallbackI32(callbackPtr, context, arg);
 }
 
-const exports = {
-    delegateCallback: null,
-    delegateCallbackI32: null,
-
+return {
     wrapCallback,
     wrapCallbackI32,
 };
-
-return exports;

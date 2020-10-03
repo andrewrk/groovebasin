@@ -40,8 +40,8 @@ pub fn build(b: *Builder) void {
             "src/client",
             "bootstrap_wasm.js",
             "callback.js",
-            "memory.js",
             "string.js",
+            "wasmExports.js",
             "websocket.js",
         });
         const paste_js_step = b.step("paste-js", "compile the js");

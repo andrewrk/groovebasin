@@ -1,5 +1,5 @@
-// this is the {env} passed into the wasm instantiation.
-// use @import("browser.zig") instead of this.
+// This is the {env} passed into the wasm instantiation.
+// Use @import("browser.zig") instead of this.
 
 const callback = @import("callback.zig");
 

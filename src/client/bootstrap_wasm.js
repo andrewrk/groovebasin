@@ -1,4 +1,4 @@
-const memory = require("memory");
+const wasmExports = require("wasmExports");
 
 const {decodeString} = require("string");
 const {serveWebSocket} = require("websocket");
@@ -29,10 +29,11 @@ const env = {
     // for debugging
     window._wasm = instance;
 
-    // inject dependencies.
-    memory.buffer = instance.exports.memory.buffer;
-    callback.delegateCallback = instance.exports.delegateCallback;
-    callback.delegateCallbackI32 = instance.exports.delegateCallbackI32;
+    // Expose exports.
+    for (const name in instance.exports) {
+        if (name === "main") continue;
+        wasmExports[name] = instance.exports[name];
+    }
 
     // main
     instance.exports.main();

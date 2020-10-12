@@ -1,6 +1,6 @@
 // This is the mechanism for JS calling Zig function pointers.
 
-pub const Context = @Type(.Opaque);
+pub const Context = opaque {};
 
 pub const CallbackFn = fn (*Context) void;
 export fn delegateCallback(callback: *const CallbackFn, context: *Context) void {

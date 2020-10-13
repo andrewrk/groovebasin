@@ -1,7 +1,7 @@
 const wasmExports = require("wasmExports");
 
 const {decodeString} = require("string");
-const {serveWebSocket} = require("websocket");
+const {serveWebSocket, sendMessage} = require("websocket");
 const {readBlob} = require("blob");
 const callback = require("callback");
 
@@ -18,7 +18,7 @@ const env = {
         messageCallbackPtr, messageCallbackContext,
     ) {
         serveWebSocket(
-            callback.wrapCallback(openCallbackPtr, openCallbackContext),
+            callback.wrapCallbackI32(openCallbackPtr, openCallbackContext),
             callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
             callback.wrapCallback(errorCallbackPtr, errorCallbackContext),
             callback.wrapCallbackI32I32(messageCallbackPtr, messageCallbackContext),
@@ -28,6 +28,11 @@ const env = {
     readBlob(handle, ptr, len) {
         const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
         readBlob(handle, dest);
+    },
+
+    sendMessage(handle, ptr, len) {
+        const buf = new Uint8Array(wasmExports.memory.buffer, ptr, len);
+        sendMessage(handle, buf);
     },
 };
 

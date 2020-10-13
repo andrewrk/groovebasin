@@ -5,7 +5,7 @@ const callback = @import("callback.zig");
 
 pub extern fn print(ptr: [*]const u8, len: usize) void;
 pub extern fn serveWebSocket(
-    openCallback: *const callback.CallbackFn,
+    openCallback: *const callback.CallbackFnI32,
     openCallbackContext: *callback.Context,
     closeCallbackId: *const callback.CallbackFnI32,
     closeCallbackContext: *callback.Context,
@@ -16,3 +16,5 @@ pub extern fn serveWebSocket(
 ) void;
 
 pub extern fn readBlob(handle: i32, ptr: [*]u8, len: usize) void;
+
+pub extern fn sendMessage(handle: i32, ptr: [*]const u8, len: usize) void;

@@ -132,7 +132,10 @@ const http_response_header_upgrade = "" ++
     "Upgrade: websocket\r\n" ++
     "Connection: Upgrade\r\n";
 
+const max_payload_size = 16 * 1024;
+
 fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) !void {
+    // See https://tools.ietf.org/html/rfc6455
     var sha1 = std.crypto.hash.Sha1.init(.{});
     sha1.update(key);
     sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
@@ -150,70 +153,109 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
     try connection.file.writevAll(&iovecs);
 
     while (true) {
-        // read first byte.
-        var header = [_]u8{0} ** 2;
-        readAllNoEof(connection.file, header[0..]) catch |err| switch (err) {
-            error.UnexpectedEof => break,
-            else => return err,
-        };
-        const opcode_byte = header[0];
-        // 0b10000000: FIN - this is a complete message.
-        // 0b00000001: opcode=1 - this is a UTF-8 text message.
-        const expected_opcode_byte = 0b10000001;
-        if (opcode_byte != expected_opcode_byte) {
-            std.log.warn("bad opcode byte: {}", .{opcode_byte});
-            return;
-        }
-
-        // read length
-        const short_len_byte = header[1];
-        if (short_len_byte & 0b10000000 != 0b10000000) {
-            std.log.warn("frames from client must be masked: {}", .{short_len_byte});
-            return;
-        }
-        var len: u64 = switch (short_len_byte & 0b01111111) {
-            127 => blk: {
-                var len_buffer = [_]u8{0} ** 8;
-                try readAllNoEof(connection.file, len_buffer[0..]);
-                break :blk std.mem.readIntBig(u64, &len_buffer);
-            },
-            126 => blk: {
-                var len_buffer = [_]u8{0} ** 2;
-                try readAllNoEof(connection.file, len_buffer[0..]);
-                break :blk std.mem.readIntBig(u16, &len_buffer);
-            },
-            else => |short_len| blk: {
-                break :blk short_len;
-            },
-        };
-        const max_payload_size = 16 * 1024;
-        if (len > max_payload_size) {
-            std.log.warn("payload too big: {}", .{len});
-            return;
-        }
-
-        // read mask
-        var mask_buffer = [_]u8{0} ** 4;
-        try readAllNoEof(connection.file, mask_buffer[0..]);
-        const mask_native = std.mem.readIntNative(u32, &mask_buffer);
-
-        // read payload
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
-        const payload = payload_buffer[0..len];
-        try readAllNoEof(connection.file, payload);
-
-        // unmask
-        // The last item may contain a partial word of unused data.
-        const payload_aligned = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
-        {
-            var i: usize = 0;
-            while (i < payload_aligned.len) : (i += 1) {
-                payload_aligned[i] ^= mask_native;
-            }
-        }
-
+        const payload = (try readMessage(connection, &payload_buffer)) orelse break;
         std.log.info("message: {}", .{payload});
+
+        try writeMessage(connection, payload);
     }
+}
+
+fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
+    // See https://tools.ietf.org/html/rfc6455
+    // read first byte.
+    var header = [_]u8{0} ** 2;
+    readAllNoEof(connection.file, header[0..]) catch |err| switch (err) {
+        error.UnexpectedEof => return null,
+        else => return err,
+    };
+    const opcode_byte = header[0];
+    // 0b10000000: FIN - this is a complete message.
+    // 0b00000010: opcode=2 - this is a binary message.
+    const expected_opcode_byte = 0b10000010;
+    if (opcode_byte != expected_opcode_byte) {
+        std.log.warn("bad opcode byte: {}", .{opcode_byte});
+        return null;
+    }
+
+    // read length
+    const short_len_byte = header[1];
+    if (short_len_byte & 0b10000000 != 0b10000000) {
+        std.log.warn("frames from client must be masked: {}", .{short_len_byte});
+        return null;
+    }
+    var len: u64 = switch (short_len_byte & 0b01111111) {
+        127 => blk: {
+            var len_buffer = [_]u8{0} ** 8;
+            try readAllNoEof(connection.file, len_buffer[0..]);
+            break :blk std.mem.readIntBig(u64, &len_buffer);
+        },
+        126 => blk: {
+            var len_buffer = [_]u8{0} ** 2;
+            try readAllNoEof(connection.file, len_buffer[0..]);
+            break :blk std.mem.readIntBig(u16, &len_buffer);
+        },
+        else => |short_len| blk: {
+            break :blk short_len;
+        },
+    };
+    if (len > max_payload_size) {
+        std.log.warn("payload too big: {}", .{len});
+        return null;
+    }
+
+    // read mask
+    var mask_buffer = [_]u8{0} ** 4;
+    try readAllNoEof(connection.file, mask_buffer[0..]);
+    const mask_native = std.mem.readIntNative(u32, &mask_buffer);
+
+    // read payload
+    const payload = payload_buffer[0..len];
+    try readAllNoEof(connection.file, payload);
+
+    // unmask
+    // The last item may contain a partial word of unused data.
+    const payload_aligned: []u32 = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
+    {
+        var i: usize = 0;
+        while (i < payload_aligned.len) : (i += 1) {
+            payload_aligned[i] ^= mask_native;
+        }
+    }
+    return payload;
+}
+
+fn writeMessage(connection: std.net.StreamServer.Connection, message: []const u8) !void {
+    // See https://tools.ietf.org/html/rfc6455
+    var header_buf: [2 + 8]u8 = undefined;
+    // 0b10000000: FIN - this is a complete message.
+    // 0b00000010: opcode=2 - this is a binary message.
+    header_buf[0] = 0b10000010;
+    const header = switch (message.len) {
+        0...125 => blk: {
+            // small size
+            header_buf[1] = @intCast(u8, message.len);
+            break :blk header_buf[0..2];
+        },
+        126...0xffff => blk: {
+            // 16-bit size
+            header_buf[1] = 126;
+            std.mem.writeIntBig(u16, header_buf[2..4], @intCast(u16, message.len));
+            break :blk header_buf[0..4];
+        },
+        else => blk: {
+            // 64-bit size
+            header_buf[1] = 127;
+            std.mem.writeIntBig(u64, header_buf[2..10], message.len);
+            break :blk header_buf[0..10];
+        },
+    };
+
+    var iovecs = [_]std.os.iovec_const{
+        strToIovec(header),
+        strToIovec(message),
+    };
+    try connection.file.writevAll(&iovecs);
 }
 
 fn strToIovec(s: []const u8) std.os.iovec_const {

@@ -1,3 +1,4 @@
+const {HandleRegistry} = require("handleRegistry");
 const {createBlob} = require("blob");
 
 const wsUrl = (() => {
@@ -13,8 +14,11 @@ const wsUrl = (() => {
     return wsUrl;
 })();
 
-function serveWebSocket(openCallback, closeCallbackI32, errorCallback, messageCallback) {
+const wsRegistry = new HandleRegistry();
+
+function serveWebSocket(openCallback, closeCallback, errorCallback, messageCallback) {
     const ws = new WebSocket(wsUrl);
+    const {handle, dispose} = wsRegistry.alloc(ws);
 
     ws.addEventListener("open", onOpen);
     ws.addEventListener("close", onClose);
@@ -26,17 +30,18 @@ function serveWebSocket(openCallback, closeCallbackI32, errorCallback, messageCa
         ws.removeEventListener("close", onClose);
         ws.removeEventListener("error", onError);
         ws.removeEventListener("message", onMessage);
+        dispose();
     }
 
     function onOpen() {
         console.log("websocket open");
-        openCallback();
+        openCallback(handle);
     }
 
     function onClose(ev) {
         console.log("websocket close:", ev);
         cleanup();
-        closeCallbackI32(ev.code);
+        closeCallback(ev.code);
     }
 
     function onError(ev) {
@@ -45,17 +50,24 @@ function serveWebSocket(openCallback, closeCallbackI32, errorCallback, messageCa
         errorCallback();
     }
 
-    function onMessage(ev) {
-        console.log("websocket message:", ev.data);
-        const blob = createBlob(ev.data);
+    async function onMessage(ev) {
+        const array = new Uint8Array(await ev.data.arrayBuffer());
+        const {handle, dispose} = createBlob(array);
         try {
-            messageCallback(blob.handle, blob.length);
+            messageCallback(handle, array.length);
         } finally {
-            blob.dispose();
+            dispose();
         }
     }
 }
 
+function sendMessage(wsHandle, buf) {
+    const ws = wsRegistry.registry[wsHandle];
+    if (ws == null) throw new Error("bad ws handle");
+    ws.send(buf);
+}
+
 return {
     serveWebSocket,
+    sendMessage,
 };

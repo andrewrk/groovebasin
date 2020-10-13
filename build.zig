@@ -41,6 +41,7 @@ pub fn build(b: *Builder) void {
             "blob.js",
             "bootstrap_wasm.js",
             "callback.js",
+            "handleRegistry.js",
             "string.js",
             "wasmExports.js",
             "websocket.js",

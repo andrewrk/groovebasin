@@ -9,3 +9,7 @@ pub const serveWebSocket = env.serveWebSocket;
 pub fn readBlob(handle: i32, buf: []u8) void {
     env.readBlob(handle, buf.ptr, buf.len);
 }
+
+pub fn sendMessage(handle: i32, buf: []const u8) void {
+    env.sendMessage(handle, buf.ptr, buf.len);
+}

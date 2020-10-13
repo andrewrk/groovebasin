@@ -9,28 +9,18 @@
 //   * Wasm: return
 // * JS: call blob.dispose(), which makes the handle invalid.
 
-// i32 -> UInt8Array
-const blobStore = {};
-const nextHandle = 0;
+const {HandleRegistry} = require("handleRegistry");
+const blobRegistry = new HandleRegistry();
 
 // See above comment.
 // array should be a UInt8Array.
 function createBlob(array) {
-    const handle = nextHandle;
-    nextHandle = 0x7fffffff & (nextHandle + 1);
-    blobStore[handle] = array;
-    return {
-        handle: nextHandle,
-        length: array.length,
-        dispose() {
-            delete blobStore[handle];
-        },
-    };
+    return blobRegistry.alloc(array);
 }
 
 // This gets called with a view into Wasm memory.
 function readBlob(handle, dest) {
-    const array = blobStore[handle];
+    const array = blobRegistry.registry[handle];
     if (array == null) throw new Error("bad blob handle");
     if (array.length !== dest.length) throw new Error("wrong buffer length for reading blob");
     dest.set(array);

@@ -100,9 +100,9 @@ const http_response_not_found = "" ++
     "\r\n";
 
 fn resolvePath(path: []const u8) ![]const u8 {
-    if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("./public/index.html");
-    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("./public/app.css");
-    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("./public/app.js");
+    if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("../public/index.html");
+    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("../public/app.css");
+    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("../public/app.js");
     inline for ([_][]const u8{
         "/favicon.png",
         "/img/ui-icons_ffffff_256x240.png",
@@ -119,7 +119,7 @@ fn resolvePath(path: []const u8) ![]const u8 {
         "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
         "/img/ui-bg_flat_40_292929_40x100.png",
     }) |img_path| {
-        if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("./public" ++ img_path);
+        if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("../public" ++ img_path);
     }
 
     if (std.mem.eql(u8, path, "/client.wasm")) return http_response_header_wasm ++ @embedFile(@import("build_options").client_wasm_path);

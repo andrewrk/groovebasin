@@ -11,19 +11,19 @@ pub fn build(b: *Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const client = b.addStaticLibrary("client", "src/client/client_main.zig");
+    const client = b.addStaticLibrary("client", "src/client/zig/client_main.zig");
     client.setTarget(.{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
     });
 
-    const exe = b.addExecutable("groovebasin", "src/main.zig");
-    exe.setTarget(target);
-    exe.setBuildMode(mode);
-    exe.addBuildOptionArtifact("client_wasm_path", client);
-    exe.install();
+    const server = b.addExecutable("groovebasin", "src/server/server_main.zig");
+    server.setTarget(target);
+    server.setBuildMode(mode);
+    server.addBuildOptionArtifact("client_wasm_path", client);
+    server.install();
 
-    const run_cmd = exe.run();
+    const run_cmd = server.run();
     run_cmd.step.dependOn(b.getInstallStep());
 
     const run_step = b.step("run", "Run the app");
@@ -37,7 +37,7 @@ pub fn build(b: *Builder) void {
 
         const paste_js_cmd = paste_js_exe.run();
         paste_js_cmd.addArgs(&[_][]const u8{
-            "src/client",
+            "src/client/js",
             "blob.js",
             "bootstrap_wasm.js",
             "callback.js",
@@ -49,6 +49,6 @@ pub fn build(b: *Builder) void {
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);
 
-        exe.step.dependOn(&paste_js_cmd.step);
+        server.step.dependOn(&paste_js_cmd.step);
     }
 }

@@ -56,7 +56,7 @@ For Ubuntu 18.04 Bionic:
 
 * Install node-groove and its dependencies from source by following these instructions:
   https://github.com/andrewrk/node-groove/blob/2.x/README.md#ubuntu-1804
-* Edit `pckage.json`, and change the `"groove"` dependency to point to the directory where node-groove is installed.
+* Edit `package.json`, and change the `"groove"` dependency to point to the directory where node-groove is installed.
   (The path is instead of a version number.)
 * Resume step 2 above.
 

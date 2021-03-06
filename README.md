@@ -1,4 +1,4 @@
-# ![Groove Basin](http://groovebasin.com.s3.amazonaws.com/img/logo-text.png)
+# ![Groove Basin](./doc/images/logo-text.png)
 
 Music player server with a web-based user interface.
 
@@ -72,12 +72,12 @@ instead of using the public one bundled with this source code.
 
 ## Screenshots
 
-![Search + drag/drop support](http://groovebasin.com/img/groovebasin-1.3.2-searchdragdrop.png)
-![Multi-select and context menu](http://groovebasin.com/img/groovebasin-1.3.2-libmenu.png)
-![Keyboard shortcuts](http://groovebasin.com/img/groovebasin-1.3.2-shortcuts.png)
-![Settings](http://groovebasin.com/img/groovebasin-1.3.2-settings.png)
-![Import](http://groovebasin.com/img/groovebasin-1.3.2-import.png)
-![Events](http://groovebasin.com/img/groovebasin-1.3.2-events.png)
+![Search + drag/drop support](./doc/images/searchdragdrop.png)
+![Multi-select and context menu](./doc/images/libmenu.png)
+![Keyboard shortcuts](./doc/images/shortcuts.png)
+![Settings](./doc/images/settings.png)
+![Import](./doc/images/import.png)
+![Events](./doc/images/events.png)
 
 ## Developing
 

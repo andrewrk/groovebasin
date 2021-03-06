@@ -5,3 +5,4 @@
 # not shared with .npmignore
 /public/app.js
 /public/app.css
+/.idea

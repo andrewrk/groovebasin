@@ -11,7 +11,7 @@ pub fn build(b: *Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const client = b.addStaticLibrary("client", "src/client/zig/client_main.zig");
+    const client = b.addSharedLibrary("client", "src/client/zig/client_main.zig", .unversioned);
     client.setTarget(.{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
@@ -20,7 +20,9 @@ pub fn build(b: *Builder) void {
     const server = b.addExecutable("groovebasin", "src/server/server_main.zig");
     server.setTarget(target);
     server.setBuildMode(mode);
-    server.addBuildOptionArtifact("client_wasm_path", client);
+    const server_options = b.addOptions();
+    server.addOptions("build_options", server_options);
+    server_options.addOptionArtifact("client_wasm_path", client);
     server.install();
 
     const run_cmd = server.run();

@@ -15,7 +15,7 @@ pub fn main() anyerror!void {
 
     while (true) {
         const connection = try server.accept();
-        defer connection.file.close();
+        defer connection.stream.close();
         handleConnection(connection) catch |err| {
             std.log.err("handling connection failed: {}", .{err});
         };
@@ -24,14 +24,14 @@ pub fn main() anyerror!void {
 
 fn handleConnection(connection: std.net.StreamServer.Connection) !void {
     var buf: [0x4000]u8 = undefined;
-    const amt = try connection.file.read(&buf);
+    const amt = try connection.stream.read(&buf);
     const msg = buf[0..amt];
-    var header_lines = std.mem.split(msg, "\r\n");
+    var header_lines = std.mem.split(u8, msg, "\r\n");
     const first_line = header_lines.next() orelse return;
 
     // TODO: read the spec
     // eg: "GET /favicon.png HTTP/1.1"
-    var it = std.mem.tokenize(first_line, " \t");
+    var it = std.mem.tokenize(u8, first_line, " \t");
     const method = it.next() orelse return;
     const path = it.next() orelse return;
     const http_version = it.next() orelse return;
@@ -46,7 +46,7 @@ fn handleConnection(connection: std.net.StreamServer.Connection) !void {
     // TODO: notice when gzip is supported.
     while (header_lines.next()) |line| {
         if (line.len == 0) break;
-        var segments = std.mem.split(line, ": ");
+        var segments = std.mem.split(u8, line, ": ");
         const key = segments.next().?;
         const value = segments.rest();
 
@@ -60,11 +60,11 @@ fn handleConnection(connection: std.net.StreamServer.Connection) !void {
 
     if (should_upgrade_websocket) {
         const websocket_key = sec_websocket_key orelse return;
-        std.log.info("GET websocket: {}", .{path});
+        std.log.info("GET websocket: {s}", .{path});
         try serveWebsocket(connection, websocket_key);
     } else {
-        std.log.info("GET: {}", .{path});
-        try connection.file.writeAll(try resolvePath(path));
+        std.log.info("GET: {s}", .{path});
+        try connection.stream.writer().writeAll(try resolvePath(path));
     }
 }
 
@@ -142,7 +142,7 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
     var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
     sha1.final(&digest);
     var base64_digest: [28]u8 = undefined;
-    std.base64.standard_encoder.encode(&base64_digest, &digest);
+    std.debug.assert(std.base64.standard_encoder.encode(&base64_digest, &digest).len == base64_digest.len);
 
     var iovecs = [_]std.os.iovec_const{
         strToIovec(http_response_header_upgrade),
@@ -150,12 +150,12 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
         strToIovec(&base64_digest),
         strToIovec("\r\n" ++ "\r\n"),
     };
-    try connection.file.writevAll(&iovecs);
+    try connection.stream.writevAll(&iovecs);
 
     while (true) {
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = (try readMessage(connection, &payload_buffer)) orelse break;
-        std.log.info("message: {}", .{payload});
+        std.log.info("message: {s}", .{payload});
 
         try writeMessage(connection, payload);
     }
@@ -165,8 +165,8 @@ fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *ali
     // See https://tools.ietf.org/html/rfc6455
     // read first byte.
     var header = [_]u8{0} ** 2;
-    readAllNoEof(connection.file, header[0..]) catch |err| switch (err) {
-        error.UnexpectedEof => return null,
+    connection.stream.reader().readNoEof(header[0..]) catch |err| switch (err) {
+        error.EndOfStream => return null,
         else => return err,
     };
     const opcode_byte = header[0];
@@ -187,12 +187,12 @@ fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *ali
     var len: u64 = switch (short_len_byte & 0b01111111) {
         127 => blk: {
             var len_buffer = [_]u8{0} ** 8;
-            try readAllNoEof(connection.file, len_buffer[0..]);
+            try connection.stream.reader().readNoEof(len_buffer[0..]);
             break :blk std.mem.readIntBig(u64, &len_buffer);
         },
         126 => blk: {
             var len_buffer = [_]u8{0} ** 2;
-            try readAllNoEof(connection.file, len_buffer[0..]);
+            try connection.stream.reader().readNoEof(len_buffer[0..]);
             break :blk std.mem.readIntBig(u16, &len_buffer);
         },
         else => |short_len| blk: {
@@ -206,12 +206,12 @@ fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *ali
 
     // read mask
     var mask_buffer = [_]u8{0} ** 4;
-    try readAllNoEof(connection.file, mask_buffer[0..]);
+    try connection.stream.reader().readNoEof(mask_buffer[0..]);
     const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
     // read payload
     const payload = payload_buffer[0..len];
-    try readAllNoEof(connection.file, payload);
+    try connection.stream.reader().readNoEof(payload);
 
     // unmask
     // The last item may contain a partial word of unused data.
@@ -255,7 +255,7 @@ fn writeMessage(connection: std.net.StreamServer.Connection, message: []const u8
         strToIovec(header),
         strToIovec(message),
     };
-    try connection.file.writevAll(&iovecs);
+    try connection.stream.writevAll(&iovecs);
 }
 
 fn strToIovec(s: []const u8) std.os.iovec_const {
@@ -263,8 +263,4 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
-}
-
-fn readAllNoEof(file: std.fs.File, buffer: []u8) !void {
-    if (buffer.len > try file.readAll(buffer)) return error.UnexpectedEof;
 }

@@ -7,209 +7,214 @@
   <link rel="shortcut icon" href="/favicon.png">
 </head>
 <body>
-  <div id="nowplaying" class="widget" style="display: none">
-    <div class="playback-btns">
-      <button class="button" id="nowplaying-prev" tabindex="-1"><label class="icon icon-seek-prev" for="nowplaying-prev"></label></button>
-      <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="icon icon-pause" for="nowplaying-toggle-icon"></label></button>
-      <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
-      <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
-      <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
-    </div>
-    <div id="client-vol" style="display: none">
-      <span class="icon icon-volume-off"></span>
-      <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
-      <span class="icon icon-volume-on"></span>
-    </div>
-    <h1 id="track-display"></h1>
-    <input type="range" id="track-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
-    <span id="nowplaying-time-elapsed"></span>
-    <span id="nowplaying-time-left"></span>
-    <div style="clear: both;"></div>
-  </div>
-  <div id="left-window" style="display: none">
-    <div id="tabs">
-      <ul>
-        <li id="library-tab" class="active">Library</li>
-        <li id="playlists-tab">Playlists</li>
-        <li id="upload-tab">Import</li>
-        <li id="events-tab">Chat</li>
-        <li id="settings-tab">Settings</li>
-      </ul>
-    </div>
-    <div id="library-pane" class="widget">
-      <div id="lib-window-header" class="window-header">
-        <input type="text" id="lib-filter" placeholder="filter">
-        <select id="organize">
-          <option selected="selected">Artist / Album / Song</option>
-        </select>
+  <!-- main grid -->
+  <div id="main-grid">
+    <div id="nowplaying" class="widget">
+      <div class="playback-btns">
+        <button class="button" id="nowplaying-prev" tabindex="-1"><label class="icon icon-seek-prev" for="nowplaying-prev"></label></button>
+        <button class="button" id="nowplaying-toggle" tabindex="-1"><label id="nowplaying-toggle-icon" class="icon icon-pause" for="nowplaying-toggle-icon"></label></button>
+        <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
+        <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
+        <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
       </div>
-      <div id="library">
-        <ul id="library-artists">
-        </ul>
-        <p id="library-no-items">
-          <span class="icon icon-info"></span>
-          <strong id="empty-library-message">loading...</strong>
-        </p>
+      <div id="client-vol" style="display: none">
+        <span class="icon icon-volume-off"></span>
+        <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
+        <span class="icon icon-volume-on"></span>
       </div>
+      <h1 id="track-display"></h1>
+      <input type="range" id="track-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
+      <span id="nowplaying-time-elapsed"></span>
+      <span id="nowplaying-time-left"></span>
+      <div style="clear: both;"></div>
     </div>
-    <div id="playlists-pane" class="widget" style="display: none">
-      <input type="text" id="new-playlist-name" placeholder="New Playlist">
-      <div id="playlists">
-        <ul id="playlists-list">
+    <div id="left-window">
+      <div id="tabs">
+        <ul>
+          <li id="library-tab" class="active">Library</li>
+          <li id="playlists-tab">Playlists</li>
+          <li id="upload-tab">Import</li>
+          <li id="events-tab">Chat</li>
+          <li id="settings-tab">Settings</li>
         </ul>
       </div>
-    </div>
-    <div id="upload-pane" class="widget" style="display: none">
-      <div id="upload">
-        <h1>Import by URL</h1>
-        <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
-        <h1>Upload Files</h1>
-        <div id="upload-widget">
-          <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
+      <div id="library-pane" class="widget">
+        <div id="lib-window-header" class="window-header">
+          <input type="text" id="lib-filter" placeholder="filter">
+          <select id="organize">
+            <option selected="selected">Artist / Album / Song</option>
+          </select>
         </div>
-        <h1>Import by Name</h1>
-        <textarea id="import-by-name" placeholder="Put a list of artist - title track names here, newline delimited. Enter when done. Shift+Enter for newline."></textarea>
-        <h1>Options</h1>
-        <div>
-          Automatically queue imported songs: <input class="button" type="button" id="auto-queue-uploads" value="On">
+        <div id="library">
+          <ul id="library-artists">
+          </ul>
+          <p id="library-no-items">
+            <span class="icon icon-info"></span>
+            <strong id="empty-library-message">loading...</strong>
+          </p>
         </div>
-        <div id="import-progress" style="display: none">
-          <h1>Ongoing Imports</h1>
+      </div>
+      <div id="playlists-pane" class="widget" style="display: none">
+        <input type="text" id="new-playlist-name" placeholder="New Playlist">
+        <div id="playlists">
+          <ul id="playlists-list">
+          </ul>
+        </div>
+      </div>
+      <div id="upload-pane" class="widget" style="display: none">
+        <div id="upload">
+          <h1>Import by URL</h1>
+          <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
+          <h1>Upload Files</h1>
+          <div id="upload-widget">
+            <input type="file" id="upload-input" multiple="multiple" placeholder="Drag and drop or click to browse">
+          </div>
+          <h1>Import by Name</h1>
+          <textarea id="import-by-name" placeholder="Put a list of artist - title track names here, newline delimited. Enter when done. Shift+Enter for newline."></textarea>
+          <h1>Options</h1>
           <div>
-            <ul id="import-progress-list">
+            Automatically queue imported songs: <input class="button" type="button" id="auto-queue-uploads" value="On">
+          </div>
+          <div id="import-progress" style="display: none">
+            <h1>Ongoing Imports</h1>
+            <div>
+              <ul id="import-progress-list">
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="events-pane" class="widget" style="display: none">
+          <div id="events-online-users">
+          </div>
+          <div id="events-list">
+          </div>
+          <div id="chat-box">
+            <input type="text" id="chat-box-input" placeholder="chat">
+          </div>
+      </div>
+      <div id="settings-pane" class="widget" style="display: none">
+        <div id="settings">
+          <div class="section">
+            <h1>Authentication</h1>
+            <div id="ensure-admin" style="display: none;">
+              <p>
+              There is currently no admin account. Press this button to create the
+              admin account and print the username and password to the server log:
+              </p>
+              <input class="button" type="button" id="ensure-admin-btn" value="Make Admin Account">
+            </div>
+            <div id="settings-register" style="display: none">
+              <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
+              <input type="password" id="auth-password" placeholder="password">
+              <input class="button" type="button" id="auth-show-password" value="Reveal"><br>
+              <input class="button" type="button" id="settings-auth-save" value="Save">
+              <input class="button" type="button"  id="settings-auth-cancel" value="Cancel">
+            </div>
+            <div id="settings-show-auth">
+              <p>Authenticated as <span id="auth-username-display">...</span></p>
+              <p>Permissions:
+                <span class="perm" id="auth-perm-read" title="Read access to everything">read</span>
+                <span class="perm" id="auth-perm-add" title="Import new songs">add</span>
+                <span class="perm" id="auth-perm-control" title="Control playback and the queue">control</span>
+                <span class="perm" id="auth-perm-playlist" title="Create, update, delete playlists">playlist</span>
+                <span class="perm" id="auth-perm-admin" title="Delete songs, update tags, organize library">admin</span>
+              </p>
+              <input class="button" type="button" id="settings-auth-edit" value="Edit">
+              <input class="button" type="button" id="settings-auth-logout" value="Logout">
+              <input class="button" type="button" id="settings-auth-request" value="Request Validation">
+            </div>
+            <div id="settings-users">
+              <h1>Users</h1>
+              <select id="settings-users-select"></select><br>
+              <input class="button" type="button" id="settings-delete-user" value="Delete">
+              <input class="button" type="button" id="user-perm-read" value="read" title="Read access to everything">
+              <input class="button" type="button" id="user-perm-add" value="add" title="Import new songs">
+              <input class="button" type="button" id="user-perm-control" value="control" title="Control playback and the queue">
+              <input class="button" type="button" id="user-perm-playlist" value="playlist" title="Create, update, delete playlists">
+              <input class="button" type="button" id="user-perm-admin" value="admin" title="Delete songs, update tags, organize library">
+            </div>
+            <div id="settings-requests">
+              <h1>Requests</h1>
+              <div id="settings-request">
+                <input type="text" id="request-name"> Name<br>
+                <select id="request-replace"></select> Account<br>
+                <input class="button" type="button" id="request-approve" value="Approve">
+                <input class="button" type="button" id="request-deny" value="Deny">
+              </div>
+            </div>
+          </div>
+          <div class="section">
+            <h1>Last.fm</h1>
+            <div id="settings-lastfm-in">
+              <p>
+                Authenticated as
+                <a id="settings-lastfm-user" href="#">...</a>.
+                <input class="button" type="button" id="lastfm-sign-out" value="Sign out">
+              </p>
+              <p>
+                Scrobbling is
+                <input class="button" type="button" id="toggle-scrobble" value="Off">
+              </p>
+            </div>
+            <div id="settings-lastfm-out">
+              <p>
+                <a id="lastfm-auth-url" href="#">Authenticate with Last.fm</a>
+              </p>
+            </div>
+          </div>
+          <div class="section">
+            <h1>Sound</h1>
+            <div>
+              Hardware audio playback is
+              <input class="button" type="button" id="toggle-hardware-playback" value="On">
+            </div>
+            <div>Volume: <span id="vol-num"></span>%</div>
+            <div id="vol-warning" style="display: none">
+              Greater than 100% volume compromises audio quality.
+              <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
+            </div>
+            <div id="vol">
+              <span class="icon icon-volume-off"></span>
+              <input type="range" id="vol-slider" min="0.0" max="2.0" step="0.001">
+              <span class="icon icon-volume-on"></span>
+            </div>
+            <div style="clear: both;"></div>
+          </div>
+          <div class="section">
+            <h1>About</h1>
+            <ul>
+              <li><a id="keyboard-shortcuts-link" href="#">Keyboard Shortcuts</a></li>
+              <li><a id="settings-stream-url" href="#" target="_blank">Stream URL</a></li>
+              <li><a href="http://github.com/andrewrk/groovebasin" target="_blank">GrooveBasin on GitHub</a></li>
             </ul>
           </div>
         </div>
       </div>
     </div>
-    <div id="events-pane" class="widget" style="display: none">
-        <div id="events-online-users">
+    <div id="queue-window" class="widget">
+      <div class="window-header">
+        <input class="button" type="button" id="auto-dj" value="Auto DJ" tabindex="-1">
+        <input class="button" type="button" id="queue-btn-repeat" value="Repeat: Off" tabindex="-1">
+        <span id="queue-duration-label"></span> <span id="queue-duration"></span>
+      </div>
+      <div id="queue-list">
+        <div id="queue-header" class="header">
+          <span class="track">&nbsp;</span>
+          <span class="time">Time</span>
+          <span class="middle">
+            <span class="title">Title</span>
+            <span class="artist">Artist</span>
+            <span class="album">Album</span>
+          </span>
         </div>
-        <div id="events-list">
-        </div>
-        <div id="chat-box">
-          <input type="text" id="chat-box-input" placeholder="chat">
-        </div>
-    </div>
-    <div id="settings-pane" class="widget" style="display: none">
-      <div id="settings">
-        <div class="section">
-          <h1>Authentication</h1>
-          <div id="ensure-admin" style="display: none;">
-            <p>
-            There is currently no admin account. Press this button to create the
-            admin account and print the username and password to the server log:
-            </p>
-            <input class="button" type="button" id="ensure-admin-btn" value="Make Admin Account">
-          </div>
-          <div id="settings-register" style="display: none">
-            <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
-            <input type="password" id="auth-password" placeholder="password">
-            <input class="button" type="button" id="auth-show-password" value="Reveal"><br>
-            <input class="button" type="button" id="settings-auth-save" value="Save">
-            <input class="button" type="button"  id="settings-auth-cancel" value="Cancel">
-          </div>
-          <div id="settings-show-auth">
-            <p>Authenticated as <span id="auth-username-display">...</span></p>
-            <p>Permissions:
-              <span class="perm" id="auth-perm-read" title="Read access to everything">read</span>
-              <span class="perm" id="auth-perm-add" title="Import new songs">add</span>
-              <span class="perm" id="auth-perm-control" title="Control playback and the queue">control</span>
-              <span class="perm" id="auth-perm-playlist" title="Create, update, delete playlists">playlist</span>
-              <span class="perm" id="auth-perm-admin" title="Delete songs, update tags, organize library">admin</span>
-            </p>
-            <input class="button" type="button" id="settings-auth-edit" value="Edit">
-            <input class="button" type="button" id="settings-auth-logout" value="Logout">
-            <input class="button" type="button" id="settings-auth-request" value="Request Validation">
-          </div>
-          <div id="settings-users">
-            <h1>Users</h1>
-            <select id="settings-users-select"></select><br>
-            <input class="button" type="button" id="settings-delete-user" value="Delete">
-            <input class="button" type="button" id="user-perm-read" value="read" title="Read access to everything">
-            <input class="button" type="button" id="user-perm-add" value="add" title="Import new songs">
-            <input class="button" type="button" id="user-perm-control" value="control" title="Control playback and the queue">
-            <input class="button" type="button" id="user-perm-playlist" value="playlist" title="Create, update, delete playlists">
-            <input class="button" type="button" id="user-perm-admin" value="admin" title="Delete songs, update tags, organize library">
-          </div>
-          <div id="settings-requests">
-            <h1>Requests</h1>
-            <div id="settings-request">
-              <input type="text" id="request-name"> Name<br>
-              <select id="request-replace"></select> Account<br>
-              <input class="button" type="button" id="request-approve" value="Approve">
-              <input class="button" type="button" id="request-deny" value="Deny">
-            </div>
-          </div>
-        </div>
-        <div class="section">
-          <h1>Last.fm</h1>
-          <div id="settings-lastfm-in">
-            <p>
-              Authenticated as
-              <a id="settings-lastfm-user" href="#">...</a>.
-              <input class="button" type="button" id="lastfm-sign-out" value="Sign out">
-            </p>
-            <p>
-              Scrobbling is
-              <input class="button" type="button" id="toggle-scrobble" value="Off">
-            </p>
-          </div>
-          <div id="settings-lastfm-out">
-            <p>
-              <a id="lastfm-auth-url" href="#">Authenticate with Last.fm</a>
-            </p>
-          </div>
-        </div>
-        <div class="section">
-          <h1>Sound</h1>
-          <div>
-            Hardware audio playback is
-            <input class="button" type="button" id="toggle-hardware-playback" value="On">
-          </div>
-          <div>Volume: <span id="vol-num"></span>%</div>
-          <div id="vol-warning" style="display: none">
-            Greater than 100% volume compromises audio quality.
-            <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
-          </div>
-          <div id="vol">
-            <span class="icon icon-volume-off"></span>
-            <input type="range" id="vol-slider" min="0.0" max="2.0" step="0.001">
-            <span class="icon icon-volume-on"></span>
-          </div>
-          <div style="clear: both;"></div>
-        </div>
-        <div class="section">
-          <h1>About</h1>
-          <ul>
-            <li><a id="keyboard-shortcuts-link" href="#">Keyboard Shortcuts</a></li>
-            <li><a id="settings-stream-url" href="#" target="_blank">Stream URL</a></li>
-            <li><a href="http://github.com/andrewrk/groovebasin" target="_blank">GrooveBasin on GitHub</a></li>
-          </ul>
+        <div id="queue-items">
         </div>
       </div>
     </div>
   </div>
-  <div id="queue-window" class="widget" style="display: none">
-    <div class="window-header">
-      <input class="button" type="button" id="auto-dj" value="Auto DJ" tabindex="-1">
-      <input class="button" type="button" id="queue-btn-repeat" value="Repeat: Off" tabindex="-1">
-      <span id="queue-duration-label"></span> <span id="queue-duration"></span>
-    </div>
-    <div id="queue-list">
-      <div id="queue-header" class="header">
-        <span class="track">&nbsp;</span>
-        <span class="time">Time</span>
-        <span class="middle">
-          <span class="title">Title</span>
-          <span class="artist">Artist</span>
-          <span class="album">Album</span>
-        </span>
-      </div>
-      <div id="queue-items">
-      </div>
-    </div>
-  </div>
+
+  <!-- popups -->
   <div style="clear: both"></div>
   <div id="main-err-msg">
     <span class="icon icon-alert"></span>
@@ -576,6 +581,7 @@
     </div>
     <div id="add-remove-label-new"></div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>

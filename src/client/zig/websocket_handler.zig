@@ -10,7 +10,7 @@ pub fn onOpen(context: *callback.Context, handle: i32) void {
     websocket_handle = handle;
 
     // try it out!
-    // browser.sendMessage(handle, "ping");
+    browser.sendMessage(handle, "ping");
 }
 
 pub fn onClose(context: *callback.Context, code: i32) void {

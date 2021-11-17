@@ -7,6 +7,7 @@ const callback = @import("callback.zig");
 pub extern fn print(ptr: [*]const u8, len: usize) void;
 pub extern fn panic(ptr: [*]const u8, len: usize) void;
 pub extern fn readBlob(handle: i32, ptr: [*]u8, len: usize) void;
+pub extern fn getTime() i64;
 pub extern fn setTimeout(
     callback: *const callback.CallbackFn,
     callbackContext: *callback.Context,

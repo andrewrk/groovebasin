@@ -8,18 +8,16 @@ const dom = @import("dom.zig");
 export fn main() void {
     loadDomElements();
     browser.print("zig: hello world");
-    if (false) {
-        browser.serveWebSocket(
-            &websocket_handler.onOpen,
-            undefined,
-            &websocket_handler.onClose,
-            undefined,
-            &websocket_handler.onError,
-            undefined,
-            &websocket_handler.onMessage,
-            undefined,
-        );
-    }
+    browser.serveWebSocket(
+        &websocket_handler.onOpen,
+        undefined,
+        &websocket_handler.onClose,
+        undefined,
+        &websocket_handler.onError,
+        undefined,
+        &websocket_handler.onMessage,
+        undefined,
+    );
 
     setLoadingState(.good);
 }

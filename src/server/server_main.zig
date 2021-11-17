@@ -183,11 +183,23 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !voi
     while (true) {
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = (try readMessage(connection, &payload_buffer)) orelse break;
-        std.log.info("message: {s}", .{payload});
+        std.log.info("request: {s}", .{payload});
         const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{});
-        std.log.info("request: {}", .{request.id});
 
-        try writeMessage(connection, payload);
+        const response = protocol.Response{ .seq = request.seq, .data = .{
+            .ping = protocol.Timestamp{
+                .s = 1,
+                .ns = 2,
+            },
+        } };
+
+        var out_buffer: [0x1000]u8 = undefined;
+        var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
+        const out_stream = fixed_buffer_stream.writer();
+        try json.stringify(response, json.StringifyOptions{}, out_stream);
+        std.log.info("response: {s}", .{fixed_buffer_stream.getWritten()});
+
+        try writeMessage(connection, fixed_buffer_stream.getWritten());
     }
 }
 

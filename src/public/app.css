@@ -1,3 +1,4 @@
+/* General */
 html{
     background:url("img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png")
 }
@@ -17,6 +18,32 @@ input,textarea,select{
 a:hover,a:active,a:focus{
     outline:0
 }
+
+/* layout */
+html, body {
+    height: 100%;
+}
+#main-grid {
+    display: grid;
+    grid-gap: 10px;
+    grid-template-columns: 400px auto;
+    grid-template-rows: auto 1fr;
+    width: 100%;
+    height: 100%;
+}
+#nowplaying {
+    grid-column: span 2;
+    width: 100%;
+}
+#left-window {
+    height: 100%;
+}
+/* TODO: this isn't actually part of this layout */
+#library-pane {
+    height: 100%;
+}
+
+/* Widgets (or something) */
 .button{
     background:#333 url("img/ui-bg_dots-small_20_333333_2x2.png") 50% 50% repeat;
     margin:3px 1px 1px 1px;
@@ -266,10 +293,6 @@ button:hover .icon{
 #vol-warning a{
     color:#57bf3b
 }
-#left-window{
-    width:400px;
-    position:absolute
-}
 #library-pane .window-header{
     height:30px
 }
@@ -355,10 +378,6 @@ button:hover .icon{
 }
 #organize{
     width:191px
-}
-#queue-window{
-    width:700px;
-    position:absolute;
 }
 #queue-window .window-header{
     margin-bottom:4px;

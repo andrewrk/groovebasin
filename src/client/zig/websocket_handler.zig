@@ -44,7 +44,8 @@ fn onOpen(context: *callback.Context, handle: i32) void {
 
     // try it out!
     const request = protocol.Request{
-        .id = 123,
+        .seq = 123,
+        .op = .ping,
     };
     writeRequest(request) catch {
         @panic("got an error");

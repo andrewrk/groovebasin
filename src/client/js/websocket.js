@@ -16,7 +16,7 @@ const wsUrl = (() => {
 
 const wsRegistry = new HandleRegistry();
 
-function serveWebSocket(openCallback, closeCallback, errorCallback, messageCallback) {
+function openWebSocket(openCallback, closeCallback, errorCallback, messageCallback) {
     const ws = new WebSocket(wsUrl);
     const {handle, dispose} = wsRegistry.alloc(ws);
 
@@ -68,6 +68,6 @@ function sendMessage(wsHandle, buf) {
 }
 
 return {
-    serveWebSocket,
+    openWebSocket,
     sendMessage,
 };

@@ -1,7 +1,7 @@
 const wasmExports = require("wasmExports");
 
 const {decodeString} = require("string");
-const {serveWebSocket, sendMessage} = require("websocket");
+const {openWebSocket, sendMessage} = require("websocket");
 const {readBlob} = require("blob");
 const callback = require("callback");
 const dom = require("dom");
@@ -18,13 +18,13 @@ const env = {
     },
 
     // WebSocket API
-    serveWebSocket(
+    openWebSocket(
         openCallbackPtr, openCallbackContext,
         closeCallbackPtr, closeCallbackContext,
         errorCallbackPtr, errorCallbackContext,
         messageCallbackPtr, messageCallbackContext,
     ) {
-        serveWebSocket(
+        openWebSocket(
             callback.wrapCallbackI32(openCallbackPtr, openCallbackContext),
             callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
             callback.wrapCallback(errorCallbackPtr, errorCallbackContext),

@@ -4,7 +4,7 @@ pub fn print(str: []const u8) void {
     env.print(str.ptr, str.len);
 }
 
-pub const serveWebSocket = env.serveWebSocket;
+pub const openWebSocket = env.openWebSocket;
 
 pub fn readBlob(handle: i32, buf: []u8) void {
     env.readBlob(handle, buf.ptr, buf.len);

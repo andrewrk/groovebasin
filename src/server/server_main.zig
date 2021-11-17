@@ -72,15 +72,9 @@ const http_response_header_html = "" ++
     "HTTP/1.1 200 OK\r\n" ++
     "Content-Type: text/html\r\n" ++
     "\r\n";
-const http_response_header_html_compressed = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: text/html\r\n" ++
-    "Content-Encoding: gzip\r\n" ++
-    "\r\n";
-const http_response_header_css_compressed = "" ++
+const http_response_header_css = "" ++
     "HTTP/1.1 200 OK\r\n" ++
     "Content-Type: text/css\r\n" ++
-    "Content-Encoding: gzip\r\n" ++
     "\r\n";
 const http_response_header_javascript = "" ++
     "HTTP/1.1 200 OK\r\n" ++
@@ -101,7 +95,7 @@ const http_response_not_found = "" ++
 
 fn resolvePath(path: []const u8) ![]const u8 {
     if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("../public/index.html");
-    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css_compressed ++ @embedFile("../public/app.css");
+    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css ++ @embedFile("../public/app.css");
     if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("../public/app.js");
     inline for ([_][]const u8{
         "/favicon.png",

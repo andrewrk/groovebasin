@@ -16,10 +16,12 @@ pub fn build(b: *Builder) void {
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,
     });
+    client.addPackagePath("shared", "src/shared/index.zig");
 
     const server = b.addExecutable("groovebasin", "src/server/server_main.zig");
     server.setTarget(target);
     server.setBuildMode(mode);
+    server.addPackagePath("shared", "src/shared/index.zig");
     const server_options = b.addOptions();
     server.addOptions("build_options", server_options);
     server_options.addOptionArtifact("client_wasm_path", client);

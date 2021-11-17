@@ -82,6 +82,20 @@ fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
     browser.readBlob(handle, buffer[0..len]);
 
     browser.print(buffer[0..len]);
+
+    const response = json.parse(protocol.Response, &json.TokenStream.init(buffer[0..len]), json.ParseOptions{}) catch {
+        @panic("got an error");
+    };
+    switch (response.data) {
+        .ping => |server_time| {
+            const client_time = browser.getTime();
+            const client_ns: i128 = @as(i128, client_time.s) * 1_000_000_000 + client_time.ns;
+            const server_ns: i128 = @as(i128, server_time.s) * 1_000_000_000 + server_time.ns;
+            const lag_ns = client_ns - server_ns;
+            ui.setLag(lag_ns);
+        },
+        ._unused1, ._unused2 => unreachable,
+    }
 }
 
 pub fn sendMessage(message: []const u8) void {

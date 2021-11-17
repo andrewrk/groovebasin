@@ -20,6 +20,9 @@ const env = {
         const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
         readBlob(handle, dest);
     },
+    getTime() {
+        return BigInt(new Date().getTime());
+    },
     setTimeout(callbackPtr, context, timeout) {
         setTimeout(callback.wrapCallback(callbackPtr, context), timeout);
     },

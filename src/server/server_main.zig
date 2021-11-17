@@ -2,11 +2,16 @@ const std = @import("std");
 const net = std.net;
 const fs = std.fs;
 const os = std.os;
+const Allocator = std.mem.Allocator;
 
 // FIXME: seems to be a bug with long writeAll calls.
 // pub const io_mode = .evented;
 
 pub fn main() anyerror!void {
+    var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer _ = gpa_state.deinit();
+    const gpa = &gpa_state.allocator;
+
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -14,59 +19,85 @@ pub fn main() anyerror!void {
     std.debug.warn("listening at {}\n", .{server.listen_address});
 
     while (true) {
-        const connection = try server.accept();
-        defer connection.stream.close();
-        handleConnection(connection) catch |err| {
+        const client = c: {
+            const client = try gpa.create(Client);
+            errdefer gpa.destroy(client);
+            client.* = .{
+                .arena_allocator = std.heap.ArenaAllocator.init(gpa),
+                .connection = try server.accept(),
+            };
+            break :c client;
+        };
+        errdefer client.connection.stream.close();
+        _ = std.Thread.spawn(.{}, Client.run, .{client}) catch |err| {
             std.log.err("handling connection failed: {}", .{err});
+            continue;
         };
     }
 }
 
-fn handleConnection(connection: std.net.StreamServer.Connection) !void {
-    var buf: [0x4000]u8 = undefined;
-    const amt = try connection.stream.read(&buf);
-    const msg = buf[0..amt];
-    var header_lines = std.mem.split(u8, msg, "\r\n");
-    const first_line = header_lines.next() orelse return;
+const Client = struct {
+    arena_allocator: std.heap.ArenaAllocator,
+    connection: net.StreamServer.Connection,
 
-    // TODO: read the spec
-    // eg: "GET /favicon.png HTTP/1.1"
-    var it = std.mem.tokenize(u8, first_line, " \t");
-    const method = it.next() orelse return;
-    const path = it.next() orelse return;
-    const http_version = it.next() orelse return;
+    fn arena(client: *Client) *Allocator {
+        return &client.arena_allocator.allocator;
+    }
 
-    // only support GET for HTTP/1.1
-    if (!std.mem.eql(u8, method, "GET")) return;
-    if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
+    fn run(client: *Client) void {
+        client.handleConnection() catch |err| {
+            std.log.err("unable to handle connection: {s}", .{@errorName(err)});
+        };
+        client.connection.stream.close();
+        client.arena_allocator.deinit();
+    }
 
-    // TODO: read the other spec
-    var sec_websocket_key: ?[]const u8 = null;
-    var should_upgrade_websocket: bool = false;
-    // TODO: notice when gzip is supported.
-    while (header_lines.next()) |line| {
-        if (line.len == 0) break;
-        var segments = std.mem.split(u8, line, ": ");
-        const key = segments.next().?;
-        const value = segments.rest();
+    fn handleConnection(client: *Client) !void {
+        var buf: [0x4000]u8 = undefined;
+        const amt = try client.connection.stream.read(&buf);
+        const msg = buf[0..amt];
+        var header_lines = std.mem.split(u8, msg, "\r\n");
+        const first_line = header_lines.next() orelse return;
 
-        if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
-            sec_websocket_key = value;
-        } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
-            if (!std.mem.eql(u8, value, "websocket")) return;
-            should_upgrade_websocket = true;
+        // TODO: read the spec
+        // eg: "GET /favicon.png HTTP/1.1"
+        var it = std.mem.tokenize(u8, first_line, " \t");
+        const method = it.next() orelse return;
+        const path = it.next() orelse return;
+        const http_version = it.next() orelse return;
+
+        // only support GET for HTTP/1.1
+        if (!std.mem.eql(u8, method, "GET")) return;
+        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
+
+        // TODO: read the other spec
+        var sec_websocket_key: ?[]const u8 = null;
+        var should_upgrade_websocket: bool = false;
+        // TODO: notice when gzip is supported.
+        while (header_lines.next()) |line| {
+            if (line.len == 0) break;
+            var segments = std.mem.split(u8, line, ": ");
+            const key = segments.next().?;
+            const value = segments.rest();
+
+            if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
+                sec_websocket_key = value;
+            } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
+                if (!std.mem.eql(u8, value, "websocket")) return;
+                should_upgrade_websocket = true;
+            }
+        }
+
+        if (should_upgrade_websocket) {
+            const websocket_key = sec_websocket_key orelse return;
+            std.log.info("GET websocket: {s}", .{path});
+            try serveWebsocket(client.connection, websocket_key);
+        } else {
+            std.log.info("GET: {s}", .{path});
+            try client.connection.stream.writer().writeAll(try resolvePath(path));
         }
     }
-
-    if (should_upgrade_websocket) {
-        const websocket_key = sec_websocket_key orelse return;
-        std.log.info("GET websocket: {s}", .{path});
-        try serveWebsocket(connection, websocket_key);
-    } else {
-        std.log.info("GET: {s}", .{path});
-        try connection.stream.writer().writeAll(try resolvePath(path));
-    }
-}
+};
 
 const http_response_header_html = "" ++
     "HTTP/1.1 200 OK\r\n" ++
@@ -128,7 +159,7 @@ const http_response_header_upgrade = "" ++
 
 const max_payload_size = 16 * 1024;
 
-fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) !void {
+fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !void {
     // See https://tools.ietf.org/html/rfc6455
     var sha1 = std.crypto.hash.Sha1.init(.{});
     sha1.update(key);
@@ -155,7 +186,7 @@ fn serveWebsocket(connection: std.net.StreamServer.Connection, key: []const u8) 
     }
 }
 
-fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
+fn readMessage(connection: net.StreamServer.Connection, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
     // See https://tools.ietf.org/html/rfc6455
     // read first byte.
     var header = [_]u8{0} ** 2;
@@ -219,7 +250,7 @@ fn readMessage(connection: std.net.StreamServer.Connection, payload_buffer: *ali
     return payload;
 }
 
-fn writeMessage(connection: std.net.StreamServer.Connection, message: []const u8) !void {
+fn writeMessage(connection: net.StreamServer.Connection, message: []const u8) !void {
     // See https://tools.ietf.org/html/rfc6455
     var header_buf: [2 + 8]u8 = undefined;
     // 0b10000000: FIN - this is a complete message.

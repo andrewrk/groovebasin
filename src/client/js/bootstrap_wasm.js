@@ -4,13 +4,20 @@ const {decodeString} = require("string");
 const {serveWebSocket, sendMessage} = require("websocket");
 const {readBlob} = require("blob");
 const callback = require("callback");
+const dom = require("dom");
 
 const env = {
+    // Essentials
     print(ptr, len) {
         const msg = decodeString(ptr, len);
         console.log(msg);
     },
+    readBlob(handle, ptr, len) {
+        const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
+        readBlob(handle, dest);
+    },
 
+    // WebSocket API
     serveWebSocket(
         openCallbackPtr, openCallbackContext,
         closeCallbackPtr, closeCallbackContext,
@@ -24,15 +31,23 @@ const env = {
             callback.wrapCallbackI32I32(messageCallbackPtr, messageCallbackContext),
         );
     },
-
-    readBlob(handle, ptr, len) {
-        const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
-        readBlob(handle, dest);
-    },
-
     sendMessage(handle, ptr, len) {
         const buf = new Uint8Array(wasmExports.memory.buffer, ptr, len);
         sendMessage(handle, buf);
+    },
+
+    // Dom
+    getElementById(ptr, len) {
+        const id = decodeString(ptr, len);
+        return dom.getElementById(id);
+    },
+    releaseElementHandle: dom.releaseElementHandle,
+    setElementShown(handle, shown) {
+        return dom.setElementShown(handle, !!shown);
+    },
+    setElementTextContent(handle, ptr, len) {
+        const text = decodeString(ptr, len);
+        return dom.setElementTextContent(handle, text);
     },
 };
 

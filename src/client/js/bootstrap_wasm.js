@@ -12,9 +12,16 @@ const env = {
         const msg = decodeString(ptr, len);
         console.log(msg);
     },
+    panic(ptr, len) {
+        const msg = decodeString(ptr, len);
+        throw new Error("panic: " + msg);
+    },
     readBlob(handle, ptr, len) {
         const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
         readBlob(handle, dest);
+    },
+    setTimeout(callbackPtr, context, timeout) {
+        setTimeout(callback.wrapCallback(callbackPtr, context), timeout);
     },
 
     // WebSocket API

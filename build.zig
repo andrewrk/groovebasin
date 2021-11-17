@@ -47,6 +47,7 @@ pub fn build(b: *Builder) void {
             "string.js",
             "wasmExports.js",
             "websocket.js",
+            "dom.js",
         });
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);

@@ -1,8 +1,12 @@
 const std = @import("std");
+const json = std.json;
+
 const browser = @import("browser.zig");
 const env = @import("browser_env.zig");
 const callback = @import("callback.zig");
 const ui = @import("groovebasin_ui.zig");
+
+const protocol = @import("shared").protocol;
 
 var websocket_handle: i32 = undefined;
 
@@ -39,7 +43,21 @@ fn onOpen(context: *callback.Context, handle: i32) void {
     ui.setLoadingState(.good);
 
     // try it out!
-    sendMessage("ping");
+    const request = protocol.Request{
+        .id = 123,
+    };
+    writeRequest(request) catch {
+        @panic("got an error");
+    };
+}
+
+fn writeRequest(request: protocol.Request) !void {
+    var out_buffer: [0x1000]u8 = undefined;
+    var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
+    const out_stream = fixed_buffer_stream.writer();
+    try json.stringify(request, json.StringifyOptions{}, out_stream);
+
+    sendMessage(fixed_buffer_stream.getWritten());
 }
 
 fn onClose(context: *callback.Context, code: i32) void {

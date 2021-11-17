@@ -2,7 +2,10 @@ const std = @import("std");
 const net = std.net;
 const fs = std.fs;
 const os = std.os;
+const json = std.json;
 const Allocator = std.mem.Allocator;
+
+const protocol = @import("shared").protocol;
 
 // FIXME: seems to be a bug with long writeAll calls.
 // pub const io_mode = .evented;
@@ -181,6 +184,8 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !voi
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = (try readMessage(connection, &payload_buffer)) orelse break;
         std.log.info("message: {s}", .{payload});
+        const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{});
+        std.log.info("request: {}", .{request.id});
 
         try writeMessage(connection, payload);
     }

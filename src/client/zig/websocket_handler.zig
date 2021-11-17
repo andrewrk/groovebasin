@@ -32,9 +32,6 @@ pub fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
     browser.readBlob(handle, buffer[0..len]);
 
     browser.print(buffer[0..len]);
-
-    // let's talk a lot.
-    browser.sendMessage(websocket_handle, "pong");
 }
 
 pub fn sendMessage(message: []const u8) void {

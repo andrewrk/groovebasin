@@ -1,19 +1,19 @@
 comptime {
     _ = @import("callback.zig");
 }
-const websocket = @import("websocket.zig");
+const websocket_handler = @import("websocket_handler.zig");
 const browser = @import("browser.zig");
 
 export fn main() void {
     browser.print("hello world");
     browser.serveWebSocket(
-        &websocket.onOpen,
+        &websocket_handler.onOpen,
         undefined,
-        &websocket.onClose,
+        &websocket_handler.onClose,
         undefined,
-        &websocket.onError,
+        &websocket_handler.onError,
         undefined,
-        &websocket.onMessage,
+        &websocket_handler.onMessage,
         undefined,
     );
 }

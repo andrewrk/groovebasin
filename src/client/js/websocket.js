@@ -34,18 +34,18 @@ function serveWebSocket(openCallback, closeCallback, errorCallback, messageCallb
     }
 
     function onOpen() {
-        console.log("websocket open");
+        console.log("JS: websocket open");
         openCallback(handle);
     }
 
     function onClose(ev) {
-        console.log("websocket close:", ev);
+        console.log("JS: websocket close:", ev);
         cleanup();
         closeCallback(ev.code);
     }
 
     function onError(ev) {
-        console.log("websocket error:", ev);
+        console.log("JS: websocket error:", ev);
         cleanup();
         errorCallback();
     }

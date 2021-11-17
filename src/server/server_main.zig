@@ -186,12 +186,10 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !voi
         std.log.info("request: {s}", .{payload});
         const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{});
 
-        const response = protocol.Response{ .seq = request.seq, .data = .{
-            .ping = protocol.Timestamp{
-                .s = 1,
-                .ns = 2,
-            },
-        } };
+        const response = protocol.Response{
+            .seq = request.seq,
+            .data = try handleRequest(request.op),
+        };
 
         var out_buffer: [0x1000]u8 = undefined;
         var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
@@ -305,4 +303,20 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
+}
+
+fn handleRequest(op: protocol.Opcode) !protocol.ResponseData {
+    switch (op) {
+        .ping => {
+            var ts: os.timespec = undefined;
+            try std.os.clock_gettime(os.CLOCK.REALTIME, &ts);
+            return protocol.ResponseData{
+                .ping = protocol.Timestamp{
+                    .s = ts.tv_sec,
+                    .ns = @intCast(i32, ts.tv_nsec),
+                },
+            };
+        },
+        ._unused1, ._unused2 => unreachable,
+    }
 }

@@ -20,11 +20,13 @@ pub const Response = struct {
     // The seq of the corresponding Request.
     seq: u32,
 
-    data: union(enum) {
-        ping: Timestamp,
-        _unused1: u32,
-        _unused2: bool,
-    },
+    data: ResponseData,
+};
+
+pub const ResponseData = union(enum) {
+    ping: Timestamp,
+    _unused1: u32,
+    _unused2: bool,
 };
 
 pub const Timestamp = struct {

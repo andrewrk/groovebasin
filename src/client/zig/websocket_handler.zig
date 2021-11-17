@@ -1,11 +1,13 @@
 const browser = @import("browser.zig");
 const callback = @import("callback.zig");
+const ui = @import("groovebasin_ui.zig");
 
 var websocket_handle: i32 = undefined;
 
 pub fn onOpen(context: *callback.Context, handle: i32) void {
     _ = context;
     browser.print("zig: websocket opened");
+    ui.setLoadingState(.good);
 
     websocket_handle = handle;
 
@@ -17,11 +19,13 @@ pub fn onClose(context: *callback.Context, code: i32) void {
     _ = context;
     _ = code;
     browser.print("zig: websocket closed");
+    ui.setLoadingState(.no_connection);
 }
 
 pub fn onError(context: *callback.Context) void {
     _ = context;
     browser.print("zig: websocket error");
+    ui.setLoadingState(.no_connection);
 }
 
 pub fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {

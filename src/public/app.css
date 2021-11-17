@@ -23,27 +23,35 @@ a:hover,a:active,a:focus{
 html, body {
     height: 100%;
 }
-#main-grid {
+.gridlayout {
     display: grid;
+    width: 100%;
+    height: 100%;
+}
+
+#main-grid {
     grid-gap: 10px;
     grid-template-columns: 400px auto;
     grid-template-rows: auto 1fr;
-    width: 100%;
-    height: 100%;
 }
 #nowplaying {
     grid-column: span 2;
     width: 100%;
 }
+
 #left-window {
+    grid-gap: 0;
+    grid-template-columns: auto;
+    grid-template-rows: auto 1fr;
+}
+#left-window-content {
     height: 100%;
 }
-/* TODO: this isn't actually part of this layout */
-#library-pane {
+#left-window-content div {
     height: 100%;
 }
 
-/* Widgets (or something) */
+/* The rest */
 .button{
     background:#333 url("img/ui-bg_dots-small_20_333333_2x2.png") 50% 50% repeat;
     margin:3px 1px 1px 1px;

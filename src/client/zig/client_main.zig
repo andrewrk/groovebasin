@@ -8,7 +8,7 @@ const dom = @import("dom.zig");
 export fn main() void {
     loadDomElements();
     browser.print("zig: hello world");
-    browser.serveWebSocket(
+    browser.openWebSocket(
         &websocket_handler.onOpen,
         undefined,
         &websocket_handler.onClose,

@@ -8,7 +8,7 @@ pub extern fn print(ptr: [*]const u8, len: usize) void;
 pub extern fn readBlob(handle: i32, ptr: [*]u8, len: usize) void;
 
 // WebSocket API
-pub extern fn serveWebSocket(
+pub extern fn openWebSocket(
     openCallback: *const callback.CallbackFnI32,
     openCallbackContext: *callback.Context,
     closeCallbackId: *const callback.CallbackFnI32,

@@ -6,7 +6,7 @@ const ui = @import("groovebasin_ui.zig");
 
 export fn main() void {
     browser.print("zig: hello world");
-    ui.loadDomElements();
+    ui.init();
 
     websocket_handler.open();
 }

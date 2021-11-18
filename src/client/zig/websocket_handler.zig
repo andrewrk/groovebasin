@@ -93,7 +93,7 @@ fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
         },
         .query => |query_response| {
             if (query_response.new_library) |library| {
-                setLibrary(library);
+                ui.setLibrary(library);
             }
         },
     }
@@ -145,9 +145,4 @@ fn periodicPing() void {
     }) catch |err| {
         @panic(@errorName(err));
     };
-}
-
-// This will move someday
-fn setLibrary(library: protocol.Library) void {
-    _ = library;
 }

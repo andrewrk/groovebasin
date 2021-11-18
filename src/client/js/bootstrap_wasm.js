@@ -65,6 +65,33 @@ const env = {
         const text = decodeString(ptr, len);
         return dom.setElementTextContent(handle, text);
     },
+    getChildrenCount(handle) {
+        return dom.getChildrenCount(handle);
+    },
+    getChild(handle, i) {
+        return dom.getChild(handle, i);
+    },
+    insertAdjacentHTML(handle, position_int, html_ptr, html_len) {
+        const position = [
+            'beforebegin',
+            'afterbegin',
+            'beforeend',
+            'afterend',
+        ][position_int];
+        const html = decodeString(html_ptr, html_len);
+        return dom.insertAdjacentHTML(handle, position, html);
+    },
+    removeLastChild(handle) {
+        return dom.removeLastChild(handle);
+    },
+    addClass(handle, class_ptr, class_len) {
+        const class_ = decodeString(class_ptr, class_len);
+        return dom.addClass(handle, class_);
+    },
+    removeClass(handle, class_ptr, class_len) {
+        const class_ = decodeString(class_ptr, class_len);
+        return dom.removeClass(handle, class_);
+    },
 };
 
 (async () => {

@@ -11,7 +11,7 @@ const protocol = @import("shared").protocol;
 // FIXME: seems to be a bug with long writeAll calls.
 // pub const io_mode = .evented;
 
-const music_directory = "/home/andy/Downloads/music";
+const music_directory = "/home/josh/music";
 
 pub fn main() anyerror!void {
     var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};

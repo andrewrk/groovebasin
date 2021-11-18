@@ -4,11 +4,14 @@ const fs = std.fs;
 const os = std.os;
 const json = std.json;
 const Allocator = std.mem.Allocator;
+const Groove = @import("groove.zig").Groove;
 
 const protocol = @import("shared").protocol;
 
 // FIXME: seems to be a bug with long writeAll calls.
 // pub const io_mode = .evented;
+
+const music_directory = "/home/andy/Downloads/music";
 
 pub fn main() anyerror!void {
     var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};
@@ -17,6 +20,42 @@ pub fn main() anyerror!void {
 
     if (true) {
         return @import("./library.zig").libraryMain(gpa);
+    }
+
+    Groove.set_logging(.INFO);
+    std.log.debug("libgroove version: {s}", .{Groove.version()});
+
+    const groove = try Groove.create();
+
+    var music_dir = try std.fs.openDirAbsoluteZ(music_directory, .{ .iterate = true });
+    defer music_dir.close();
+
+    var walker = try music_dir.walk(gpa);
+    defer walker.deinit();
+
+    while (try walker.next()) |entry| {
+        if (entry.kind != .File) continue;
+
+        const groove_file = try groove.file_create();
+        defer groove_file.destroy();
+
+        const full_path = try std.fs.path.joinZ(gpa, &.{
+            music_directory, entry.path,
+        });
+        defer gpa.free(full_path);
+
+        std.log.debug("found: {s}", .{full_path});
+
+        try groove_file.open(full_path, full_path);
+        defer groove_file.close();
+
+        var it: ?*Groove.Tag = null;
+        while (t: {
+            it = groove_file.metadata_get("", it, 0);
+            break :t it;
+        }) |tag| {
+            std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
+        }
     }
 
     var server = net.StreamServer.init(.{ .reuse_address = true });

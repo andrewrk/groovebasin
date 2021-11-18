@@ -1,3 +1,4 @@
 /zig-cache/
 /zig-out/
 /src/public/app.js
+/db.bin

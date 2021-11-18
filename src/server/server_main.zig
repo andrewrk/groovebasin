@@ -131,7 +131,7 @@ fn listen(server_init: ServerInit) !void {
     const groove = try Groove.create();
     g.groove = groove;
 
-    try library.libraryMain(music_dir_path);
+    try library.libraryMain(music_dir_path, config.dbPath);
 
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();

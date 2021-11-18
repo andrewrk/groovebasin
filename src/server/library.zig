@@ -27,7 +27,7 @@ fn getString(strings: *ArrayList(u8), i: u32) [*:0]const u8 {
     return @ptrCast([*:0]const u8, &strings.items[i]);
 }
 
-pub fn libraryMain(music_directory: []const u8) anyerror!void {
+pub fn libraryMain(music_directory: []const u8, db_path: []const u8) anyerror!void {
     var l = Library{
         .strings = ArrayList(u8).init(g.gpa),
         .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
@@ -72,7 +72,7 @@ pub fn libraryMain(music_directory: []const u8) anyerror!void {
     }
 
     // Serialize.
-    var db_file = try std.fs.cwd().createFile("db.bin", .{});
+    var db_file = try std.fs.cwd().createFile(db_path, .{});
     defer db_file.close();
 
     const header = Header{
@@ -100,10 +100,10 @@ pub fn libraryMain(music_directory: []const u8) anyerror!void {
     };
     try db_file.writevAll(&iovecs);
 
-    try readLibrary();
+    try readLibrary(db_path);
 }
 
-fn readLibrary() anyerror!void {
+fn readLibrary(db_path: []const u8) anyerror!void {
     var l = Library{
         .strings = ArrayList(u8).init(g.gpa),
         .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
@@ -113,7 +113,7 @@ fn readLibrary() anyerror!void {
         l.tracks.deinit();
     }
 
-    var db_file = try std.fs.cwd().openFile("db.bin", .{});
+    var db_file = try std.fs.cwd().openFile(db_path, .{});
     defer db_file.close();
 
     const header = try db_file.reader().readStruct(Header);

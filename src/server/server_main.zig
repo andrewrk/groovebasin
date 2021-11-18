@@ -15,6 +15,10 @@ pub fn main() anyerror!void {
     defer _ = gpa_state.deinit();
     const gpa = &gpa_state.allocator;
 
+    if (true) {
+        return @import("./library.zig").libraryMain(gpa);
+    }
+
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 

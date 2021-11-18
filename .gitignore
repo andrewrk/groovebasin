@@ -1,4 +1,5 @@
 /zig-cache/
 /zig-out/
 /src/public/app.js
-/db.bin
+/groovebasin.db
+config.json

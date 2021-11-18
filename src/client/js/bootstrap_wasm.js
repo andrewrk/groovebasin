@@ -24,7 +24,13 @@ const env = {
         return BigInt(new Date().getTime());
     },
     setTimeout(callbackPtr, context, timeout) {
-        setTimeout(callback.wrapCallback(callbackPtr, context), timeout);
+        return BigInt(setTimeout(callback.wrapCallback(callbackPtr, context), timeout));
+    },
+    setInterval(callbackPtr, context, timeout) {
+        return BigInt(setInterval(callback.wrapCallback(callbackPtr, context), timeout));
+    },
+    clearTimer(handle) {
+        clearTimeout(Number(handle));
     },
 
     // WebSocket API

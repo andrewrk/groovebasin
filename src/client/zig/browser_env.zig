@@ -12,7 +12,13 @@ pub extern fn setTimeout(
     callback: *const callback.CallbackFn,
     callbackContext: *callback.Context,
     milliseconds: i32,
-) void;
+) i64;
+pub extern fn setInterval(
+    callback: *const callback.CallbackFn,
+    callbackContext: *callback.Context,
+    milliseconds: i32,
+) i64;
+pub extern fn clearTimer(handle: i64) void;
 
 // WebSocket API
 pub extern fn openWebSocket(

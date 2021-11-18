@@ -42,14 +42,8 @@ fn onOpen(context: *callback.Context, handle: i32) void {
     websocket_handle = handle;
     ui.setLoadingState(.good);
 
-    // try it out!
-    const request = protocol.Request{
-        .seq = 123,
-        .op = .ping,
-    };
-    writeRequest(request) catch {
-        @panic("got an error");
-    };
+    periodic_ping_handle = env.setInterval(&periodicPingCallback, undefined, periodic_ping_interval_ms);
+    periodicPing();
 }
 
 fn writeRequest(request: protocol.Request) !void {
@@ -108,7 +102,8 @@ fn handleNoConnection() void {
     loading_state = .backoff;
     ui.setLoadingState(.no_connection);
 
-    env.setTimeout(&retryOpen, undefined, retry_timeout_ms);
+    env.clearTimer(periodic_ping_handle.?);
+    _ = env.setTimeout(&retryOpen, undefined, retry_timeout_ms);
 }
 
 fn retryOpen(context: *callback.Context) void {
@@ -116,4 +111,20 @@ fn retryOpen(context: *callback.Context) void {
     if (loading_state != .backoff) return;
     loading_state = .none;
     open();
+}
+
+var periodic_ping_handle: ?i64 = null;
+const periodic_ping_interval_ms = 10_000;
+fn periodicPingCallback(context: *callback.Context) void {
+    _ = context;
+    periodicPing();
+}
+fn periodicPing() void {
+    const request = protocol.Request{
+        .seq = 123,
+        .op = .ping,
+    };
+    writeRequest(request) catch {
+        @panic("got an error");
+    };
 }

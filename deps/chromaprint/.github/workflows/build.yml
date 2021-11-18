@@ -1,0 +1,179 @@
+name: Test and package
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fft:
+        - avfft
+        - fftw3
+        - fftw3f
+        - kissfft
+    env:
+      FFT_LIB: ${{ matrix.fft }}
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install yasm cmake libavcodec-dev libavformat-dev libavutil-dev \
+          libavresample-dev libfftw3-dev libgtest-dev
+    - name: Test with ${{ env.FFT_LIB }}
+      run: |
+        mkdir build.test.$FFT_LIB
+        cd build.test.$FFT_LIB
+        cmake -DCMAKE_BUILD_TYPE=Release -DFFT_LIB=$FFT_LIB -DBUILD_TESTS=ON -DBUILD_TOOLS=ON ..
+        make VERBOSE=1
+        make check VERBOSE=1
+
+  test-macos:
+    runs-on: macos-latest
+    env:
+      FFT_LIB: vdsp
+    steps:
+    - uses: actions/checkout@v1
+    - name: Download googletest sources
+      run: |
+        git clone https://github.com/google/googletest.git "$GITHUB_WORKSPACE/googletest"
+        echo "::set-env name=GTEST_ROOT::$GITHUB_WORKSPACE/googletest/googletest"
+    - name: Test with ${{ env.FFT_LIB }}
+      run: |
+        mkdir build.test.$FFT_LIB
+        cd build.test.$FFT_LIB
+        cmake -DCMAKE_BUILD_TYPE=Release -DFFT_LIB=$FFT_LIB -DBUILD_TESTS=ON -DCMAKE_CXX_FLAGS='-stdlib=libc++' ..
+        make VERBOSE=1
+        make check VERBOSE=1
+
+  package:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+        - linux
+        - windows
+        arch:
+        - x86_64
+        - i686
+        - armv7-a
+        - armv8-a
+        exclude:
+        - os: windows
+          arch: armv7-a
+        - os: windows
+          arch: armv8-a
+    env:
+      ARCH: ${{ matrix.arch }}
+      OS: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install multilib dependencies
+      if: matrix.arch == 'i686'
+      run: sudo apt-get install gcc-multilib g++-multilib
+    - name: Install Windows cross-compile dependencies
+      if: matrix.os == 'windows'
+      run: sudo apt-get install mingw-w64
+    - name: Install armhf cross-compile dependencies
+      if: startsWith(matrix.arch, 'arm')
+      run: sudo apt-get install gcc-multilib-arm-linux-gnueabihf g++-multilib-arm-linux-gnueabihf
+    - name: Set TAG variable
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "::set-env name=TAG::${GITHUB_REF##*/}"
+    - name: Package ${{ env.ARCH }} ${{ env.OS }}
+      run: |
+        export BRANCH=${GITHUB_REF##*/}
+        ./package/build.sh
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: chromaprint-fpcalc-${{ env.OS }}-${{ env.ARCH }}
+        path: chromaprint-${{ env.OS }}-${{ env.ARCH }}/bin/
+
+  package-macos:
+    runs-on: macos-latest
+    env:
+      ARCH: x86_64
+      OS: macos
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set TAG variable
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        echo "::set-env name=TAG::${GITHUB_REF##*/}"
+    - name: Package ${{ env.ARCH }} ${{ env.OS }}
+      run: |
+        export BRANCH=${GITHUB_REF##*/}
+        ./package/build.sh
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: chromaprint-fpcalc-${{ env.OS }}-${{ env.ARCH }}
+        path: chromaprint-${{ env.OS }}-${{ env.ARCH }}/bin/
+
+  release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - package
+      - package-macos
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set version
+        run: |
+          TAG=${GITHUB_REF##*/}
+          echo "::set-env name=TAG::$TAG"
+          echo "::set-env name=VERSION::$(echo $TAG | sed 's/^v//')"
+      - uses: actions/download-artifact@v1
+        with:
+          name: chromaprint-fpcalc-linux-x86_64
+          path: artifacts/chromaprint-fpcalc-${{ env.VERSION }}-linux-x86_64/
+      - uses: actions/download-artifact@v1
+        with:
+          name: chromaprint-fpcalc-linux-i686
+          path: artifacts/chromaprint-fpcalc-${{ env.VERSION }}-linux-i686/
+      - uses: actions/download-artifact@v1
+        with:
+          name: chromaprint-fpcalc-windows-x86_64
+          path: artifacts/chromaprint-fpcalc-${{ env.VERSION }}-windows-x86_64/
+      - uses: actions/download-artifact@v1
+        with:
+          name: chromaprint-fpcalc-windows-i686
+          path: artifacts/chromaprint-fpcalc-${{ env.VERSION }}-windows-i686/
+      - uses: actions/download-artifact@v1
+        with:
+          name: chromaprint-fpcalc-macos-x86_64
+          path: artifacts/chromaprint-fpcalc-${{ env.VERSION }}-macos-x86_64/
+      - name: Make source tarball
+        run: |
+          mkdir artifacts/release/
+          git archive --format=tar.gz --prefix=chromaprint-$TAG/ $TAG > artifacts/release/chromaprint-$VERSION.tar.gz
+      - name: Make tarballs
+        run: |
+          cd artifacts/
+          dirs=$(find . -name 'chromaprint-fpcalc-*-macos-*' -o -name 'chromaprint-fpcalc-*-linux-*' -type d)
+          for dir in $dirs
+          do
+            name=$(basename $dir)
+            chmod +x $dir/fpcalc
+            tar cvzf release/$name.tar.gz $dir
+          done
+      - name: Make zips
+        run: |
+          cd artifacts/
+          dirs=$(find . -name 'chromaprint-fpcalc-*-windows-*' -type d)
+          for dir in $dirs
+          do
+            name=$(basename $dir)
+            zip release/$name.zip $dir/*
+          done
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

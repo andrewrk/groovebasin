@@ -1,0 +1,10 @@
+# For more information: http://www.freedesktop.org/wiki/Software/pkg-config/
+
+libdir=
+includedir=
+
+Name: libgroove
+Description: libgroove provides decoding and encoding of audio on a playlist.
+Version:
+Libs: -L${libdir} -lgroove -lgrooveplayer -lgrooveloudness -lgroovefingerprinter
+Cflags: -I${includedir}

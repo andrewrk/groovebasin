@@ -1,0 +1,40 @@
+All PulseAudio source files, except as noted below, are licensed under the GNU
+Lesser General Public License. (see file LGPL for details)
+
+However, the server side has optional GPL dependencies.  These include the
+libsamplerate and gdbm (core libraries), LIRC (lirc module) and FFTW (equalizer
+module), although others may also be included in the future.  If PulseAudio is
+compiled with these optional components, this effectively downgrades the
+license of the server part to GPL (see the file GPL for details), exercising
+section 3 of the LGPL.  In such circumstances, you should treat the client
+library (libpulse) of PulseAudio as being LGPL licensed and the server part
+(libpulsecore) as being GPL licensed.  Since the PulseAudio daemon, tests,
+various utilities/helpers and the modules link to libpulsecore and/or the afore
+mentioned optional GPL dependencies they are of course also GPL licensed also
+in this scenario.
+
+In addition to this, if D-Bus support is enabled, the PulseAudio client library
+(libpulse) MAY need to be licensed under the GPL, depending on the license
+adopted for libdbus. libdbus is licensed under either of the Academic Free
+License 2.1 or GPL 2.0 or above. Which of these applies is your choice, and the
+result affects the licensing of libpulse and thus, potentially, all programs
+that link to libpulse.
+
+Andre Adrian's echo cancellation implementation is licensed under a less
+restrictive license - see src/modules/echo-cancel/adrian-license.txt for
+details.
+
+Some other files pulled into PA source (i.e. reference implementations that are
+considered too small and stable to be considered as an external library) use the
+more permissive MIT license. These include the device reservation DBus protocol
+and realtime kit implementations.
+
+A more permissive BSD-style license is used for LFE filters, see
+src/pulsecore/filter/LICENSE.WEBKIT for details.
+
+Additionally, a more permissive Sun license is used for code that performs
+u-law, A-law and linear PCM conversions.
+
+While we attempt to provide a summary here, it is the ultimate responsibility of
+the packager to ensure the components they use in their build of PulseAudio
+meets their license requirements.

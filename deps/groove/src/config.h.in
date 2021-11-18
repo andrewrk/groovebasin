@@ -1,0 +1,16 @@
+/*
+ * Copyright (c) 2015 Andrew Kelley
+ *
+ * This file is part of libgroove, which is MIT licensed.
+ * See http://opensource.org/licenses/MIT
+ */
+
+#ifndef GROOVE_CONFIG_H
+#define GROOVE_CONFIG_H
+
+#define GROOVE_VERSION_MAJOR @LIBGROOVE_VERSION_MAJOR@
+#define GROOVE_VERSION_MINOR @LIBGROOVE_VERSION_MINOR@
+#define GROOVE_VERSION_PATCH @LIBGROOVE_VERSION_PATCH@
+#define GROOVE_VERSION_STRING "@LIBGROOVE_VERSION@"
+
+#endif

@@ -1,4 +1,5 @@
 const std = @import("std");
+const mem = std.mem;
 const net = std.net;
 const fs = std.fs;
 const os = std.os;
@@ -10,29 +11,135 @@ const protocol = @import("shared").protocol;
 const library = @import("library.zig");
 const g = @import("global.zig");
 
-// FIXME: seems to be a bug with long writeAll calls.
-// pub const io_mode = .evented;
+pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
+    std.log.err(format, args);
+    std.process.exit(1);
+}
 
-const music_directory = "/home/josh/music";
+const ConfigJson = struct {
+    host: []const u8 = "127.0.0.1",
+    port: u16 = 16242,
+    dbPath: []const u8 = "groovebasin.db",
+    musicDirectory: ?[]const u8 = null,
+    lastFmApiKey: []const u8 = "bb9b81026cd44fd086fa5533420ac9b4",
+    lastFmApiSecret: []const u8 = "2309a40ae3e271de966bf320498a8f09",
+    acoustidAppKey: []const u8 = "bgFvC4vW",
+    encodeQueueDuration: f64 = 8,
+    encodeBitRate: u32 = 256,
+    sslKey: ?[]const u8 = null,
+    sslCert: ?[]const u8 = null,
+    sslCaDir: ?[]const u8 = null,
+    googleApiKey: []const u8 = "AIzaSyDdTDD8-gu_kp7dXtT-53xKcVbrboNAkpM",
+    ignoreExtensions: []const []const u8 = &.{
+        ".jpg", ".jpeg", ".txt", ".png", ".log", ".cue", ".pdf", ".m3u",
+        ".nfo", ".ini",  ".xml", ".zip",
+    },
+};
+
+const usage =
+    \\Usage: groovebasin [options]
+    \\Options:
+    \\  --config [file]      Defaults to config.json in the cwd
+    \\  -h, --help           Print this help menu to stdout
+    \\
+;
 
 pub fn main() anyerror!void {
-    var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer _ = gpa_state.deinit();
-    g.gpa = &gpa_state.allocator;
+    var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer _ = gpa_instance.deinit();
+    g.gpa = &gpa_instance.allocator;
+
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    const arena = &arena_instance.allocator;
+
+    const args = try std.process.argsAlloc(arena);
+
+    var config_json_path: []const u8 = "config.json";
+    var i: usize = 1;
+    while (i < args.len) : (i += 1) {
+        const arg = args[i];
+        if (mem.eql(u8, arg, "--config")) {
+            if (i + 1 >= args.len) fatal("expected parameter after {s}", .{arg});
+            i += 1;
+            config_json_path = args[i];
+        } else if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
+            try std.io.getStdOut().writeAll(usage);
+            std.process.exit(0);
+        } else {
+            fatal("unrecognized argument: '{s}'", .{arg});
+        }
+    }
+
+    const max_config_size = 1 * 1024 * 1024;
+    const json_text = fs.cwd().readFileAlloc(arena, config_json_path, max_config_size) catch |err| switch (err) {
+        error.FileNotFound => {
+            var atomic_file = try fs.cwd().atomicFile(config_json_path, .{});
+            defer atomic_file.deinit();
+
+            var buffered_writer = std.io.bufferedWriter(atomic_file.file.writer());
+
+            const config: ConfigJson = .{
+                .musicDirectory = try defaultMusicPath(arena),
+            };
+            try json.stringify(config, .{ .whitespace = .{} }, buffered_writer.writer());
+
+            try buffered_writer.flush();
+            try atomic_file.finish();
+
+            fatal("No {s} found; writing default. Take a peek and make sure the values are to your liking, then start GrooveBasin again.", .{config_json_path});
+        },
+        else => |e| {
+            fatal("Unable to read {s}: {s}", .{ config_json_path, e });
+        },
+    };
+    var token_stream = json.TokenStream.init(json_text);
+    @setEvalBranchQuota(5000);
+    const config = try json.parse(ConfigJson, &token_stream, .{ .allocator = arena });
+
+    return listen(.{
+        .config = config,
+        .arena = arena,
+    });
+}
+
+fn defaultMusicPath(arena: *Allocator) ![]const u8 {
+    if (std.os.getenvZ("XDG_MUSIC_DIR")) |xdg_path| return xdg_path;
+
+    if (std.os.getenv("HOME")) |home| {
+        return try fs.path.join(arena, &.{ home, "music" });
+    }
+
+    return "music";
+}
+
+const ServerInit = struct {
+    arena: *Allocator,
+    config: ConfigJson,
+};
+
+fn listen(server_init: ServerInit) !void {
+    const arena = server_init.arena;
+    const config = server_init.config;
+    const music_dir_path = config.musicDirectory orelse try defaultMusicPath(arena);
+
+    std.log.debug("music directory: {s}", .{music_dir_path});
 
     Groove.set_logging(.INFO);
     std.log.debug("libgroove version: {s}", .{Groove.version()});
 
-    g.groove = try Groove.create();
+    const groove = try Groove.create();
+    g.groove = groove;
 
-    if (true) {
-        try library.libraryMain(music_directory);
-    }
+    try library.libraryMain(music_dir_path);
 
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
-    try server.listen(net.Address.parseIp("127.0.0.1", 8000) catch unreachable);
+    const addr = net.Address.parseIp(config.host, config.port) catch |err| {
+        fatal("unable to parse {s}:{d}: {s}", .{ config.host, config.port, @errorName(err) });
+    };
+    try server.listen(addr);
     std.debug.warn("listening at {}\n", .{server.listen_address});
 
     while (true) {
@@ -207,8 +314,8 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, aren
 
         var out_buffer: [0x1000]u8 = undefined;
         var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
-        const out_stream = fixed_buffer_stream.writer();
-        try json.stringify(response, json.StringifyOptions{}, out_stream);
+        const writer = fixed_buffer_stream.writer();
+        try json.stringify(response, json.StringifyOptions{}, writer);
         std.log.info("response: {s}", .{fixed_buffer_stream.getWritten()});
 
         try writeMessage(connection, fixed_buffer_stream.getWritten());

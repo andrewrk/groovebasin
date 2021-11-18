@@ -27,7 +27,7 @@ fn getString(strings: *ArrayList(u8), i: u32) [*:0]const u8 {
     return @ptrCast([*:0]const u8, &strings.items[i]);
 }
 
-pub fn libraryMain(music_directory: [:0]const u8) anyerror!void {
+pub fn libraryMain(music_directory: []const u8) anyerror!void {
     var l = Library{
         .strings = ArrayList(u8).init(g.gpa),
         .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
@@ -37,7 +37,7 @@ pub fn libraryMain(music_directory: [:0]const u8) anyerror!void {
         l.tracks.deinit();
     }
 
-    var music_dir = try std.fs.openDirAbsoluteZ(music_directory, .{ .iterate = true });
+    var music_dir = try std.fs.cwd().openDir(music_directory, .{ .iterate = true });
     defer music_dir.close();
 
     var walker = try music_dir.walk(g.gpa);

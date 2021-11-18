@@ -19,7 +19,7 @@ pub fn main() anyerror!void {
     const gpa = &gpa_state.allocator;
 
     if (true) {
-        return @import("./library.zig").libraryMain(gpa);
+        try @import("./library.zig").libraryMain(gpa);
     }
 
     Groove.set_logging(.INFO);
@@ -65,42 +65,42 @@ pub fn main() anyerror!void {
     std.debug.warn("listening at {}\n", .{server.listen_address});
 
     while (true) {
-        const client = c: {
-            const client = try gpa.create(Client);
-            errdefer gpa.destroy(client);
-            client.* = .{
+        const handler = c: {
+            const handler = try gpa.create(ConnectionHandler);
+            errdefer gpa.destroy(handler);
+            handler.* = .{
                 .arena_allocator = std.heap.ArenaAllocator.init(gpa),
                 .connection = try server.accept(),
             };
-            break :c client;
+            break :c handler;
         };
-        errdefer client.connection.stream.close();
-        _ = std.Thread.spawn(.{}, Client.run, .{client}) catch |err| {
+        errdefer handler.connection.stream.close();
+        _ = std.Thread.spawn(.{}, ConnectionHandler.run, .{handler}) catch |err| {
             std.log.err("handling connection failed: {}", .{err});
             continue;
         };
     }
 }
 
-const Client = struct {
+const ConnectionHandler = struct {
     arena_allocator: std.heap.ArenaAllocator,
     connection: net.StreamServer.Connection,
 
-    fn arena(client: *Client) *Allocator {
-        return &client.arena_allocator.allocator;
+    fn arena(handler: *ConnectionHandler) *Allocator {
+        return &handler.arena_allocator.allocator;
     }
 
-    fn run(client: *Client) void {
-        client.handleConnection() catch |err| {
+    fn run(handler: *ConnectionHandler) void {
+        handler.handleConnection() catch |err| {
             std.log.err("unable to handle connection: {s}", .{@errorName(err)});
         };
-        client.connection.stream.close();
-        client.arena_allocator.deinit();
+        handler.connection.stream.close();
+        handler.arena_allocator.deinit();
     }
 
-    fn handleConnection(client: *Client) !void {
+    fn handleConnection(handler: *ConnectionHandler) !void {
         var buf: [0x4000]u8 = undefined;
-        const amt = try client.connection.stream.read(&buf);
+        const amt = try handler.connection.stream.read(&buf);
         const msg = buf[0..amt];
         var header_lines = std.mem.split(u8, msg, "\r\n");
         const first_line = header_lines.next() orelse return;
@@ -137,10 +137,10 @@ const Client = struct {
         if (should_upgrade_websocket) {
             const websocket_key = sec_websocket_key orelse return;
             std.log.info("GET websocket: {s}", .{path});
-            try serveWebsocket(client.connection, websocket_key, client.arena());
+            try serveWebsocket(handler.connection, websocket_key, handler.arena());
         } else {
             std.log.info("GET: {s}", .{path});
-            try client.connection.stream.writer().writeAll(try resolvePath(path));
+            try handler.connection.stream.writer().writeAll(try resolvePath(path));
         }
     }
 };

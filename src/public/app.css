@@ -47,7 +47,7 @@ html, body {
 #left-window-content {
     height: 100%;
 }
-#left-window-content div {
+#left-window-content > div {
     height: 100%;
 }
 

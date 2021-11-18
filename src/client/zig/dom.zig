@@ -3,7 +3,6 @@ const env = @import("./browser_env.zig");
 pub fn getElementById(id: []const u8) i32 {
     return env.getElementById(id.ptr, id.len);
 }
-pub const releaseElementHandle = env.releaseElementHandle;
 
 pub fn setShown(handle: i32, shown: bool) void {
     env.setElementShown(handle, @boolToInt(shown));

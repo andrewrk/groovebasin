@@ -11,15 +11,12 @@ class HandleRegistry {
         return {
             handle,
             dispose: () => {
-                this.disposeHandle(handle);
+                if (!(handle in this.registry)) {
+                    console.log("WARNING: disposing non-existent handle: " + handle);
+                }
+                delete this.registry[handle];
             },
         }
-    }
-    disposeHandle(handle) {
-        if (!(handle in this.registry)) {
-            console.log("WARNING: disposing non-existent handle: " + handle);
-        }
-        delete this.registry[handle];
     }
 }
 

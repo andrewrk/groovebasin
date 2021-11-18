@@ -3,6 +3,9 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
+const Groove = @import("groove.zig").Groove;
+const g = @import("global.zig");
+
 const Library = struct {
     strings: ArrayList(u8),
     tracks: AutoArrayHashMap(u64, Track),
@@ -24,27 +27,49 @@ fn getString(strings: *ArrayList(u8), i: u32) [*:0]const u8 {
     return @ptrCast([*:0]const u8, &strings.items[i]);
 }
 
-pub fn libraryMain(gpa: *Allocator) anyerror!void {
+pub fn libraryMain(music_directory: [:0]const u8) anyerror!void {
     var l = Library{
-        .strings = ArrayList(u8).init(gpa),
-        .tracks = AutoArrayHashMap(u64, Track).init(gpa),
+        .strings = ArrayList(u8).init(g.gpa),
+        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
     };
     defer {
         l.strings.deinit();
         l.tracks.deinit();
     }
 
-    // Some data.
-    try l.tracks.putNoClobber(1, Track{
-        .title = try putString(&l.strings, "Sightseeing In The Apocalypse"),
-        .artist = try putString(&l.strings, "Diablo Swing Orchestra"),
-        .album = try putString(&l.strings, "Swagger & Stroll Down The Rabbit Hole"),
-    });
-    try l.tracks.putNoClobber(2, Track{
-        .title = try putString(&l.strings, "War Painted Valentine"),
-        .artist = try putString(&l.strings, "Diablo Swing Orchestra"),
-        .album = try putString(&l.strings, "Swagger & Stroll Down The Rabbit Hole"),
-    });
+    var music_dir = try std.fs.openDirAbsoluteZ(music_directory, .{ .iterate = true });
+    defer music_dir.close();
+
+    var walker = try music_dir.walk(g.gpa);
+    defer walker.deinit();
+
+    var id: u64 = 1;
+    while (try walker.next()) |entry| {
+        if (entry.kind != .File) continue;
+
+        const groove_file = try g.groove.file_create();
+        defer groove_file.destroy();
+
+        const full_path = try std.fs.path.joinZ(g.gpa, &.{
+            music_directory, entry.path,
+        });
+        defer g.gpa.free(full_path);
+
+        std.log.debug("found: {s}", .{full_path});
+
+        try groove_file.open(full_path, full_path);
+        defer groove_file.close();
+
+        var it: ?*Groove.Tag = null;
+        while (t: {
+            it = groove_file.metadata_get("", it, 0);
+            break :t it;
+        }) |tag| {
+            std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
+        }
+        try l.tracks.putNoClobber(id, try grooveFileToTrack(&l.strings, groove_file));
+        id += 1;
+    }
 
     // Serialize.
     var db_file = try std.fs.cwd().createFile("db.bin", .{});
@@ -75,13 +100,13 @@ pub fn libraryMain(gpa: *Allocator) anyerror!void {
     };
     try db_file.writevAll(&iovecs);
 
-    try readLibrary(gpa);
+    try readLibrary();
 }
 
-fn readLibrary(gpa: *Allocator) anyerror!void {
+fn readLibrary() anyerror!void {
     var l = Library{
-        .strings = ArrayList(u8).init(gpa),
-        .tracks = AutoArrayHashMap(u64, Track).init(gpa),
+        .strings = ArrayList(u8).init(g.gpa),
+        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
     };
     defer {
         l.strings.deinit();
@@ -95,10 +120,10 @@ fn readLibrary(gpa: *Allocator) anyerror!void {
 
     try l.strings.resize(header.string_size);
     try l.tracks.ensureTotalCapacity(header.track_count);
-    const track_keys = try gpa.alloc(u64, header.track_count);
-    defer gpa.free(track_keys);
-    const track_values = try gpa.alloc(Track, header.track_count);
-    defer gpa.free(track_values);
+    const track_keys = try g.gpa.alloc(u64, header.track_count);
+    defer g.gpa.free(track_keys);
+    const track_values = try g.gpa.alloc(Track, header.track_count);
+    defer g.gpa.free(track_values);
 
     var iovecs = [_]std.os.iovec{
         .{
@@ -149,3 +174,21 @@ const Header = extern struct {
     string_size: u32,
     track_count: u32,
 };
+
+fn grooveFileToTrack(strings: *ArrayList(u8), groove_file: *Groove.File) !Track {
+    // ported from https://github.com/andrewrk/groovebasin/blob/07dd1ee01d77beb901d8b9adeaf21c5f7030c70f/lib/player.js#L2850-L2888
+    return Track{
+        .title = try putString(strings, if (groove_file.metadata_get("title", null, 0)) |tag|
+            std.mem.span(tag.value())
+        else
+            "(No Title)"),
+        .artist = try putString(strings, if (groove_file.metadata_get("artist", null, 0)) |tag|
+            std.mem.span(tag.value())
+        else
+            "(No Artist)"),
+        .album = try putString(strings, if (groove_file.metadata_get("album", null, 0)) |tag|
+            std.mem.span(tag.value())
+        else
+            "(No Album)"),
+    };
+}

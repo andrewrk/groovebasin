@@ -68,6 +68,9 @@ fn onError(context: *callback.Context) void {
     handleNoConnection();
 }
 
+var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};
+const gpa = &gpa_state.allocator;
+
 fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
     _ = context;
     const len = @intCast(usize, _len);
@@ -77,8 +80,8 @@ fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
 
     browser.print(buffer[0..len]);
 
-    const response = json.parse(protocol.Response, &json.TokenStream.init(buffer[0..len]), json.ParseOptions{}) catch {
-        @panic("got an error");
+    const response = json.parse(protocol.Response, &json.TokenStream.init(buffer[0..len]), json.ParseOptions{ .allocator = gpa }) catch |err| {
+        @panic(@errorName(err));
     };
     switch (response.data) {
         .ping => |server_time| {
@@ -88,7 +91,11 @@ fn onMessage(context: *callback.Context, handle: i32, _len: i32) void {
             const lag_ns = client_ns - server_ns;
             ui.setLag(lag_ns);
         },
-        ._unused1, ._unused2 => unreachable,
+        .query => |query_response| {
+            if (query_response.new_library) |library| {
+                setLibrary(library);
+            }
+        },
     }
 }
 
@@ -124,7 +131,23 @@ fn periodicPing() void {
         .seq = 123,
         .op = .ping,
     };
-    writeRequest(request) catch {
-        @panic("got an error");
+    writeRequest(request) catch |err| {
+        @panic(@errorName(err));
     };
+
+    // Also by the way, let's query for the data or something.
+    writeRequest(protocol.Request{
+        .seq = 1223,
+        .op = .query,
+        .data = protocol.QueryRequest{
+            .last_library = null,
+        },
+    }) catch |err| {
+        @panic(@errorName(err));
+    };
+}
+
+// This will move someday
+fn setLibrary(library: protocol.Library) void {
+    _ = library;
 }

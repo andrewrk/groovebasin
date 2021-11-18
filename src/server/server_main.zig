@@ -94,7 +94,7 @@ const Client = struct {
         if (should_upgrade_websocket) {
             const websocket_key = sec_websocket_key orelse return;
             std.log.info("GET websocket: {s}", .{path});
-            try serveWebsocket(client.connection, websocket_key);
+            try serveWebsocket(client.connection, websocket_key, client.arena());
         } else {
             std.log.info("GET: {s}", .{path});
             try client.connection.stream.writer().writeAll(try resolvePath(path));
@@ -162,7 +162,7 @@ const http_response_header_upgrade = "" ++
 
 const max_payload_size = 16 * 1024;
 
-fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !void {
+fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, arena: *Allocator) !void {
     // See https://tools.ietf.org/html/rfc6455
     var sha1 = std.crypto.hash.Sha1.init(.{});
     sha1.update(key);
@@ -184,11 +184,11 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8) !voi
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = (try readMessage(connection, &payload_buffer)) orelse break;
         std.log.info("request: {s}", .{payload});
-        const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{});
+        const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{ .allocator = arena });
 
         const response = protocol.Response{
             .seq = request.seq,
-            .data = try handleRequest(request.op),
+            .data = try handleRequest(request.op, request.data),
         };
 
         var out_buffer: [0x1000]u8 = undefined;
@@ -305,7 +305,7 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
-fn handleRequest(op: protocol.Opcode) !protocol.ResponseData {
+fn handleRequest(op: protocol.Opcode, data: ?protocol.QueryRequest) !protocol.ResponseData {
     switch (op) {
         .ping => {
             var ts: os.timespec = undefined;
@@ -317,6 +317,22 @@ fn handleRequest(op: protocol.Opcode) !protocol.ResponseData {
                 },
             };
         },
-        ._unused1, ._unused2 => unreachable,
+        .query => {
+            const query_request = data.?;
+            _ = query_request;
+            return protocol.ResponseData{ .query = .{
+                .new_library = protocol.Library{
+                    .version = 4,
+                    .tracks = &[_]protocol.Track{
+                        protocol.Track{
+                            .id = 9345621390874652103,
+                            .title = "adf",
+                            .artist = "dfsa",
+                            .album = "dosfin",
+                        },
+                    },
+                },
+            } };
+        },
     }
 }

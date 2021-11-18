@@ -35,7 +35,6 @@ pub extern fn sendMessage(handle: i32, ptr: [*]const u8, len: usize) void;
 
 // Dom
 pub extern fn getElementById(ptr: [*]const u8, len: usize) i32;
-pub extern fn releaseElementHandle(handle: i32) void;
 pub extern fn setElementShown(handle: i32, shown: i32) void;
 pub extern fn setElementTextContent(handle: i32, ptr: [*]const u8, len: usize) void;
 pub extern fn getChildrenCount(handle: i32) i32;

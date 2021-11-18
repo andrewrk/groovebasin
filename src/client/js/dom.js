@@ -3,15 +3,28 @@ const {HandleRegistry} = require("handleRegistry");
 
 const elementRegistry = new HandleRegistry();
 
+setInterval(runGarbageCollector, 30000);
+
+function runGarbageCollector() {
+    let kept = 0;
+    let purged = 0;
+    for (let handle in elementRegistry.registry) {
+        const element = elementRegistry.registry[handle];
+        if (window.document.contains(element)) {
+            kept++;
+        } else {
+            delete elementRegistry.registry[handle];
+            purged++;
+        }
+    }
+    console.log("dom gc: k:" + kept + " p:" + purged);
+}
+
 function getElementById(id) {
     const element = document.getElementById(id);
     if (element == null) throw new Error("no such element: " + id);
     const {handle} = elementRegistry.alloc(element);
     return handle;
-}
-
-function releaseElementHandle(handle) {
-    elementRegistry.disposeHandle(handle);
 }
 
 function setElementShown(handle, shown) {
@@ -52,7 +65,6 @@ function removeClass(handle, class_) {
 
 return {
     getElementById,
-    releaseElementHandle,
     setElementShown,
     setElementTextContent,
     getChildrenCount,

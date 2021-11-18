@@ -81,24 +81,19 @@ pub fn setLibrary(library: protocol.Library) void {
             \\</li>
         );
         const artist_li = dom.getChild(library_artists_dom, @intCast(i32, i));
-        defer dom.releaseElementHandle(artist_li);
 
         {
             const artist_div = dom.getChild(artist_li, 0);
-            defer dom.releaseElementHandle(artist_div);
 
             const icon_div = dom.getChild(artist_div, 0);
-            defer dom.releaseElementHandle(icon_div);
             dom.addClass(icon_div, icon_collapsed);
             dom.removeClass(icon_div, icon_expanded);
 
             const artist_span = dom.getChild(artist_div, 1);
-            defer dom.releaseElementHandle(artist_span);
             dom.setTextContent(artist_span, track.artist);
         }
 
         const albums_ul = dom.getChild(artist_li, 1);
-        defer dom.releaseElementHandle(albums_ul);
 
         // album
         dom.insertAdjacentHTML(albums_ul, .beforeend,
@@ -111,24 +106,19 @@ pub fn setLibrary(library: protocol.Library) void {
             \\</li>
         );
         const album_li = dom.getChild(albums_ul, 0);
-        defer dom.releaseElementHandle(album_li);
 
         {
             const album_div = dom.getChild(album_li, 0);
-            defer dom.releaseElementHandle(album_div);
 
             const icon_div = dom.getChild(album_div, 0);
-            defer dom.releaseElementHandle(icon_div);
             dom.addClass(icon_div, icon_collapsed);
             dom.removeClass(icon_div, icon_expanded);
 
             const album_span = dom.getChild(album_div, 1);
-            defer dom.releaseElementHandle(album_span);
             dom.setTextContent(album_span, track.album);
         }
 
         const tracks_ul = dom.getChild(album_li, 1);
-        defer dom.releaseElementHandle(tracks_ul);
 
         // track
         dom.insertAdjacentHTML(tracks_ul, .beforeend,
@@ -140,14 +130,8 @@ pub fn setLibrary(library: protocol.Library) void {
         );
 
         const track_li = dom.getChild(tracks_ul, 0);
-        defer dom.releaseElementHandle(track_li);
-
         const track_div = dom.getChild(track_li, 0);
-        defer dom.releaseElementHandle(track_div);
-
         const track_span = dom.getChild(track_div, 0);
-        defer dom.releaseElementHandle(track_span);
-
         dom.setTextContent(track_span, track.title);
     }
 }

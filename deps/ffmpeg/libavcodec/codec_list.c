@@ -164,6 +164,7 @@ static const AVCodec * const codec_list[] = {
     &ff_ttml_encoder,
     &ff_webvtt_encoder,
     &ff_xsub_encoder,
+    &ff_libmp3lame_encoder,
     &ff_h263_v4l2m2m_encoder,
     &ff_h264_v4l2m2m_encoder,
     &ff_hevc_v4l2m2m_encoder,

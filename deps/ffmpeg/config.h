@@ -1,7 +1,7 @@
 /* TODO: generate this file from build.zig */
 #ifndef FFMPEG_CONFIG_H
 #define FFMPEG_CONFIG_H
-#define FFMPEG_CONFIGURATION "zig rules cmake druelz!! --disable-x86asm"
+#define FFMPEG_CONFIGURATION "zig rules cmake druelz!! --disable-x86asm --enable-libmp3lame"
 #define FFMPEG_LICENSE "LGPL version 2.1 or later"
 #define CONFIG_THIS_YEAR 2021
 #define CC_IDENT "gcc 9.3.0 (GCC)"
@@ -466,7 +466,7 @@
 #define CONFIG_LIBKLVANC 0
 #define CONFIG_LIBKVAZAAR 0
 #define CONFIG_LIBMODPLUG 0
-#define CONFIG_LIBMP3LAME 0
+#define CONFIG_LIBMP3LAME 1
 #define CONFIG_LIBMYSOFA 0
 #define CONFIG_LIBOPENCV 0
 #define CONFIG_LIBOPENH264 0
@@ -1465,7 +1465,7 @@
 #define CONFIG_LIBGSM_ENCODER 0
 #define CONFIG_LIBGSM_MS_ENCODER 0
 #define CONFIG_LIBILBC_ENCODER 0
-#define CONFIG_LIBMP3LAME_ENCODER 0
+#define CONFIG_LIBMP3LAME_ENCODER 1
 #define CONFIG_LIBOPENCORE_AMRNB_ENCODER 0
 #define CONFIG_LIBOPENJPEG_ENCODER 0
 #define CONFIG_LIBOPUS_ENCODER 0

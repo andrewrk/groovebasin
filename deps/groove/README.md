@@ -101,11 +101,15 @@ Feel free to make a pull request adding yours to this list.
 
 ## Upgrading FFmpeg
 
-First run `./configure --disable-x86asm` in the new FFmpeg source directory,
-to generate config.h. Next, delete all the files is `deps/ffmpeg/*` and replace
-them with the files from FFmpeg source directory. Then:
+First run `./configure --disable-x86asm --enable-libmp3lame` in the new FFmpeg
+source directory, to generate config.h. Next, delete all the files is
+`deps/ffmpeg/*` and replace them with the files from FFmpeg source directory.
+Then:
 
 ```
+cd deps/ffmpeg
+rm -rf ./*
+cp -r ~/Downloads/ffmpeg/* ./
 rm -rf $(find -name .gitignore) $(find -name tests -type d) $(find -name "*.version") Makefile configure doc/ ffbuild/
 ```
 

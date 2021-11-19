@@ -27,13 +27,58 @@ pub fn build(b: *std.build.Builder) void {
         "deps/zlib/gzwrite.c",
     }, &.{});
 
+    const libmp3lame = b.addStaticLibrary("mp3lame", null);
+    libmp3lame.setTarget(target);
+    libmp3lame.setBuildMode(mode);
+    libmp3lame.linkLibC();
+    libmp3lame.addIncludeDir("deps/lame/lame");
+    libmp3lame.addIncludeDir("deps/lame");
+    libmp3lame.addIncludeDir("deps/lame/mpglib");
+    libmp3lame.addIncludeDir("deps/lame/libmp3lame");
+    libmp3lame.addCSourceFiles(&.{
+        "deps/lame/libmp3lame/VbrTag.c",
+        "deps/lame/libmp3lame/bitstream.c",
+        "deps/lame/libmp3lame/encoder.c",
+        "deps/lame/libmp3lame/fft.c",
+        "deps/lame/libmp3lame/gain_analysis.c",
+        "deps/lame/libmp3lame/id3tag.c",
+        "deps/lame/libmp3lame/lame.c",
+        "deps/lame/libmp3lame/mpglib_interface.c",
+        "deps/lame/libmp3lame/newmdct.c",
+        "deps/lame/libmp3lame/presets.c",
+        "deps/lame/libmp3lame/psymodel.c",
+        "deps/lame/libmp3lame/quantize.c",
+        "deps/lame/libmp3lame/quantize_pvt.c",
+        "deps/lame/libmp3lame/reservoir.c",
+        "deps/lame/libmp3lame/set_get.c",
+        "deps/lame/libmp3lame/tables.c",
+        "deps/lame/libmp3lame/takehiro.c",
+        "deps/lame/libmp3lame/util.c",
+        "deps/lame/libmp3lame/vbrquantize.c",
+        "deps/lame/libmp3lame/vector/xmm_quantize_sub.c",
+        "deps/lame/libmp3lame/version.c",
+
+        "deps/lame/mpglib/common.c",
+        "deps/lame/mpglib/dct64_i386.c",
+        "deps/lame/mpglib/decode_i386.c",
+        "deps/lame/mpglib/interface.c",
+        "deps/lame/mpglib/layer1.c",
+        "deps/lame/mpglib/layer2.c",
+        "deps/lame/mpglib/layer3.c",
+        "deps/lame/mpglib/tabinit.c",
+    }, &.{
+        "-DHAVE_CONFIG_H",
+    });
+
     const ffmpeg = b.addStaticLibrary("ffmpeg", null);
     ffmpeg.setTarget(target);
     ffmpeg.setBuildMode(mode);
     ffmpeg.linkLibrary(zlib);
+    ffmpeg.linkLibrary(libmp3lame);
     ffmpeg.linkLibC();
     ffmpeg.addIncludeDir("deps/ffmpeg");
     ffmpeg.addIncludeDir("deps/zlib");
+    ffmpeg.addIncludeDir("deps/lame");
     ffmpeg.addCSourceFiles(&avcodec_sources, ffmpeg_cflags ++ [_][]const u8{
         "-DBUILDING_avcodec",
     });
@@ -230,6 +275,13 @@ pub fn build(b: *std.build.Builder) void {
         "-D_GNU_SOURCE",
     });
 
+    //const transcode = b.addExecutable("transcode", null);
+    //transcode.setTarget(target);
+    //transcode.setBuildMode(mode);
+    //transcode.addCSourceFiles(&.{
+    //}, &.{
+    //});
+
     const groove = b.addStaticLibrary("groove", null);
     groove.setTarget(target);
     groove.setBuildMode(mode);
@@ -277,6 +329,7 @@ pub fn build(b: *std.build.Builder) void {
     playlist.linkLibrary(pulse);
     playlist.linkLibrary(groove);
     playlist.linkLibrary(zlib);
+    playlist.linkLibrary(libmp3lame);
     playlist.addIncludeDir(".");
     playlist.addIncludeDir("deps");
     playlist.addIncludeDir("deps/ffmpeg");
@@ -297,6 +350,7 @@ pub fn build(b: *std.build.Builder) void {
     metadata.linkLibrary(pulse);
     metadata.linkLibrary(groove);
     metadata.linkLibrary(zlib);
+    metadata.linkLibrary(libmp3lame);
     metadata.addIncludeDir(".");
     metadata.addIncludeDir("deps");
     metadata.addIncludeDir("deps/ffmpeg");
@@ -768,6 +822,7 @@ const avcodec_sources = [_][]const u8{
     "deps/ffmpeg/libavcodec/latm_parser.c",
     "deps/ffmpeg/libavcodec/lcldec.c",
     "deps/ffmpeg/libavcodec/lclenc.c",
+    "deps/ffmpeg/libavcodec/libmp3lame.c",
     "deps/ffmpeg/libavcodec/ljpegenc.c",
     "deps/ffmpeg/libavcodec/loco.c",
     "deps/ffmpeg/libavcodec/lossless_audiodsp.c",

@@ -4,15 +4,17 @@ const net = std.net;
 const fs = std.fs;
 const os = std.os;
 const json = std.json;
+const log = std.log;
 const Allocator = std.mem.Allocator;
 const Groove = @import("groove.zig").Groove;
+const Player = @import("Player.zig");
 
 const protocol = @import("shared").protocol;
 const library = @import("library.zig");
 const g = @import("global.zig");
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
-    std.log.err(format, args);
+    log.err(format, args);
     std.process.exit(1);
 }
 
@@ -97,10 +99,7 @@ pub fn main() anyerror!void {
     @setEvalBranchQuota(5000);
     const config = try json.parse(ConfigJson, &token_stream, .{ .allocator = arena });
 
-    return listen(.{
-        .config = config,
-        .arena = arena,
-    });
+    return listen(arena, config);
 }
 
 fn defaultMusicPath(arena: *Allocator) ![]const u8 {
@@ -113,25 +112,37 @@ fn defaultMusicPath(arena: *Allocator) ![]const u8 {
     return "music";
 }
 
-const ServerInit = struct {
-    arena: *Allocator,
-    config: ConfigJson,
-};
-
-fn listen(server_init: ServerInit) !void {
-    const arena = server_init.arena;
-    const config = server_init.config;
+fn listen(arena: *Allocator, config: ConfigJson) !void {
     const music_dir_path = config.musicDirectory orelse try defaultMusicPath(arena);
 
-    std.log.debug("music directory: {s}", .{music_dir_path});
+    log.debug("music directory: {s}", .{music_dir_path});
 
     Groove.set_logging(.INFO);
-    std.log.debug("libgroove version: {s}", .{Groove.version()});
+    log.debug("libgroove version: {s}", .{Groove.version()});
 
     const groove = try Groove.create();
     g.groove = groove;
 
-    try library.libraryMain(music_dir_path, config.dbPath);
+    var player = try Player.init(config.encodeBitRate);
+    defer player.deinit();
+
+    var music_db = try library.libraryMain(music_dir_path, config.dbPath);
+    defer music_db.deinit();
+
+    {
+        // queue up some tracks from the library to test with
+        for (music_db.tracks.values()[0..5]) |track| {
+            const full_path = try fs.path.joinZ(arena, &.{
+                music_dir_path, music_db.getString(track.file_path),
+            });
+
+            const test_file = try groove.file_create(); // TODO cleanup
+            try test_file.open(full_path, full_path); // TODO cleanup
+
+            log.debug("queuing up {s}", .{full_path});
+            _ = try player.playlist.insert(test_file, 1.0, 1.0, null);
+        }
+    }
 
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
@@ -149,12 +160,13 @@ fn listen(server_init: ServerInit) !void {
             handler.* = .{
                 .arena_allocator = std.heap.ArenaAllocator.init(g.gpa),
                 .connection = try server.accept(),
+                .player = &player,
             };
             break :c handler;
         };
         errdefer handler.connection.stream.close();
         _ = std.Thread.spawn(.{}, ConnectionHandler.run, .{handler}) catch |err| {
-            std.log.err("handling connection failed: {}", .{err});
+            log.err("handling connection failed: {}", .{err});
             continue;
         };
     }
@@ -163,6 +175,7 @@ fn listen(server_init: ServerInit) !void {
 const ConnectionHandler = struct {
     arena_allocator: std.heap.ArenaAllocator,
     connection: net.StreamServer.Connection,
+    player: *Player,
 
     fn arena(handler: *ConnectionHandler) *Allocator {
         return &handler.arena_allocator.allocator;
@@ -170,7 +183,7 @@ const ConnectionHandler = struct {
 
     fn run(handler: *ConnectionHandler) void {
         handler.handleConnection() catch |err| {
-            std.log.err("unable to handle connection: {s}", .{@errorName(err)});
+            log.err("unable to handle connection: {s}", .{@errorName(err)});
         };
         handler.connection.stream.close();
         handler.arena_allocator.deinit();
@@ -214,11 +227,41 @@ const ConnectionHandler = struct {
 
         if (should_upgrade_websocket) {
             const websocket_key = sec_websocket_key orelse return;
-            std.log.info("GET websocket: {s}", .{path});
+            log.info("GET websocket: {s}", .{path});
             try serveWebsocket(handler.connection, websocket_key, handler.arena());
-        } else {
-            std.log.info("GET: {s}", .{path});
-            try handler.connection.stream.writer().writeAll(try resolvePath(path));
+            return;
+        }
+
+        log.info("GET: {s}", .{path});
+
+        if (mem.eql(u8, path, "/stream.mp3")) {
+            return handler.streamEndpoint();
+        }
+
+        try handler.connection.stream.writer().writeAll(try resolvePath(path));
+    }
+
+    fn streamEndpoint(handler: *ConnectionHandler) !void {
+        const response_header =
+            "HTTP/1.1 200 OK\r\n" ++
+            "Content-Type: audio/mpeg\r\n" ++
+            "Cache-Control: no-cache, no-store, must-revalidate\r\n" ++
+            "Pragma: no-cache\r\n" ++
+            "Expires: 0\r\n" ++
+            "\r\n";
+
+        const w = handler.connection.stream.writer();
+        try w.writeAll(response_header);
+
+        while (true) {
+            var buffer: ?*Groove.Buffer = null;
+            const status = try handler.player.encoder.buffer_get(&buffer, true);
+            _ = status;
+            if (buffer) |buf| {
+                const data = buf.data[0][0..@intCast(usize, buf.size)];
+                try w.writeAll(data);
+                buf.unref();
+            }
         }
     }
 };
@@ -304,7 +347,7 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, aren
     while (true) {
         var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
         const payload = (try readMessage(connection, &payload_buffer)) orelse break;
-        std.log.info("request: {s}", .{payload});
+        log.info("request: {s}", .{payload});
         const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{ .allocator = arena });
 
         const response = protocol.Response{
@@ -316,7 +359,7 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, aren
         var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
         const writer = fixed_buffer_stream.writer();
         try json.stringify(response, json.StringifyOptions{}, writer);
-        std.log.info("response: {s}", .{fixed_buffer_stream.getWritten()});
+        log.info("response: {s}", .{fixed_buffer_stream.getWritten()});
 
         try writeMessage(connection, fixed_buffer_stream.getWritten());
     }
@@ -335,14 +378,14 @@ fn readMessage(connection: net.StreamServer.Connection, payload_buffer: *align(4
     // 0b00000010: opcode=2 - this is a binary message.
     const expected_opcode_byte = 0b10000010;
     if (opcode_byte != expected_opcode_byte) {
-        std.log.warn("bad opcode byte: {}", .{opcode_byte});
+        log.warn("bad opcode byte: {}", .{opcode_byte});
         return null;
     }
 
     // read length
     const short_len_byte = header[1];
     if (short_len_byte & 0b10000000 != 0b10000000) {
-        std.log.warn("frames from client must be masked: {}", .{short_len_byte});
+        log.warn("frames from client must be masked: {}", .{short_len_byte});
         return null;
     }
     var len: u64 = switch (short_len_byte & 0b01111111) {
@@ -361,7 +404,7 @@ fn readMessage(connection: net.StreamServer.Connection, payload_buffer: *align(4
         },
     };
     if (len > max_payload_size) {
-        std.log.warn("payload too big: {}", .{len});
+        log.warn("payload too big: {}", .{len});
         return null;
     }
 

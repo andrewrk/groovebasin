@@ -39,6 +39,8 @@ pub const Groove = opaque {
         EverySinkFull,
     };
 
+    pub const BUFFER = enum(c_int) { NO, YES, END };
+
     pub const CError = enum(c_int) {
         None = 0,
         NoMem = -1,
@@ -153,8 +155,23 @@ pub const Groove = opaque {
         pub const seek = groove_playlist_seek;
         extern fn groove_playlist_seek(playlist: *Playlist, item: *Item, seconds: f64) void;
 
-        pub const insert = groove_playlist_insert;
-        extern fn groove_playlist_insert(playlist: *Playlist, file: *File, gain: f64, peak: f64, next: *Item) *Item;
+        /// Once you add a file to the playlist, you must not destroy it until you first
+        /// remove it from the playlist.
+        /// returns the newly created playlist item, or NULL if out of memory.
+        pub fn insert(
+            playlist: *Playlist,
+            file: *File,
+            /// see GroovePlaylistItem structure. use 1.0 for no adjustment.
+            gain: f64,
+            /// see GroovePlaylistItem structure. use 1.0 for no adjustment.
+            peak: f64,
+            /// the item to insert before. if NULL, you will append to the playlist.
+            next: ?*Item,
+        ) error{OutOfMemory}!*Item {
+            return groove_playlist_insert(playlist, file, gain, peak, next) orelse
+                return error.OutOfMemory;
+        }
+        extern fn groove_playlist_insert(playlist: *Playlist, file: *File, gain: f64, peak: f64, next: ?*Item) ?*Item;
 
         pub const remove = groove_playlist_remove;
         extern fn groove_playlist_remove(playlist: *Playlist, item: *Item) void;
@@ -253,12 +270,16 @@ pub const Groove = opaque {
         pub const detach = groove_encoder_detach;
         extern fn groove_encoder_detach(encoder: *Encoder) CError;
 
+        pub fn buffer_get(encoder: *Encoder, buffer: *?*Buffer, block: bool) Error!BUFFER {
+            const rc = groove_encoder_buffer_get(encoder, buffer, @boolToInt(block));
+            if (rc < 0) try wrapError(@intToEnum(CError, rc));
+            return @intToEnum(BUFFER, rc);
+        }
         /// returns < 0 on error, #GROOVE_BUFFER_NO on aborted (block=1) or no buffer
         /// ready (block=0), #GROOVE_BUFFER_YES on buffer returned, and GROOVE_BUFFER_END
         /// on end of playlist.
         /// buffer is always set to either a valid GrooveBuffer or `NULL`.
-        pub const buffer_get = groove_encoder_buffer_get;
-        extern fn groove_encoder_buffer_get(encoder: *Encoder, buffer: *?*Buffer, block: c_int) CError;
+        extern fn groove_encoder_buffer_get(encoder: *Encoder, buffer: *?*Buffer, block: c_int) c_int;
 
         /// returns < 0 on error, 0 on no buffer ready, 1 on buffer ready
         /// if block is 1, block until buffer is ready
@@ -325,6 +346,12 @@ pub const Groove = opaque {
         /// read-only
         /// presentation time stamp of the buffer
         pts: u64,
+
+        pub const ref = groove_buffer_ref;
+        extern fn groove_buffer_ref(buffer: *Buffer) void;
+
+        pub const unref = groove_buffer_unref;
+        extern fn groove_buffer_unref(buffer: *Buffer) void;
     };
 
     pub const CustomIo = opaque {};

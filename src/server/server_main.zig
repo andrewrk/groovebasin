@@ -345,23 +345,25 @@ fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, aren
     try connection.stream.writevAll(&iovecs);
 
     while (true) {
-        var payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
-        const payload = (try readMessage(connection, &payload_buffer)) orelse break;
-        log.info("request: {s}", .{payload});
-        const request = try json.parse(protocol.Request, &json.TokenStream.init(payload), json.ParseOptions{ .allocator = arena });
+        // TODO: allocate this from the arena maybe.
+        var request_payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
+        _ = arena;
+        const request_payload = (try readMessage(connection, &request_payload_buffer)) orelse break;
+        log.info("request: {s}", .{std.fmt.fmtSliceHexLower(request_payload)});
 
-        const response = protocol.Response{
-            .seq = request.seq,
-            .data = try handleRequest(request.op, request.data),
-        };
+        var request_stream = std.io.fixedBufferStream(request_payload);
+        const request_header = try request_stream.reader().readStruct(protocol.RequestHeader);
 
         var out_buffer: [0x1000]u8 = undefined;
-        var fixed_buffer_stream = std.io.fixedBufferStream(&out_buffer);
-        const writer = fixed_buffer_stream.writer();
-        try json.stringify(response, json.StringifyOptions{}, writer);
-        log.info("response: {s}", .{fixed_buffer_stream.getWritten()});
+        var response_stream = std.io.fixedBufferStream(&out_buffer);
+        try response_stream.writer().writeStruct(protocol.ResponseHeader{
+            .seq_id = request_header.seq_id,
+        });
 
-        try writeMessage(connection, fixed_buffer_stream.getWritten());
+        try handleRequest(request_header.op, &request_stream, &response_stream);
+
+        log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
+        try writeMessage(connection, response_stream.getWritten());
     }
 }
 
@@ -469,34 +471,14 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
-fn handleRequest(op: protocol.Opcode, data: ?protocol.QueryRequest) !protocol.ResponseData {
+fn handleRequest(op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), response: *std.io.FixedBufferStream([]u8)) !void {
     switch (op) {
         .ping => {
-            var ts: os.timespec = undefined;
-            try std.os.clock_gettime(os.CLOCK.REALTIME, &ts);
-            return protocol.ResponseData{
-                .ping = protocol.Timestamp{
-                    .s = ts.tv_sec,
-                    .ns = @intCast(i32, ts.tv_nsec),
-                },
-            };
+            try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
         },
         .query => {
-            const query_request = data.?;
-            _ = query_request;
-            return protocol.ResponseData{ .query = .{
-                .new_library = protocol.Library{
-                    .version = 4,
-                    .tracks = &[_]protocol.Track{
-                        protocol.Track{
-                            .id = 9345621390874652103,
-                            .title = "adf",
-                            .artist = "dfsa",
-                            .album = "dosfin",
-                        },
-                    },
-                },
-            } };
+            // TODO
+            _ = request;
         },
     }
 }

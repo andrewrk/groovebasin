@@ -6,6 +6,9 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");
 
+const protocol = @import("shared").protocol;
+const Track = protocol.Track;
+
 pub const Library = struct {
     strings: ArrayList(u8),
     tracks: AutoArrayHashMap(u64, Track),
@@ -23,13 +26,6 @@ pub const Library = struct {
         l.tracks.deinit();
         l.* = undefined;
     }
-};
-
-const Track = struct {
-    file_path: u32,
-    title: u32,
-    artist: u32,
-    album: u32,
 };
 
 fn putString(strings: *ArrayList(u8), s: []const u8) !u32 {

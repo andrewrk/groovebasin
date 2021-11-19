@@ -5,6 +5,10 @@ const env = @import("browser_env.zig");
 const ui = @import("groovebasin_ui.zig");
 
 export fn main() void {
+    _ = async mainAsync();
+}
+
+fn mainAsync() void {
     browser.print("zig: hello world");
     ui.init();
 

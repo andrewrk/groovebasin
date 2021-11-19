@@ -28,7 +28,7 @@ pub fn build(b: *Builder) void {
     server_options.addOptionArtifact("client_wasm_path", client);
     server.install();
 
-    const libgroove = LibGroove.create(b, target, .ReleaseFast);
+    const libgroove = LibGroove.create(b, target, .ReleaseFast, mode);
     libgroove.link(server);
 
     const run_cmd = server.run();
@@ -70,8 +70,14 @@ const LibGroove = struct {
     pulse: *std.build.LibExeObjStep,
     groove: *std.build.LibExeObjStep,
     zlib: *std.build.LibExeObjStep,
+    mp3lame: *std.build.LibExeObjStep,
 
-    fn create(b: *Builder, target: std.zig.CrossTarget, mode: std.builtin.Mode) LibGroove {
+    fn create(
+        b: *Builder,
+        target: std.zig.CrossTarget,
+        mode: std.builtin.Mode,
+        debug_mode: std.builtin.Mode,
+    ) LibGroove {
         const zlib = b.addStaticLibrary("z", null);
         zlib.setTarget(target);
         zlib.setBuildMode(mode);
@@ -95,13 +101,58 @@ const LibGroove = struct {
             "deps/zlib/gzwrite.c",
         }, &.{});
 
+        const mp3lame = b.addStaticLibrary("mp3lame", null);
+        mp3lame.setTarget(target);
+        mp3lame.setBuildMode(mode);
+        mp3lame.linkLibC();
+        mp3lame.addIncludeDir("deps/lame/lame");
+        mp3lame.addIncludeDir("deps/lame");
+        mp3lame.addIncludeDir("deps/lame/mpglib");
+        mp3lame.addIncludeDir("deps/lame/libmp3lame");
+        mp3lame.addCSourceFiles(&.{
+            "deps/lame/libmp3lame/VbrTag.c",
+            "deps/lame/libmp3lame/bitstream.c",
+            "deps/lame/libmp3lame/encoder.c",
+            "deps/lame/libmp3lame/fft.c",
+            "deps/lame/libmp3lame/gain_analysis.c",
+            "deps/lame/libmp3lame/id3tag.c",
+            "deps/lame/libmp3lame/lame.c",
+            "deps/lame/libmp3lame/mpglib_interface.c",
+            "deps/lame/libmp3lame/newmdct.c",
+            "deps/lame/libmp3lame/presets.c",
+            "deps/lame/libmp3lame/psymodel.c",
+            "deps/lame/libmp3lame/quantize.c",
+            "deps/lame/libmp3lame/quantize_pvt.c",
+            "deps/lame/libmp3lame/reservoir.c",
+            "deps/lame/libmp3lame/set_get.c",
+            "deps/lame/libmp3lame/tables.c",
+            "deps/lame/libmp3lame/takehiro.c",
+            "deps/lame/libmp3lame/util.c",
+            "deps/lame/libmp3lame/vbrquantize.c",
+            "deps/lame/libmp3lame/vector/xmm_quantize_sub.c",
+            "deps/lame/libmp3lame/version.c",
+
+            "deps/lame/mpglib/common.c",
+            "deps/lame/mpglib/dct64_i386.c",
+            "deps/lame/mpglib/decode_i386.c",
+            "deps/lame/mpglib/interface.c",
+            "deps/lame/mpglib/layer1.c",
+            "deps/lame/mpglib/layer2.c",
+            "deps/lame/mpglib/layer3.c",
+            "deps/lame/mpglib/tabinit.c",
+        }, &.{
+            "-DHAVE_CONFIG_H",
+        });
+
         const ffmpeg = b.addStaticLibrary("ffmpeg", null);
         ffmpeg.setTarget(target);
         ffmpeg.setBuildMode(mode);
         ffmpeg.linkLibrary(zlib);
+        ffmpeg.linkLibrary(mp3lame);
         ffmpeg.linkLibC();
         ffmpeg.addIncludeDir("deps/ffmpeg");
         ffmpeg.addIncludeDir("deps/zlib");
+        ffmpeg.addIncludeDir("deps/lame");
         ffmpeg.addCSourceFiles(&avcodec_sources, ffmpeg_cflags ++ [_][]const u8{
             "-DBUILDING_avcodec",
         });
@@ -300,7 +351,7 @@ const LibGroove = struct {
 
         const groove = b.addStaticLibrary("groove", null);
         groove.setTarget(target);
-        groove.setBuildMode(mode);
+        groove.setBuildMode(debug_mode);
         groove.linkLibrary(ffmpeg);
         groove.linkLibrary(chromaprint);
         groove.linkLibrary(ebur128);
@@ -343,6 +394,7 @@ const LibGroove = struct {
             .pulse = pulse,
             .groove = groove,
             .zlib = zlib,
+            .mp3lame = mp3lame,
         };
     }
 
@@ -353,6 +405,7 @@ const LibGroove = struct {
         artifact.linkLibrary(libgroove.soundio);
         artifact.linkLibrary(libgroove.pulse);
         artifact.linkLibrary(libgroove.groove);
+        artifact.linkLibrary(libgroove.mp3lame);
         artifact.linkLibrary(libgroove.zlib);
         artifact.addIncludeDir("deps/groove");
         artifact.addIncludeDir("deps");
@@ -818,6 +871,7 @@ const avcodec_sources = [_][]const u8{
     "deps/ffmpeg/libavcodec/latm_parser.c",
     "deps/ffmpeg/libavcodec/lcldec.c",
     "deps/ffmpeg/libavcodec/lclenc.c",
+    "deps/ffmpeg/libavcodec/libmp3lame.c",
     "deps/ffmpeg/libavcodec/ljpegenc.c",
     "deps/ffmpeg/libavcodec/loco.c",
     "deps/ffmpeg/libavcodec/lossless_audiodsp.c",

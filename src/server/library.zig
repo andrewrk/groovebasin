@@ -6,20 +6,37 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");
 
-const Library = struct {
+pub const Library = struct {
     strings: ArrayList(u8),
     tracks: AutoArrayHashMap(u64, Track),
+
+    /// The returned slice is invalidated when any strings are added to the string table.
+    pub fn getString(l: Library, index: u32) [:0]const u8 {
+        const bytes = l.strings.items;
+        var end: usize = index;
+        while (bytes[end] != 0) end += 1;
+        return bytes[index..end :0];
+    }
+
+    pub fn deinit(l: *Library) void {
+        l.strings.deinit();
+        l.tracks.deinit();
+        l.* = undefined;
+    }
 };
 
 const Track = struct {
+    file_path: u32,
     title: u32,
     artist: u32,
     album: u32,
 };
 
-fn putString(strings: *ArrayList(u8), s: [:0]const u8) !u32 {
+fn putString(strings: *ArrayList(u8), s: []const u8) !u32 {
     const index = @intCast(u32, strings.items.len);
-    try strings.appendSlice(s[0 .. s.len + 1]);
+    try strings.ensureUnusedCapacity(s.len + 1);
+    strings.appendSliceAssumeCapacity(s);
+    strings.appendAssumeCapacity(0);
     return index;
 }
 
@@ -27,15 +44,12 @@ fn getString(strings: *ArrayList(u8), i: u32) [*:0]const u8 {
     return @ptrCast([*:0]const u8, &strings.items[i]);
 }
 
-pub fn libraryMain(music_directory: []const u8, db_path: []const u8) anyerror!void {
+pub fn libraryMain(music_directory: []const u8, db_path: []const u8) !Library {
     var l = Library{
         .strings = ArrayList(u8).init(g.gpa),
         .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
     };
-    defer {
-        l.strings.deinit();
-        l.tracks.deinit();
-    }
+    errdefer l.deinit();
 
     var music_dir = try std.fs.cwd().openDir(music_directory, .{ .iterate = true });
     defer music_dir.close();
@@ -67,7 +81,7 @@ pub fn libraryMain(music_directory: []const u8, db_path: []const u8) anyerror!vo
         }) |tag| {
             std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
-        try l.tracks.putNoClobber(id, try grooveFileToTrack(&l.strings, groove_file));
+        try l.tracks.putNoClobber(id, try grooveFileToTrack(&l.strings, groove_file, entry.path));
         id += 1;
     }
 
@@ -101,6 +115,8 @@ pub fn libraryMain(music_directory: []const u8, db_path: []const u8) anyerror!vo
     try db_file.writevAll(&iovecs);
 
     try readLibrary(db_path);
+
+    return l;
 }
 
 fn readLibrary(db_path: []const u8) anyerror!void {
@@ -175,9 +191,15 @@ const Header = extern struct {
     track_count: u32,
 };
 
-fn grooveFileToTrack(strings: *ArrayList(u8), groove_file: *Groove.File) !Track {
+fn grooveFileToTrack(
+    strings: *ArrayList(u8),
+    groove_file: *Groove.File,
+    file_path: []const u8,
+) !Track {
     // ported from https://github.com/andrewrk/groovebasin/blob/07dd1ee01d77beb901d8b9adeaf21c5f7030c70f/lib/player.js#L2850-L2888
+    // TODO reserve index 0 for null strings and use that instead of fake data (e.g. "(No Title)")
     return Track{
+        .file_path = try putString(strings, file_path),
         .title = try putString(strings, if (groove_file.metadata_get("title", null, 0)) |tag|
             std.mem.span(tag.value())
         else

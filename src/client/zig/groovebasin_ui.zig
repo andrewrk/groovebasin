@@ -6,11 +6,14 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const dom = @import("dom.zig");
 const ws = @import("websocket_handler.zig");
 const callback = @import("callback.zig");
+const browser = @import("browser.zig");
 const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
 const Track = protocol.Track;
+const QueueItem = protocol.QueueItem;
 const Library = @import("shared").Library;
+const Queue = @import("shared").Queue;
 
 pub const LoadStatus = enum {
     init,
@@ -46,6 +49,10 @@ pub fn init() void {
     library = Library{
         .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
         .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
+    };
+
+    queue = Queue{
+        .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
     };
 }
 
@@ -149,13 +156,21 @@ pub fn renderLibrary() void {
     }
 }
 
+fn renderQueue() void {
+    // TODO
+}
+
 var last_library_version: u64 = 0;
 var library: Library = undefined;
+
+var last_queue_version: u64 = 0;
+var queue: Queue = undefined;
 
 pub fn poll() !void {
     var query_call = try ws.Call.init(.query);
     try query_call.writer().writeStruct(protocol.QueryRequest{
         .last_library = last_library_version,
+        .last_queue = last_queue_version,
     });
     try query_call.send(&handleQueryResponseCallback, undefined);
 }
@@ -167,31 +182,53 @@ fn handleQueryResponseCallback(context: *callback.Context, response: []const u8)
 }
 fn handleQueryResponse(response: []const u8) !void {
     var stream = std.io.fixedBufferStream(response);
-    const reader = stream.reader();
-    const response_header = try reader.readStruct(protocol.QueryResponseHeader);
-    if (response_header.library_version == last_library_version) return;
+    const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
 
-    const library_header = try reader.readStruct(protocol.LibraryHeader);
-    // string pool
-    try library.strings.strings.resize(library_header.string_size);
-    try reader.readNoEof(library.strings.strings.items);
-    // track keys and values
-    library.tracks.clearRetainingCapacity();
-    try library.tracks.ensureTotalCapacity(library_header.track_count);
-    var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
-    const key_reader = key_stream.reader();
-    var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * library_header.track_count ..]);
-    const value_reader = value_stream.reader();
+    // Library
+    if (response_header.library_version != last_library_version) {
+        const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
+        // string pool
+        try library.strings.strings.resize(library_header.string_size);
+        try stream.reader().readNoEof(library.strings.strings.items);
+        // track keys and values
+        library.tracks.clearRetainingCapacity();
+        try library.tracks.ensureTotalCapacity(library_header.track_count);
+        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
+        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * library_header.track_count ..]);
 
-    var i: u32 = 0;
-    while (i < library_header.track_count) : (i += 1) {
-        try library.tracks.putNoClobber(
-            try key_reader.readIntLittle(u64),
-            try value_reader.readStruct(Track),
-        );
+        var i: u32 = 0;
+        while (i < library_header.track_count) : (i += 1) {
+            try library.tracks.putNoClobber(
+                try key_stream.reader().readIntLittle(u64),
+                try value_stream.reader().readStruct(Track),
+            );
+        }
+        stream.pos += library_header.track_count * @sizeOf(u64) + library_header.track_count * @sizeOf(Track);
+
+        last_library_version = response_header.library_version;
     }
 
-    last_library_version = response_header.library_version;
+    // Queue
+    if (response_header.queue_version != last_queue_version) {
+        const queue_header = try stream.reader().readStruct(protocol.QueueHeader);
+        // item keys and values
+        queue.items.clearRetainingCapacity();
+        // try queue.items.ensureTotalCapacity(queue_header.item_count);
+        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
+        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * queue_header.item_count ..]);
+
+        var i: u32 = 0;
+        while (i < queue_header.item_count) : (i += 1) {
+            try queue.items.putNoClobber(
+                try key_stream.reader().readIntLittle(u64),
+                try value_stream.reader().readStruct(QueueItem),
+            );
+        }
+        stream.pos += queue_header.item_count * @sizeOf(u64) + queue_header.item_count * @sizeOf(QueueItem);
+
+        last_queue_version = response_header.queue_version;
+    }
 
     renderLibrary();
+    renderQueue();
 }

@@ -28,6 +28,9 @@ struct GrooveSinkPrivate {
     int min_audioq_size; // in bytes
     struct GrooveAtomicBool audioq_contains_end;
     struct SoundIoSampleRateRange prealloc_sample_rate_range;
+    // If >= 0, then this is a request to set buffer_size_bytes next
+    // time the decoder grabs the decode_head_mutex.
+    struct GrooveAtomicInt buffer_size_bytes_request;
 };
 
 struct SinkStack {
@@ -621,6 +624,29 @@ static int sink_signal_end(struct GrooveSink *sink) {
     return 0;
 }
 
+static void sink_set_buffer_size_bytes(struct GrooveSink *sink, int buffer_size_bytes) {
+    struct GroovePlaylist *playlist = (struct GroovePlaylist *) sink->playlist;
+    struct GrooveSinkPrivate *s = (struct GrooveSinkPrivate *) sink;
+    struct GroovePlaylistPrivate *p = (struct GroovePlaylistPrivate *) playlist;
+
+    sink->buffer_size_bytes = buffer_size_bytes;
+    s->min_audioq_size = sink->buffer_size_bytes;
+    if (GROOVE_ATOMIC_LOAD(s->audioq_size) < s->min_audioq_size) {
+        pthread_mutex_lock(&p->drain_cond_mutex);
+        pthread_cond_signal(&p->sink_drain_cond);
+        pthread_mutex_unlock(&p->drain_cond_mutex);
+    }
+}
+
+static int sink_fulfill_requests(struct GrooveSink *sink) {
+    struct GrooveSinkPrivate *s = (struct GrooveSinkPrivate *) sink;
+    int req = GROOVE_ATOMIC_EXCHANGE(s->buffer_size_bytes_request, -1);
+    if (req != -1) {
+        sink_set_buffer_size_bytes(sink, req);
+    }
+    return 0;
+}
+
 static void every_sink_signal_end(struct GroovePlaylist *playlist) {
     every_sink(playlist, sink_signal_end, 0);
 }
@@ -778,6 +804,7 @@ static void *decode_thread(void *arg) {
                 p->sent_end_of_q = 1;
             }
             pthread_cond_wait(&p->decode_head_cond, &p->decode_head_mutex);
+            every_sink(playlist, sink_fulfill_requests, 0);
             continue;
         }
         p->sent_end_of_q = 0;
@@ -1473,6 +1500,7 @@ struct GrooveSink * groove_sink_create(struct Groove *groove) {
 
     s->groove = groove;
 
+    GROOVE_ATOMIC_STORE(s->buffer_size_bytes_request, -1);
     GROOVE_ATOMIC_STORE(s->audioq_size, 0);
     GROOVE_ATOMIC_STORE(s->audioq_contains_end, false);
 
@@ -1545,15 +1573,13 @@ void groove_sink_set_buffer_size_bytes(struct GrooveSink *sink, int buffer_size_
     struct GrooveSinkPrivate *s = (struct GrooveSinkPrivate *) sink;
     struct GroovePlaylistPrivate *p = (struct GroovePlaylistPrivate *) playlist;
 
-    pthread_mutex_lock(&p->decode_head_mutex);
-    sink->buffer_size_bytes = buffer_size_bytes;
-    s->min_audioq_size = sink->buffer_size_bytes;
-    if (GROOVE_ATOMIC_LOAD(s->audioq_size) < s->min_audioq_size) {
-        pthread_mutex_lock(&p->drain_cond_mutex);
-        pthread_cond_signal(&p->sink_drain_cond);
-        pthread_mutex_unlock(&p->drain_cond_mutex);
+    if (pthread_mutex_trylock(&p->decode_head_mutex) == 0) {
+        GROOVE_ATOMIC_STORE(s->buffer_size_bytes_request, -1);
+        sink_set_buffer_size_bytes(sink, buffer_size_bytes);
+        pthread_mutex_unlock(&p->decode_head_mutex);
+    } else {
+        GROOVE_ATOMIC_STORE(s->buffer_size_bytes_request, buffer_size_bytes);
     }
-    pthread_mutex_unlock(&p->decode_head_mutex);
 }
 
 int groove_sink_contains_end_of_playlist(struct GrooveSink *sink) {

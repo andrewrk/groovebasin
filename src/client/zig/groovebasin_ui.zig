@@ -226,6 +226,8 @@ fn handleQueryResponseCallback(context: *callback.Context, response: []const u8)
 fn handleQueryResponse(response: []const u8) !void {
     var stream = std.io.fixedBufferStream(response);
     const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
+    var render_library = false;
+    var render_queue = false;
 
     // Library
     if (response_header.library_version != last_library_version) {
@@ -249,6 +251,7 @@ fn handleQueryResponse(response: []const u8) !void {
         stream.pos += library_header.track_count * @sizeOf(u64) + library_header.track_count * @sizeOf(Track);
 
         last_library_version = response_header.library_version;
+        render_library = true;
     }
 
     // Queue
@@ -270,8 +273,9 @@ fn handleQueryResponse(response: []const u8) !void {
         stream.pos += queue_header.item_count * @sizeOf(u64) + queue_header.item_count * @sizeOf(QueueItem);
 
         last_queue_version = response_header.queue_version;
+        render_queue = true;
     }
 
-    renderLibrary();
-    renderQueue();
+    if (render_library) renderLibrary();
+    if (render_queue) renderQueue();
 }

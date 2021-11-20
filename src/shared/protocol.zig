@@ -14,13 +14,27 @@ pub const ResponseHeader = extern struct {
     seq_id: u32,
 };
 
+pub const QueryRequest = extern struct {
+    last_library: u64,
+};
+
+pub const QueryResponseHeader = extern struct {
+    library_version: u64,
+    // followed by LibraryHeader if library_version != last_library.
+};
+
+pub const LibraryHeader = extern struct {
+    string_size: u32,
+    track_count: u32,
+    // followed by:
+    //  strings: [string_size]u8,
+    //  track_keys: [track_count]u64,
+    //  tracks: [track_count]Track,
+};
+
 pub const Track = extern struct {
     file_path: u32,
     title: u32,
     artist: u32,
     album: u32,
-};
-
-pub const QueryRequest = extern struct {
-    last_library: u64,
 };

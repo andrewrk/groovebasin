@@ -13,6 +13,10 @@ pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
 
     const client = b.addSharedLibrary("client", "src/client/zig/client_main.zig", .unversioned);
+    client.setBuildMode(switch (mode) {
+        .ReleaseFast => .ReleaseSmall,
+        else => mode,
+    });
     client.setTarget(.{
         .cpu_arch = .wasm32,
         .os_tag = .freestanding,

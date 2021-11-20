@@ -12,6 +12,7 @@ const Player = @import("Player.zig");
 
 const protocol = @import("shared").protocol;
 const library = @import("library.zig");
+const queue = @import("queue.zig");
 const g = @import("global.zig");
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
@@ -136,9 +137,21 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
     try library.init(music_dir_path, config.dbPath);
     defer library.deinit();
 
+    try queue.init();
+    defer queue.deinit();
+
     {
         // queue up some tracks from the library to test with
-        for (library.library.tracks.values()[0..5]) |track| {
+        var item_key: u64 = 10;
+        var sort_key: u64 = 1;
+        for (library.library.tracks.values()[0..5]) |track, i| {
+            try queue.queue.items.putNoClobber(item_key, protocol.QueueItem{
+                .sort_key = sort_key,
+                .track_key = library.library.tracks.keys()[i],
+            });
+            item_key += 1;
+            sort_key += 1_000_000_000;
+
             const full_path = try fs.path.joinZ(arena, &.{
                 music_dir_path, library.library.getString(track.file_path),
             });
@@ -149,6 +162,8 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
             log.debug("queuing up {s}", .{full_path});
             _ = try player.playlist.insert(test_file, 1.0, 1.0, null);
         }
+
+        queue.current_queue_version += 1;
     }
 
     var server = net.StreamServer.init(.{ .reuse_address = true });
@@ -484,18 +499,32 @@ fn handleRequest(op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), 
             try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
         },
         .query => {
-            const client_library_version = try request.reader().readIntLittle(u64);
-            try response.writer().writeIntLittle(u64, library.current_library_version);
-            if (library.current_library_version == client_library_version) return;
-
-            try response.writer().writeStruct(protocol.LibraryHeader{
-                // something something is is wrong with this naming.
-                .string_size = @intCast(u32, library.library.strings.strings.items.len),
-                .track_count = @intCast(u32, library.library.tracks.count()),
+            const query_request = try request.reader().readStruct(protocol.QueryRequest);
+            try response.writer().writeStruct(protocol.QueryResponseHeader{
+                .library_version = library.current_library_version,
+                .queue_version = queue.current_queue_version,
             });
-            try response.writer().writeAll(library.library.strings.strings.items);
-            try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
-            try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
+
+            // Library
+            if (library.current_library_version != query_request.last_library) {
+                try response.writer().writeStruct(protocol.LibraryHeader{
+                    // there there is is nothing wrong with this naming.
+                    .string_size = @intCast(u32, library.library.strings.strings.items.len),
+                    .track_count = @intCast(u32, library.library.tracks.count()),
+                });
+                try response.writer().writeAll(library.library.strings.strings.items);
+                try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
+                try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
+            }
+
+            // Queue
+            if (queue.current_queue_version != query_request.last_queue) {
+                try response.writer().writeStruct(protocol.QueueHeader{
+                    .item_count = @intCast(u32, queue.queue.items.count()),
+                });
+                try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
+                try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
+            }
         },
     }
 }

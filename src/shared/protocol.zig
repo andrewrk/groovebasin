@@ -16,11 +16,15 @@ pub const ResponseHeader = extern struct {
 
 pub const QueryRequest = extern struct {
     last_library: u64,
+    last_queue: u64,
 };
 
 pub const QueryResponseHeader = extern struct {
     library_version: u64,
-    // followed by LibraryHeader if library_version != last_library.
+    queue_version: u64,
+    // followed by:
+    //  LibraryHeader if library_version != last_library,
+    //  QueueHeader if queue_version != last_queue,
 };
 
 pub const LibraryHeader = extern struct {
@@ -37,4 +41,16 @@ pub const Track = extern struct {
     title: u32,
     artist: u32,
     album: u32,
+};
+
+pub const QueueHeader = extern struct {
+    item_count: u32,
+    // followed by:
+    //  item_keys: [item_count]u64,
+    //  items: [item_count]QueueItem,
+};
+
+pub const QueueItem = extern struct {
+    sort_key: u64, // TODO: switch to a keese string.
+    track_key: u64,
 };

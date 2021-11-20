@@ -7,6 +7,7 @@ const json = std.json;
 const log = std.log;
 const Allocator = std.mem.Allocator;
 const Groove = @import("groove.zig").Groove;
+const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
 const protocol = @import("shared").protocol;
@@ -115,10 +116,16 @@ fn defaultMusicPath(arena: *Allocator) ![]const u8 {
 fn listen(arena: *Allocator, config: ConfigJson) !void {
     const music_dir_path = config.musicDirectory orelse try defaultMusicPath(arena);
 
-    log.debug("music directory: {s}", .{music_dir_path});
+    log.info("music directory: {s}", .{music_dir_path});
 
     Groove.set_logging(.INFO);
     log.debug("libgroove version: {s}", .{Groove.version()});
+
+    const soundio = try SoundIo.create();
+    g.soundio = soundio;
+    g.soundio.app_name = "GrooveBasin";
+    g.soundio.connect_backend(.Dummy) catch |err| fatal("unable to initialize sound: {s}", .{@errorName(err)});
+    g.soundio.flush_events();
 
     const groove = try Groove.create();
     g.groove = groove;

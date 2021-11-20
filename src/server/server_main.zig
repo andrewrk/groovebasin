@@ -133,14 +133,14 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
     var player = try Player.init(config.encodeBitRate);
     defer player.deinit();
 
-    var music_db = try library.libraryMain(music_dir_path, config.dbPath);
-    defer music_db.deinit();
+    try library.init(music_dir_path, config.dbPath);
+    defer library.deinit();
 
     {
         // queue up some tracks from the library to test with
-        for (music_db.tracks.values()[0..5]) |track| {
+        for (library.library.tracks.values()[0..5]) |track| {
             const full_path = try fs.path.joinZ(arena, &.{
-                music_dir_path, music_db.getString(track.file_path),
+                music_dir_path, library.library.getString(track.file_path),
             });
 
             const test_file = try groove.file_create(); // TODO cleanup
@@ -484,8 +484,18 @@ fn handleRequest(op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), 
             try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
         },
         .query => {
-            // TODO
-            _ = request;
+            const client_library_version = try request.reader().readIntLittle(u64);
+            try response.writer().writeIntLittle(u64, library.current_library_version);
+            if (library.current_library_version == client_library_version) return;
+
+            try response.writer().writeStruct(protocol.LibraryHeader{
+                // something something is is wrong with this naming.
+                .string_size = @intCast(u32, library.library.strings.strings.items.len),
+                .track_count = @intCast(u32, library.library.tracks.count()),
+            });
+            try response.writer().writeAll(library.library.strings.strings.items);
+            try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
+            try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
         },
     }
 }

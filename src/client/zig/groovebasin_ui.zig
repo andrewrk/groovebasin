@@ -1,8 +1,16 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const ArrayList = std.ArrayList;
+const AutoArrayHashMap = std.AutoArrayHashMap;
 
 const dom = @import("dom.zig");
+const ws = @import("websocket_handler.zig");
+const callback = @import("callback.zig");
+const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
+const Track = protocol.Track;
+const Library = @import("shared").Library;
 
 pub const LoadStatus = enum {
     init,
@@ -34,6 +42,11 @@ pub fn init() void {
 
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
+
+    library = Library{
+        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
+        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
+    };
 }
 
 pub fn setLoadingState(state: LoadStatus) void {
@@ -57,9 +70,9 @@ pub fn setLag(lag_ns: i128) void {
     });
 }
 
-pub fn setLibrary(library: protocol.Library) void {
+pub fn renderLibrary() void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
-    dom.setShown(library_no_items_dom, library.tracks.len == 0);
+    dom.setShown(library_no_items_dom, library.tracks.count() == 0);
 
     // Delete and recreate all items.
     {
@@ -69,7 +82,7 @@ pub fn setLibrary(library: protocol.Library) void {
             library_dom_element_count -= 1;
         }
     }
-    for (library.tracks) |track, i| {
+    for (library.tracks.values()) |track, i| {
         // artist
         dom.insertAdjacentHTML(library_artists_dom, .beforeend,
             \\<li>
@@ -90,7 +103,7 @@ pub fn setLibrary(library: protocol.Library) void {
             dom.removeClass(icon_div, icon_expanded);
 
             const artist_span = dom.getChild(artist_div, 1);
-            dom.setTextContent(artist_span, track.artist);
+            dom.setTextContent(artist_span, library.getString(track.artist));
         }
 
         const albums_ul = dom.getChild(artist_li, 1);
@@ -115,7 +128,7 @@ pub fn setLibrary(library: protocol.Library) void {
             dom.removeClass(icon_div, icon_expanded);
 
             const album_span = dom.getChild(album_div, 1);
-            dom.setTextContent(album_span, track.album);
+            dom.setTextContent(album_span, library.getString(track.album));
         }
 
         const tracks_ul = dom.getChild(album_li, 1);
@@ -132,6 +145,53 @@ pub fn setLibrary(library: protocol.Library) void {
         const track_li = dom.getChild(tracks_ul, 0);
         const track_div = dom.getChild(track_li, 0);
         const track_span = dom.getChild(track_div, 0);
-        dom.setTextContent(track_span, track.title);
+        dom.setTextContent(track_span, library.getString(track.title));
     }
+}
+
+var last_library_version: u64 = 0;
+var library: Library = undefined;
+
+pub fn poll() !void {
+    var query_call = try ws.Call.init(.query);
+    try query_call.writer().writeStruct(protocol.QueryRequest{
+        .last_library = last_library_version,
+    });
+    try query_call.send(&handleQueryResponseCallback, undefined);
+}
+fn handleQueryResponseCallback(context: *callback.Context, response: []const u8) void {
+    _ = context;
+    handleQueryResponse(response) catch |err| {
+        @panic(@errorName(err));
+    };
+}
+fn handleQueryResponse(response: []const u8) !void {
+    var stream = std.io.fixedBufferStream(response);
+    const reader = stream.reader();
+    const response_header = try reader.readStruct(protocol.QueryResponseHeader);
+    if (response_header.library_version == last_library_version) return;
+
+    const library_header = try reader.readStruct(protocol.LibraryHeader);
+    // string pool
+    try library.strings.strings.resize(library_header.string_size);
+    try reader.readNoEof(library.strings.strings.items);
+    // track keys and values
+    library.tracks.clearRetainingCapacity();
+    try library.tracks.ensureTotalCapacity(library_header.track_count);
+    var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
+    const key_reader = key_stream.reader();
+    var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * library_header.track_count ..]);
+    const value_reader = value_stream.reader();
+
+    var i: u32 = 0;
+    while (i < library_header.track_count) : (i += 1) {
+        try library.tracks.putNoClobber(
+            try key_reader.readIntLittle(u64),
+            try value_reader.readStruct(Track),
+        );
+    }
+
+    last_library_version = response_header.library_version;
+
+    renderLibrary();
 }

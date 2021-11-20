@@ -60,7 +60,7 @@ const ResponseHandler = struct {
 };
 var pending_requests: std.AutoHashMapUnmanaged(u32, ResponseHandler) = .{};
 
-const Call = struct {
+pub const Call = struct {
     seq_id: u32,
     request: std.ArrayList(u8),
     pub fn init(opcode: protocol.Opcode) !@This() {
@@ -97,6 +97,7 @@ const Call = struct {
             .cb = cb,
             .context = context,
         });
+        browser.printHex("request: ", buffer);
         env.sendMessage(websocket_handle, buffer.ptr, buffer.len);
     }
 };
@@ -124,7 +125,7 @@ fn onMessageCallback(context: *callback.Context, handle: i32, _len: i32) void {
     defer g.gpa.free(buffer);
     browser.readBlob(handle, buffer);
 
-    browser.printHex(buffer);
+    browser.printHex("response: ", buffer);
 
     var stream = std.io.fixedBufferStream(buffer);
     const reader = stream.reader();
@@ -174,13 +175,7 @@ fn periodicPing() !void {
     }
 
     // Also by the way, let's query for the data or something.
-    {
-        var query_call = try Call.init(.query);
-        try query_call.writer().writeStruct(protocol.QueryRequest{
-            .last_library = 0,
-        });
-        try query_call.send(&handleQueryResponseCallback, undefined);
-    }
+    try ui.poll();
 }
 
 fn handlePeriodicPingResponseCallback(context: *callback.Context, response: []const u8) void {
@@ -196,16 +191,4 @@ fn handlePeriodicPingResponse(response: []const u8) !void {
     const server_ns = try stream.reader().readIntLittle(i128);
     const lag_ns = client_ns - server_ns;
     ui.setLag(lag_ns);
-}
-
-fn handleQueryResponseCallback(context: *callback.Context, response: []const u8) void {
-    _ = context;
-    handleQueryResponse(response) catch |err| {
-        @panic(@errorName(err));
-    };
-}
-fn handleQueryResponse(response: []const u8) !void {
-    var stream = std.io.fixedBufferStream(response);
-    // TODO
-    _ = stream.reader();
 }

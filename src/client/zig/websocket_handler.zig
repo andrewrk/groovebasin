@@ -4,6 +4,7 @@ const browser = @import("browser.zig");
 const env = @import("browser_env.zig");
 const callback = @import("callback.zig");
 const ui = @import("groovebasin_ui.zig");
+const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
 
@@ -65,7 +66,7 @@ const Call = struct {
     pub fn init(opcode: protocol.Opcode) !@This() {
         var self = @This(){
             .seq_id = generateSeqId(),
-            .request = std.ArrayList(u8).init(gpa),
+            .request = std.ArrayList(u8).init(g.gpa),
         };
 
         // write the request header.
@@ -92,7 +93,7 @@ const Call = struct {
 
     pub fn send(self: *@This(), cb: *const fn (context: *callback.Context, response: []const u8) void, context: *callback.Context) !void {
         const buffer = self.request.items;
-        try pending_requests.put(gpa, self.seq_id, .{
+        try pending_requests.put(g.gpa, self.seq_id, .{
             .cb = cb,
             .context = context,
         });
@@ -113,20 +114,17 @@ fn onErrorCallback(context: *callback.Context) void {
     handleNoConnection();
 }
 
-var gpa_state: std.heap.GeneralPurposeAllocator(.{}) = .{};
-const gpa = &gpa_state.allocator;
-
 fn onMessageCallback(context: *callback.Context, handle: i32, _len: i32) void {
     _ = context;
     const len = @intCast(usize, _len);
 
-    const buffer = gpa.alloc(u8, len) catch |err| {
+    const buffer = g.gpa.alloc(u8, len) catch |err| {
         @panic(@errorName(err));
     };
-    defer gpa.free(buffer);
+    defer g.gpa.free(buffer);
     browser.readBlob(handle, buffer);
 
-    browser.print(buffer);
+    browser.printHex(buffer);
 
     var stream = std.io.fixedBufferStream(buffer);
     const reader = stream.reader();
@@ -137,7 +135,8 @@ fn onMessageCallback(context: *callback.Context, handle: i32, _len: i32) void {
         @panic("received a response for unrecognized seq_id");
     }).value;
 
-    handler.cb.*(handler.context, buffer);
+    const remaining_buffer = buffer[stream.pos..];
+    handler.cb.*(handler.context, remaining_buffer);
 }
 
 const retry_timeout_ms = 1000;

@@ -1,5 +1,6 @@
 pub const RequestHeader = extern struct {
-    // An arbitrary number that will be included in the corresponding Response.
+    /// An arbitrary number that will be included in the corresponding Response.
+    /// The top bit must be unset, i.e. seq_id &= 0x7fff_ffff;
     seq_id: u32,
     op: Opcode,
 };
@@ -10,8 +11,13 @@ pub const Opcode = enum(u8) {
 };
 
 pub const ResponseHeader = extern struct {
-    // The seq_id of the corresponding Request.
+    /// The seq_id of the corresponding request.
+    /// If the top bit is set (i.e. (seq_id & 0x8000_0000) != 0),
+    /// then this is actually a message from the server, not a response to a request.
     seq_id: u32,
+    // followed by:
+    //  more data depending on the opcode of the corresponding request if this is a response to a request.
+    //  or a PushMessageHeader if this is a message from the server.
 };
 
 pub const QueryRequest = extern struct {
@@ -53,4 +59,10 @@ pub const QueueHeader = extern struct {
 pub const QueueItem = extern struct {
     sort_key: u64, // TODO: switch to a keese string.
     track_key: u64,
+};
+
+pub const PushMessageHeader = extern struct {
+    // Meaningless. This message just means it's time to re-query.
+    _dummy: u32,
+    // TODO: incremental update notifications.
 };

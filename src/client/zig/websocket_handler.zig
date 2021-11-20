@@ -49,7 +49,8 @@ fn onOpenCallback(context: *callback.Context, handle: i32) void {
 var next_seq_id: u32 = 0;
 fn generateSeqId() u32 {
     defer {
-        next_seq_id +%= 1;
+        next_seq_id += 1;
+        next_seq_id &= 0x7fff_ffff;
     }
     return next_seq_id;
 }
@@ -132,12 +133,20 @@ fn onMessageCallback(context: *callback.Context, handle: i32, _len: i32) void {
     const header = reader.readStruct(protocol.ResponseHeader) catch |err| {
         @panic(@errorName(err));
     };
-    const handler = (pending_requests.fetchRemove(header.seq_id) orelse {
-        @panic("received a response for unrecognized seq_id");
-    }).value;
-
     const remaining_buffer = buffer[stream.pos..];
-    handler.cb.*(handler.context, remaining_buffer);
+
+    if ((header.seq_id & 0x8000_0000) == 0) {
+        // response to a request.
+
+        const handler = (pending_requests.fetchRemove(header.seq_id) orelse {
+            @panic("received a response for unrecognized seq_id");
+        }).value;
+
+        handler.cb.*(handler.context, remaining_buffer);
+    } else {
+        // message from the server.
+        handlePushMessageAndCatch(remaining_buffer);
+    }
 }
 
 const retry_timeout_ms = 1000;
@@ -191,4 +200,18 @@ fn handlePeriodicPingResponse(response: []const u8) !void {
     const server_ns = try stream.reader().readIntLittle(i128);
     const lag_ns = client_ns - server_ns;
     ui.setLag(lag_ns);
+}
+
+fn handlePushMessageAndCatch(response: []const u8) void {
+    handlePushMessage(response) catch |err| {
+        @panic(@errorName(err));
+    };
+}
+fn handlePushMessage(response: []const u8) !void {
+    var stream = std.io.fixedBufferStream(response);
+    const header = try stream.reader().readStruct(protocol.PushMessageHeader);
+    _ = header;
+
+    // it just means do this:
+    periodicPingAndCatch();
 }

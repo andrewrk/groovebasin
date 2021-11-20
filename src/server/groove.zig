@@ -1,3 +1,5 @@
+const SoundIo = @import("soundio.zig").SoundIo;
+
 pub const Groove = opaque {
     pub const version = groove_version;
     extern fn groove_version() [*:0]const u8;
@@ -23,6 +25,11 @@ pub const Groove = opaque {
         return groove_encoder_create(groove) orelse return error.OutOfMemory;
     }
     extern fn groove_encoder_create(*Groove) ?*Encoder;
+
+    pub fn player_create(groove: *Groove) error{OutOfMemory}!*Player {
+        return groove_player_create(groove) orelse return error.OutOfMemory;
+    }
+    extern fn groove_player_create(groove: *Groove) ?*Player;
 
     pub const set_logging = groove_set_logging;
     extern fn groove_set_logging(level: LOG) void;
@@ -131,10 +138,18 @@ pub const Groove = opaque {
 
         extern fn groove_file_open_custom(file: *File, custom_io: *CustomIo, filename_hint: [*:0]const u8) CError;
         extern fn groove_file_metadata_set(file: *File, key: [*:0]const u8, value: [*:0]const u8, flags: c_int) CError;
-        extern fn groove_file_short_names(file: *File) [*c]const u8;
+        /// a comma separated list of short names for the format
+        extern fn groove_file_short_names(file: *File) [*:0]const u8;
+        /// write changes made to metadata to disk.
+        /// return < 0 on error
         extern fn groove_file_save(file: *File) CError;
-        extern fn groove_file_save_as(file: *File, filename: [*c]const u8) CError;
+        extern fn groove_file_save_as(file: *File, filename: [*:0]const u8) CError;
+        /// main audio stream duration in seconds. note that this relies on a
+        /// combination of format headers and heuristics. It can be inaccurate.
+        /// The most accurate way to learn the duration of a file is to use
+        /// GrooveLoudnessDetector
         extern fn groove_file_duration(file: *File) f64;
+        /// get the audio format of the main audio stream of a file
         extern fn groove_file_audio_format(file: *File, audio_format: *AudioFormat) void;
     };
 
@@ -308,6 +323,63 @@ pub const Groove = opaque {
         extern fn groove_encoder_set_gain(encoder: *Encoder, gain: f64) CError;
     };
 
+    pub const Player = extern struct {
+        device: *SoundIo.Device,
+        gain: f64,
+        name: [*:0]const u8,
+        playlist: *Playlist,
+
+        pub const destroy = groove_player_destroy;
+        extern fn groove_player_destroy(player: *Player) void;
+
+        pub fn attach(player: *Player, playlist: *Playlist) Error!void {
+            return wrapError(groove_player_attach(player, playlist));
+        }
+        extern fn groove_player_attach(player: *Player, playlist: *Playlist) CError;
+
+        pub const detach = groove_player_detach;
+        extern fn groove_player_detach(player: *Player) CError;
+
+        /// get the position of the play head
+        /// both the current playlist item and the position in seconds in the playlist
+        /// item are given. item will be set to NULL if the playlist is empty
+        /// you may pass NULL for item or seconds
+        /// seconds might be negative, to compensate for the latency of the sound
+        /// card buffer.
+        pub const position = groove_player_position;
+        extern fn groove_player_position(player: *Player, item: ?*?*Playlist.Item, seconds: ?*f64) void;
+
+        pub const event_get = groove_player_event_get;
+        extern fn groove_player_event_get(player: *Player, event: *Event, block: c_int) c_int;
+
+        pub const event_peek = groove_player_event_peek;
+        extern fn groove_player_event_peek(player: *Player, block: c_int) c_int;
+
+        pub const event_wakeup = groove_player_event_wakeup;
+        extern fn groove_player_event_wakeup(player: *Player) void;
+
+        pub const set_gain = groove_player_set_gain;
+        extern fn groove_player_set_gain(player: *Player, gain: f64) CError;
+
+        pub const get_device_audio_format = groove_player_get_device_audio_format;
+        extern fn groove_player_get_device_audio_format(player: *Player, out_audio_format: *AudioFormat) void;
+
+        pub const Event = extern union {
+            type: Type,
+
+            pub const Type = enum(c_int) {
+                NOWPLAYING = 0,
+                BUFFERUNDERRUN = 1,
+                DEVICE_CLOSED = 2,
+                DEVICE_OPENED = 3,
+                DEVICE_OPEN_ERROR = 4,
+                STREAM_ERROR = 5,
+                END_OF_PLAYLIST = 6,
+                WAKEUP = 7,
+            };
+        };
+    };
+
     pub const Tag = opaque {
         pub const key = groove_tag_key;
         extern fn groove_tag_key(tag: *Tag) [*:0]const u8;
@@ -362,107 +434,5 @@ pub const Groove = opaque {
         format: SoundIo.Format,
         /// 0 - nonplanar, otherwise planar
         is_planar: c_int,
-    };
-};
-
-pub const SoundIo = opaque {
-    pub const ChannelLayout = extern struct {
-        name: [*:0]const u8,
-        channel_count: c_int,
-        channels: [24]ChannelId,
-    };
-
-    pub const ChannelId = enum(c_int) {
-        Invalid = 0,
-        FrontLeft = 1,
-        FrontRight = 2,
-        FrontCenter = 3,
-        Lfe = 4,
-        BackLeft = 5,
-        BackRight = 6,
-        FrontLeftCenter = 7,
-        FrontRightCenter = 8,
-        BackCenter = 9,
-        SideLeft = 10,
-        SideRight = 11,
-        TopCenter = 12,
-        TopFrontLeft = 13,
-        TopFrontCenter = 14,
-        TopFrontRight = 15,
-        TopBackLeft = 16,
-        TopBackCenter = 17,
-        TopBackRight = 18,
-        BackLeftCenter = 19,
-        BackRightCenter = 20,
-        FrontLeftWide = 21,
-        FrontRightWide = 22,
-        FrontLeftHigh = 23,
-        FrontCenterHigh = 24,
-        FrontRightHigh = 25,
-        TopFrontLeftCenter = 26,
-        TopFrontRightCenter = 27,
-        TopSideLeft = 28,
-        TopSideRight = 29,
-        LeftLfe = 30,
-        RightLfe = 31,
-        Lfe2 = 32,
-        BottomCenter = 33,
-        BottomLeftCenter = 34,
-        BottomRightCenter = 35,
-        MsMid = 36,
-        MsSide = 37,
-        AmbisonicW = 38,
-        AmbisonicX = 39,
-        AmbisonicY = 40,
-        AmbisonicZ = 41,
-        XyX = 42,
-        XyY = 43,
-        HeadphonesLeft = 44,
-        HeadphonesRight = 45,
-        ClickTrack = 46,
-        ForeignLanguage = 47,
-        HearingImpaired = 48,
-        Narration = 49,
-        Haptic = 50,
-        DialogCentricMix = 51,
-        Aux = 52,
-        Aux0 = 53,
-        Aux1 = 54,
-        Aux2 = 55,
-        Aux3 = 56,
-        Aux4 = 57,
-        Aux5 = 58,
-        Aux6 = 59,
-        Aux7 = 60,
-        Aux8 = 61,
-        Aux9 = 62,
-        Aux10 = 63,
-        Aux11 = 64,
-        Aux12 = 65,
-        Aux13 = 66,
-        Aux14 = 67,
-        Aux15 = 68,
-    };
-
-    pub const Format = enum(c_int) {
-        Invalid = 0,
-        S8 = 1,
-        U8 = 2,
-        S16LE = 3,
-        S16BE = 4,
-        U16LE = 5,
-        U16BE = 6,
-        S24LE = 7,
-        S24BE = 8,
-        U24LE = 9,
-        U24BE = 10,
-        S32LE = 11,
-        S32BE = 12,
-        U32LE = 13,
-        U32BE = 14,
-        Float32LE = 15,
-        Float32BE = 16,
-        Float64LE = 17,
-        Float64BE = 18,
     };
 };

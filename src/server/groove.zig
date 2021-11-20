@@ -42,7 +42,13 @@ pub const Groove = opaque {
     };
 
     pub const FillMode = enum(c_int) {
+        /// With this behavior, the playlist will stop decoding audio when any attached
+        /// sink is full, and then resume decoding audio when every sink is not full.
+        /// This is the default behavior.
         AnySinkFull,
+        /// With this behavior, the playlist will decode audio if any sinks
+        /// are not full. If any sinks do not drain fast enough the data will buffer up
+        /// in the playlist.
         EverySinkFull,
     };
 

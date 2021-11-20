@@ -21,14 +21,20 @@ pub const LoadStatus = enum {
     good,
 };
 
+// layout
 var main_grid_dom: i32 = undefined;
 var main_err_msg_dom: i32 = undefined;
 var main_err_msg_text_dom: i32 = undefined;
 
+// left window
 var library_artists_dom: i32 = undefined;
 var empty_library_message_dom: i32 = undefined;
 var library_no_items_dom: i32 = undefined;
 
+// queue
+var queue_items_div: i32 = undefined;
+
+// now playing
 var lag_display_dom: i32 = undefined;
 
 const icon_collapsed = "icon-triangle-1-e";
@@ -42,6 +48,8 @@ pub fn init() void {
     library_artists_dom = dom.getElementById("library-artists");
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
+
+    queue_items_div = dom.getElementById("queue-items");
 
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
@@ -157,7 +165,42 @@ pub fn renderLibrary() void {
 }
 
 fn renderQueue() void {
-    // TODO
+    // Delete and recreate all items.
+    {
+        var c = dom.getChildrenCount(queue_items_div);
+        while (c > 0) {
+            dom.removeLastChild(queue_items_div);
+            c -= 1;
+        }
+    }
+    for (queue.items.values()) |item, i| {
+        const track = library.tracks.get(item.track_key).?;
+        dom.insertAdjacentHTML(queue_items_div, .beforeend,
+            \\<div class="pl-item">
+            \\  <span class="track"></span>
+            \\  <span class="time"></span>
+            \\  <span class="middle">
+            \\    <span class="title"></span>
+            \\    <span class="artist"></span>
+            \\    <span class="album"></span>
+            \\  </span>
+            \\</div>
+        );
+        const item_div = dom.getChild(queue_items_div, @intCast(i32, i));
+
+        // track
+        dom.setTextContent(dom.getChild(item_div, 0), "42");
+        // time
+        dom.setTextContent(dom.getChild(item_div, 1), "3:69");
+
+        const middle_div = dom.getChild(item_div, 2);
+        // title
+        dom.setTextContent(dom.getChild(middle_div, 0), library.getString(track.title));
+        // artist
+        dom.setTextContent(dom.getChild(middle_div, 1), library.getString(track.artist));
+        // album
+        dom.setTextContent(dom.getChild(middle_div, 2), library.getString(track.album));
+    }
 }
 
 var last_library_version: u64 = 0;

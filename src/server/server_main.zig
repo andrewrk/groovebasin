@@ -140,32 +140,6 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
     try queue.init();
     defer queue.deinit();
 
-    {
-        // queue up some tracks from the library to test with
-        var item_key: u64 = 4;
-        var sort_key: u64 = 1;
-        for (library.library.tracks.values()[0..5]) |track, i| {
-            try queue.queue.items.putNoClobber(item_key, protocol.QueueItem{
-                .sort_key = sort_key,
-                .track_key = library.library.tracks.keys()[i],
-            });
-            item_key += 1;
-            sort_key += 1_000_000_000;
-
-            const full_path = try fs.path.joinZ(arena, &.{
-                music_dir_path, library.library.getString(track.file_path),
-            });
-
-            const test_file = try groove.file_create(); // TODO cleanup
-            try test_file.open(full_path, full_path); // TODO cleanup
-
-            log.debug("queuing up {s}", .{full_path});
-            _ = try player.playlist.insert(test_file, 1.0, 1.0, null);
-        }
-
-        queue.current_queue_version += 1;
-    }
-
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 

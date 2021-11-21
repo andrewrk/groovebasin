@@ -300,7 +300,13 @@ fn onLibraryMouseDown(event: i32) !void {
     var track_key_str: [16]u8 = undefined;
     dom.readAttribute(target, "data-track", &track_key_str);
     const track_key = parseKey(track_key_str);
-    browser.printHex("the track: ", std.mem.asBytes(&track_key));
+    browser.printHex("enqueuing: ", std.mem.asBytes(&track_key));
+
+    var query_call = try ws.Call.init(.enqueue);
+    try query_call.writer().writeStruct(protocol.EnqueueRequestHeader{
+        .track_key = track_key,
+    });
+    try query_call.send(&ws.ignoreResponseCallback, undefined);
 }
 
 fn formatKey(key: u64) [16]u8 {

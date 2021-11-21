@@ -8,6 +8,7 @@ pub const RequestHeader = extern struct {
 pub const Opcode = enum(u8) {
     ping = 0,
     query = 1,
+    enqueue = 2,
 };
 
 pub const ResponseHeader = extern struct {
@@ -65,4 +66,8 @@ pub const PushMessageHeader = extern struct {
     // Meaningless. This message just means it's time to re-query.
     _dummy: u32,
     // TODO: incremental update notifications.
+};
+
+pub const EnqueueRequestHeader = extern struct {
+    track_key: u64,
 };

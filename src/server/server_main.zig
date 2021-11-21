@@ -142,7 +142,7 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
 
     {
         // queue up some tracks from the library to test with
-        var item_key: u64 = 10;
+        var item_key: u64 = 4;
         var sort_key: u64 = 1;
         for (library.library.tracks.values()[0..5]) |track, i| {
             try queue.queue.items.putNoClobber(item_key, protocol.QueueItem{
@@ -250,7 +250,7 @@ const ConnectionHandler = struct {
         if (should_upgrade_websocket) {
             const websocket_key = sec_websocket_key orelse return;
             log.info("GET websocket: {s}", .{path});
-            try serveWebsocket(handler.connection, websocket_key, handler.arena());
+            try handler.serveWebsocket(websocket_key);
             return;
         }
 
@@ -285,6 +285,217 @@ const ConnectionHandler = struct {
                 buf.unref();
             }
         }
+    }
+
+    fn serveWebsocket(handler: *ConnectionHandler, key: []const u8) !void {
+        // See https://tools.ietf.org/html/rfc6455
+        var sha1 = std.crypto.hash.Sha1.init(.{});
+        sha1.update(key);
+        sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+        var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
+        sha1.final(&digest);
+        var base64_digest: [28]u8 = undefined;
+        std.debug.assert(std.base64.standard_encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+
+        var iovecs = [_]std.os.iovec_const{
+            strToIovec(http_response_header_upgrade),
+            strToIovec("Sec-WebSocket-Accept: "),
+            strToIovec(&base64_digest),
+            strToIovec("\r\n" ++ "\r\n"),
+        };
+        try handler.connection.stream.writevAll(&iovecs);
+
+        while (true) {
+            // TODO: allocate this from the arena maybe.
+            var request_payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
+            _ = arena;
+            const request_payload = (try handler.readMessage(&request_payload_buffer)) orelse break;
+            log.info("request: {s}", .{std.fmt.fmtSliceHexLower(request_payload)});
+
+            var request_stream = std.io.fixedBufferStream(request_payload);
+            const request_header = try request_stream.reader().readStruct(protocol.RequestHeader);
+
+            var out_buffer: [0x1000]u8 = undefined;
+            var response_stream = std.io.fixedBufferStream(&out_buffer);
+            try response_stream.writer().writeStruct(protocol.ResponseHeader{
+                .seq_id = request_header.seq_id,
+            });
+
+            try handler.handleRequest(request_header.op, &request_stream, &response_stream);
+
+            log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
+            try handler.writeMessage(response_stream.getWritten());
+        }
+    }
+
+    fn readMessage(handler: *ConnectionHandler, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
+        // See https://tools.ietf.org/html/rfc6455
+        // read first byte.
+        var header = [_]u8{0} ** 2;
+        handler.connection.stream.reader().readNoEof(header[0..]) catch |err| switch (err) {
+            error.EndOfStream => return null,
+            else => return err,
+        };
+        const opcode_byte = header[0];
+        // 0b10000000: FIN - this is a complete message.
+        // 0b00000010: opcode=2 - this is a binary message.
+        const expected_opcode_byte = 0b10000010;
+        if (opcode_byte != expected_opcode_byte) {
+            log.warn("bad opcode byte: {}", .{opcode_byte});
+            return null;
+        }
+
+        // read length
+        const short_len_byte = header[1];
+        if (short_len_byte & 0b10000000 != 0b10000000) {
+            log.warn("frames from client must be masked: {}", .{short_len_byte});
+            return null;
+        }
+        var len: u64 = switch (short_len_byte & 0b01111111) {
+            127 => blk: {
+                var len_buffer = [_]u8{0} ** 8;
+                try handler.connection.stream.reader().readNoEof(len_buffer[0..]);
+                break :blk std.mem.readIntBig(u64, &len_buffer);
+            },
+            126 => blk: {
+                var len_buffer = [_]u8{0} ** 2;
+                try handler.connection.stream.reader().readNoEof(len_buffer[0..]);
+                break :blk std.mem.readIntBig(u16, &len_buffer);
+            },
+            else => |short_len| blk: {
+                break :blk short_len;
+            },
+        };
+        if (len > max_payload_size) {
+            log.warn("payload too big: {}", .{len});
+            return null;
+        }
+
+        // read mask
+        var mask_buffer = [_]u8{0} ** 4;
+        try handler.connection.stream.reader().readNoEof(mask_buffer[0..]);
+        const mask_native = std.mem.readIntNative(u32, &mask_buffer);
+
+        // read payload
+        const payload = payload_buffer[0..len];
+        try handler.connection.stream.reader().readNoEof(payload);
+
+        // unmask
+        // The last item may contain a partial word of unused data.
+        const payload_aligned: []u32 = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
+        {
+            var i: usize = 0;
+            while (i < payload_aligned.len) : (i += 1) {
+                payload_aligned[i] ^= mask_native;
+            }
+        }
+        return payload;
+    }
+
+    fn writeMessage(handler: *ConnectionHandler, message: []const u8) !void {
+        // See https://tools.ietf.org/html/rfc6455
+        var header_buf: [2 + 8]u8 = undefined;
+        // 0b10000000: FIN - this is a complete message.
+        // 0b00000010: opcode=2 - this is a binary message.
+        header_buf[0] = 0b10000010;
+        const header = switch (message.len) {
+            0...125 => blk: {
+                // small size
+                header_buf[1] = @intCast(u8, message.len);
+                break :blk header_buf[0..2];
+            },
+            126...0xffff => blk: {
+                // 16-bit size
+                header_buf[1] = 126;
+                std.mem.writeIntBig(u16, header_buf[2..4], @intCast(u16, message.len));
+                break :blk header_buf[0..4];
+            },
+            else => blk: {
+                // 64-bit size
+                header_buf[1] = 127;
+                std.mem.writeIntBig(u64, header_buf[2..10], message.len);
+                break :blk header_buf[0..10];
+            },
+        };
+
+        var iovecs = [_]std.os.iovec_const{
+            strToIovec(header),
+            strToIovec(message),
+        };
+        try handler.connection.stream.writevAll(&iovecs);
+    }
+
+    fn handleRequest(handler: *ConnectionHandler, op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), response: *std.io.FixedBufferStream([]u8)) !void {
+        switch (op) {
+            .ping => {
+                try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
+            },
+            .query => {
+                const query_request = try request.reader().readStruct(protocol.QueryRequest);
+                try response.writer().writeStruct(protocol.QueryResponseHeader{
+                    .library_version = library.current_library_version,
+                    .queue_version = queue.current_queue_version,
+                });
+
+                // Library
+                if (library.current_library_version != query_request.last_library) {
+                    try response.writer().writeStruct(protocol.LibraryHeader{
+                        // there there is is nothing wrong with this naming.
+                        .string_size = @intCast(u32, library.library.strings.strings.items.len),
+                        .track_count = @intCast(u32, library.library.tracks.count()),
+                    });
+                    try response.writer().writeAll(library.library.strings.strings.items);
+                    try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
+                    try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
+                }
+
+                // Queue
+                if (queue.current_queue_version != query_request.last_queue) {
+                    try response.writer().writeStruct(protocol.QueueHeader{
+                        .item_count = @intCast(u32, queue.queue.items.count()),
+                    });
+                    try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
+                    try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
+                }
+            },
+            .enqueue => {
+                const enqueue_request = try request.reader().readStruct(protocol.EnqueueRequestHeader);
+
+                const track_key = enqueue_request.track_key;
+                const track = library.library.tracks.get(track_key) orelse return error.TrackNotFound;
+                try queue.queue.items.putNoClobber(queue.generateItemKey(), protocol.QueueItem{
+                    .sort_key = queue.generateSortKey(),
+                    .track_key = track_key,
+                });
+
+                const full_path = try fs.path.joinZ(handler.arena(), &.{
+                    library.music_dir_path, library.library.getString(track.file_path),
+                });
+
+                const test_file = try g.groove.file_create(); // TODO cleanup
+                try test_file.open(full_path, full_path); // TODO cleanup
+
+                log.debug("queuing up {s}", .{full_path});
+                _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
+
+                queue.current_queue_version += 1;
+                try handler.sendPushMessage();
+            },
+        }
+    }
+
+    fn sendPushMessage(handler: *ConnectionHandler) !void {
+        var out_buffer: [0x1000]u8 = undefined;
+        var response_stream = std.io.fixedBufferStream(&out_buffer);
+        try response_stream.writer().writeStruct(protocol.ResponseHeader{
+            .seq_id = 0x8000_0000,
+        });
+        try response_stream.writer().writeStruct(protocol.PushMessageHeader{
+            ._dummy = 0xaaaa_aba,
+        });
+
+        log.info("push: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
+        try handler.writeMessage(response_stream.getWritten());
     }
 };
 
@@ -348,183 +559,9 @@ const http_response_header_upgrade = "" ++
 
 const max_payload_size = 16 * 1024;
 
-fn serveWebsocket(connection: net.StreamServer.Connection, key: []const u8, arena: *Allocator) !void {
-    // See https://tools.ietf.org/html/rfc6455
-    var sha1 = std.crypto.hash.Sha1.init(.{});
-    sha1.update(key);
-    sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
-    sha1.final(&digest);
-    var base64_digest: [28]u8 = undefined;
-    std.debug.assert(std.base64.standard_encoder.encode(&base64_digest, &digest).len == base64_digest.len);
-
-    var iovecs = [_]std.os.iovec_const{
-        strToIovec(http_response_header_upgrade),
-        strToIovec("Sec-WebSocket-Accept: "),
-        strToIovec(&base64_digest),
-        strToIovec("\r\n" ++ "\r\n"),
-    };
-    try connection.stream.writevAll(&iovecs);
-
-    while (true) {
-        // TODO: allocate this from the arena maybe.
-        var request_payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
-        _ = arena;
-        const request_payload = (try readMessage(connection, &request_payload_buffer)) orelse break;
-        log.info("request: {s}", .{std.fmt.fmtSliceHexLower(request_payload)});
-
-        var request_stream = std.io.fixedBufferStream(request_payload);
-        const request_header = try request_stream.reader().readStruct(protocol.RequestHeader);
-
-        var out_buffer: [0x1000]u8 = undefined;
-        var response_stream = std.io.fixedBufferStream(&out_buffer);
-        try response_stream.writer().writeStruct(protocol.ResponseHeader{
-            .seq_id = request_header.seq_id,
-        });
-
-        try handleRequest(request_header.op, &request_stream, &response_stream);
-
-        log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-        try writeMessage(connection, response_stream.getWritten());
-    }
-}
-
-fn readMessage(connection: net.StreamServer.Connection, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
-    // See https://tools.ietf.org/html/rfc6455
-    // read first byte.
-    var header = [_]u8{0} ** 2;
-    connection.stream.reader().readNoEof(header[0..]) catch |err| switch (err) {
-        error.EndOfStream => return null,
-        else => return err,
-    };
-    const opcode_byte = header[0];
-    // 0b10000000: FIN - this is a complete message.
-    // 0b00000010: opcode=2 - this is a binary message.
-    const expected_opcode_byte = 0b10000010;
-    if (opcode_byte != expected_opcode_byte) {
-        log.warn("bad opcode byte: {}", .{opcode_byte});
-        return null;
-    }
-
-    // read length
-    const short_len_byte = header[1];
-    if (short_len_byte & 0b10000000 != 0b10000000) {
-        log.warn("frames from client must be masked: {}", .{short_len_byte});
-        return null;
-    }
-    var len: u64 = switch (short_len_byte & 0b01111111) {
-        127 => blk: {
-            var len_buffer = [_]u8{0} ** 8;
-            try connection.stream.reader().readNoEof(len_buffer[0..]);
-            break :blk std.mem.readIntBig(u64, &len_buffer);
-        },
-        126 => blk: {
-            var len_buffer = [_]u8{0} ** 2;
-            try connection.stream.reader().readNoEof(len_buffer[0..]);
-            break :blk std.mem.readIntBig(u16, &len_buffer);
-        },
-        else => |short_len| blk: {
-            break :blk short_len;
-        },
-    };
-    if (len > max_payload_size) {
-        log.warn("payload too big: {}", .{len});
-        return null;
-    }
-
-    // read mask
-    var mask_buffer = [_]u8{0} ** 4;
-    try connection.stream.reader().readNoEof(mask_buffer[0..]);
-    const mask_native = std.mem.readIntNative(u32, &mask_buffer);
-
-    // read payload
-    const payload = payload_buffer[0..len];
-    try connection.stream.reader().readNoEof(payload);
-
-    // unmask
-    // The last item may contain a partial word of unused data.
-    const payload_aligned: []u32 = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
-    {
-        var i: usize = 0;
-        while (i < payload_aligned.len) : (i += 1) {
-            payload_aligned[i] ^= mask_native;
-        }
-    }
-    return payload;
-}
-
-fn writeMessage(connection: net.StreamServer.Connection, message: []const u8) !void {
-    // See https://tools.ietf.org/html/rfc6455
-    var header_buf: [2 + 8]u8 = undefined;
-    // 0b10000000: FIN - this is a complete message.
-    // 0b00000010: opcode=2 - this is a binary message.
-    header_buf[0] = 0b10000010;
-    const header = switch (message.len) {
-        0...125 => blk: {
-            // small size
-            header_buf[1] = @intCast(u8, message.len);
-            break :blk header_buf[0..2];
-        },
-        126...0xffff => blk: {
-            // 16-bit size
-            header_buf[1] = 126;
-            std.mem.writeIntBig(u16, header_buf[2..4], @intCast(u16, message.len));
-            break :blk header_buf[0..4];
-        },
-        else => blk: {
-            // 64-bit size
-            header_buf[1] = 127;
-            std.mem.writeIntBig(u64, header_buf[2..10], message.len);
-            break :blk header_buf[0..10];
-        },
-    };
-
-    var iovecs = [_]std.os.iovec_const{
-        strToIovec(header),
-        strToIovec(message),
-    };
-    try connection.stream.writevAll(&iovecs);
-}
-
 fn strToIovec(s: []const u8) std.os.iovec_const {
     return .{
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
-}
-
-fn handleRequest(op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), response: *std.io.FixedBufferStream([]u8)) !void {
-    switch (op) {
-        .ping => {
-            try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
-        },
-        .query => {
-            const query_request = try request.reader().readStruct(protocol.QueryRequest);
-            try response.writer().writeStruct(protocol.QueryResponseHeader{
-                .library_version = library.current_library_version,
-                .queue_version = queue.current_queue_version,
-            });
-
-            // Library
-            if (library.current_library_version != query_request.last_library) {
-                try response.writer().writeStruct(protocol.LibraryHeader{
-                    // there there is is nothing wrong with this naming.
-                    .string_size = @intCast(u32, library.library.strings.strings.items.len),
-                    .track_count = @intCast(u32, library.library.tracks.count()),
-                });
-                try response.writer().writeAll(library.library.strings.strings.items);
-                try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
-                try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
-            }
-
-            // Queue
-            if (queue.current_queue_version != query_request.last_queue) {
-                try response.writer().writeStruct(protocol.QueueHeader{
-                    .item_count = @intCast(u32, queue.queue.items.count()),
-                });
-                try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
-                try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
-            }
-        },
-    }
 }

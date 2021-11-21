@@ -21,3 +21,20 @@ pub fn init() !void {
 pub fn deinit() void {
     queue.deinit();
 }
+
+var next_item_key: u64 = 10;
+var next_sort_key: u64 = 1;
+
+pub fn generateItemKey() u64 {
+    defer {
+        next_item_key += 1;
+    }
+    return next_item_key;
+}
+
+pub fn generateSortKey() u64 {
+    defer {
+        next_sort_key += 1_000_000_000;
+    }
+    return next_sort_key;
+}

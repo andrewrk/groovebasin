@@ -14,7 +14,10 @@ pub const StringPool = @import("shared").StringPool;
 pub var current_library_version: u64 = 1;
 pub var library: Library = undefined;
 
+pub var music_dir_path: []const u8 = undefined;
+
 pub fn init(music_directory: []const u8, db_path: []const u8) !void {
+    music_dir_path = music_directory;
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
 
@@ -24,7 +27,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     };
     errdefer library.deinit();
 
-    var music_dir = try std.fs.cwd().openDir(music_directory, .{ .iterate = true });
+    var music_dir = try std.fs.cwd().openDir(music_dir_path, .{ .iterate = true });
     defer music_dir.close();
 
     var walker = try music_dir.walk(g.gpa);
@@ -38,7 +41,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
         defer groove_file.destroy();
 
         const full_path = try std.fs.path.joinZ(g.gpa, &.{
-            music_directory, entry.path,
+            music_dir_path, entry.path,
         });
         defer g.gpa.free(full_path);
 

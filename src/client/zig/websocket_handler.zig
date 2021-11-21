@@ -103,6 +103,11 @@ pub const Call = struct {
     }
 };
 
+pub fn ignoreResponseCallback(context: *callback.Context, response: []const u8) void {
+    _ = context;
+    _ = response;
+}
+
 fn onCloseCallback(context: *callback.Context, code: i32) void {
     _ = context;
     _ = code;

@@ -2,6 +2,7 @@
 const {HandleRegistry} = require("handleRegistry");
 
 const elementRegistry = new HandleRegistry();
+const eventRegistry = new HandleRegistry();
 
 setInterval(runGarbageCollector, 30000);
 
@@ -62,6 +63,49 @@ function addClass(handle, class_) {
 function removeClass(handle, class_) {
     elementRegistry.registry[handle].classList.remove(class_);
 }
+function setAttribute(handle, key, value) {
+    elementRegistry.registry[handle].setAttribute(key, value);
+}
+function getAttribute(handle, key) {
+    return elementRegistry.registry[handle].getAttribute(key);
+}
+
+// Searches the start_handle node and its .parentNode ancestors for a node whose .classList.contains(class_).
+// If not found, returns stop_handle.
+function searchAncestorsForClass(start_handle, stop_handle, class_) {
+    let node = elementRegistry.registry[start_handle];
+    if (node.classList.contains(class_)) return start_handle;
+    const root = elementRegistry.registry[stop_handle];
+    if (!root.contains(node)) return stop_handle;
+    if (node === root) return stop_handle;
+
+    while (true) {
+        node = node.parentNode;
+        if (node === root) return stop_handle;
+        if (node.classList.contains(class_)) {
+            const {handle} = elementRegistry.alloc(node);
+            return handle;
+        }
+    }
+}
+
+function addEventListener(handle, event_type, cb) {
+    elementRegistry.registry[handle].addEventListener(event_type, function(event) {
+        const {handle, dispose} = eventRegistry.alloc(event);
+        try {
+            cb(handle);
+        } finally {
+            dispose();
+        }
+    });
+}
+
+function getEventTarget(event_handle) {
+    const event = eventRegistry.registry[event_handle];
+    const target = event.target;
+    const {handle} = elementRegistry.alloc(target);
+    return handle;
+}
 
 return {
     getElementById,
@@ -73,4 +117,9 @@ return {
     removeLastChild,
     addClass,
     removeClass,
+    setAttribute,
+    getAttribute,
+    searchAncestorsForClass,
+    addEventListener,
+    getEventTarget,
 };

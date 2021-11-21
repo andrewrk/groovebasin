@@ -46,6 +46,7 @@ pub fn init() void {
     main_err_msg_text_dom = dom.getElementById("main-err-msg-text");
 
     library_artists_dom = dom.getElementById("library-artists");
+    dom.addEventListener(library_artists_dom, .mousedown, &onLibraryMouseDownCallback, undefined);
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
 
@@ -98,6 +99,8 @@ pub fn renderLibrary() void {
         }
     }
     for (library.tracks.values()) |track, i| {
+        const track_key_str = formatKey(library.tracks.keys()[i]);
+
         // artist
         dom.insertAdjacentHTML(library_artists_dom, .beforeend,
             \\<li>
@@ -112,6 +115,7 @@ pub fn renderLibrary() void {
 
         {
             const artist_div = dom.getChild(artist_li, 0);
+            dom.setAttribute(artist_div, "data-track", &track_key_str);
 
             const icon_div = dom.getChild(artist_div, 0);
             dom.addClass(icon_div, icon_collapsed);
@@ -137,6 +141,7 @@ pub fn renderLibrary() void {
 
         {
             const album_div = dom.getChild(album_li, 0);
+            dom.setAttribute(album_div, "data-track", &track_key_str);
 
             const icon_div = dom.getChild(album_div, 0);
             dom.addClass(icon_div, icon_collapsed);
@@ -159,6 +164,7 @@ pub fn renderLibrary() void {
 
         const track_li = dom.getChild(tracks_ul, 0);
         const track_div = dom.getChild(track_li, 0);
+        dom.setAttribute(track_div, "data-track", &track_key_str);
         const track_span = dom.getChild(track_div, 0);
         dom.setTextContent(track_span, library.getString(track.title));
     }
@@ -278,4 +284,32 @@ fn handleQueryResponse(response: []const u8) !void {
 
     if (render_library) renderLibrary();
     if (render_queue) renderQueue();
+}
+
+fn onLibraryMouseDownCallback(context: *callback.Context, event: i32) void {
+    _ = context;
+    onLibraryMouseDown(event) catch |err| {
+        @panic(@errorName(err));
+    };
+}
+
+fn onLibraryMouseDown(event: i32) !void {
+    var target = dom.getEventTarget(event);
+    target = dom.searchAncestorsForClass(target, library_artists_dom, "clickable");
+    if (target == library_artists_dom) return;
+    var track_key_str: [16]u8 = undefined;
+    dom.readAttribute(target, "data-track", &track_key_str);
+    const track_key = parseKey(track_key_str);
+    browser.printHex("the track: ", std.mem.asBytes(&track_key));
+}
+
+fn formatKey(key: u64) [16]u8 {
+    var ret: [16]u8 = undefined;
+    std.debug.assert(std.fmt.formatIntBuf(&ret, key, 16, .lower, .{ .width = 16, .fill = '0' }) == 16);
+    return ret;
+}
+fn parseKey(str: [16]u8) u64 {
+    return std.fmt.parseUnsigned(u64, &str, 16) catch |err| {
+        @panic(@errorName(err));
+    };
 }

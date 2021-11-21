@@ -43,3 +43,8 @@ pub extern fn insertAdjacentHTML(handle: i32, position: i32, html_ptr: [*]const 
 pub extern fn removeLastChild(handle: i32) void;
 pub extern fn addClass(handle: i32, class_ptr: [*]const u8, class_len: usize) void;
 pub extern fn removeClass(handle: i32, class_ptr: [*]const u8, class_len: usize) void;
+pub extern fn setAttribute(handle: i32, key_ptr: [*]const u8, key_len: usize, value_ptr: [*]const u8, value_len: usize) void;
+pub extern fn readAttribute(handle: i32, key_ptr: [*]const u8, key_len: usize, buf_ptr: [*]const u8, buf_len: usize) void;
+pub extern fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class_ptr: [*]const u8, class_len: usize) i32;
+pub extern fn addEventListener(handle: i32, event_type: i32, cb: *const callback.CallbackFnI32, context: *callback.Context) void;
+pub extern fn getEventTarget(handle: i32) i32;

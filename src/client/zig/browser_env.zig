@@ -48,3 +48,13 @@ pub extern fn readAttribute(handle: i32, key_ptr: [*]const u8, key_len: usize, b
 pub extern fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class_ptr: [*]const u8, class_len: usize) i32;
 pub extern fn addEventListener(handle: i32, event_type: i32, cb: *const callback.CallbackFnI32, context: *callback.Context) void;
 pub extern fn getEventTarget(handle: i32) i32;
+pub extern fn setInputValueAsNumber(handle: i32, value: f64) void;
+pub extern fn getInputValueAsNumber(handle: i32) f64;
+
+// Audio
+pub extern fn newAudio() i32;
+pub extern fn setAudioSrc(handle: i32, src_ptr: [*]const u8, src_len: usize) void;
+pub extern fn loadAudio(handle: i32) void;
+pub extern fn playAudio(handle: i32) void;
+pub extern fn pauseAudio(handle: i32) void;
+pub extern fn setAudioVolume(handle: i32, volume: f64) void;

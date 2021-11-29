@@ -16,11 +16,10 @@
         <button class="button" id="nowplaying-stop" tabindex="-1"><label class="icon icon-stop" for="nowplaying-stop"></label></button>
         <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
         <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
-        <audio src="stream.mp3" controls></audio>
       </div>
       <div id="client-vol" style="display: none">
         <span class="icon icon-volume-off"></span>
-        <input type="range" id="client-vol-slider" min="0.0" max="1.0" step="0.001" tabindex="-1">
+        <input type="range" id="client-vol-slider" min="0.0" max="1.0" value="1.0" step="0.001" tabindex="-1">
         <span class="icon icon-volume-on"></span>
       </div>
       <h1 id="track-display"></h1>

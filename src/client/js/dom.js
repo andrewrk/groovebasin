@@ -9,7 +9,7 @@ function getElementByHandle(handle) {
     if (element != null) {
         return element;
     }
-    element = document.getElementById("id-" + handle.toString(16));
+    element = document.getElementById("h-" + handle.toString(16));
     if (element != null) {
         return element;
     }
@@ -17,23 +17,24 @@ function getElementByHandle(handle) {
 }
 
 function getElementHandle(element) {
-    let handle_str = element.getAttribute("data-handle");
+    let handle_str = element.getAttribute("data-h");
     if (handle_str != null) {
         return parseInt(handle_str, 16);
     }
-    if (element.getAttribute("id") != null) {
-        // Don't clobber the hard-coded id. Use the registry to find this element later.
+    if (element.getAttribute("id") != null || !document.contains(element)) {
+        // using document.getElementById("handle-" + handle) isn't going to work.
+        // Use the registry to find this element later.
         const {handle} = elementRegistry.alloc(element);
         handle_str = handle.toString(16);
-        element.setAttribute("data-handle", handle_str);
+        element.setAttribute("data-h", handle_str);
         return handle;
     } else {
         // Give the element an id to use to find it later.
         // This avoids pointers to deleted elements preventing them from being garbaged collected.
         const handle = elementRegistry.nextHandle();
         handle_str = handle.toString(16);
-        element.setAttribute("id", "id-" + handle_str);
-        element.setAttribute("data-handle", handle_str);
+        element.setAttribute("id", "h-" + handle_str);
+        element.setAttribute("data-h", handle_str);
         return handle;
     }
 }
@@ -120,7 +121,16 @@ function getEventTarget(event_handle) {
     return getElementHandle(target);
 }
 
+function setInputValueAsNumber(handle, value) {
+    getElementByHandle(handle).valueAsNumber = value;
+}
+function getInputValueAsNumber(handle) {
+    return getElementByHandle(handle).valueAsNumber;
+}
+
 return {
+    getElementByHandle,
+    getElementHandle,
     getElementById,
     setElementShown,
     setElementTextContent,
@@ -135,4 +145,6 @@ return {
     searchAncestorsForClass,
     addEventListener,
     getEventTarget,
+    setInputValueAsNumber,
+    getInputValueAsNumber,
 };

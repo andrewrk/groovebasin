@@ -319,3 +319,11 @@ fn parseKey(str: [16]u8) u64 {
         @panic(@errorName(err));
     };
 }
+
+pub fn renderButtonIsOn(button: i32, is_on: bool) void {
+    if (is_on) {
+        dom.addClass(button, "on");
+    } else {
+        dom.removeClass(button, "on");
+    }
+}

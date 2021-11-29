@@ -5,6 +5,7 @@ const {openWebSocket, sendMessage} = require("websocket");
 const {readBlob} = require("blob");
 const callback = require("callback");
 const dom = require("dom");
+const audio = require("audio");
 
 const PositionType = [
     'beforebegin',
@@ -342,6 +343,33 @@ const env = {
     },
     getEventTarget(handle) {
         return dom.getEventTarget(handle);
+    },
+    setInputValueAsNumber(handle, value) {
+        return dom.setInputValueAsNumber(handle, value);
+    },
+    getInputValueAsNumber(handle) {
+        return dom.getInputValueAsNumber(handle);
+    },
+
+    // Audio
+    newAudio() {
+        return audio.newAudio();
+    },
+    setAudioSrc(handle, src_ptr, src_len) {
+        const src = decodeString(src_ptr, src_len);
+        return audio.setAudioSrc(handle, src);
+    },
+    loadAudio(handle) {
+        return audio.loadAudio(handle);
+    },
+    playAudio(handle) {
+        return audio.playAudio(handle);
+    },
+    pauseAudio(handle) {
+        return audio.pauseAudio(handle);
+    },
+    setAudioVolume(handle, volume) {
+        return audio.setAudioVolume(handle, volume);
     },
 };
 

@@ -279,3 +279,6 @@ pub fn addEventListener(handle: i32, event_type: EventType, cb: *const callback.
 }
 
 pub const getEventTarget = env.getEventTarget;
+
+pub const setInputValueAsNumber = env.setInputValueAsNumber;
+pub const getInputValueAsNumber = env.getInputValueAsNumber;

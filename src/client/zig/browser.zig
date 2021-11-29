@@ -26,3 +26,7 @@ pub fn printHex(prefix: []const u8, buf: []const u8) void {
 pub fn readBlob(handle: i32, buf: []u8) void {
     env.readBlob(handle, buf.ptr, buf.len);
 }
+
+pub fn setAudioSrc(handle: i32, src: []const u8) void {
+    env.setAudioSrc(handle, src.ptr, src.len);
+}

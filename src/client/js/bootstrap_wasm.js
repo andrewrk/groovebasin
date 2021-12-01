@@ -1,6 +1,6 @@
 const wasmExports = require("wasmExports");
 
-const {decodeString, encodeString} = require("string");
+const {decodeString, encodeStringAlloc} = require("string");
 const {openWebSocket, sendMessage} = require("websocket");
 const {readBlob} = require("blob");
 const callback = require("callback");
@@ -272,14 +272,14 @@ const env = {
 
     // WebSocket API
     openWebSocket(
-        allocatorCallback, allocatorCallbackContext,
+        allocatorCallbackPtr, allocatorCallbackContext,
         openCallbackPtr, openCallbackContext,
         closeCallbackPtr, closeCallbackContext,
         errorCallbackPtr, errorCallbackContext,
         messageCallbackPtr, messageCallbackContext,
     ) {
         openWebSocket(
-            callback.wrapCallbackI32RI32(allocatorCallback, allocatorCallbackContext),
+            callback.wrapCallbackI32RI32(allocatorCallbackPtr, allocatorCallbackContext),
             callback.wrapCallbackI32(openCallbackPtr, openCallbackContext),
             callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
             callback.wrapCallback(errorCallbackPtr, errorCallbackContext),
@@ -330,11 +330,16 @@ const env = {
         const value = decodeString(value_ptr, value_len);
         return dom.setAttribute(handle, key, value);
     },
-    readAttribute(handle, key_ptr, key_len, buf_ptr, buf_len) {
+    getAttribute(
+        handle,
+        allocatorCallbackPtr, allocatorCallbackContext,
+        key_ptr, key_len,
+    ) {
         const key = decodeString(key_ptr, key_len);
-        const dest = new Uint8Array(wasmExports.memory.buffer, buf_ptr, buf_len);
         const value = dom.getAttribute(handle, key);
-        return encodeString(value, dest);
+        return encodeStringAlloc(
+            callback.wrapCallbackI32RI32(allocatorCallbackPtr, allocatorCallbackContext),
+            value);
     },
     searchAncestorsForClass(start_handle, stop_handle, class_ptr, class_len) {
         const class_ = decodeString(class_ptr, class_len);

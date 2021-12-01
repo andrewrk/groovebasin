@@ -1,5 +1,9 @@
+const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const env = @import("browser_env.zig");
 const callback = @import("callback.zig");
+const browser = @import("browser.zig");
 
 pub fn getElementById(id: []const u8) i32 {
     return env.getElementById(id.ptr, id.len);
@@ -36,8 +40,16 @@ pub fn removeClass(handle: i32, class: []const u8) void {
 pub fn setAttribute(handle: i32, key: []const u8, value: []const u8) void {
     env.setAttribute(handle, key.ptr, key.len, value.ptr, value.len);
 }
-pub fn readAttribute(handle: i32, key: []const u8, dest: []const u8) void {
-    env.readAttribute(handle, key.ptr, key.len, dest.ptr, dest.len);
+pub fn getAttribute(handle: i32, allocator: *Allocator, key: []const u8) []const u8 {
+    const allocator_callback = callback.allocator(allocator);
+    const packed_slice = env.getAttribute(
+        handle,
+        allocator_callback.callback,
+        allocator_callback.context,
+        key.ptr,
+        key.len,
+    );
+    return browser.unpackSlice(packed_slice);
 }
 
 pub fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class: []const u8) i32 {

@@ -53,7 +53,7 @@ function openWebSocket(allocatorCallback, openCallback, closeCallback, errorCall
 
     function onMessage(ev) {
         const jsArray = new Uint8Array(ev.data);
-        const len = jsArray.length
+        const len = jsArray.length;
         const ptr = allocatorCallback(len);
         const wasmArray = new Uint8Array(wasmExports.memory.buffer, ptr, len);
         wasmArray.set(jsArray);

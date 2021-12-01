@@ -6,10 +6,6 @@ const ui = @import("groovebasin_ui.zig");
 const stream = @import("stream.zig");
 
 export fn main() void {
-    _ = async mainAsync();
-}
-
-fn mainAsync() void {
     browser.print("zig: hello world");
     ui.init();
     stream.init();

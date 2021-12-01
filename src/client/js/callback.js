@@ -6,12 +6,16 @@ function wrapCallback(callbackPtr, context) {
 function wrapCallbackI32(callbackPtr, context) {
     return (arg) => wasmExports.delegateCallbackI32(callbackPtr, context, arg);
 }
-function wrapCallbackI32I32(callbackPtr, context) {
-    return (arg1, arg2) => wasmExports.delegateCallbackI32I32(callbackPtr, context, arg1, arg2);
+function wrapCallbackSliceU8(callbackPtr, context) {
+    return (arg1, arg2) => wasmExports.delegateCallbackSliceU8(callbackPtr, context, arg1, arg2);
+}
+function wrapCallbackI32RI32(callbackPtr, context) {
+    return (arg) => wasmExports.delegateCallbackI32RI32(callbackPtr, context, arg);
 }
 
 return {
     wrapCallback,
     wrapCallbackI32,
-    wrapCallbackI32I32,
+    wrapCallbackSliceU8,
+    wrapCallbackI32RI32,
 };

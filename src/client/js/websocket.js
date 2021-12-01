@@ -1,5 +1,5 @@
 const {HandleRegistry} = require("handleRegistry");
-const {createBlob} = require("blob");
+const wasmExports = require("wasmExports");
 
 const wsUrl = (() => {
     var host = window.document.location.host;
@@ -16,9 +16,10 @@ const wsUrl = (() => {
 
 const wsRegistry = new HandleRegistry();
 
-function openWebSocket(openCallback, closeCallback, errorCallback, messageCallback) {
+function openWebSocket(allocatorCallback, openCallback, closeCallback, errorCallback, messageCallback) {
     const ws = new WebSocket(wsUrl);
     const {handle, dispose} = wsRegistry.alloc(ws);
+    ws.binaryType = "arraybuffer";
 
     ws.addEventListener("open", onOpen);
     ws.addEventListener("close", onClose);
@@ -50,14 +51,13 @@ function openWebSocket(openCallback, closeCallback, errorCallback, messageCallba
         errorCallback();
     }
 
-    async function onMessage(ev) {
-        const array = new Uint8Array(await ev.data.arrayBuffer());
-        const {handle, dispose} = createBlob(array);
-        try {
-            messageCallback(handle, array.length);
-        } finally {
-            dispose();
-        }
+    function onMessage(ev) {
+        const jsArray = new Uint8Array(ev.data);
+        const len = jsArray.length
+        const ptr = allocatorCallback(len);
+        const wasmArray = new Uint8Array(wasmExports.memory.buffer, ptr, len);
+        wasmArray.set(jsArray);
+        messageCallback(ptr, len);
     }
 }
 

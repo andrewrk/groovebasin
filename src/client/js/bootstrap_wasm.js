@@ -272,16 +272,18 @@ const env = {
 
     // WebSocket API
     openWebSocket(
+        allocatorCallback, allocatorCallbackContext,
         openCallbackPtr, openCallbackContext,
         closeCallbackPtr, closeCallbackContext,
         errorCallbackPtr, errorCallbackContext,
         messageCallbackPtr, messageCallbackContext,
     ) {
         openWebSocket(
+            callback.wrapCallbackI32RI32(allocatorCallback, allocatorCallbackContext),
             callback.wrapCallbackI32(openCallbackPtr, openCallbackContext),
             callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
             callback.wrapCallback(errorCallbackPtr, errorCallbackContext),
-            callback.wrapCallbackI32I32(messageCallbackPtr, messageCallbackContext),
+            callback.wrapCallbackSliceU8(messageCallbackPtr, messageCallbackContext),
         );
     },
     sendMessage(handle, ptr, len) {

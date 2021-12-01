@@ -294,12 +294,14 @@ fn onLibraryMouseDownCallback(context: *callback.Context, event: i32) void {
 }
 
 fn onLibraryMouseDown(event: i32) !void {
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    const arena = &arena_instance.allocator;
+
     var target = dom.getEventTarget(event);
     target = dom.searchAncestorsForClass(target, library_artists_dom, "clickable");
     if (target == library_artists_dom) return;
-    var track_key_str: [16]u8 = undefined;
-    dom.readAttribute(target, "data-track", &track_key_str);
-    const track_key = parseKey(track_key_str);
+    const track_key = parseKey(dom.getAttribute(target, arena, "data-track"));
     browser.printHex("enqueuing: ", std.mem.asBytes(&track_key));
 
     var query_call = try ws.Call.init(.enqueue);
@@ -314,8 +316,8 @@ fn formatKey(key: u64) [16]u8 {
     std.debug.assert(std.fmt.formatIntBuf(&ret, key, 16, .lower, .{ .width = 16, .fill = '0' }) == 16);
     return ret;
 }
-fn parseKey(str: [16]u8) u64 {
-    return std.fmt.parseUnsigned(u64, &str, 16) catch |err| {
+fn parseKey(str: []const u8) u64 {
+    return std.fmt.parseUnsigned(u64, str, 16) catch |err| {
         @panic(@errorName(err));
     };
 }

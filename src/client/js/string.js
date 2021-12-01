@@ -7,13 +7,22 @@ function decodeString(ptr, len) {
 }
 
 const encoder = new TextEncoder();
-function encodeString(s, dest) {
-    const {read, written} = encoder.encodeInto(s, dest);
-    if (read < s.length) throw new Error("dest too small");
-    if (written < dest.length) throw new Error("dest too large");
+function encodeStringAlloc(allocatorCallback, s) {
+    const jsArray = encoder.encode(s);
+    const len = jsArray.length;
+    const ptr = allocatorCallback(len);
+    const wasmArray = new Uint8Array(wasmExports.memory.buffer, ptr, len);
+    wasmArray.set(jsArray);
+    return packSlice(ptr, len);
+}
+
+function packSlice(ptr, len) {
+    // We need to return struct{u32,u32} from some functions.
+    // Just pack it all into an i64, easy.
+    return (BigInt(ptr | 0) << 32n) | BigInt(len >>> 0);
 }
 
 return {
     decodeString,
-    encodeString,
+    encodeStringAlloc,
 };

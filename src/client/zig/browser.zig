@@ -26,3 +26,9 @@ pub fn printHex(prefix: []const u8, buf: []const u8) void {
 pub fn setAudioSrc(handle: i32, src: []const u8) void {
     env.setAudioSrc(handle, src.ptr, src.len);
 }
+
+pub fn unpackSlice(packed_slice: i64) []u8 {
+    const ptr = @intToPtr([*]u8, @bitCast(usize, @intCast(i32, packed_slice >> 32)));
+    const len = @bitCast(usize, @intCast(i32, packed_slice & 0xffff_ffff));
+    return ptr[0..len];
+}

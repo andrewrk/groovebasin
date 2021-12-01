@@ -21,7 +21,11 @@ var loading_state: LoadingState = .none;
 pub fn open() void {
     std.debug.assert(loading_state == .none);
     loading_state = .connecting;
+
+    const allocator_callback = callback.allocator(g.gpa);
     env.openWebSocket(
+        allocator_callback.callback,
+        allocator_callback.context,
         &onOpenCallback,
         undefined,
         &onCloseCallback,
@@ -121,15 +125,10 @@ fn onErrorCallback(context: *callback.Context) void {
     handleNoConnection();
 }
 
-fn onMessageCallback(context: *callback.Context, handle: i32, _len: i32) void {
+fn onMessageCallback(context: *callback.Context, buffer: []u8) void {
     _ = context;
-    const len = @intCast(usize, _len);
 
-    const buffer = g.gpa.alloc(u8, len) catch |err| {
-        @panic(@errorName(err));
-    };
     defer g.gpa.free(buffer);
-    browser.readBlob(handle, buffer);
 
     browser.printHex("response: ", buffer);
 

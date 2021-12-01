@@ -2,7 +2,6 @@ const wasmExports = require("wasmExports");
 
 const {decodeString, encodeStringAlloc} = require("string");
 const {openWebSocket, sendMessage} = require("websocket");
-const {readBlob} = require("blob");
 const callback = require("callback");
 const dom = require("dom");
 const audio = require("audio");
@@ -252,10 +251,6 @@ const env = {
     panic(ptr, len) {
         const msg = decodeString(ptr, len);
         throw new Error("panic: " + msg);
-    },
-    readBlob(handle, ptr, len) {
-        const dest = new Uint8Array(wasmExports.memory.buffer, ptr, len);
-        readBlob(handle, dest);
     },
     getTime() {
         return BigInt(new Date().getTime());

@@ -51,7 +51,6 @@ pub fn build(b: *Builder) void {
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client/js",
             "audio.js",
-            "blob.js",
             "bootstrap_wasm.js",
             "callback.js",
             "handleRegistry.js",

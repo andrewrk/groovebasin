@@ -120,6 +120,19 @@ function getEventTarget(event_handle) {
     const target = event.target;
     return getElementHandle(target);
 }
+function getEventModifiers(event_handle) {
+    const event = eventRegistry.registry[event_handle];
+    return (
+        (event.shiftKey ? (1 << 0) : 0) |
+        (event.ctrlKey ? (1 << 1) : 0) |
+        (event.altKey ? (1 << 2) : 0) |
+        (event.metaKey ? (1 << 3) : 0)
+    );
+}
+function preventDefault(event_handle) {
+    const event = eventRegistry.registry[event_handle];
+    event.preventDefault();
+}
 
 function setInputValueAsNumber(handle, value) {
     getElementByHandle(handle).valueAsNumber = value;
@@ -145,6 +158,8 @@ return {
     searchAncestorsForClass,
     addEventListener,
     getEventTarget,
+    getEventModifiers,
+    preventDefault,
     setInputValueAsNumber,
     getInputValueAsNumber,
 };

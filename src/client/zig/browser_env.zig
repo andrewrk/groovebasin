@@ -1,7 +1,11 @@
 // This is the {env} passed into the wasm instantiation.
-// Use @import("browser.zig") instead of this.
+// See also browser.zig, dom.zig, etc. for more conveient altnernatives for some of these.
 
 const callback = @import("callback.zig");
+const enums = @import("browser_enums.zig");
+const InsertPosition = enums.InsertPosition;
+const EventType = enums.EventType;
+const EventModifiers = enums.EventModifiers;
 
 // Essentials
 pub extern fn print(ptr: [*]const u8, len: usize) void;
@@ -40,7 +44,7 @@ pub extern fn setElementShown(handle: i32, shown: i32) void;
 pub extern fn setElementTextContent(handle: i32, ptr: [*]const u8, len: usize) void;
 pub extern fn getChildrenCount(handle: i32) i32;
 pub extern fn getChild(handle: i32, i: i32) i32;
-pub extern fn insertAdjacentHTML(handle: i32, position: i32, html_ptr: [*]const u8, html_len: usize) void;
+pub extern fn insertAdjacentHTML(handle: i32, position: InsertPosition, html_ptr: [*]const u8, html_len: usize) void;
 pub extern fn removeLastChild(handle: i32) void;
 pub extern fn addClass(handle: i32, class_ptr: [*]const u8, class_len: usize) void;
 pub extern fn removeClass(handle: i32, class_ptr: [*]const u8, class_len: usize) void;
@@ -53,8 +57,10 @@ pub extern fn getAttribute(
     key_len: usize,
 ) i64;
 pub extern fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class_ptr: [*]const u8, class_len: usize) i32;
-pub extern fn addEventListener(handle: i32, event_type: i32, cb: *const callback.CallbackFnI32, context: *callback.Context) void;
+pub extern fn addEventListener(handle: i32, event_type: EventType, cb: *const callback.CallbackFnI32, context: *callback.Context) void;
 pub extern fn getEventTarget(handle: i32) i32;
+pub extern fn getEventModifiers(handle: i32) EventModifiers;
+pub extern fn preventDefault(handle: i32) void;
 pub extern fn setInputValueAsNumber(handle: i32, value: f64) void;
 pub extern fn getInputValueAsNumber(handle: i32) f64;
 

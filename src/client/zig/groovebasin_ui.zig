@@ -4,6 +4,7 @@ const ArrayList = std.ArrayList;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
 const dom = @import("dom.zig");
+const getModifier = @import("browser_enums.zig").getModifier;
 const ws = @import("websocket_handler.zig");
 const callback = @import("callback.zig");
 const browser = @import("browser.zig");
@@ -297,6 +298,10 @@ fn onLibraryMouseDown(event: i32) !void {
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
     const arena = &arena_instance.allocator;
+
+    const modifiers = dom.getEventModifiers(event);
+    if (getModifier(modifiers, .alt)) return;
+    dom.preventDefault(event);
 
     var target = dom.getEventTarget(event);
     target = dom.searchAncestorsForClass(target, library_artists_dom, "clickable");

@@ -37,7 +37,7 @@ pub fn open() void {
     );
 }
 
-fn onOpenCallback(context: *callback.Context, handle: i32) void {
+fn onOpenCallback(context: callback.Context, handle: i32) void {
     _ = context;
     browser.print("zig: websocket opened");
 
@@ -60,8 +60,8 @@ fn generateSeqId() u32 {
 }
 
 const ResponseHandler = struct {
-    cb: *const fn (context: *callback.Context, response: []const u8) void,
-    context: *callback.Context,
+    cb: *const fn (context: callback.Context, response: []const u8) void,
+    context: callback.Context,
 };
 var pending_requests: std.AutoHashMapUnmanaged(u32, ResponseHandler) = .{};
 
@@ -96,7 +96,7 @@ pub const Call = struct {
         return self.response.reader();
     }
 
-    pub fn send(self: *@This(), cb: *const fn (context: *callback.Context, response: []const u8) void, context: *callback.Context) !void {
+    pub fn send(self: *@This(), cb: *const fn (context: callback.Context, response: []const u8) void, context: callback.Context) !void {
         const buffer = self.request.items;
         try pending_requests.put(g.gpa, self.seq_id, .{
             .cb = cb,
@@ -107,25 +107,25 @@ pub const Call = struct {
     }
 };
 
-pub fn ignoreResponseCallback(context: *callback.Context, response: []const u8) void {
+pub fn ignoreResponseCallback(context: callback.Context, response: []const u8) void {
     _ = context;
     _ = response;
 }
 
-fn onCloseCallback(context: *callback.Context, code: i32) void {
+fn onCloseCallback(context: callback.Context, code: i32) void {
     _ = context;
     _ = code;
     browser.print("zig: websocket closed");
     handleNoConnection();
 }
 
-fn onErrorCallback(context: *callback.Context) void {
+fn onErrorCallback(context: callback.Context) void {
     _ = context;
     browser.print("zig: websocket error");
     handleNoConnection();
 }
 
-fn onMessageCallback(context: *callback.Context, buffer: []u8) void {
+fn onMessageCallback(context: callback.Context, buffer: []u8) void {
     _ = context;
 
     defer g.gpa.free(buffer);
@@ -163,7 +163,7 @@ fn handleNoConnection() void {
     _ = env.setTimeout(&retryOpenCallback, undefined, retry_timeout_ms);
 }
 
-fn retryOpenCallback(context: *callback.Context) void {
+fn retryOpenCallback(context: callback.Context) void {
     _ = context;
     if (loading_state != .backoff) return;
     loading_state = .none;
@@ -172,7 +172,7 @@ fn retryOpenCallback(context: *callback.Context) void {
 
 var periodic_ping_handle: ?i64 = null;
 const periodic_ping_interval_ms = 10_000;
-fn periodicPingCallback(context: *callback.Context) void {
+fn periodicPingCallback(context: callback.Context) void {
     _ = context;
     periodicPingAndCatch();
 }
@@ -191,7 +191,7 @@ fn periodicPing() !void {
     try ui.poll();
 }
 
-fn handlePeriodicPingResponseCallback(context: *callback.Context, response: []const u8) void {
+fn handlePeriodicPingResponseCallback(context: callback.Context, response: []const u8) void {
     _ = context;
     handlePeriodicPingResponse(response) catch |err| {
         @panic(@errorName(err));

@@ -13,12 +13,12 @@ pub extern fn panic(ptr: [*]const u8, len: usize) void;
 pub extern fn getTime() i64;
 pub extern fn setTimeout(
     callback: *const callback.CallbackFn,
-    callbackContext: *callback.Context,
+    callbackContext: callback.Context,
     milliseconds: i32,
 ) i64;
 pub extern fn setInterval(
     callback: *const callback.CallbackFn,
-    callbackContext: *callback.Context,
+    callbackContext: callback.Context,
     milliseconds: i32,
 ) i64;
 pub extern fn clearTimer(handle: i64) void;
@@ -26,15 +26,15 @@ pub extern fn clearTimer(handle: i64) void;
 // WebSocket API
 pub extern fn openWebSocket(
     allocatorCallback: *const callback.CallbackFnI32RI32,
-    allocatorCallbackContext: *callback.Context,
+    allocatorCallbackContext: callback.Context,
     openCallback: *const callback.CallbackFnI32,
-    openCallbackContext: *callback.Context,
+    openCallbackContext: callback.Context,
     closeCallback: *const callback.CallbackFnI32,
-    closeCallbackContext: *callback.Context,
+    closeCallbackContext: callback.Context,
     errorCallback: *const callback.CallbackFn,
-    errorCallbackContext: *callback.Context,
+    errorCallbackContext: callback.Context,
     messageCallback: *const callback.CallbackFnSliceU8,
-    messageCallbackContext: *callback.Context,
+    messageCallbackContext: callback.Context,
 ) void;
 pub extern fn sendMessage(handle: i32, ptr: [*]const u8, len: usize) void;
 
@@ -52,12 +52,12 @@ pub extern fn setAttribute(handle: i32, key_ptr: [*]const u8, key_len: usize, va
 pub extern fn getAttribute(
     handle: i32,
     allocatorCallback: *const callback.CallbackFnI32RI32,
-    allocatorCallbackContext: *callback.Context,
+    allocatorCallbackContext: callback.Context,
     key_ptr: [*]const u8,
     key_len: usize,
 ) i64;
 pub extern fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class_ptr: [*]const u8, class_len: usize) i32;
-pub extern fn addEventListener(handle: i32, event_type: EventType, cb: *const callback.CallbackFnI32, context: *callback.Context) void;
+pub extern fn addEventListener(handle: i32, event_type: EventType, cb: *const callback.CallbackFnI32, context: callback.Context) void;
 pub extern fn getEventTarget(handle: i32) i32;
 pub extern fn getEventModifiers(handle: i32) EventModifiers;
 pub extern fn preventDefault(handle: i32) void;

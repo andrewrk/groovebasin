@@ -31,6 +31,8 @@ var main_err_msg_text_dom: i32 = undefined;
 var library_artists_dom: i32 = undefined;
 var empty_library_message_dom: i32 = undefined;
 var library_no_items_dom: i32 = undefined;
+var left_window_tabs: [5]TabUi = undefined;
+var left_window_active_tab: usize = 0;
 
 // queue
 var queue_items_div: i32 = undefined;
@@ -50,6 +52,31 @@ pub fn init() void {
     dom.addEventListener(library_artists_dom, .mousedown, &onLibraryMouseDownCallback, undefined);
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
+    left_window_tabs = [_]TabUi{
+        .{
+            .tab = dom.getElementById("library-tab"),
+            .pane = dom.getElementById("library-pane"),
+        },
+        .{
+            .tab = dom.getElementById("playlists-tab"),
+            .pane = dom.getElementById("playlists-pane"),
+        },
+        .{
+            .tab = dom.getElementById("upload-tab"),
+            .pane = dom.getElementById("upload-pane"),
+        },
+        .{
+            .tab = dom.getElementById("events-tab"),
+            .pane = dom.getElementById("events-pane"),
+        },
+        .{
+            .tab = dom.getElementById("settings-tab"),
+            .pane = dom.getElementById("settings-pane"),
+        },
+    };
+    for (left_window_tabs) |*tab_ui, i| {
+        dom.addEventListener(tab_ui.tab, .click, &onLeftWindowTabClickCallback, @intToPtr(callback.Context, i));
+    }
 
     queue_items_div = dom.getElementById("queue-items");
 
@@ -64,6 +91,30 @@ pub fn init() void {
     queue = Queue{
         .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
     };
+}
+
+const TabUi = struct {
+    /// click this.
+    tab: i32,
+    /// shows this.
+    pane: i32,
+};
+
+pub fn onLeftWindowTabClickCallback(context: callback.Context, event: i32) void {
+    onLeftWindowTabClick(@ptrToInt(context), event) catch |err| @panic(@errorName(err));
+}
+pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) !void {
+    const modifiers = dom.getEventModifiers(event);
+    if (getModifier(modifiers, .alt)) return;
+    dom.preventDefault(event);
+
+    if (clicked_index == left_window_active_tab) return;
+    dom.removeClass(left_window_tabs[left_window_active_tab].tab, "active");
+    dom.setShown(left_window_tabs[left_window_active_tab].pane, false);
+
+    left_window_active_tab = clicked_index;
+    dom.addClass(left_window_tabs[left_window_active_tab].tab, "active");
+    dom.setShown(left_window_tabs[left_window_active_tab].pane, true);
 }
 
 pub fn setLoadingState(state: LoadStatus) void {
@@ -224,7 +275,7 @@ pub fn poll() !void {
     });
     try query_call.send(&handleQueryResponseCallback, undefined);
 }
-fn handleQueryResponseCallback(context: *callback.Context, response: []const u8) void {
+fn handleQueryResponseCallback(context: callback.Context, response: []const u8) void {
     _ = context;
     handleQueryResponse(response) catch |err| {
         @panic(@errorName(err));
@@ -287,7 +338,7 @@ fn handleQueryResponse(response: []const u8) !void {
     if (render_queue) renderQueue();
 }
 
-fn onLibraryMouseDownCallback(context: *callback.Context, event: i32) void {
+fn onLibraryMouseDownCallback(context: callback.Context, event: i32) void {
     _ = context;
     onLibraryMouseDown(event) catch |err| {
         @panic(@errorName(err));

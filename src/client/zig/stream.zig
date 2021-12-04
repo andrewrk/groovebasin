@@ -64,7 +64,7 @@ fn handleClientVolumeSliderChange() void {
     // TODO: save to localStorage.
 }
 
-fn onStreamButtonClick(context: *callback.Context, event: i32) void {
+fn onStreamButtonClick(context: callback.Context, event: i32) void {
     _ = context;
     _ = event;
 
@@ -88,14 +88,14 @@ fn toggleStreamButton() void {
     renderStreamButton();
 }
 
-fn onClientVolumeSliderChange(context: *callback.Context, event: i32) void {
+fn onClientVolumeSliderChange(context: callback.Context, event: i32) void {
     _ = context;
     _ = event;
 
     handleClientVolumeSliderChange();
 }
 
-fn onStreamAudioPlaying(context: *callback.Context, event: i32) void {
+fn onStreamAudioPlaying(context: callback.Context, event: i32) void {
     _ = context;
     _ = event;
 

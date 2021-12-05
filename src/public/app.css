@@ -51,6 +51,10 @@ html, body {
     height: 100%;
 }
 
+#events-pane {
+    grid-template-rows: auto 1fr auto;
+}
+
 /* The rest */
 .button{
     background:#333 url("img/ui-bg_dots-small_20_333333_2x2.png") 50% 50% repeat;
@@ -250,7 +254,6 @@ button:hover .icon{
     margin:3px 0 0 0
 }
 #nowplaying{
-    margin:6px auto;
     text-align:center;
 }
 #nowplaying .playback-btns{

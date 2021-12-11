@@ -4,7 +4,11 @@ const ArrayList = std.ArrayList;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
 const dom = @import("dom.zig");
-const getModifier = @import("browser_enums.zig").getModifier;
+const enums = @import("browser_enums.zig");
+const getModifier = enums.getModifier;
+const KeyboardEventCode = enums.KeyboardEventCode;
+const EventModifierKey = enums.EventModifierKey;
+
 const ws = @import("websocket_handler.zig");
 const callback = @import("callback.zig");
 const browser = @import("browser.zig");
@@ -44,6 +48,8 @@ const icon_collapsed = "icon-triangle-1-e";
 const icon_expanded = "icon-triangle-1-se";
 
 pub fn init() void {
+    dom.addWindowEventListener(.keydown, callback.packCallback(onWindowKeydown, {}));
+
     main_grid_dom = dom.getElementById("main-grid");
     main_err_msg_dom = dom.getElementById("main-err-msg");
     main_err_msg_text_dom = dom.getElementById("main-err-msg-text");
@@ -368,4 +374,31 @@ pub fn renderButtonIsOn(button: i32, is_on: bool) void {
     } else {
         dom.removeClass(button, "on");
     }
+}
+
+fn onWindowKeydown(event: i32) anyerror!void {
+    const modifiers = dom.getEventModifiers(event);
+    const code = dom.getKeyboardEventCode(event);
+    switch (@as(u64, @intCast(u31, modifiers)) << 32 | @intCast(u31, @enumToInt(code))) {
+        k(.KeyT) => {
+            browser.print("TODO: focus chat tab");
+        },
+        k2(.ctrl, .ArrowRight) => {
+            browser.print("TODO: next song");
+        },
+        k3(.alt, .shift, .Enter) => {
+            browser.print("TODO: insert next shuffled.");
+        },
+        else => return,
+    }
+    dom.preventDefault(event);
+}
+fn k(code: KeyboardEventCode) u64 {
+    return @intCast(u31, @enumToInt(code));
+}
+fn k2(modifier: EventModifierKey, code: KeyboardEventCode) u64 {
+    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier)) + 32)) | @intCast(u31, @enumToInt(code));
+}
+fn k3(modifier1: EventModifierKey, modifier2: EventModifierKey, code: KeyboardEventCode) u64 {
+    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier1)) + 32)) | (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier2)) + 32)) | @intCast(u31, @enumToInt(code));
 }

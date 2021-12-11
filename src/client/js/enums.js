@@ -365,8 +365,16 @@ const KeyboardEventCode = [
     "WakeUp",
 ];
 
+const KeyboardEventCode_inverse = {};
+for (let i = 0; i < KeyboardEventCode.length; i++) {
+    KeyboardEventCode_inverse[KeyboardEventCode[i]] = i;
+}
+// When Firefox uses "Unidentified", Chrome uses "".
+KeyboardEventCode_inverse[""] = KeyboardEventCode_inverse["Unidentified"];
+
 return {
     PositionType,
     EventType,
     KeyboardEventCode,
+    KeyboardEventCode_inverse,
 };

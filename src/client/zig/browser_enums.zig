@@ -13,15 +13,15 @@ pub const InsertPosition = enum(i32) {
     afterend = 3,
 };
 
-/// bitfield of (1 << EventModifierKeys._)
+/// bitfield of (1 << EventModifierKey._)
 pub const EventModifiers = i32;
-pub const EventModifierKeys = enum(i32) {
+pub const EventModifierKey = enum(i32) {
     shift = 0,
     ctrl = 1,
     alt = 2,
     meta = 3,
 };
-pub fn getModifier(modifiers: EventModifiers, modifier: EventModifierKeys) bool {
+pub fn getModifier(modifiers: EventModifiers, modifier: EventModifierKey) bool {
     return modifiers & (@as(i32, 1) << @intCast(u5, @enumToInt(modifier))) != 0;
 }
 

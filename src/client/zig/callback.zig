@@ -37,6 +37,7 @@ fn TypeForCallback(comptime callback: anytype, comptime ContextType: type) type 
             if (isAbiTypeVoid(return_error_union.payload)) {
                 return CallbackI32;
             } else {
+                std.debug.assert(@sizeOf(return_error_union.payload) == 4);
                 return CallbackI32RI32;
             }
         },

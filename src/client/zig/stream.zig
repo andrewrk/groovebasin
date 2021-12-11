@@ -23,15 +23,15 @@ var stream_state: enum {
 
 pub fn init() void {
     stream_button = dom.getElementById("stream-btn");
-    dom.addEventListener(stream_button, .click, &onStreamButtonClick, undefined);
+    dom.addEventListener(stream_button, .click, callback.packCallback(onStreamButtonClick, {}));
     stream_button_label = dom.getElementById("stream-btn-label");
     client_volume_div = dom.getElementById("client-vol");
     client_volume_slider = dom.getElementById("client-vol-slider");
-    dom.addEventListener(client_volume_slider, .change, &onClientVolumeSliderChange, undefined);
-    dom.addEventListener(client_volume_slider, .input, &onClientVolumeSliderChange, undefined);
+    dom.addEventListener(client_volume_slider, .change, callback.packCallback(onClientVolumeSliderChange, {}));
+    dom.addEventListener(client_volume_slider, .input, callback.packCallback(onClientVolumeSliderChange, {}));
 
     stream_audio_handle = env.newAudio();
-    dom.addEventListener(stream_audio_handle, .playing, &onStreamAudioPlaying, undefined);
+    dom.addEventListener(stream_audio_handle, .playing, callback.packCallback(onStreamAudioPlaying, {}));
 
     // TODO: load from localStorage.
     if (@as(?f64, 1.0)) |initial_client_volume| {
@@ -64,8 +64,7 @@ fn handleClientVolumeSliderChange() void {
     // TODO: save to localStorage.
 }
 
-fn onStreamButtonClick(context: callback.Context, event: i32) void {
-    _ = context;
+fn onStreamButtonClick(event: i32) anyerror!void {
     _ = event;
 
     toggleStreamButton();
@@ -88,15 +87,13 @@ fn toggleStreamButton() void {
     renderStreamButton();
 }
 
-fn onClientVolumeSliderChange(context: callback.Context, event: i32) void {
-    _ = context;
+fn onClientVolumeSliderChange(event: i32) anyerror!void {
     _ = event;
 
     handleClientVolumeSliderChange();
 }
 
-fn onStreamAudioPlaying(context: callback.Context, event: i32) void {
-    _ = context;
+fn onStreamAudioPlaying(event: i32) anyerror!void {
     _ = event;
 
     std.debug.assert(stream_state == .buffering);

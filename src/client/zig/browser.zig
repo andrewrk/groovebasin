@@ -1,7 +1,9 @@
 // A convenient abstraction for essential functions.
 const std = @import("std");
+
 const env = @import("browser_env.zig");
 const g = @import("global.zig");
+const callback = @import("callback.zig");
 
 pub fn print(str: []const u8) void {
     env.print(str.ptr, str.len);
@@ -21,6 +23,35 @@ pub fn printHex(prefix: []const u8, buf: []const u8) void {
         formatted[prefix.len + i * 2 + 1] = "0123456789abcdef"[b & 0b1111];
     }
     print(formatted);
+}
+
+pub fn setTimeout(
+    cb: callback.Callback,
+    milliseconds: i32,
+) i64 {
+    return env.setTimeout(cb.handle, milliseconds);
+}
+pub fn setInterval(
+    cb: callback.Callback,
+    milliseconds: i32,
+) i64 {
+    return env.setInterval(cb.handle, milliseconds);
+}
+
+pub fn openWebSocket(
+    allocatorCallback: callback.CallbackI32RI32,
+    openCallback: callback.CallbackI32,
+    closeCallback: callback.CallbackI32,
+    errorCallback: callback.Callback,
+    messageCallback: callback.CallbackSliceU8,
+) void {
+    return env.openWebSocket(
+        allocatorCallback.handle,
+        openCallback.handle,
+        closeCallback.handle,
+        errorCallback.handle,
+        messageCallback.handle,
+    );
 }
 
 pub fn setAudioSrc(handle: i32, src: []const u8) void {

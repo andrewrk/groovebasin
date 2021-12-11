@@ -1,7 +1,6 @@
 // This is the {env} passed into the wasm instantiation.
 // See also browser.zig, dom.zig, etc. for more conveient altnernatives for some of these.
 
-const callback = @import("callback.zig");
 const enums = @import("browser_enums.zig");
 const InsertPosition = enums.InsertPosition;
 const EventType = enums.EventType;
@@ -12,29 +11,22 @@ pub extern fn print(ptr: [*]const u8, len: usize) void;
 pub extern fn panic(ptr: [*]const u8, len: usize) void;
 pub extern fn getTime() i64;
 pub extern fn setTimeout(
-    callback: *const callback.CallbackFn,
-    callbackContext: callback.Context,
+    cb: i64, //callback.Callback,
     milliseconds: i32,
 ) i64;
 pub extern fn setInterval(
-    callback: *const callback.CallbackFn,
-    callbackContext: callback.Context,
+    cb: i64, //callback.Callback,
     milliseconds: i32,
 ) i64;
 pub extern fn clearTimer(handle: i64) void;
 
 // WebSocket API
 pub extern fn openWebSocket(
-    allocatorCallback: *const callback.CallbackFnI32RI32,
-    allocatorCallbackContext: callback.Context,
-    openCallback: *const callback.CallbackFnI32,
-    openCallbackContext: callback.Context,
-    closeCallback: *const callback.CallbackFnI32,
-    closeCallbackContext: callback.Context,
-    errorCallback: *const callback.CallbackFn,
-    errorCallbackContext: callback.Context,
-    messageCallback: *const callback.CallbackFnSliceU8,
-    messageCallbackContext: callback.Context,
+    allocatorCallback: i64, //callback.CallbackI32RI32,
+    openCallback: i64, //callback.CallbackI32,
+    closeCallback: i64, //callback.CallbackI32,
+    errorCallback: i64, //callback.Callback,
+    messageCallback: i64, //callback.CallbackSliceU8,
 ) void;
 pub extern fn sendMessage(handle: i32, ptr: [*]const u8, len: usize) void;
 
@@ -51,13 +43,16 @@ pub extern fn removeClass(handle: i32, class_ptr: [*]const u8, class_len: usize)
 pub extern fn setAttribute(handle: i32, key_ptr: [*]const u8, key_len: usize, value_ptr: [*]const u8, value_len: usize) void;
 pub extern fn getAttribute(
     handle: i32,
-    allocatorCallback: *const callback.CallbackFnI32RI32,
-    allocatorCallbackContext: callback.Context,
+    allocatorCallback: i64, //callback.CallbackI32RI32,
     key_ptr: [*]const u8,
     key_len: usize,
 ) i64;
 pub extern fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class_ptr: [*]const u8, class_len: usize) i32;
-pub extern fn addEventListener(handle: i32, event_type: EventType, cb: *const callback.CallbackFnI32, context: callback.Context) void;
+pub extern fn addEventListener(
+    handle: i32,
+    event_type: EventType,
+    cb: i64, //callback.CallbackI32,
+) void;
 pub extern fn getEventTarget(handle: i32) i32;
 pub extern fn getEventModifiers(handle: i32) EventModifiers;
 pub extern fn preventDefault(handle: i32) void;

@@ -49,7 +49,7 @@ pub fn init() void {
     main_err_msg_text_dom = dom.getElementById("main-err-msg-text");
 
     library_artists_dom = dom.getElementById("library-artists");
-    dom.addEventListener(library_artists_dom, .mousedown, &onLibraryMouseDownCallback, undefined);
+    dom.addEventListener(library_artists_dom, .mousedown, callback.packCallback(onLibraryMouseDown, {}));
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
     left_window_tabs = [_]TabUi{
@@ -75,7 +75,7 @@ pub fn init() void {
         },
     };
     for (left_window_tabs) |*tab_ui, i| {
-        dom.addEventListener(tab_ui.tab, .click, &onLeftWindowTabClickCallback, @intToPtr(callback.Context, i));
+        dom.addEventListener(tab_ui.tab, .click, callback.packCallback(onLeftWindowTabClick, i));
     }
 
     queue_items_div = dom.getElementById("queue-items");
@@ -100,10 +100,7 @@ const TabUi = struct {
     pane: i32,
 };
 
-pub fn onLeftWindowTabClickCallback(context: callback.Context, event: i32) void {
-    onLeftWindowTabClick(@ptrToInt(context), event) catch |err| @panic(@errorName(err));
-}
-pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) !void {
+pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
     const modifiers = dom.getEventModifiers(event);
     if (getModifier(modifiers, .alt)) return;
     dom.preventDefault(event);
@@ -273,15 +270,9 @@ pub fn poll() !void {
         .last_library = last_library_version,
         .last_queue = last_queue_version,
     });
-    try query_call.send(&handleQueryResponseCallback, undefined);
+    try query_call.send(handleQueryResponse, {});
 }
-fn handleQueryResponseCallback(context: callback.Context, response: []const u8) void {
-    _ = context;
-    handleQueryResponse(response) catch |err| {
-        @panic(@errorName(err));
-    };
-}
-fn handleQueryResponse(response: []const u8) !void {
+fn handleQueryResponse(response: []const u8) anyerror!void {
     var stream = std.io.fixedBufferStream(response);
     const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
     var render_library = false;
@@ -338,14 +329,7 @@ fn handleQueryResponse(response: []const u8) !void {
     if (render_queue) renderQueue();
 }
 
-fn onLibraryMouseDownCallback(context: callback.Context, event: i32) void {
-    _ = context;
-    onLibraryMouseDown(event) catch |err| {
-        @panic(@errorName(err));
-    };
-}
-
-fn onLibraryMouseDown(event: i32) !void {
+fn onLibraryMouseDown(event: i32) anyerror!void {
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
     const arena = &arena_instance.allocator;
@@ -364,7 +348,7 @@ fn onLibraryMouseDown(event: i32) !void {
     try query_call.writer().writeStruct(protocol.EnqueueRequestHeader{
         .track_key = track_key,
     });
-    try query_call.send(&ws.ignoreResponseCallback, undefined);
+    try query_call.send(ws.ignoreResponse, {});
 }
 
 fn formatKey(key: u64) [16]u8 {

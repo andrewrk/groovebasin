@@ -6,6 +6,7 @@ const callback = @import("callback.zig");
 const browser = @import("browser.zig");
 const enums = @import("browser_enums.zig");
 const InsertPosition = enums.InsertPosition;
+const EventType = enums.EventType;
 
 pub fn getElementById(id: []const u8) i32 {
     return env.getElementById(id.ptr, id.len);
@@ -37,11 +38,9 @@ pub fn setAttribute(handle: i32, key: []const u8, value: []const u8) void {
     env.setAttribute(handle, key.ptr, key.len, value.ptr, value.len);
 }
 pub fn getAttribute(handle: i32, allocator: *Allocator, key: []const u8) []const u8 {
-    const allocator_callback = callback.allocator(allocator);
     const packed_slice = env.getAttribute(
         handle,
-        allocator_callback.callback,
-        allocator_callback.context,
+        callback.allocator(allocator).handle,
         key.ptr,
         key.len,
     );
@@ -52,7 +51,13 @@ pub fn searchAncestorsForClass(start_handle: i32, stop_handle: i32, class: []con
     return env.searchAncestorsForClass(start_handle, stop_handle, class.ptr, class.len);
 }
 
-pub const addEventListener = env.addEventListener;
+pub fn addEventListener(
+    handle: i32,
+    event_type: EventType,
+    cb: callback.CallbackI32,
+) void {
+    return env.addEventListener(handle, event_type, cb.handle);
+}
 pub const getEventTarget = env.getEventTarget;
 pub const getEventModifiers = env.getEventModifiers;
 pub const preventDefault = env.preventDefault;

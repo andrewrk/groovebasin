@@ -22,23 +22,16 @@ pub fn open() void {
     std.debug.assert(loading_state == .none);
     loading_state = .connecting;
 
-    const allocator_callback = callback.allocator(g.gpa);
-    env.openWebSocket(
-        allocator_callback.callback,
-        allocator_callback.context,
-        &onOpenCallback,
-        undefined,
-        &onCloseCallback,
-        undefined,
-        &onErrorCallback,
-        undefined,
-        &onMessageCallback,
-        undefined,
+    browser.openWebSocket(
+        callback.allocator(g.gpa),
+        callback.packCallback(onOpenCallback, {}),
+        callback.packCallback(onCloseCallback, {}),
+        callback.packCallback(onErrorCallback, {}),
+        callback.packCallback(onMessageCallback, {}),
     );
 }
 
-fn onOpenCallback(context: callback.Context, handle: i32) void {
-    _ = context;
+fn onOpenCallback(handle: i32) anyerror!void {
     browser.print("zig: websocket opened");
 
     std.debug.assert(loading_state == .connecting);
@@ -46,8 +39,8 @@ fn onOpenCallback(context: callback.Context, handle: i32) void {
     websocket_handle = handle;
     ui.setLoadingState(.good);
 
-    periodic_ping_handle = env.setInterval(&periodicPingCallback, undefined, periodic_ping_interval_ms);
-    periodicPingAndCatch();
+    periodic_ping_handle = browser.setInterval(callback.packCallback(periodicPing, {}), periodic_ping_interval_ms);
+    try periodicPing();
 }
 
 var next_seq_id: u32 = 0;
@@ -59,11 +52,7 @@ fn generateSeqId() u32 {
     return next_seq_id;
 }
 
-const ResponseHandler = struct {
-    cb: *const fn (context: callback.Context, response: []const u8) void,
-    context: callback.Context,
-};
-var pending_requests: std.AutoHashMapUnmanaged(u32, ResponseHandler) = .{};
+var pending_requests: std.AutoHashMapUnmanaged(u32, callback.CallbackSliceU8) = .{};
 
 pub const Call = struct {
     seq_id: u32,
@@ -96,60 +85,49 @@ pub const Call = struct {
         return self.response.reader();
     }
 
-    pub fn send(self: *@This(), cb: *const fn (context: callback.Context, response: []const u8) void, context: callback.Context) !void {
+    pub fn send(self: *@This(), comptime cb: anytype, context: anytype) !void {
         const buffer = self.request.items;
-        try pending_requests.put(g.gpa, self.seq_id, .{
-            .cb = cb,
-            .context = context,
-        });
+        try pending_requests.put(g.gpa, self.seq_id, callback.packCallback(cb, context));
         browser.printHex("request: ", buffer);
         env.sendMessage(websocket_handle, buffer.ptr, buffer.len);
     }
 };
 
-pub fn ignoreResponseCallback(context: callback.Context, response: []const u8) void {
-    _ = context;
+pub fn ignoreResponse(response: []const u8) anyerror!void {
     _ = response;
 }
 
-fn onCloseCallback(context: callback.Context, code: i32) void {
-    _ = context;
+fn onCloseCallback(code: i32) anyerror!void {
     _ = code;
     browser.print("zig: websocket closed");
     handleNoConnection();
 }
 
-fn onErrorCallback(context: callback.Context) void {
-    _ = context;
+fn onErrorCallback() anyerror!void {
     browser.print("zig: websocket error");
     handleNoConnection();
 }
 
-fn onMessageCallback(context: callback.Context, buffer: []u8) void {
-    _ = context;
-
+fn onMessageCallback(buffer: []u8) anyerror!void {
     defer g.gpa.free(buffer);
 
     browser.printHex("response: ", buffer);
 
     var stream = std.io.fixedBufferStream(buffer);
     const reader = stream.reader();
-    const header = reader.readStruct(protocol.ResponseHeader) catch |err| {
-        @panic(@errorName(err));
-    };
+    const header = try reader.readStruct(protocol.ResponseHeader);
     const remaining_buffer = buffer[stream.pos..];
 
     if ((header.seq_id & 0x8000_0000) == 0) {
         // response to a request.
 
-        const handler = (pending_requests.fetchRemove(header.seq_id) orelse {
+        const cb = (pending_requests.fetchRemove(header.seq_id) orelse {
             @panic("received a response for unrecognized seq_id");
         }).value;
-
-        handler.cb.*(handler.context, remaining_buffer);
+        callback.delegateCallbackSliceU8(cb.handle, remaining_buffer.ptr, remaining_buffer.len);
     } else {
         // message from the server.
-        handlePushMessageAndCatch(remaining_buffer);
+        try handlePushMessage(remaining_buffer);
     }
 }
 
@@ -160,11 +138,10 @@ fn handleNoConnection() void {
     ui.setLoadingState(.no_connection);
 
     env.clearTimer(periodic_ping_handle.?);
-    _ = env.setTimeout(&retryOpenCallback, undefined, retry_timeout_ms);
+    _ = browser.setTimeout(callback.packCallback(retryOpenCallback, {}), retry_timeout_ms);
 }
 
-fn retryOpenCallback(context: callback.Context) void {
-    _ = context;
+fn retryOpenCallback() anyerror!void {
     if (loading_state != .backoff) return;
     loading_state = .none;
     open();
@@ -172,32 +149,17 @@ fn retryOpenCallback(context: callback.Context) void {
 
 var periodic_ping_handle: ?i64 = null;
 const periodic_ping_interval_ms = 10_000;
-fn periodicPingCallback(context: callback.Context) void {
-    _ = context;
-    periodicPingAndCatch();
-}
-fn periodicPingAndCatch() void {
-    periodicPing() catch |err| {
-        @panic(@errorName(err));
-    };
-}
-fn periodicPing() !void {
+fn periodicPing() anyerror!void {
     {
         var ping_call = try Call.init(.ping);
-        try ping_call.send(&handlePeriodicPingResponseCallback, undefined);
+        try ping_call.send(handlePeriodicPingResponse, {});
     }
 
     // Also by the way, let's query for the data or something.
     try ui.poll();
 }
 
-fn handlePeriodicPingResponseCallback(context: callback.Context, response: []const u8) void {
-    _ = context;
-    handlePeriodicPingResponse(response) catch |err| {
-        @panic(@errorName(err));
-    };
-}
-fn handlePeriodicPingResponse(response: []const u8) !void {
+fn handlePeriodicPingResponse(response: []const u8) anyerror!void {
     var stream = std.io.fixedBufferStream(response);
     const milliseconds = env.getTime();
     const client_ns = @as(i128, milliseconds) * 1_000_000;
@@ -206,16 +168,11 @@ fn handlePeriodicPingResponse(response: []const u8) !void {
     ui.setLag(lag_ns);
 }
 
-fn handlePushMessageAndCatch(response: []const u8) void {
-    handlePushMessage(response) catch |err| {
-        @panic(@errorName(err));
-    };
-}
 fn handlePushMessage(response: []const u8) !void {
     var stream = std.io.fixedBufferStream(response);
     const header = try stream.reader().readStruct(protocol.PushMessageHeader);
     _ = header;
 
     // it just means do this:
-    periodicPingAndCatch();
+    try periodicPing();
 }

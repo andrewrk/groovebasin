@@ -20,11 +20,11 @@ const env = {
     getTime() {
         return BigInt(new Date().getTime());
     },
-    setTimeout(callbackPtr, context, timeout) {
-        return BigInt(setTimeout(callback.wrapCallback(callbackPtr, context), timeout));
+    setTimeout(cb, timeout) {
+        return BigInt(setTimeout(callback.wrapCallback(cb), timeout));
     },
-    setInterval(callbackPtr, context, timeout) {
-        return BigInt(setInterval(callback.wrapCallback(callbackPtr, context), timeout));
+    setInterval(cb, timeout) {
+        return BigInt(setInterval(callback.wrapCallback(cb), timeout));
     },
     clearTimer(handle) {
         clearTimeout(Number(handle));
@@ -32,18 +32,18 @@ const env = {
 
     // WebSocket API
     openWebSocket(
-        allocatorCallbackPtr, allocatorCallbackContext,
-        openCallbackPtr, openCallbackContext,
-        closeCallbackPtr, closeCallbackContext,
-        errorCallbackPtr, errorCallbackContext,
-        messageCallbackPtr, messageCallbackContext,
+        allocatorCallback,
+        openCallback,
+        closeCallback,
+        errorCallback,
+        messageCallback,
     ) {
         openWebSocket(
-            callback.wrapCallbackI32RI32(allocatorCallbackPtr, allocatorCallbackContext),
-            callback.wrapCallbackI32(openCallbackPtr, openCallbackContext),
-            callback.wrapCallbackI32(closeCallbackPtr, closeCallbackContext),
-            callback.wrapCallback(errorCallbackPtr, errorCallbackContext),
-            callback.wrapCallbackSliceU8(messageCallbackPtr, messageCallbackContext),
+            callback.wrapCallbackI32RI32(allocatorCallback),
+            callback.wrapCallbackI32(openCallback),
+            callback.wrapCallbackI32(closeCallback),
+            callback.wrapCallback(errorCallback),
+            callback.wrapCallbackSliceU8(messageCallback),
         );
     },
     sendMessage(handle, ptr, len) {
@@ -90,23 +90,17 @@ const env = {
         const value = decodeString(value_ptr, value_len);
         return dom.setAttribute(handle, key, value);
     },
-    getAttribute(
-        handle,
-        allocatorCallbackPtr, allocatorCallbackContext,
-        key_ptr, key_len,
-    ) {
+    getAttribute(handle, allocatorCallback,key_ptr, key_len) {
         const key = decodeString(key_ptr, key_len);
         const value = dom.getAttribute(handle, key);
-        return encodeStringAlloc(
-            callback.wrapCallbackI32RI32(allocatorCallbackPtr, allocatorCallbackContext),
-            value);
+        return encodeStringAlloc(callback.wrapCallbackI32RI32(allocatorCallback), value);
     },
     searchAncestorsForClass(start_handle, stop_handle, class_ptr, class_len) {
         const class_ = decodeString(class_ptr, class_len);
         return dom.searchAncestorsForClass(start_handle, stop_handle, class_);
     },
-    addEventListener(handle, event_type, callbackPtr, context) {
-        return dom.addEventListener(handle, EventType[event_type], callback.wrapCallbackI32(callbackPtr, context));
+    addEventListener(handle, event_type, cb) {
+        return dom.addEventListener(handle, EventType[event_type], callback.wrapCallbackI32(cb));
     },
     getEventTarget(handle) {
         return dom.getEventTarget(handle);

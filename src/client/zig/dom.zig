@@ -58,8 +58,15 @@ pub fn addEventListener(
 ) void {
     return env.addEventListener(handle, event_type, cb.handle);
 }
+pub fn addWindowEventListener(
+    event_type: EventType,
+    cb: callback.CallbackI32,
+) void {
+    return env.addWindowEventListener(event_type, cb.handle);
+}
 pub const getEventTarget = env.getEventTarget;
 pub const getEventModifiers = env.getEventModifiers;
+pub const getKeyboardEventCode = env.getKeyboardEventCode;
 pub const preventDefault = env.preventDefault;
 
 pub const setInputValueAsNumber = env.setInputValueAsNumber;

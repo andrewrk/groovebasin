@@ -1,5 +1,6 @@
 
 const {HandleRegistry} = require("handleRegistry");
+const {KeyboardEventCode_inverse} = require("enums");
 
 const elementRegistry = new HandleRegistry();
 const eventRegistry = new HandleRegistry();
@@ -115,6 +116,17 @@ function addEventListener(handle, event_type, cb) {
     });
 }
 
+function addWindowEventListener(event_type, cb) {
+    window.addEventListener(event_type, function(event) {
+        const {handle, dispose} = eventRegistry.alloc(event);
+        try {
+            cb(handle);
+        } finally {
+            dispose();
+        }
+    });
+}
+
 function getEventTarget(event_handle) {
     const event = eventRegistry.registry[event_handle];
     const target = event.target;
@@ -128,6 +140,12 @@ function getEventModifiers(event_handle) {
         (event.altKey ? (1 << 2) : 0) |
         (event.metaKey ? (1 << 3) : 0)
     );
+}
+function getKeyboardEventCode(event_handle) {
+    const event = eventRegistry.registry[event_handle];
+    const code_code = KeyboardEventCode_inverse[event.code];
+    if (typeof code_code !== "number") throw new Error("event.code not recognized: " + event.code);
+    return code_code;
 }
 function preventDefault(event_handle) {
     const event = eventRegistry.registry[event_handle];
@@ -157,8 +175,10 @@ return {
     getAttribute,
     searchAncestorsForClass,
     addEventListener,
+    addWindowEventListener,
     getEventTarget,
     getEventModifiers,
+    getKeyboardEventCode,
     preventDefault,
     setInputValueAsNumber,
     getInputValueAsNumber,

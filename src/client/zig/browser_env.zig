@@ -5,6 +5,7 @@ const enums = @import("browser_enums.zig");
 const InsertPosition = enums.InsertPosition;
 const EventType = enums.EventType;
 const EventModifiers = enums.EventModifiers;
+const KeyboardEventCode = enums.KeyboardEventCode;
 
 // Essentials
 pub extern fn print(ptr: [*]const u8, len: usize) void;
@@ -53,8 +54,13 @@ pub extern fn addEventListener(
     event_type: EventType,
     cb: i64, //callback.CallbackI32,
 ) void;
+pub extern fn addWindowEventListener(
+    event_type: EventType,
+    cb: i64, //callback.CallbackI32,
+) void;
 pub extern fn getEventTarget(handle: i32) i32;
 pub extern fn getEventModifiers(handle: i32) EventModifiers;
+pub extern fn getKeyboardEventCode(handle: i32) KeyboardEventCode;
 pub extern fn preventDefault(handle: i32) void;
 pub extern fn setInputValueAsNumber(handle: i32, value: f64) void;
 pub extern fn getInputValueAsNumber(handle: i32) f64;

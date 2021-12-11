@@ -102,11 +102,17 @@ const env = {
     addEventListener(handle, event_type, cb) {
         return dom.addEventListener(handle, EventType[event_type], callback.wrapCallbackI32(cb));
     },
+    addWindowEventListener(event_type, cb) {
+        return dom.addWindowEventListener(EventType[event_type], callback.wrapCallbackI32(cb));
+    },
     getEventTarget(handle) {
         return dom.getEventTarget(handle);
     },
     getEventModifiers(handle) {
         return dom.getEventModifiers(handle);
+    },
+    getKeyboardEventCode(handle) {
+        return dom.getKeyboardEventCode(handle);
     },
     preventDefault(handle) {
         return dom.preventDefault(handle);

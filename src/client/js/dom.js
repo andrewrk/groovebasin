@@ -151,12 +151,29 @@ function preventDefault(event_handle) {
     const event = eventRegistry.registry[event_handle];
     event.preventDefault();
 }
+function stopPropagation(event_handle) {
+    const event = eventRegistry.registry[event_handle];
+    event.stopPropagation();
+}
 
+function setInputValue(handle, value) {
+    getElementByHandle(handle).value = value;
+}
+function getInputValue(handle) {
+    return getElementByHandle(handle).value;
+}
 function setInputValueAsNumber(handle, value) {
     getElementByHandle(handle).valueAsNumber = value;
 }
 function getInputValueAsNumber(handle) {
     return getElementByHandle(handle).valueAsNumber;
+}
+
+function focus(handle) {
+    getElementByHandle(handle).focus();
+}
+function blur(handle) {
+    getElementByHandle(handle).blur();
 }
 
 return {
@@ -180,6 +197,11 @@ return {
     getEventModifiers,
     getKeyboardEventCode,
     preventDefault,
+    stopPropagation,
+    setInputValue,
+    getInputValue,
     setInputValueAsNumber,
     getInputValueAsNumber,
+    focus,
+    blur,
 };

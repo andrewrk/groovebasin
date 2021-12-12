@@ -32,11 +32,13 @@ var main_err_msg_dom: i32 = undefined;
 var main_err_msg_text_dom: i32 = undefined;
 
 // left window
+var left_window_tabs: [5]TabUi = undefined;
+var left_window_active_tab: usize = 0;
+var library_filter_textbox: i32 = undefined;
 var library_artists_dom: i32 = undefined;
 var empty_library_message_dom: i32 = undefined;
 var library_no_items_dom: i32 = undefined;
-var left_window_tabs: [5]TabUi = undefined;
-var left_window_active_tab: usize = 0;
+var chat_textbox: i32 = undefined;
 
 // queue
 var queue_items_div: i32 = undefined;
@@ -54,10 +56,6 @@ pub fn init() void {
     main_err_msg_dom = dom.getElementById("main-err-msg");
     main_err_msg_text_dom = dom.getElementById("main-err-msg-text");
 
-    library_artists_dom = dom.getElementById("library-artists");
-    dom.addEventListener(library_artists_dom, .mousedown, callback.packCallback(onLibraryMouseDown, {}));
-    empty_library_message_dom = dom.getElementById("empty-library-message");
-    library_no_items_dom = dom.getElementById("library-no-items");
     left_window_tabs = [_]TabUi{
         .{
             .tab = dom.getElementById("library-tab"),
@@ -83,6 +81,15 @@ pub fn init() void {
     for (left_window_tabs) |*tab_ui, i| {
         dom.addEventListener(tab_ui.tab, .click, callback.packCallback(onLeftWindowTabClick, i));
     }
+
+    library_filter_textbox = dom.getElementById("lib-filter");
+    dom.addEventListener(library_filter_textbox, .keydown, callback.packCallback(onLibraryFilterKeydown, {}));
+    library_artists_dom = dom.getElementById("library-artists");
+    dom.addEventListener(library_artists_dom, .mousedown, callback.packCallback(onLibraryMouseDown, {}));
+    empty_library_message_dom = dom.getElementById("empty-library-message");
+    library_no_items_dom = dom.getElementById("library-no-items");
+    chat_textbox = dom.getElementById("chat-box-input");
+    dom.addEventListener(chat_textbox, .keydown, callback.packCallback(onChatTextboxKeydown, {}));
 
     queue_items_div = dom.getElementById("queue-items");
 
@@ -111,11 +118,15 @@ pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
     if (getModifier(modifiers, .alt)) return;
     dom.preventDefault(event);
 
-    if (clicked_index == left_window_active_tab) return;
+    focusLeftWindowTab(clicked_index);
+}
+
+fn focusLeftWindowTab(index: usize) void {
+    if (index == left_window_active_tab) return;
     dom.removeClass(left_window_tabs[left_window_active_tab].tab, "active");
     dom.setShown(left_window_tabs[left_window_active_tab].pane, false);
 
-    left_window_active_tab = clicked_index;
+    left_window_active_tab = index;
     dom.addClass(left_window_tabs[left_window_active_tab].tab, "active");
     dom.setShown(left_window_tabs[left_window_active_tab].pane, true);
 }
@@ -376,12 +387,30 @@ pub fn renderButtonIsOn(button: i32, is_on: bool) void {
     }
 }
 
-fn onWindowKeydown(event: i32) anyerror!void {
+fn getModifiersAndCode(event: i32) u64 {
     const modifiers = dom.getEventModifiers(event);
     const code = dom.getKeyboardEventCode(event);
-    switch (@as(u64, @intCast(u31, modifiers)) << 32 | @intCast(u31, @enumToInt(code))) {
+    return @as(u64, @intCast(u31, modifiers)) << 32 | @intCast(u31, @enumToInt(code));
+}
+fn k(code: KeyboardEventCode) u64 {
+    return @intCast(u31, @enumToInt(code));
+}
+fn k2(modifier: EventModifierKey, code: KeyboardEventCode) u64 {
+    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier)) + 32)) | @intCast(u31, @enumToInt(code));
+}
+fn k3(modifier1: EventModifierKey, modifier2: EventModifierKey, code: KeyboardEventCode) u64 {
+    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier1)) + 32)) | (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier2)) + 32)) | @intCast(u31, @enumToInt(code));
+}
+
+fn onWindowKeydown(event: i32) anyerror!void {
+    switch (getModifiersAndCode(event)) {
         k(.KeyT) => {
-            browser.print("TODO: focus chat tab");
+            focusLeftWindowTab(3); // Chat
+            dom.focus(chat_textbox);
+        },
+        k(.Slash) => {
+            focusLeftWindowTab(0); // Library
+            dom.focus(library_filter_textbox);
         },
         k2(.ctrl, .ArrowRight) => {
             browser.print("TODO: next song");
@@ -393,12 +422,45 @@ fn onWindowKeydown(event: i32) anyerror!void {
     }
     dom.preventDefault(event);
 }
-fn k(code: KeyboardEventCode) u64 {
-    return @intCast(u31, @enumToInt(code));
+
+fn onLibraryFilterKeydown(event: i32) anyerror!void {
+    dom.stopPropagation(event);
+
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    const arena = &arena_instance.allocator;
+
+    switch (getModifiersAndCode(event)) {
+        k(.Escape) => {
+            const text = dom.getInputValue(library_filter_textbox, arena);
+            if (text.len == 0) {
+                dom.blur(library_filter_textbox);
+            } else {
+                dom.setInputValue(library_filter_textbox, "");
+            }
+        },
+        else => return,
+    }
+    dom.preventDefault(event);
 }
-fn k2(modifier: EventModifierKey, code: KeyboardEventCode) u64 {
-    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier)) + 32)) | @intCast(u31, @enumToInt(code));
-}
-fn k3(modifier1: EventModifierKey, modifier2: EventModifierKey, code: KeyboardEventCode) u64 {
-    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier1)) + 32)) | (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier2)) + 32)) | @intCast(u31, @enumToInt(code));
+
+fn onChatTextboxKeydown(event: i32) anyerror!void {
+    dom.stopPropagation(event);
+
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    const arena = &arena_instance.allocator;
+
+    switch (getModifiersAndCode(event)) {
+        k(.Escape) => {
+            dom.blur(chat_textbox);
+        },
+        k(.Enter), k(.NumpadEnter) => {
+            // TODO: send a message
+            _ = arena;
+            dom.setInputValue(chat_textbox, "");
+        },
+        else => return,
+    }
+    dom.preventDefault(event);
 }

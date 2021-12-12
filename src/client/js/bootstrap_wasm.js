@@ -117,11 +117,28 @@ const env = {
     preventDefault(handle) {
         return dom.preventDefault(handle);
     },
+    stopPropagation(handle) {
+        return dom.stopPropagation(handle);
+    },
+    setInputValue(handle, ptr, len) {
+        const value = decodeString(ptr, len);
+        return dom.setInputValue(handle, value);
+    },
+    getInputValue(handle, allocatorCallback) {
+        const value = dom.getInputValue(handle);
+        return encodeStringAlloc(callback.wrapCallbackI32RI32(allocatorCallback), value);
+    },
     setInputValueAsNumber(handle, value) {
         return dom.setInputValueAsNumber(handle, value);
     },
     getInputValueAsNumber(handle) {
         return dom.getInputValueAsNumber(handle);
+    },
+    focus(handle) {
+        return dom.focus(handle);
+    },
+    blur(handle) {
+        return dom.blur(handle);
     },
 
     // Audio

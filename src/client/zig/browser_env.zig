@@ -62,8 +62,16 @@ pub extern fn getEventTarget(handle: i32) i32;
 pub extern fn getEventModifiers(handle: i32) EventModifiers;
 pub extern fn getKeyboardEventCode(handle: i32) KeyboardEventCode;
 pub extern fn preventDefault(handle: i32) void;
+pub extern fn stopPropagation(handle: i32) void;
+pub extern fn setInputValue(handle: i32, ptr: [*]const u8, len: usize) void;
+pub extern fn getInputValue(
+    handle: i32,
+    allocatorCallback: i64, //callback.CallbackI32RI32,
+) i64;
 pub extern fn setInputValueAsNumber(handle: i32, value: f64) void;
 pub extern fn getInputValueAsNumber(handle: i32) f64;
+pub extern fn focus(handle: i32) void;
+pub extern fn blur(handle: i32) void;
 
 // Audio
 pub extern fn newAudio() i32;

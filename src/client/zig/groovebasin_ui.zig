@@ -457,8 +457,23 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
         },
         k(.Enter), k(.NumpadEnter) => {
             // TODO: send a message
-            _ = arena;
-            dom.setInputValue(chat_textbox, "");
+            const text = dom.getInputValue(chat_textbox, arena);
+            if (text.len > 0) {
+                dom.setInputValue(chat_textbox, "");
+            }
+            const msg = std.mem.trim(u8, text, &std.ascii.spaces);
+            if (msg.len > 0) {
+                if (msg[0] == '/') {
+                    // TODO: support any commands
+                } else {
+                    var chat_call = try ws.Call.init(.send_chat);
+                    try chat_call.writer().writeStruct(protocol.SendChatRequestHeader{
+                        .msg_len = msg.len,
+                    });
+                    try chat_call.writer().writeAll(msg);
+                    try chat_call.send(ws.ignoreResponse, {});
+                }
+            }
         },
         else => return,
     }

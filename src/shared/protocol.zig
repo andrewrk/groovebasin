@@ -9,6 +9,7 @@ pub const Opcode = enum(u8) {
     ping = 0,
     query = 1,
     enqueue = 2,
+    send_chat = 3,
 };
 
 pub const ResponseHeader = extern struct {
@@ -70,4 +71,10 @@ pub const PushMessageHeader = extern struct {
 
 pub const EnqueueRequestHeader = extern struct {
     track_key: u64,
+};
+
+pub const SendChatRequestHeader = extern struct {
+    msg_len: u32,
+    // followed by:
+    //  msg: [msg_len]u8,
 };

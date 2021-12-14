@@ -455,6 +455,12 @@ const ConnectionHandler = struct {
                 queue.current_queue_version += 1;
                 try handler.sendPushMessage();
             },
+            .send_chat => {
+                const sub_header = try request.reader().readStruct(protocol.SendChatRequestHeader);
+                const msg = try handler.arena().alloc(u8, sub_header.msg_len);
+                try request.reader().readNoEof(msg);
+                log.info("chat: {s}", .{msg});
+            },
         }
     }
 

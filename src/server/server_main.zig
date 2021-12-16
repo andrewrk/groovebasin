@@ -183,6 +183,11 @@ const ConnectionHandler = struct {
     fn arena(handler: *ConnectionHandler) *Allocator {
         return &handler.arena_allocator.allocator;
     }
+    fn resetArena(handler: *ConnectionHandler) void {
+        // TODO: get this into the stdlib?
+        handler.arena_allocator.deinit();
+        handler.arena_allocator.state = .{};
+    }
 
     fn run(handler: *ConnectionHandler) void {
         handler.handleConnection() catch |err| {
@@ -194,13 +199,14 @@ const ConnectionHandler = struct {
     }
 
     fn handleConnection(handler: *ConnectionHandler) !void {
+        // TODO: this method of reading headers is unsafe.
+        // We should use a buffered reader and put back any content after the headers.
         var buf: [0x4000]u8 = undefined;
         const amt = try handler.connection.stream.read(&buf);
         const msg = buf[0..amt];
         var header_lines = std.mem.split(u8, msg, "\r\n");
         const first_line = header_lines.next() orelse return;
 
-        // TODO: read the spec
         // eg: "GET /favicon.png HTTP/1.1"
         var it = std.mem.tokenize(u8, first_line, " \t");
         const method = it.next() orelse return;
@@ -211,10 +217,8 @@ const ConnectionHandler = struct {
         if (!std.mem.eql(u8, method, "GET")) return;
         if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
 
-        // TODO: read the other spec
         var sec_websocket_key: ?[]const u8 = null;
         var should_upgrade_websocket: bool = false;
-        // TODO: notice when gzip is supported.
         while (header_lines.next()) |line| {
             if (line.len == 0) break;
             var segments = std.mem.split(u8, line, ": ");
@@ -303,10 +307,9 @@ const ConnectionHandler = struct {
         }
 
         while (true) {
-            // TODO: allocate this from the arena maybe.
-            var request_payload_buffer: [max_payload_size]u8 align(4) = [_]u8{0} ** max_payload_size;
-            _ = arena;
-            const request_payload = (try handler.readMessage(&request_payload_buffer)) orelse break;
+            handler.resetArena();
+
+            const request_payload = (try handler.readMessage()) orelse break;
             log.info("request: {s}", .{std.fmt.fmtSliceHexLower(request_payload)});
 
             var request_stream = std.io.fixedBufferStream(request_payload);
@@ -325,7 +328,7 @@ const ConnectionHandler = struct {
         }
     }
 
-    fn readMessage(handler: *ConnectionHandler, payload_buffer: *align(4) [max_payload_size]u8) !?[]u8 {
+    fn readMessage(handler: *ConnectionHandler) !?[]u8 {
         // See https://tools.ietf.org/html/rfc6455
         // read first byte.
         var header = [_]u8{0} ** 2;
@@ -374,16 +377,17 @@ const ConnectionHandler = struct {
         const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
         // read payload
-        const payload = payload_buffer[0..len];
+        const payload_aligned = try handler.arena().allocWithOptions(u8, std.mem.alignForward(len, 4), 4, null);
+        const payload = payload_aligned[0..len];
         try handler.connection.stream.reader().readNoEof(payload);
 
         // unmask
         // The last item may contain a partial word of unused data.
-        const payload_aligned: []u32 = std.mem.bytesAsSlice(u32, payload_buffer[0..std.mem.alignForward(len, 4)]);
+        const payload_as_u32_array: []u32 = std.mem.bytesAsSlice(u32, payload_aligned);
         {
             var i: usize = 0;
-            while (i < payload_aligned.len) : (i += 1) {
-                payload_aligned[i] ^= mask_native;
+            while (i < payload_as_u32_array.len) : (i += 1) {
+                payload_as_u32_array[i] ^= mask_native;
             }
         }
         return payload;
@@ -560,7 +564,8 @@ const http_response_header_upgrade = "" ++
     "Upgrade: websocket\r\n" ++
     "Connection: Upgrade\r\n";
 
-const max_payload_size = 16 * 1024;
+/// Defense against clients running us out of memory.
+const max_payload_size = 16 * 1024 * 1024;
 
 fn strToIovec(s: []const u8) std.os.iovec_const {
     return .{

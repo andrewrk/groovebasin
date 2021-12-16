@@ -6,6 +6,7 @@ const os = std.os;
 const json = std.json;
 const log = std.log;
 const Allocator = std.mem.Allocator;
+const Mutex = std.Thread.Mutex;
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
@@ -149,6 +150,8 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
     try server.listen(addr);
     std.debug.warn("listening at {}\n", .{server.listen_address});
 
+    client_connections = Connections.init(g.gpa);
+
     while (true) {
         const handler = c: {
             const handler = try g.gpa.create(ConnectionHandler);
@@ -168,6 +171,10 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
     }
 }
 
+const Connections = std.AutoHashMap(*ConnectionHandler, void);
+var client_connections: Connections = undefined;
+var client_connections_mutex = Mutex{};
+
 const ConnectionHandler = struct {
     arena_allocator: std.heap.ArenaAllocator,
     connection: net.StreamServer.Connection,
@@ -183,6 +190,7 @@ const ConnectionHandler = struct {
         };
         handler.connection.stream.close();
         handler.arena_allocator.deinit();
+        g.gpa.destroy(handler);
     }
 
     fn handleConnection(handler: *ConnectionHandler) !void {
@@ -278,6 +286,21 @@ const ConnectionHandler = struct {
             strToIovec("\r\n" ++ "\r\n"),
         };
         try handler.connection.stream.writevAll(&iovecs);
+
+        // Welcome to the party.
+        {
+            client_connections_mutex.lock();
+            defer client_connections_mutex.unlock();
+            try client_connections.putNoClobber(handler, {});
+            std.log.info("client connections count++: {}", .{client_connections.count()});
+        }
+        defer {
+            // Goodbye from the party.
+            client_connections_mutex.lock();
+            defer client_connections_mutex.unlock();
+            if (!client_connections.remove(handler)) unreachable;
+            std.log.info("client connections count--: {}", .{client_connections.count()});
+        }
 
         while (true) {
             // TODO: allocate this from the arena maybe.

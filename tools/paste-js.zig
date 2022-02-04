@@ -3,7 +3,7 @@ const std = @import("std");
 pub fn main() !void {
     var arena_allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena_allocator.deinit();
-    const args = try std.process.argsAlloc(&arena_allocator.allocator);
+    const args = try std.process.argsAlloc(arena_allocator.allocator());
 
     var src_dir = try std.fs.cwd().openDir(args[1], .{});
     defer src_dir.close();

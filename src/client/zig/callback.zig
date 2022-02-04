@@ -12,7 +12,7 @@ pub const CallbackSliceU8 = struct { handle: i64 };
 fn isAbiTypeVoid(comptime T: type) bool {
     return switch (@typeInfo(T)) {
         .Void => true,
-        .Int, .Pointer => false,
+        .Int, .Pointer, .Struct => false,
         else => unreachable, // unsupported context type
     };
 }
@@ -131,10 +131,10 @@ pub export fn delegateCallbackI32RI32(packed_callback: i64, arg: i32) i32 {
 }
 
 /// Exposes an allocator to JS.
-pub fn allocator(a: *Allocator) CallbackI32RI32 {
+pub fn allocator(a: Allocator) CallbackI32RI32 {
     return packCallback(allocatorCallback, a);
 }
-fn allocatorCallback(a: *Allocator, len: usize) anyerror!i32 {
+fn allocatorCallback(a: Allocator, len: usize) anyerror!i32 {
     const slice = try a.alloc(u8, len);
     return @bitCast(i32, @ptrToInt(slice.ptr));
 }

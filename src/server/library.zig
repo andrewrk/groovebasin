@@ -73,6 +73,11 @@ fn writeLibrary(db_path: []const u8) !void {
         .track_count = @intCast(u32, library.tracks.count()),
     };
 
+    // if we try to get library.tracks.keys().ptr when the count is zero, it
+    // ends up being a null pointer
+    if (library.tracks.count() == 0)
+        return;
+
     var iovecs = [_]std.os.iovec_const{
         .{
             .iov_base = @ptrCast([*]const u8, &header),

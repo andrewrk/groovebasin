@@ -5,4 +5,4 @@ const SoundIo = @import("soundio.zig").SoundIo;
 
 pub var groove: *Groove = undefined;
 pub var soundio: *SoundIo = undefined;
-pub var gpa: *Allocator = undefined;
+pub var gpa: Allocator = undefined;

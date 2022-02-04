@@ -349,7 +349,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
 fn onLibraryMouseDown(event: i32) anyerror!void {
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = &arena_instance.allocator;
+    const arena = arena_instance.allocator();
 
     const modifiers = dom.getEventModifiers(event);
     if (getModifier(modifiers, .alt)) return;
@@ -428,7 +428,7 @@ fn onLibraryFilterKeydown(event: i32) anyerror!void {
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = &arena_instance.allocator;
+    const arena = arena_instance.allocator();
 
     switch (getModifiersAndCode(event)) {
         k(.Escape) => {
@@ -449,7 +449,7 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = &arena_instance.allocator;
+    const arena = arena_instance.allocator();
 
     switch (getModifiersAndCode(event)) {
         k(.Escape) => {

@@ -52,11 +52,11 @@ const usage =
 pub fn main() anyerror!void {
     var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa_instance.deinit();
-    g.gpa = &gpa_instance.allocator;
+    g.gpa = gpa_instance.allocator();
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = &arena_instance.allocator;
+    const arena = arena_instance.allocator();
 
     const args = try std.process.argsAlloc(arena);
 
@@ -105,7 +105,7 @@ pub fn main() anyerror!void {
     return listen(arena, config);
 }
 
-fn defaultMusicPath(arena: *Allocator) ![]const u8 {
+fn defaultMusicPath(arena: Allocator) ![]const u8 {
     if (std.os.getenvZ("XDG_MUSIC_DIR")) |xdg_path| return xdg_path;
 
     if (std.os.getenv("HOME")) |home| {
@@ -115,7 +115,7 @@ fn defaultMusicPath(arena: *Allocator) ![]const u8 {
     return "music";
 }
 
-fn listen(arena: *Allocator, config: ConfigJson) !void {
+fn listen(arena: Allocator, config: ConfigJson) !void {
     const music_dir_path = config.musicDirectory orelse try defaultMusicPath(arena);
 
     log.info("music directory: {s}", .{music_dir_path});
@@ -148,7 +148,7 @@ fn listen(arena: *Allocator, config: ConfigJson) !void {
         fatal("unable to parse {s}:{d}: {s}", .{ config.host, config.port, @errorName(err) });
     };
     try server.listen(addr);
-    std.debug.warn("listening at {}\n", .{server.listen_address});
+    std.log.warn("listening at {}\n", .{server.listen_address});
 
     client_connections = Connections.init(g.gpa);
 
@@ -180,8 +180,8 @@ const ConnectionHandler = struct {
     connection: net.StreamServer.Connection,
     player: *Player,
 
-    fn arena(handler: *ConnectionHandler) *Allocator {
-        return &handler.arena_allocator.allocator;
+    fn arena(handler: *ConnectionHandler) Allocator {
+        return handler.arena_allocator.allocator();
     }
     fn resetArena(handler: *ConnectionHandler) void {
         // TODO: get this into the stdlib?
@@ -281,7 +281,7 @@ const ConnectionHandler = struct {
         var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
         sha1.final(&digest);
         var base64_digest: [28]u8 = undefined;
-        std.debug.assert(std.base64.standard_encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+        std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
 
         var iovecs = [_]std.os.iovec_const{
             strToIovec(http_response_header_upgrade),

@@ -37,7 +37,7 @@ pub fn removeClass(handle: i32, class: []const u8) void {
 pub fn setAttribute(handle: i32, key: []const u8, value: []const u8) void {
     env.setAttribute(handle, key.ptr, key.len, value.ptr, value.len);
 }
-pub fn getAttribute(handle: i32, allocator: *Allocator, key: []const u8) []u8 {
+pub fn getAttribute(handle: i32, allocator: Allocator, key: []const u8) []u8 {
     const packed_slice = env.getAttribute(
         handle,
         callback.allocator(allocator).handle,
@@ -73,7 +73,7 @@ pub const stopPropagation = env.stopPropagation;
 pub fn setInputValue(handle: i32, value: []const u8) void {
     return env.setInputValue(handle, value.ptr, value.len);
 }
-pub fn getInputValue(handle: i32, allocator: *Allocator) []u8 {
+pub fn getInputValue(handle: i32, allocator: Allocator) []u8 {
     const packed_slice = env.getInputValue(
         handle,
         callback.allocator(allocator).handle,

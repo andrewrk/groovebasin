@@ -7,6 +7,7 @@ const ui = @import("groovebasin_ui.zig");
 const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
+const log = std.log.scoped(.websocket);
 
 var websocket_handle: i32 = undefined;
 
@@ -23,7 +24,7 @@ pub fn open() void {
     loading_state = .connecting;
 
     browser.openWebSocket(
-        callback.allocator(g.gpa),
+        callback.allocator(&g.gpa),
         callback.packCallback(onOpenCallback, {}),
         callback.packCallback(onCloseCallback, {}),
         callback.packCallback(onErrorCallback, {}),
@@ -32,7 +33,7 @@ pub fn open() void {
 }
 
 fn onOpenCallback(handle: i32) anyerror!void {
-    browser.print("zig: websocket opened");
+    log.info("zig: websocket opened", .{});
 
     std.debug.assert(loading_state == .connecting);
     loading_state = .connected;
@@ -88,7 +89,7 @@ pub const Call = struct {
     pub fn send(self: *@This(), comptime cb: anytype, context: anytype) !void {
         const buffer = self.request.items;
         try pending_requests.put(g.gpa, self.seq_id, callback.packCallback(cb, context));
-        browser.printHex("request: ", buffer);
+        log.info("request: {}", .{std.fmt.fmtSliceHexLower(buffer)});
         env.sendMessage(websocket_handle, buffer.ptr, buffer.len);
     }
 };
@@ -99,19 +100,19 @@ pub fn ignoreResponse(response: []const u8) anyerror!void {
 
 fn onCloseCallback(code: i32) anyerror!void {
     _ = code;
-    browser.print("zig: websocket closed");
+    log.info("zig: websocket closed", .{});
     handleNoConnection();
 }
 
 fn onErrorCallback() anyerror!void {
-    browser.print("zig: websocket error");
+    log.info("zig: websocket error", .{});
     handleNoConnection();
 }
 
 fn onMessageCallback(buffer: []u8) anyerror!void {
     defer g.gpa.free(buffer);
 
-    browser.printHex("response: ", buffer);
+    log.info("response: {}", .{std.fmt.fmtSliceHexLower(buffer)});
 
     var stream = std.io.fixedBufferStream(buffer);
     const reader = stream.reader();

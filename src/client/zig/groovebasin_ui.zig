@@ -20,6 +20,8 @@ const QueueItem = protocol.QueueItem;
 const Library = @import("shared").Library;
 const Queue = @import("shared").Queue;
 
+const log = std.log.scoped(.ui);
+
 pub const LoadStatus = enum {
     init,
     no_connection,
@@ -349,7 +351,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
 fn onLibraryMouseDown(event: i32) anyerror!void {
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
+    var arena = arena_instance.allocator();
 
     const modifiers = dom.getEventModifiers(event);
     if (getModifier(modifiers, .alt)) return;
@@ -358,8 +360,8 @@ fn onLibraryMouseDown(event: i32) anyerror!void {
     var target = dom.getEventTarget(event);
     target = dom.searchAncestorsForClass(target, library_artists_dom, "clickable");
     if (target == library_artists_dom) return;
-    const track_key = parseKey(dom.getAttribute(target, arena, "data-track"));
-    browser.printHex("enqueuing: ", std.mem.asBytes(&track_key));
+    const track_key = parseKey(dom.getAttribute(target, &arena, "data-track"));
+    log.info("enqueuing: {}", .{std.fmt.fmtSliceHexLower(std.mem.asBytes(&track_key))});
 
     var query_call = try ws.Call.init(.enqueue);
     try query_call.writer().writeStruct(protocol.EnqueueRequestHeader{
@@ -413,10 +415,10 @@ fn onWindowKeydown(event: i32) anyerror!void {
             dom.focus(library_filter_textbox);
         },
         k2(.ctrl, .ArrowRight) => {
-            browser.print("TODO: next song");
+            log.info("TODO: next song", .{});
         },
         k3(.alt, .shift, .Enter) => {
-            browser.print("TODO: insert next shuffled.");
+            log.info("TODO: insert next shuffled.", .{});
         },
         else => return,
     }
@@ -428,11 +430,11 @@ fn onLibraryFilterKeydown(event: i32) anyerror!void {
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
+    var arena = arena_instance.allocator();
 
     switch (getModifiersAndCode(event)) {
         k(.Escape) => {
-            const text = dom.getInputValue(library_filter_textbox, arena);
+            const text = dom.getInputValue(library_filter_textbox, &arena);
             if (text.len == 0) {
                 dom.blur(library_filter_textbox);
             } else {
@@ -449,7 +451,7 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
+    var arena = arena_instance.allocator();
 
     switch (getModifiersAndCode(event)) {
         k(.Escape) => {
@@ -457,7 +459,7 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
         },
         k(.Enter), k(.NumpadEnter) => {
             // TODO: send a message
-            const text = dom.getInputValue(chat_textbox, arena);
+            const text = dom.getInputValue(chat_textbox, &arena);
             if (text.len > 0) {
                 dom.setInputValue(chat_textbox, "");
             }

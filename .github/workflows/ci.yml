@@ -82,10 +82,10 @@ jobs:
 
     - name: Build and Test Debug
       if: ${{ matrix.mode == 'debug' }}
-      run: echo "TODO: implement: zig build test"
+      run: 'echo "TODO: implement: zig build test"'
 
     - name: Build and Test Release
       if: ${{ matrix.mode != 'debug' }}
-      run: echo "TODO: implement: zig build test -D${{ matrix.mode }}"
+      run: 'echo "TODO: implement: zig build test -D${{ matrix.mode }}"'
 
 

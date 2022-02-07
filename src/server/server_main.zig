@@ -180,6 +180,13 @@ const ConnectionHandler = struct {
     connection: net.StreamServer.Connection,
     player: *Player,
 
+    // only used for websocket handlers
+    websocket_send_queue: WebsocketReadQueue = WebsocketReadQueue.init(),
+    websocket_send_thread: std.Thread = undefined,
+    websocket_send_thread_shutdown: bool = false,
+
+    const WebsocketReadQueue = std.atomic.Queue([]u8);
+
     fn arena(handler: *ConnectionHandler) Allocator {
         return handler.arena_allocator.allocator();
     }
@@ -199,24 +206,24 @@ const ConnectionHandler = struct {
     }
 
     fn handleConnection(handler: *ConnectionHandler) !void {
-        // TODO: this method of reading headers is unsafe.
+        // TODO: this method of reading headers can read too many bytes.
         // We should use a buffered reader and put back any content after the headers.
         var buf: [0x4000]u8 = undefined;
-        const amt = try handler.connection.stream.read(&buf);
-        const msg = buf[0..amt];
+        const msg = buf[0..try handler.connection.stream.read(&buf)];
         var header_lines = std.mem.split(u8, msg, "\r\n");
-        const first_line = header_lines.next() orelse return;
+        const first_line = header_lines.next() orelse return error.NotAnHttpRequest;
 
         // eg: "GET /favicon.png HTTP/1.1"
         var it = std.mem.tokenize(u8, first_line, " \t");
-        const method = it.next() orelse return;
-        const path = it.next() orelse return;
-        const http_version = it.next() orelse return;
+        const method = it.next() orelse return error.NotAnHttpRequest;
+        const path = it.next() orelse return error.NotAnHttpRequest;
+        const http_version = it.next() orelse return error.NotAnHttpRequest;
 
-        // only support GET for HTTP/1.1
-        if (!std.mem.eql(u8, method, "GET")) return;
-        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
+        // Only support GET for HTTP/1.1
+        if (!std.mem.eql(u8, method, "GET")) return error.UnsupportedHttpMethod;
+        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return error.UnsupportedHttpVersion;
 
+        // Find interesting headers.
         var sec_websocket_key: ?[]const u8 = null;
         var should_upgrade_websocket: bool = false;
         while (header_lines.next()) |line| {
@@ -228,24 +235,26 @@ const ConnectionHandler = struct {
             if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
                 sec_websocket_key = value;
             } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
-                if (!std.mem.eql(u8, value, "websocket")) return;
+                if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedProtocolUpgrade;
                 should_upgrade_websocket = true;
             }
         }
 
         if (should_upgrade_websocket) {
-            const websocket_key = sec_websocket_key orelse return;
+            const websocket_key = sec_websocket_key orelse return error.WebsocketUpgradeMissingSecKey;
             log.info("GET websocket: {s}", .{path});
-            try handler.serveWebsocket(websocket_key);
-            return;
+            // This is going to stay open for a long time.
+            return handler.serveWebsocket(websocket_key);
         }
 
         log.info("GET: {s}", .{path});
 
         if (mem.eql(u8, path, "/stream.mp3")) {
+            // This is going to stay open for a long time.
             return handler.streamEndpoint();
         }
 
+        // Getting static content
         try handler.connection.stream.writer().writeAll(try resolvePath(path));
     }
 
@@ -274,22 +283,33 @@ const ConnectionHandler = struct {
     }
 
     fn serveWebsocket(handler: *ConnectionHandler, key: []const u8) !void {
-        // See https://tools.ietf.org/html/rfc6455
-        var sha1 = std.crypto.hash.Sha1.init(.{});
-        sha1.update(key);
-        sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-        var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
-        sha1.final(&digest);
-        var base64_digest: [28]u8 = undefined;
-        std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+        {
+            // See https://tools.ietf.org/html/rfc6455
+            var sha1 = std.crypto.hash.Sha1.init(.{});
+            sha1.update(key);
+            sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
+            sha1.final(&digest);
+            var base64_digest: [28]u8 = undefined;
+            std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
 
-        var iovecs = [_]std.os.iovec_const{
-            strToIovec(http_response_header_upgrade),
-            strToIovec("Sec-WebSocket-Accept: "),
-            strToIovec(&base64_digest),
-            strToIovec("\r\n" ++ "\r\n"),
+            var iovecs = [_]std.os.iovec_const{
+                strToIovec(http_response_header_upgrade),
+                strToIovec("Sec-WebSocket-Accept: "),
+                strToIovec(&base64_digest),
+                strToIovec("\r\n" ++ "\r\n"),
+            };
+            try handler.connection.stream.writevAll(&iovecs);
+        }
+
+        handler.websocket_send_thread = std.Thread.spawn(.{}, ConnectionHandler.websocketSendLoop, .{handler}) catch |err| {
+            log.err("spawning websocket handler thread failed: {}", .{err});
+            return err;
         };
-        try handler.connection.stream.writevAll(&iovecs);
+        defer {
+            handler.websocket_send_thread_shutdown = true;
+            handler.websocket_send_thread.join();
+        }
 
         // Welcome to the party.
         {
@@ -324,7 +344,7 @@ const ConnectionHandler = struct {
             try handler.handleRequest(request_header.op, &request_stream, &response_stream);
 
             log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-            try handler.writeMessage(response_stream.getWritten());
+            try handler.queueSendMessage(response_stream.getWritten());
         }
     }
 
@@ -393,7 +413,39 @@ const ConnectionHandler = struct {
         return payload;
     }
 
-    fn writeMessage(handler: *ConnectionHandler, message: []const u8) !void {
+    fn queueSendMessage(handler: *ConnectionHandler, message: []const u8) !void {
+        const node = try g.gpa.create(WebsocketReadQueue.Node);
+        node.* = WebsocketReadQueue.Node{
+            .data = try g.gpa.dupe(u8, message),
+        };
+        handler.websocket_send_queue.put(node);
+    }
+
+    fn websocketSendLoop(handler: *ConnectionHandler) void {
+        while (true) {
+            const node = handler.websocket_send_queue.get() orelse {
+                if (handler.websocket_send_thread_shutdown) return;
+                std.time.sleep(1_000_000);
+                continue;
+            };
+            const message = node.data;
+            defer {
+                g.gpa.free(message);
+                g.gpa.destroy(node);
+            }
+            handler.writeMessageFromSendThread(message) catch |err| switch (err) {
+                error.BrokenPipe => {
+                    log.warn("websocket closed unexpectedly: {}", .{err});
+                    handler.websocket_send_thread_shutdown = true;
+                },
+                else => {
+                    log.err("error writing message to websocket: {}", .{err});
+                },
+            };
+        }
+    }
+
+    fn writeMessageFromSendThread(handler: *ConnectionHandler, message: []const u8) !void {
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.
@@ -502,7 +554,7 @@ const ConnectionHandler = struct {
         });
 
         log.info("push: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-        try handler.writeMessage(response_stream.getWritten());
+        try handler.queueSendMessage(response_stream.getWritten());
     }
 };
 

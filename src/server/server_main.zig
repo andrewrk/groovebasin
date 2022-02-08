@@ -414,6 +414,10 @@ const ConnectionHandler = struct {
     }
 
     fn queueSendMessage(handler: *ConnectionHandler, message: []const u8) !void {
+        if (handler.websocket_send_thread_shutdown) {
+            // There's surely some kind of race condition memory leak here.
+            return;
+        }
         const node = try g.gpa.create(WebsocketReadQueue.Node);
         node.* = WebsocketReadQueue.Node{
             .data = try g.gpa.dupe(u8, message),
@@ -425,7 +429,7 @@ const ConnectionHandler = struct {
         while (true) {
             const node = handler.websocket_send_queue.get() orelse {
                 if (handler.websocket_send_thread_shutdown) return;
-                std.time.sleep(1_000_000);
+                std.time.sleep(17_000_000);
                 continue;
             };
             const message = node.data;
@@ -539,6 +543,20 @@ const ConnectionHandler = struct {
                 const msg = try handler.arena().alloc(u8, sub_header.msg_len);
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
+
+                var announce_bytes = std.ArrayList(u8).init(handler.arena());
+                try announce_bytes.writer().writeStruct(protocol.ResponseHeader{
+                    .seq_id = 0x8000_0000,
+                });
+                try announce_bytes.writer().writeStruct(protocol.PushMessageHeader{
+                    .tag = .chat,
+                });
+                try announce_bytes.writer().writeStruct(protocol.PushMessageChat{
+                    .msg_len = @intCast(u32, msg.len),
+                });
+                try announce_bytes.writer().writeAll(msg);
+
+                try broadcastMessage(announce_bytes.toOwnedSlice());
             },
         }
     }
@@ -550,7 +568,7 @@ const ConnectionHandler = struct {
             .seq_id = 0x8000_0000,
         });
         try response_stream.writer().writeStruct(protocol.PushMessageHeader{
-            ._dummy = 0xaaaa_aba,
+            .tag = .please_query,
         });
 
         log.info("push: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
@@ -624,4 +642,15 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
+}
+
+fn broadcastMessage(message: []const u8) !void {
+    client_connections_mutex.lock();
+    defer client_connections_mutex.unlock();
+
+    var it = client_connections.iterator();
+    while (it.next()) |entry| {
+        const handler = entry.key_ptr.*;
+        try handler.queueSendMessage(message);
+    }
 }

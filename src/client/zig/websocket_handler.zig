@@ -172,8 +172,15 @@ fn handlePeriodicPingResponse(response: []const u8) anyerror!void {
 fn handlePushMessage(response: []const u8) !void {
     var stream = std.io.fixedBufferStream(response);
     const header = try stream.reader().readStruct(protocol.PushMessageHeader);
-    _ = header;
-
-    // it just means do this:
-    try periodicPing();
+    switch (header.tag) {
+        .please_query => {
+            try ui.poll();
+        },
+        .chat => {
+            const push_message_chat = try stream.reader().readStruct(protocol.PushMessageChat);
+            const msg = try g.gpa.alloc(u8, push_message_chat.msg_len);
+            try stream.reader().readNoEof(msg);
+            log.info("chat: {s}", .{msg});
+        },
+    }
 }

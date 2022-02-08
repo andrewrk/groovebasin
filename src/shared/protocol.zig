@@ -64,9 +64,22 @@ pub const QueueItem = extern struct {
 };
 
 pub const PushMessageHeader = extern struct {
-    // Meaningless. This message just means it's time to re-query.
-    _dummy: u32,
-    // TODO: incremental update notifications.
+    tag: PushMessageTag,
+    // Followed by:
+    //  Something based on the tag value.
+};
+
+pub const PushMessageTag = enum(u8) {
+    /// No struct follows this tag.
+    please_query = 0,
+    /// PushMessageChat follows this tag.
+    chat = 1,
+};
+
+pub const PushMessageChat = extern struct {
+    msg_len: u32,
+    // followed by:
+    //  msg: [msg_len]u8,
 };
 
 pub const EnqueueRequestHeader = extern struct {

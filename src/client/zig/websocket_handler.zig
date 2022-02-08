@@ -179,8 +179,9 @@ fn handlePushMessage(response: []const u8) !void {
         .chat => {
             const push_message_chat = try stream.reader().readStruct(protocol.PushMessageChat);
             const msg = try g.gpa.alloc(u8, push_message_chat.msg_len);
+            defer g.gpa.free(msg);
             try stream.reader().readNoEof(msg);
-            log.info("chat: {s}", .{msg});
+            ui.receiveChat(msg);
         },
     }
 }

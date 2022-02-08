@@ -40,6 +40,7 @@ var library_filter_textbox: i32 = undefined;
 var library_artists_dom: i32 = undefined;
 var empty_library_message_dom: i32 = undefined;
 var library_no_items_dom: i32 = undefined;
+var events_list_div: i32 = undefined;
 var chat_textbox: i32 = undefined;
 
 // queue
@@ -90,6 +91,7 @@ pub fn init() void {
     dom.addEventListener(library_artists_dom, .mousedown, callback.packCallback(onLibraryMouseDown, {}));
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
+    events_list_div = dom.getElementById("events-list");
     chat_textbox = dom.getElementById("chat-box-input");
     dom.addEventListener(chat_textbox, .keydown, callback.packCallback(onChatTextboxKeydown, {}));
 
@@ -115,7 +117,7 @@ const TabUi = struct {
     pane: i32,
 };
 
-pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
+fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
     const modifiers = dom.getEventModifiers(event);
     if (getModifier(modifiers, .alt)) return;
     dom.preventDefault(event);
@@ -154,7 +156,7 @@ pub fn setLag(lag_ns: i128) void {
     });
 }
 
-pub fn renderLibrary() void {
+fn renderLibrary() void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
     dom.setShown(library_no_items_dom, library.tracks.count() == 0);
 
@@ -480,4 +482,25 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
         else => return,
     }
     dom.preventDefault(event);
+}
+
+pub fn receiveChat(msg: []const u8) void {
+    const event_i = dom.getChildrenCount(events_list_div);
+    dom.insertAdjacentHTML(events_list_div, .beforeend,
+        \\<div class="event">
+        \\  <span class="name"></span>
+        \\  <span class="msg"></span>
+        \\  <div style="clear: both;"></div>
+        \\</div>
+    );
+
+    const event_div = dom.getChild(events_list_div, event_i);
+    dom.addClass(event_div, "chat");
+
+    const name_span = dom.getChild(event_div, 0);
+    dom.setTextContent(name_span, "joshprobably");
+    //dom.setTitle(name_span, some date represnetation);
+
+    const msg_span = dom.getChild(event_div, 1);
+    dom.setTextContent(msg_span, msg);
 }

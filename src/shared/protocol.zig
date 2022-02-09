@@ -19,7 +19,7 @@ pub const ResponseHeader = extern struct {
     seq_id: u32,
     // followed by:
     //  more data depending on the opcode of the corresponding request if this is a response to a request.
-    //  or a PushMessageHeader if this is a message from the server.
+    //  or nothing if this is a message from the server.
 };
 
 pub const QueryRequest = extern struct {
@@ -61,25 +61,6 @@ pub const QueueHeader = extern struct {
 pub const QueueItem = extern struct {
     sort_key: u64, // TODO: switch to a keese string.
     track_key: u64,
-};
-
-pub const PushMessageHeader = extern struct {
-    tag: PushMessageTag,
-    // Followed by:
-    //  Something based on the tag value.
-};
-
-pub const PushMessageTag = enum(u8) {
-    /// No struct follows this tag.
-    please_query = 0,
-    /// PushMessageChat follows this tag.
-    chat = 1,
-};
-
-pub const PushMessageChat = extern struct {
-    msg_len: u32,
-    // followed by:
-    //  msg: [msg_len]u8,
 };
 
 pub const EnqueueRequestHeader = extern struct {

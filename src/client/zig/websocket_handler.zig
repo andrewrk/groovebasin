@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 
 const browser = @import("browser.zig");
 const env = @import("browser_env.zig");
@@ -20,7 +21,7 @@ const LoadingState = enum {
 var loading_state: LoadingState = .none;
 
 pub fn open() void {
-    std.debug.assert(loading_state == .none);
+    assert(loading_state == .none);
     loading_state = .connecting;
 
     browser.openWebSocket(
@@ -35,7 +36,7 @@ pub fn open() void {
 fn onOpenCallback(handle: i32) anyerror!void {
     log.info("zig: websocket opened", .{});
 
-    std.debug.assert(loading_state == .connecting);
+    assert(loading_state == .connecting);
     loading_state = .connected;
     websocket_handle = handle;
     ui.setLoadingState(.good);
@@ -170,18 +171,6 @@ fn handlePeriodicPingResponse(response: []const u8) anyerror!void {
 }
 
 fn handlePushMessage(response: []const u8) !void {
-    var stream = std.io.fixedBufferStream(response);
-    const header = try stream.reader().readStruct(protocol.PushMessageHeader);
-    switch (header.tag) {
-        .please_query => {
-            try ui.poll();
-        },
-        .chat => {
-            const push_message_chat = try stream.reader().readStruct(protocol.PushMessageChat);
-            const msg = try g.gpa.alloc(u8, push_message_chat.msg_len);
-            defer g.gpa.free(msg);
-            try stream.reader().readNoEof(msg);
-            ui.receiveChat(msg);
-        },
-    }
+    assert(response.len == 0);
+    try ui.poll();
 }

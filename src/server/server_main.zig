@@ -536,43 +536,16 @@ const ConnectionHandler = struct {
                 _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
 
                 queue.current_queue_version += 1;
-                try handler.sendPushMessage();
+                try broadcastPushMessage();
             },
             .send_chat => {
                 const sub_header = try request.reader().readStruct(protocol.SendChatRequestHeader);
                 const msg = try handler.arena().alloc(u8, sub_header.msg_len);
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
-
-                var announce_bytes = std.ArrayList(u8).init(handler.arena());
-                try announce_bytes.writer().writeStruct(protocol.ResponseHeader{
-                    .seq_id = 0x8000_0000,
-                });
-                try announce_bytes.writer().writeStruct(protocol.PushMessageHeader{
-                    .tag = .chat,
-                });
-                try announce_bytes.writer().writeStruct(protocol.PushMessageChat{
-                    .msg_len = @intCast(u32, msg.len),
-                });
-                try announce_bytes.writer().writeAll(msg);
-
-                try broadcastMessage(announce_bytes.toOwnedSlice());
+                try broadcastPushMessage();
             },
         }
-    }
-
-    fn sendPushMessage(handler: *ConnectionHandler) !void {
-        var out_buffer: [0x1000]u8 = undefined;
-        var response_stream = std.io.fixedBufferStream(&out_buffer);
-        try response_stream.writer().writeStruct(protocol.ResponseHeader{
-            .seq_id = 0x8000_0000,
-        });
-        try response_stream.writer().writeStruct(protocol.PushMessageHeader{
-            .tag = .please_query,
-        });
-
-        log.info("push: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-        try handler.queueSendMessage(response_stream.getWritten());
     }
 };
 
@@ -644,9 +617,18 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
+fn broadcastPushMessage() !void {
+    const entire_message = protocol.ResponseHeader{
+        .seq_id = 0x8000_0000,
+    };
+    try broadcastMessage(std.mem.asBytes(&entire_message));
+}
+
 fn broadcastMessage(message: []const u8) !void {
     client_connections_mutex.lock();
     defer client_connections_mutex.unlock();
+
+    log.info("broadcast: {s}", .{std.fmt.fmtSliceHexLower(message)});
 
     var it = client_connections.iterator();
     while (it.next()) |entry| {

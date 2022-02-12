@@ -14,6 +14,7 @@ const Player = @import("Player.zig");
 const protocol = @import("shared").protocol;
 const library = @import("library.zig");
 const queue = @import("queue.zig");
+const events = @import("events.zig");
 const g = @import("global.zig");
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
@@ -140,6 +141,9 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
 
     try queue.init();
     defer queue.deinit();
+
+    try events.init();
+    defer events.deinit();
 
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
@@ -492,6 +496,7 @@ const ConnectionHandler = struct {
                 try response.writer().writeStruct(protocol.QueryResponseHeader{
                     .library_version = library.current_library_version,
                     .queue_version = queue.current_queue_version,
+                    .events_version = events.current_events_version,
                 });
 
                 // Library
@@ -513,6 +518,17 @@ const ConnectionHandler = struct {
                     });
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
+                }
+
+                // Events
+                if (events.current_events_version != query_request.last_events) {
+                    try response.writer().writeStruct(protocol.EventsHeader{
+                        .string_size = @intCast(u32, events.events.strings.strings.items.len),
+                        .item_count = @intCast(u32, events.events.events.count()),
+                    });
+                    try response.writer().writeAll(events.events.strings.strings.items);
+                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));
+                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.values()));
                 }
             },
             .enqueue => {
@@ -543,6 +559,16 @@ const ConnectionHandler = struct {
                 const msg = try handler.arena().alloc(u8, sub_header.msg_len);
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
+
+                const name_id = try events.events.strings.putString("joshprobably");
+                const content_id = try events.events.strings.putString(msg);
+                try events.events.events.putNoClobber(events.events.events.count() + 1, protocol.Event{
+                    .sort_key = 0,
+                    .name = name_id,
+                    .content = content_id,
+                });
+                events.current_events_version += 1;
+
                 try broadcastPushMessage();
             },
         }

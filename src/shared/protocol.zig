@@ -25,14 +25,17 @@ pub const ResponseHeader = extern struct {
 pub const QueryRequest = extern struct {
     last_library: u64,
     last_queue: u64,
+    last_events: u64,
 };
 
 pub const QueryResponseHeader = extern struct {
     library_version: u64,
     queue_version: u64,
+    events_version: u64,
     // followed by:
     //  LibraryHeader if library_version != last_library,
     //  QueueHeader if queue_version != last_queue,
+    //  EventsHeader if events_version != last_events,
 };
 
 pub const LibraryHeader = extern struct {
@@ -61,6 +64,22 @@ pub const QueueHeader = extern struct {
 pub const QueueItem = extern struct {
     sort_key: u64, // TODO: switch to a keese string.
     track_key: u64,
+};
+
+pub const EventsHeader = extern struct {
+    string_size: u32,
+    item_count: u32,
+    // followed by:
+    //  strings: [string_size]u8,
+    //  item_keys: [item_count]u64,
+    //  items: [item_count]Event,
+};
+
+pub const Event = extern struct {
+    sort_key: u64, // TODO: switch to a keese string.
+    // these are all chat messages.
+    name: u32,
+    content: u32,
 };
 
 pub const EnqueueRequestHeader = extern struct {

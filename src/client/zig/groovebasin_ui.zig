@@ -19,6 +19,8 @@ const Track = protocol.Track;
 const QueueItem = protocol.QueueItem;
 const Library = @import("shared").Library;
 const Queue = @import("shared").Queue;
+const Events = @import("shared").Events;
+const Event = protocol.Event;
 
 const log = std.log.scoped(.ui);
 
@@ -40,6 +42,7 @@ var library_filter_textbox: i32 = undefined;
 var library_artists_dom: i32 = undefined;
 var empty_library_message_dom: i32 = undefined;
 var library_no_items_dom: i32 = undefined;
+var events_list_div: i32 = undefined;
 var chat_textbox: i32 = undefined;
 
 // queue
@@ -90,6 +93,7 @@ pub fn init() void {
     dom.addEventListener(library_artists_dom, .mousedown, callback.packCallback(onLibraryMouseDown, {}));
     empty_library_message_dom = dom.getElementById("empty-library-message");
     library_no_items_dom = dom.getElementById("library-no-items");
+    events_list_div = dom.getElementById("events-list");
     chat_textbox = dom.getElementById("chat-box-input");
     dom.addEventListener(chat_textbox, .keydown, callback.packCallback(onChatTextboxKeydown, {}));
 
@@ -106,6 +110,11 @@ pub fn init() void {
     queue = Queue{
         .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
     };
+
+    events = Events{
+        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
+        .events = AutoArrayHashMap(u64, Event).init(g.gpa),
+    };
 }
 
 const TabUi = struct {
@@ -115,7 +124,7 @@ const TabUi = struct {
     pane: i32,
 };
 
-pub fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
+fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
     const modifiers = dom.getEventModifiers(event);
     if (getModifier(modifiers, .alt)) return;
     dom.preventDefault(event);
@@ -154,7 +163,7 @@ pub fn setLag(lag_ns: i128) void {
     });
 }
 
-pub fn renderLibrary() void {
+fn renderLibrary() void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
     dom.setShown(library_no_items_dom, library.tracks.count() == 0);
 
@@ -277,17 +286,53 @@ fn renderQueue() void {
     }
 }
 
+pub fn renderEvents() void {
+    // Delete and recreate all items.
+    {
+        var c = dom.getChildrenCount(events_list_div);
+        while (c > 0) {
+            dom.removeLastChild(events_list_div);
+            c -= 1;
+        }
+    }
+    const events_list = events.events.values();
+    // TODO: sort by sort_key.
+    for (events_list) |event, i| {
+        dom.insertAdjacentHTML(events_list_div, .beforeend,
+            \\<div class="event">
+            \\  <span class="name"></span>
+            \\  <span class="msg"></span>
+            \\  <div style="clear: both;"></div>
+            \\</div>
+        );
+
+        const event_div = dom.getChild(events_list_div, @intCast(i32, i));
+        dom.addClass(event_div, "chat");
+
+        const name_span = dom.getChild(event_div, 0);
+        dom.setTextContent(name_span, events.getString(event.name));
+        //dom.setTitle(name_span, some date represnetation);
+
+        const msg_span = dom.getChild(event_div, 1);
+        dom.setTextContent(msg_span, events.getString(event.content));
+    }
+}
+
 var last_library_version: u64 = 0;
 var library: Library = undefined;
 
 var last_queue_version: u64 = 0;
 var queue: Queue = undefined;
 
+var last_events_version: u64 = 0;
+var events: Events = undefined;
+
 pub fn poll() !void {
     var query_call = try ws.Call.init(.query);
     try query_call.writer().writeStruct(protocol.QueryRequest{
         .last_library = last_library_version,
         .last_queue = last_queue_version,
+        .last_events = last_events_version,
     });
     try query_call.send(handleQueryResponse, {});
 }
@@ -296,6 +341,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
     var render_library = false;
     var render_queue = false;
+    var render_events = false;
 
     // Library
     if (response_header.library_version != last_library_version) {
@@ -344,8 +390,34 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
         render_queue = true;
     }
 
+    // Events
+    if (response_header.events_version != last_events_version) {
+        const events_header = try stream.reader().readStruct(protocol.EventsHeader);
+        // string pool
+        try events.strings.strings.resize(events_header.string_size);
+        try stream.reader().readNoEof(events.strings.strings.items);
+        // keys and values
+        events.events.clearRetainingCapacity();
+        try events.events.ensureTotalCapacity(events_header.item_count);
+        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
+        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * events_header.item_count ..]);
+
+        var i: u32 = 0;
+        while (i < events_header.item_count) : (i += 1) {
+            try events.events.putNoClobber(
+                try key_stream.reader().readIntLittle(u64),
+                try value_stream.reader().readStruct(Event),
+            );
+        }
+        stream.pos += events_header.item_count * @sizeOf(u64) + events_header.item_count * @sizeOf(Event);
+
+        last_events_version = response_header.events_version;
+        render_events = true;
+    }
+
     if (render_library) renderLibrary();
     if (render_queue) renderQueue();
+    if (render_events) renderEvents();
 }
 
 fn onLibraryMouseDown(event: i32) anyerror!void {

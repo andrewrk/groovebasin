@@ -14,6 +14,7 @@ const Player = @import("Player.zig");
 const protocol = @import("shared").protocol;
 const library = @import("library.zig");
 const queue = @import("queue.zig");
+const events = @import("events.zig");
 const g = @import("global.zig");
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
@@ -141,6 +142,9 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
     try queue.init();
     defer queue.deinit();
 
+    try events.init();
+    defer events.deinit();
+
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -180,6 +184,13 @@ const ConnectionHandler = struct {
     connection: net.StreamServer.Connection,
     player: *Player,
 
+    // only used for websocket handlers
+    websocket_send_queue: WebsocketReadQueue = WebsocketReadQueue.init(),
+    websocket_send_thread: std.Thread = undefined,
+    websocket_send_thread_shutdown: bool = false,
+
+    const WebsocketReadQueue = std.atomic.Queue([]u8);
+
     fn arena(handler: *ConnectionHandler) Allocator {
         return handler.arena_allocator.allocator();
     }
@@ -199,24 +210,24 @@ const ConnectionHandler = struct {
     }
 
     fn handleConnection(handler: *ConnectionHandler) !void {
-        // TODO: this method of reading headers is unsafe.
+        // TODO: this method of reading headers can read too many bytes.
         // We should use a buffered reader and put back any content after the headers.
         var buf: [0x4000]u8 = undefined;
-        const amt = try handler.connection.stream.read(&buf);
-        const msg = buf[0..amt];
+        const msg = buf[0..try handler.connection.stream.read(&buf)];
         var header_lines = std.mem.split(u8, msg, "\r\n");
-        const first_line = header_lines.next() orelse return;
+        const first_line = header_lines.next() orelse return error.NotAnHttpRequest;
 
         // eg: "GET /favicon.png HTTP/1.1"
         var it = std.mem.tokenize(u8, first_line, " \t");
-        const method = it.next() orelse return;
-        const path = it.next() orelse return;
-        const http_version = it.next() orelse return;
+        const method = it.next() orelse return error.NotAnHttpRequest;
+        const path = it.next() orelse return error.NotAnHttpRequest;
+        const http_version = it.next() orelse return error.NotAnHttpRequest;
 
-        // only support GET for HTTP/1.1
-        if (!std.mem.eql(u8, method, "GET")) return;
-        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return;
+        // Only support GET for HTTP/1.1
+        if (!std.mem.eql(u8, method, "GET")) return error.UnsupportedHttpMethod;
+        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return error.UnsupportedHttpVersion;
 
+        // Find interesting headers.
         var sec_websocket_key: ?[]const u8 = null;
         var should_upgrade_websocket: bool = false;
         while (header_lines.next()) |line| {
@@ -228,24 +239,26 @@ const ConnectionHandler = struct {
             if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
                 sec_websocket_key = value;
             } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
-                if (!std.mem.eql(u8, value, "websocket")) return;
+                if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedProtocolUpgrade;
                 should_upgrade_websocket = true;
             }
         }
 
         if (should_upgrade_websocket) {
-            const websocket_key = sec_websocket_key orelse return;
+            const websocket_key = sec_websocket_key orelse return error.WebsocketUpgradeMissingSecKey;
             log.info("GET websocket: {s}", .{path});
-            try handler.serveWebsocket(websocket_key);
-            return;
+            // This is going to stay open for a long time.
+            return handler.serveWebsocket(websocket_key);
         }
 
         log.info("GET: {s}", .{path});
 
         if (mem.eql(u8, path, "/stream.mp3")) {
+            // This is going to stay open for a long time.
             return handler.streamEndpoint();
         }
 
+        // Getting static content
         try handler.connection.stream.writer().writeAll(try resolvePath(path));
     }
 
@@ -274,22 +287,33 @@ const ConnectionHandler = struct {
     }
 
     fn serveWebsocket(handler: *ConnectionHandler, key: []const u8) !void {
-        // See https://tools.ietf.org/html/rfc6455
-        var sha1 = std.crypto.hash.Sha1.init(.{});
-        sha1.update(key);
-        sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-        var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
-        sha1.final(&digest);
-        var base64_digest: [28]u8 = undefined;
-        std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+        {
+            // See https://tools.ietf.org/html/rfc6455
+            var sha1 = std.crypto.hash.Sha1.init(.{});
+            sha1.update(key);
+            sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
+            sha1.final(&digest);
+            var base64_digest: [28]u8 = undefined;
+            std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
 
-        var iovecs = [_]std.os.iovec_const{
-            strToIovec(http_response_header_upgrade),
-            strToIovec("Sec-WebSocket-Accept: "),
-            strToIovec(&base64_digest),
-            strToIovec("\r\n" ++ "\r\n"),
+            var iovecs = [_]std.os.iovec_const{
+                strToIovec(http_response_header_upgrade),
+                strToIovec("Sec-WebSocket-Accept: "),
+                strToIovec(&base64_digest),
+                strToIovec("\r\n" ++ "\r\n"),
+            };
+            try handler.connection.stream.writevAll(&iovecs);
+        }
+
+        handler.websocket_send_thread = std.Thread.spawn(.{}, ConnectionHandler.websocketSendLoop, .{handler}) catch |err| {
+            log.err("spawning websocket handler thread failed: {}", .{err});
+            return err;
         };
-        try handler.connection.stream.writevAll(&iovecs);
+        defer {
+            handler.websocket_send_thread_shutdown = true;
+            handler.websocket_send_thread.join();
+        }
 
         // Welcome to the party.
         {
@@ -324,7 +348,7 @@ const ConnectionHandler = struct {
             try handler.handleRequest(request_header.op, &request_stream, &response_stream);
 
             log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-            try handler.writeMessage(response_stream.getWritten());
+            try handler.queueSendMessage(response_stream.getWritten());
         }
     }
 
@@ -393,7 +417,43 @@ const ConnectionHandler = struct {
         return payload;
     }
 
-    fn writeMessage(handler: *ConnectionHandler, message: []const u8) !void {
+    fn queueSendMessage(handler: *ConnectionHandler, message: []const u8) !void {
+        if (handler.websocket_send_thread_shutdown) {
+            // There's surely some kind of race condition memory leak here.
+            return;
+        }
+        const node = try g.gpa.create(WebsocketReadQueue.Node);
+        node.* = WebsocketReadQueue.Node{
+            .data = try g.gpa.dupe(u8, message),
+        };
+        handler.websocket_send_queue.put(node);
+    }
+
+    fn websocketSendLoop(handler: *ConnectionHandler) void {
+        while (true) {
+            const node = handler.websocket_send_queue.get() orelse {
+                if (handler.websocket_send_thread_shutdown) return;
+                std.time.sleep(17_000_000);
+                continue;
+            };
+            const message = node.data;
+            defer {
+                g.gpa.free(message);
+                g.gpa.destroy(node);
+            }
+            handler.writeMessageFromSendThread(message) catch |err| switch (err) {
+                error.BrokenPipe => {
+                    log.warn("websocket closed unexpectedly: {}", .{err});
+                    handler.websocket_send_thread_shutdown = true;
+                },
+                else => {
+                    log.err("error writing message to websocket: {}", .{err});
+                },
+            };
+        }
+    }
+
+    fn writeMessageFromSendThread(handler: *ConnectionHandler, message: []const u8) !void {
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.
@@ -436,6 +496,7 @@ const ConnectionHandler = struct {
                 try response.writer().writeStruct(protocol.QueryResponseHeader{
                     .library_version = library.current_library_version,
                     .queue_version = queue.current_queue_version,
+                    .events_version = events.current_events_version,
                 });
 
                 // Library
@@ -457,6 +518,17 @@ const ConnectionHandler = struct {
                     });
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
+                }
+
+                // Events
+                if (events.current_events_version != query_request.last_events) {
+                    try response.writer().writeStruct(protocol.EventsHeader{
+                        .string_size = @intCast(u32, events.events.strings.strings.items.len),
+                        .item_count = @intCast(u32, events.events.events.count()),
+                    });
+                    try response.writer().writeAll(events.events.strings.strings.items);
+                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));
+                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.values()));
                 }
             },
             .enqueue => {
@@ -480,29 +552,26 @@ const ConnectionHandler = struct {
                 _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
 
                 queue.current_queue_version += 1;
-                try handler.sendPushMessage();
+                try broadcastPushMessage();
             },
             .send_chat => {
                 const sub_header = try request.reader().readStruct(protocol.SendChatRequestHeader);
                 const msg = try handler.arena().alloc(u8, sub_header.msg_len);
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
+
+                const name_id = try events.events.strings.putString("joshprobably");
+                const content_id = try events.events.strings.putString(msg);
+                try events.events.events.putNoClobber(events.events.events.count() + 1, protocol.Event{
+                    .sort_key = 0,
+                    .name = name_id,
+                    .content = content_id,
+                });
+                events.current_events_version += 1;
+
+                try broadcastPushMessage();
             },
         }
-    }
-
-    fn sendPushMessage(handler: *ConnectionHandler) !void {
-        var out_buffer: [0x1000]u8 = undefined;
-        var response_stream = std.io.fixedBufferStream(&out_buffer);
-        try response_stream.writer().writeStruct(protocol.ResponseHeader{
-            .seq_id = 0x8000_0000,
-        });
-        try response_stream.writer().writeStruct(protocol.PushMessageHeader{
-            ._dummy = 0xaaaa_aba,
-        });
-
-        log.info("push: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-        try handler.writeMessage(response_stream.getWritten());
     }
 };
 
@@ -572,4 +641,24 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
         .iov_base = s.ptr,
         .iov_len = s.len,
     };
+}
+
+fn broadcastPushMessage() !void {
+    const entire_message = protocol.ResponseHeader{
+        .seq_id = 0x8000_0000,
+    };
+    try broadcastMessage(std.mem.asBytes(&entire_message));
+}
+
+fn broadcastMessage(message: []const u8) !void {
+    client_connections_mutex.lock();
+    defer client_connections_mutex.unlock();
+
+    log.info("broadcast: {s}", .{std.fmt.fmtSliceHexLower(message)});
+
+    var it = client_connections.iterator();
+    while (it.next()) |entry| {
+        const handler = entry.key_ptr.*;
+        try handler.queueSendMessage(message);
+    }
 }

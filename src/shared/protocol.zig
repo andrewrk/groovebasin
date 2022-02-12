@@ -19,20 +19,23 @@ pub const ResponseHeader = extern struct {
     seq_id: u32,
     // followed by:
     //  more data depending on the opcode of the corresponding request if this is a response to a request.
-    //  or a PushMessageHeader if this is a message from the server.
+    //  or nothing if this is a message from the server.
 };
 
 pub const QueryRequest = extern struct {
     last_library: u64,
     last_queue: u64,
+    last_events: u64,
 };
 
 pub const QueryResponseHeader = extern struct {
     library_version: u64,
     queue_version: u64,
+    events_version: u64,
     // followed by:
     //  LibraryHeader if library_version != last_library,
     //  QueueHeader if queue_version != last_queue,
+    //  EventsHeader if events_version != last_events,
 };
 
 pub const LibraryHeader = extern struct {
@@ -63,10 +66,20 @@ pub const QueueItem = extern struct {
     track_key: u64,
 };
 
-pub const PushMessageHeader = extern struct {
-    // Meaningless. This message just means it's time to re-query.
-    _dummy: u32,
-    // TODO: incremental update notifications.
+pub const EventsHeader = extern struct {
+    string_size: u32,
+    item_count: u32,
+    // followed by:
+    //  strings: [string_size]u8,
+    //  item_keys: [item_count]u64,
+    //  items: [item_count]Event,
+};
+
+pub const Event = extern struct {
+    sort_key: u64, // TODO: switch to a keese string.
+    // these are all chat messages.
+    name: u32,
+    content: u32,
 };
 
 pub const EnqueueRequestHeader = extern struct {

@@ -66,7 +66,7 @@ fn writeLibrary(db_path: []const u8) !void {
     defer db_file.close();
 
     const header = Header{
-        .string_size = @intCast(u32, library.strings.strings.items.len),
+        .string_size = @intCast(u32, library.strings.bytes.items.len),
         .track_count = @intCast(u32, library.tracks.count()),
     };
 
@@ -81,8 +81,8 @@ fn writeLibrary(db_path: []const u8) !void {
             .iov_len = @sizeOf(Header),
         },
         .{
-            .iov_base = library.strings.strings.items.ptr,
-            .iov_len = library.strings.strings.items.len,
+            .iov_base = library.strings.bytes.items.ptr,
+            .iov_len = library.strings.bytes.items.len,
         },
         .{
             .iov_base = @ptrCast([*]const u8, library.tracks.keys().ptr),
@@ -119,8 +119,8 @@ fn readLibrary(db_path: []const u8) anyerror!void {
 
     var iovecs = [_]std.os.iovec{
         .{
-            .iov_base = l.strings.strings.items.ptr,
-            .iov_len = l.strings.strings.items.len,
+            .iov_base = l.strings.bytes.items.ptr,
+            .iov_len = l.strings.bytes.items.len,
         },
         .{
             .iov_base = @ptrCast([*]u8, track_keys.ptr),

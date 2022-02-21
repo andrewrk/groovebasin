@@ -343,7 +343,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
         const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
         // string pool
         var strings = try StringPool.initSizeImmutable(arena, library_header.string_size);
-        try stream.reader().readNoEof(strings.strings.items);
+        try stream.reader().readNoEof(strings.bytes.items);
         // track keys and values
         library.tracks.clearRetainingCapacity();
         try library.tracks.ensureTotalCapacity(library_header.track_count);
@@ -391,7 +391,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
         const events_header = try stream.reader().readStruct(protocol.EventsHeader);
         // string pool
         var strings = try StringPool.initSizeImmutable(arena, events_header.string_size);
-        try stream.reader().readNoEof(strings.strings.items);
+        try stream.reader().readNoEof(strings.bytes.items);
         // keys and values
         events.events.clearRetainingCapacity();
         try events.events.ensureTotalCapacity(events_header.item_count);

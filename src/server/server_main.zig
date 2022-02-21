@@ -502,11 +502,10 @@ const ConnectionHandler = struct {
                 // Library
                 if (library.current_library_version != query_request.last_library) {
                     try response.writer().writeStruct(protocol.LibraryHeader{
-                        // there there is is nothing wrong with this naming.
-                        .string_size = @intCast(u32, library.library.strings.strings.items.len),
+                        .string_size = @intCast(u32, library.library.strings.bytes.items.len),
                         .track_count = @intCast(u32, library.library.tracks.count()),
                     });
-                    try response.writer().writeAll(library.library.strings.strings.items);
+                    try response.writer().writeAll(library.library.strings.bytes.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
                 }
@@ -523,10 +522,10 @@ const ConnectionHandler = struct {
                 // Events
                 if (events.current_events_version != query_request.last_events) {
                     try response.writer().writeStruct(protocol.EventsHeader{
-                        .string_size = @intCast(u32, events.events.strings.strings.items.len),
+                        .string_size = @intCast(u32, events.events.strings.bytes.items.len),
                         .item_count = @intCast(u32, events.events.events.count()),
                     });
-                    try response.writer().writeAll(events.events.strings.strings.items);
+                    try response.writer().writeAll(events.events.strings.bytes.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.values()));
                 }

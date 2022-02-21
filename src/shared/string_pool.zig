@@ -1,31 +1,31 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
-const StringHashMapUnmanaged = std.StringHashMapUnmanaged;
+const HashMapUnmanaged = std.HashMapUnmanaged;
 
 pub const StringPool = struct {
     allocator: Allocator,
-    strings: ArrayListUnmanaged(u8),
-    deduplication_table: ?StringHashMapUnmanaged(u32),
+    bytes: ArrayListUnmanaged(u8),
+    deduplication_table: ?DeduplicationTable,
 
     pub fn init(allocator: Allocator) @This() {
         return @This(){
             .allocator = allocator,
-            .strings = .{},
-            .deduplication_table = StringHashMapUnmanaged(u32){},
+            .bytes = .{},
+            .deduplication_table = DeduplicationTable{},
         };
     }
     pub fn initSizeImmutable(allocator: Allocator, size: usize) !@This() {
-        var strings = ArrayListUnmanaged(u8){};
-        try strings.resize(allocator, size);
+        var bytes = ArrayListUnmanaged(u8){};
+        try bytes.resize(allocator, size);
         return @This(){
             .allocator = allocator,
-            .strings = strings,
+            .bytes = bytes,
             .deduplication_table = null,
         };
     }
     pub fn deinit(self: *@This()) void {
-        self.strings.deinit(self.allocator);
+        self.bytes.deinit(self.allocator);
         if (self.deduplication_table) |*x| {
             x.deinit(self.allocator);
         }
@@ -34,16 +34,16 @@ pub const StringPool = struct {
 
     pub fn putString(self: *@This(), s: []const u8) !u32 {
         // Check if we've already got it.
-        if (self.deduplication_table.?.get(s)) |index| {
+        if (self.deduplication_table.?.getKeyAdapted(s, self.deduplicationAdapter())) |index| {
             return index;
         }
 
         // Insert a new entry.
-        const index = @intCast(u32, self.strings.items.len);
-        try self.strings.ensureUnusedCapacity(self.allocator, s.len + 1);
-        self.strings.appendSliceAssumeCapacity(s);
-        self.strings.appendAssumeCapacity(0);
-        try self.deduplication_table.?.putNoClobber(self.allocator, s, index);
+        const index = @intCast(u32, self.bytes.items.len);
+        try self.bytes.ensureUnusedCapacity(self.allocator, s.len + 1);
+        self.bytes.appendSliceAssumeCapacity(s);
+        self.bytes.appendAssumeCapacity(0);
+        try self.deduplication_table.?.putNoClobberContext(self.allocator, index, {}, self.deduplicationContext());
         return index;
     }
 
@@ -51,7 +51,47 @@ pub const StringPool = struct {
         return std.mem.span(self.getStringZ(i));
     }
     pub fn getStringZ(self: @This(), i: u32) [*:0]const u8 {
-        return @ptrCast([*:0]const u8, &self.strings.items[i]);
+        return @ptrCast([*:0]const u8, &self.bytes.items[i]);
+    }
+
+    const DeduplicationTable = HashMapUnmanaged(u32, void, StringIndexContext, std.hash_map.default_max_load_percentage);
+    fn deduplicationContext(self: *@This()) StringIndexContext {
+        return .{
+            .bytes = &self.bytes,
+        };
+    }
+    fn deduplicationAdapter(self: *@This()) StringIndexAdapter {
+        return .{
+            .bytes = &self.bytes,
+        };
+    }
+};
+
+// Copied from std.hash_map.
+// (As of writing this, this type is unreferenced in the std lib, so I don't trust its stability.)
+const StringIndexContext = struct {
+    bytes: *std.ArrayListUnmanaged(u8),
+
+    pub fn eql(self: @This(), a: u32, b: u32) bool {
+        _ = self;
+        return a == b;
+    }
+
+    pub fn hash(self: @This(), x: u32) u64 {
+        const x_slice = std.mem.sliceTo(@ptrCast([*:0]const u8, self.bytes.items.ptr) + x, 0);
+        return std.hash_map.hashString(x_slice);
+    }
+};
+
+const StringIndexAdapter = struct {
+    bytes: *std.ArrayListUnmanaged(u8),
+    pub fn hash(self: @This(), k: []const u8) u64 {
+        _ = self;
+        return std.hash_map.hashString(k);
+    }
+    pub fn eql(self: @This(), k: []const u8, k2: u32) bool {
+        const k2_slice = std.mem.sliceTo(@ptrCast([*:0]const u8, self.bytes.items.ptr) + k2, 0);
+        return std.mem.eql(u8, k, k2_slice);
     }
 };
 

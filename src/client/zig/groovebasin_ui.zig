@@ -342,7 +342,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.library_version != last_library_version) {
         const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
         // string pool
-        var strings = try StringPool.initSize(arena, library_header.string_size);
+        var strings = try StringPool.initSizeImmutable(arena, library_header.string_size);
         try stream.reader().readNoEof(strings.strings.items);
         // track keys and values
         library.tracks.clearRetainingCapacity();
@@ -390,7 +390,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.events_version != last_events_version) {
         const events_header = try stream.reader().readStruct(protocol.EventsHeader);
         // string pool
-        var strings = try StringPool.initSize(arena, events_header.string_size);
+        var strings = try StringPool.initSizeImmutable(arena, events_header.string_size);
         try stream.reader().readNoEof(strings.strings.items);
         // keys and values
         events.events.clearRetainingCapacity();

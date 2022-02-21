@@ -14,10 +14,7 @@ pub var current_events_version: u64 = 1;
 pub var events: Events = undefined;
 
 pub fn init() !void {
-    events = Events{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .events = AutoArrayHashMap(u64, Event).init(g.gpa),
-    };
+    events = Events.init(g.gpa);
     errdefer events.deinit();
 }
 

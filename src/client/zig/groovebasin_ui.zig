@@ -21,6 +21,7 @@ const Library = @import("shared").Library;
 const Queue = @import("shared").Queue;
 const Events = @import("shared").Events;
 const Event = protocol.Event;
+const StringPool = @import("shared").StringPool;
 
 const log = std.log.scoped(.ui);
 
@@ -102,19 +103,9 @@ pub fn init() void {
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
 
-    library = Library{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
-    };
-
-    queue = Queue{
-        .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
-    };
-
-    events = Events{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .events = AutoArrayHashMap(u64, Event).init(g.gpa),
-    };
+    library = Library.init(g.gpa);
+    queue = Queue.init(g.gpa);
+    events = Events.init(g.gpa);
 }
 
 const TabUi = struct {
@@ -337,6 +328,10 @@ pub fn poll() !void {
     try query_call.send(handleQueryResponse, {});
 }
 fn handleQueryResponse(response: []const u8) anyerror!void {
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    var arena = arena_instance.allocator();
+
     var stream = std.io.fixedBufferStream(response);
     const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
     var render_library = false;
@@ -347,8 +342,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.library_version != last_library_version) {
         const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
         // string pool
-        try library.strings.strings.resize(library_header.string_size);
-        try stream.reader().readNoEof(library.strings.strings.items);
+        var strings = try StringPool.initSize(arena, library_header.string_size);
+        try stream.reader().readNoEof(strings.strings.items);
         // track keys and values
         library.tracks.clearRetainingCapacity();
         try library.tracks.ensureTotalCapacity(library_header.track_count);
@@ -357,7 +352,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
 
         var i: u32 = 0;
         while (i < library_header.track_count) : (i += 1) {
-            try library.tracks.putNoClobber(
+            try library.putTrack(
+                strings,
                 try key_stream.reader().readIntLittle(u64),
                 try value_stream.reader().readStruct(Track),
             );
@@ -394,8 +390,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.events_version != last_events_version) {
         const events_header = try stream.reader().readStruct(protocol.EventsHeader);
         // string pool
-        try events.strings.strings.resize(events_header.string_size);
-        try stream.reader().readNoEof(events.strings.strings.items);
+        var strings = try StringPool.initSize(arena, events_header.string_size);
+        try stream.reader().readNoEof(strings.strings.items);
         // keys and values
         events.events.clearRetainingCapacity();
         try events.events.ensureTotalCapacity(events_header.item_count);
@@ -404,7 +400,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
 
         var i: u32 = 0;
         while (i < events_header.item_count) : (i += 1) {
-            try events.events.putNoClobber(
+            try events.putEvent(
+                strings,
                 try key_stream.reader().readIntLittle(u64),
                 try value_stream.reader().readStruct(Event),
             );

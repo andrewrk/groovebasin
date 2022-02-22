@@ -8,8 +8,8 @@ const g = @import("global.zig");
 const protocol = @import("shared").protocol;
 const Track = protocol.Track;
 
-pub const Library = @import("shared").Library;
-pub const StringPool = @import("shared").StringPool;
+const Library = @import("shared").Library;
+const StringPool = @import("shared").StringPool;
 
 pub var current_library_version: u64 = 1;
 pub var library: Library = undefined;

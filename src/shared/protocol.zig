@@ -19,7 +19,7 @@ pub const ResponseHeader = extern struct {
     seq_id: u32,
     // followed by:
     //  more data depending on the opcode of the corresponding request if this is a response to a request.
-    //  or nothing if this is a message from the server.
+    //  or PushMessageHeader if this is a message from the server.
 };
 
 pub const QueryRequest = extern struct {
@@ -66,6 +66,7 @@ pub const QueueItem = extern struct {
     track_key: u64,
 };
 
+// TODO: rename to Chat
 pub const EventsHeader = extern struct {
     string_size: u32,
     item_count: u32,
@@ -91,3 +92,49 @@ pub const SendChatRequestHeader = extern struct {
     // followed by:
     //  msg: [msg_len]u8,
 };
+
+pub const PushMessageHeader = extern struct {
+    string_size: u32,
+    /// bitfield of section_*.
+    sections: u8,
+    // followed by:
+    //  strings: [string_size]u8,
+    //  NowPlayingUpdate if sections & section_now_playing,
+    //  QueueUpdate if sections & section_queue,
+    //  ChatUpdate if sections & section_chat,
+    //  OnlineUpdate if sections & section_online,
+    //  LibraryUpdate if sections & section_library,
+    //  PlayistUpdate if sections & section_playlist,
+    //  SettingsUpdate if sections & section_settings,
+};
+
+//pub const section_now_playing: u8 = 1 << 0;
+pub const section_queue: u8 = 1 << 1;
+pub const section_chat: u8 = 1 << 2;
+//pub const section_online: u8 = 1 << 3;
+//pub const section_library: u8 = 1 << 4;
+//pub const section_playlist: u8 = 1 << 5;
+//pub const section_settings: u8 = 1 << 6;
+
+//pub const NowPlayingUpdate = extern struct {};
+
+pub const QueueUpdate = extern struct {
+    queue_version: u64,
+    item_count: u32,
+    // followed by:
+    //  item_keys: [item_count]u64,
+    //  items: [item_count]QueueItem,
+};
+pub const ChatUpdate = extern struct {
+    events_version: u64,
+    item_count: u32,
+    // followed by:
+    //  item_keys: [item_count]u64,
+    //  items: [item_count]Event,
+};
+
+//pub const OnlineUpdate = extern struct {};
+//pub const LibraryUpdate = extern struct {};
+//pub const PlayistUpdate = extern struct {};
+//pub const SettingsUpdate = extern struct {};
+

@@ -11,11 +11,12 @@ const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
+const g = @import("global.zig");
 const protocol = @import("shared").protocol;
 const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
-const g = @import("global.zig");
+const PushBuilder = @import("PushBuilder.zig");
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
     log.err(format, args);
@@ -535,23 +536,38 @@ const ConnectionHandler = struct {
 
                 const track_key = enqueue_request.track_key;
                 const track = library.library.tracks.get(track_key) orelse return error.TrackNotFound;
-                try queue.queue.items.putNoClobber(queue.generateItemKey(), protocol.QueueItem{
-                    .sort_key = queue.generateSortKey(),
+                const queue_item_id = generateItemKey();
+                const queue_item = protocol.QueueItem{
+                    .sort_key = generateSortKey(),
                     .track_key = track_key,
-                });
-
-                const full_path = try fs.path.joinZ(handler.arena(), &.{
-                    library.music_dir_path, library.library.getString(track.file_path),
-                });
-
-                const test_file = try g.groove.file_create(); // TODO cleanup
-                try test_file.open(full_path, full_path); // TODO cleanup
-
-                log.debug("queuing up {s}", .{full_path});
-                _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
-
+                };
+                try queue.queue.items.putNoClobber(queue_item_id, queue_item);
                 queue.current_queue_version += 1;
-                try broadcastPushMessage();
+
+                // insert into groove player.
+                {
+                    const full_path = try fs.path.joinZ(handler.arena(), &.{
+                        library.music_dir_path, library.library.getString(track.file_path),
+                    });
+
+                    const test_file = try g.groove.file_create(); // TODO cleanup
+                    try test_file.open(full_path, full_path); // TODO cleanup
+
+                    log.debug("queuing up {s}", .{full_path});
+                    _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
+                }
+
+                var push_builder = PushBuilder.init(handler.arena(), protocol.section_queue);
+                try push_builder.writer().writeStruct(protocol.QueueUpdate{
+                    .queue_version = queue.current_queue_version,
+                    .item_count = 1,
+                });
+                try push_builder.writer().writeIntLittle(u64, queue_item_id);
+                try push_builder.writer().writeStruct(protocol.QueueItem{
+                    .sort_key = queue_item.sort_key,
+                    .track_key = queue_item.track_key,
+                });
+                try broadcastMessage(try push_builder.build());
             },
             .send_chat => {
                 const sub_header = try request.reader().readStruct(protocol.SendChatRequestHeader);
@@ -559,16 +575,27 @@ const ConnectionHandler = struct {
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
 
-                const name_id = try events.events.strings.putString("joshprobably");
-                const content_id = try events.events.strings.putString(msg);
-                try events.events.events.putNoClobber(events.events.events.count() + 1, protocol.Event{
+                const event_id = events.events.events.count() + 1;
+                const event = protocol.Event{
                     .sort_key = 0,
-                    .name = name_id,
-                    .content = content_id,
-                });
+                    .name = try events.events.strings.putString("joshprobably"),
+                    .content = try events.events.strings.putString(msg),
+                };
+                try events.events.events.putNoClobber(event_id, event);
                 events.current_events_version += 1;
 
-                try broadcastPushMessage();
+                var push_builder = PushBuilder.init(handler.arena(), protocol.section_chat);
+                try push_builder.writer().writeStruct(protocol.ChatUpdate{
+                    .events_version = events.current_events_version,
+                    .item_count = 1,
+                });
+                try push_builder.writer().writeIntLittle(u64, event_id);
+                try push_builder.writer().writeStruct(protocol.Event{
+                    .sort_key = event.sort_key,
+                    .name = try push_builder.strings.putString(events.events.strings.getString(event.name)),
+                    .content = try push_builder.strings.putString(events.events.strings.getString(event.content)),
+                });
+                try broadcastMessage(try push_builder.build());
             },
         }
     }
@@ -642,13 +669,6 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
-fn broadcastPushMessage() !void {
-    const entire_message = protocol.ResponseHeader{
-        .seq_id = 0x8000_0000,
-    };
-    try broadcastMessage(std.mem.asBytes(&entire_message));
-}
-
 fn broadcastMessage(message: []const u8) !void {
     client_connections_mutex.lock();
     defer client_connections_mutex.unlock();
@@ -660,4 +680,21 @@ fn broadcastMessage(message: []const u8) !void {
         const handler = entry.key_ptr.*;
         try handler.queueSendMessage(message);
     }
+}
+
+var next_item_key: u64 = 10;
+var next_sort_key: u64 = 1;
+
+pub fn generateItemKey() u64 {
+    defer {
+        next_item_key += 1;
+    }
+    return next_item_key;
+}
+
+pub fn generateSortKey() u64 {
+    defer {
+        next_sort_key += 1_000_000_000;
+    }
+    return next_sort_key;
 }

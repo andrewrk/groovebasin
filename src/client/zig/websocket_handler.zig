@@ -8,6 +8,7 @@ const ui = @import("groovebasin_ui.zig");
 const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
+const StringPool = @import("shared").StringPool;
 const log = std.log.scoped(.websocket);
 
 var websocket_handle: i32 = undefined;
@@ -152,13 +153,8 @@ fn retryOpenCallback() anyerror!void {
 var periodic_ping_handle: ?i64 = null;
 const periodic_ping_interval_ms = 10_000;
 fn periodicPing() anyerror!void {
-    {
-        var ping_call = try Call.init(.ping);
-        try ping_call.send(handlePeriodicPingResponse, {});
-    }
-
-    // Also by the way, let's query for the data or something.
-    try ui.poll();
+    var ping_call = try Call.init(.ping);
+    try ping_call.send(handlePeriodicPingResponse, {});
 }
 
 fn handlePeriodicPingResponse(response: []const u8) anyerror!void {
@@ -171,6 +167,15 @@ fn handlePeriodicPingResponse(response: []const u8) anyerror!void {
 }
 
 fn handlePushMessage(response: []const u8) !void {
-    assert(response.len == 0);
-    try ui.poll();
+    var stream = std.io.fixedBufferStream(response);
+    const header = try stream.reader().readStruct(protocol.PushMessageHeader);
+    var strings = try StringPool.initSizeImmutable(g.gpa, header.string_size);
+    defer strings.deinit();
+    try stream.reader().readNoEof(strings.bytes.items);
+
+    // if (0 != header.sections & protocol.section_now_playing) {}
+    if (0 != header.sections & protocol.section_queue) {
+        const update = try stream.reader().readStruct(protocol.QueueUpdate);
+        _ = update; // TODO
+    }
 }

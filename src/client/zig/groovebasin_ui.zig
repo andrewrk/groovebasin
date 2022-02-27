@@ -12,14 +12,12 @@ const EventModifierKey = enums.EventModifierKey;
 const ws = @import("websocket_handler.zig");
 const callback = @import("callback.zig");
 const browser = @import("browser.zig");
+const model = @import("model.zig");
 const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
 const Track = protocol.Track;
 const QueueItem = protocol.QueueItem;
-const Library = @import("shared").Library;
-const Queue = @import("shared").Queue;
-const Events = @import("shared").Events;
 const Event = protocol.Event;
 const StringPool = @import("shared").StringPool;
 
@@ -103,9 +101,7 @@ pub fn init() void {
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
 
-    library = Library.init(g.gpa);
-    queue = Queue.init(g.gpa);
-    events = Events.init(g.gpa);
+    model.init();
 }
 
 const TabUi = struct {
@@ -154,9 +150,9 @@ pub fn setLag(lag_ns: i128) void {
     });
 }
 
-fn renderLibrary() void {
+pub fn renderLibrary() void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
-    dom.setShown(library_no_items_dom, library.tracks.count() == 0);
+    dom.setShown(library_no_items_dom, model.library.tracks.count() == 0);
 
     // Delete and recreate all items.
     {
@@ -166,8 +162,8 @@ fn renderLibrary() void {
             library_dom_element_count -= 1;
         }
     }
-    for (library.tracks.values()) |track, i| {
-        const track_key_str = formatKey(library.tracks.keys()[i]);
+    for (model.library.tracks.values()) |track, i| {
+        const track_key_str = formatKey(model.library.tracks.keys()[i]);
 
         // artist
         dom.insertAdjacentHTML(library_artists_dom, .beforeend,
@@ -190,7 +186,7 @@ fn renderLibrary() void {
             dom.removeClass(icon_div, icon_expanded);
 
             const artist_span = dom.getChild(artist_div, 1);
-            dom.setTextContent(artist_span, library.getString(track.artist));
+            dom.setTextContent(artist_span, model.library.getString(track.artist));
         }
 
         const albums_ul = dom.getChild(artist_li, 1);
@@ -216,7 +212,7 @@ fn renderLibrary() void {
             dom.removeClass(icon_div, icon_expanded);
 
             const album_span = dom.getChild(album_div, 1);
-            dom.setTextContent(album_span, library.getString(track.album));
+            dom.setTextContent(album_span, model.library.getString(track.album));
         }
 
         const tracks_ul = dom.getChild(album_li, 1);
@@ -234,11 +230,11 @@ fn renderLibrary() void {
         const track_div = dom.getChild(track_li, 0);
         dom.setAttribute(track_div, "data-track", &track_key_str);
         const track_span = dom.getChild(track_div, 0);
-        dom.setTextContent(track_span, library.getString(track.title));
+        dom.setTextContent(track_span, model.library.getString(track.title));
     }
 }
 
-fn renderQueue() void {
+pub fn renderQueue() void {
     // Delete and recreate all items.
     {
         var c = dom.getChildrenCount(queue_items_div);
@@ -247,8 +243,8 @@ fn renderQueue() void {
             c -= 1;
         }
     }
-    for (queue.items.values()) |item, i| {
-        const track = library.tracks.get(item.track_key).?;
+    for (model.queue.items.values()) |item, i| {
+        const track = model.library.tracks.get(item.track_key).?;
         dom.insertAdjacentHTML(queue_items_div, .beforeend,
             \\<div class="pl-item">
             \\  <span class="track"></span>
@@ -269,11 +265,11 @@ fn renderQueue() void {
 
         const middle_div = dom.getChild(item_div, 2);
         // title
-        dom.setTextContent(dom.getChild(middle_div, 0), library.getString(track.title));
+        dom.setTextContent(dom.getChild(middle_div, 0), model.library.getString(track.title));
         // artist
-        dom.setTextContent(dom.getChild(middle_div, 1), library.getString(track.artist));
+        dom.setTextContent(dom.getChild(middle_div, 1), model.library.getString(track.artist));
         // album
-        dom.setTextContent(dom.getChild(middle_div, 2), library.getString(track.album));
+        dom.setTextContent(dom.getChild(middle_div, 2), model.library.getString(track.album));
     }
 }
 
@@ -286,7 +282,7 @@ pub fn renderEvents() void {
             c -= 1;
         }
     }
-    const events_list = events.events.values();
+    const events_list = model.events.events.values();
     // TODO: sort by sort_key.
     for (events_list) |event, i| {
         dom.insertAdjacentHTML(events_list_div, .beforeend,
@@ -301,120 +297,12 @@ pub fn renderEvents() void {
         dom.addClass(event_div, "chat");
 
         const name_span = dom.getChild(event_div, 0);
-        dom.setTextContent(name_span, events.getString(event.name));
+        dom.setTextContent(name_span, model.events.getString(event.name));
         //dom.setTitle(name_span, some date represnetation);
 
         const msg_span = dom.getChild(event_div, 1);
-        dom.setTextContent(msg_span, events.getString(event.content));
+        dom.setTextContent(msg_span, model.events.getString(event.content));
     }
-}
-
-var last_library_version: u64 = 0;
-var library: Library = undefined;
-
-var last_queue_version: u64 = 0;
-var queue: Queue = undefined;
-
-var last_events_version: u64 = 0;
-var events: Events = undefined;
-
-pub fn poll() !void {
-    var query_call = try ws.Call.init(.query);
-    try query_call.writer().writeStruct(protocol.QueryRequest{
-        .last_library = last_library_version,
-        .last_queue = last_queue_version,
-        .last_events = last_events_version,
-    });
-    try query_call.send(handleQueryResponse, {});
-}
-fn handleQueryResponse(response: []const u8) anyerror!void {
-    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
-    defer arena_instance.deinit();
-    var arena = arena_instance.allocator();
-
-    var stream = std.io.fixedBufferStream(response);
-    const response_header = try stream.reader().readStruct(protocol.QueryResponseHeader);
-    var render_library = false;
-    var render_queue = false;
-    var render_events = false;
-
-    // Library
-    if (response_header.library_version != last_library_version) {
-        const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
-        // string pool
-        var strings = try StringPool.initSizeImmutable(arena, library_header.string_size);
-        try stream.reader().readNoEof(strings.bytes.items);
-        // track keys and values
-        library.tracks.clearRetainingCapacity();
-        try library.tracks.ensureTotalCapacity(library_header.track_count);
-        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
-        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * library_header.track_count ..]);
-
-        var i: u32 = 0;
-        while (i < library_header.track_count) : (i += 1) {
-            try library.putTrack(
-                strings,
-                try key_stream.reader().readIntLittle(u64),
-                try value_stream.reader().readStruct(Track),
-            );
-        }
-        stream.pos += library_header.track_count * @sizeOf(u64) + library_header.track_count * @sizeOf(Track);
-
-        last_library_version = response_header.library_version;
-        render_library = true;
-    }
-
-    // Queue
-    if (response_header.queue_version != last_queue_version) {
-        const queue_header = try stream.reader().readStruct(protocol.QueueHeader);
-        // item keys and values
-        queue.items.clearRetainingCapacity();
-        // try queue.items.ensureTotalCapacity(queue_header.item_count);
-        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
-        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * queue_header.item_count ..]);
-
-        var i: u32 = 0;
-        while (i < queue_header.item_count) : (i += 1) {
-            try queue.items.putNoClobber(
-                try key_stream.reader().readIntLittle(u64),
-                try value_stream.reader().readStruct(QueueItem),
-            );
-        }
-        stream.pos += queue_header.item_count * @sizeOf(u64) + queue_header.item_count * @sizeOf(QueueItem);
-
-        last_queue_version = response_header.queue_version;
-        render_queue = true;
-    }
-
-    // Events
-    if (response_header.events_version != last_events_version) {
-        const events_header = try stream.reader().readStruct(protocol.EventsHeader);
-        // string pool
-        var strings = try StringPool.initSizeImmutable(arena, events_header.string_size);
-        try stream.reader().readNoEof(strings.bytes.items);
-        // keys and values
-        events.events.clearRetainingCapacity();
-        try events.events.ensureTotalCapacity(events_header.item_count);
-        var key_stream = std.io.fixedBufferStream(response[stream.pos..]);
-        var value_stream = std.io.fixedBufferStream(response[stream.pos + @sizeOf(u64) * events_header.item_count ..]);
-
-        var i: u32 = 0;
-        while (i < events_header.item_count) : (i += 1) {
-            try events.putEvent(
-                strings,
-                try key_stream.reader().readIntLittle(u64),
-                try value_stream.reader().readStruct(Event),
-            );
-        }
-        stream.pos += events_header.item_count * @sizeOf(u64) + events_header.item_count * @sizeOf(Event);
-
-        last_events_version = response_header.events_version;
-        render_events = true;
-    }
-
-    if (render_library) renderLibrary();
-    if (render_queue) renderQueue();
-    if (render_events) renderEvents();
 }
 
 fn onLibraryMouseDown(event: i32) anyerror!void {

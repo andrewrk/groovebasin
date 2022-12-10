@@ -1,13 +1,13 @@
 pub const SoundIo = extern struct {
     userdata: ?*anyopaque,
-    on_devices_change: ?fn (*SoundIo) callconv(.C) void,
-    on_backend_disconnect: ?fn (*SoundIo, c_int) callconv(.C) void,
-    on_events_signal: ?fn (*SoundIo) callconv(.C) void,
+    on_devices_change: ?*const fn (*SoundIo) callconv(.C) void,
+    on_backend_disconnect: ?*const fn (*SoundIo, c_int) callconv(.C) void,
+    on_events_signal: ?*const fn (*SoundIo) callconv(.C) void,
     current_backend: Backend,
     app_name: [*:0]const u8,
-    emit_rtprio_warning: ?fn () callconv(.C) void,
-    jack_info_callback: ?fn ([*:0]const u8) callconv(.C) void,
-    jack_error_callback: ?fn ([*:0]const u8) callconv(.C) void,
+    emit_rtprio_warning: ?*const fn () callconv(.C) void,
+    jack_info_callback: ?*const fn ([*:0]const u8) callconv(.C) void,
+    jack_error_callback: ?*const fn ([*:0]const u8) callconv(.C) void,
 
     pub fn create() error{OutOfMemory}!*SoundIo {
         return soundio_create() orelse return error.OutOfMemory;

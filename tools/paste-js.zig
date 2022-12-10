@@ -8,7 +8,7 @@ pub fn main() !void {
     var src_dir = try std.fs.cwd().openDir(args[1], .{});
     defer src_dir.close();
 
-    var fout = try std.fs.cwd().createFile("src/public/app.js", .{});
+    var fout = try std.fs.cwd().createFile("public/app.js", .{});
     defer fout.close();
     const output = fout.writer();
 

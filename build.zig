@@ -22,6 +22,13 @@ pub fn build(b: *Builder) void {
         .os_tag = .freestanding,
     });
     client.addPackagePath("shared", "src/shared/index.zig");
+    client.install();
+
+    b.installDirectory(.{
+        .source_dir = "public",
+        .install_dir = .lib,
+        .install_subdir = "public",
+    });
 
     const server = b.addExecutable("groovebasin", "src/server/server_main.zig");
     server.setTarget(target);
@@ -87,7 +94,7 @@ const LibGroove = struct {
         zlib.setTarget(target);
         zlib.setBuildMode(mode);
         zlib.linkLibC();
-        zlib.addIncludeDir("deps/zlib");
+        zlib.addIncludePath("deps/zlib");
         zlib.addCSourceFiles(&.{
             "deps/zlib/adler32.c",
             "deps/zlib/crc32.c",
@@ -110,10 +117,10 @@ const LibGroove = struct {
         mp3lame.setTarget(target);
         mp3lame.setBuildMode(mode);
         mp3lame.linkLibC();
-        mp3lame.addIncludeDir("deps/lame/lame");
-        mp3lame.addIncludeDir("deps/lame");
-        mp3lame.addIncludeDir("deps/lame/mpglib");
-        mp3lame.addIncludeDir("deps/lame/libmp3lame");
+        mp3lame.addIncludePath("deps/lame/lame");
+        mp3lame.addIncludePath("deps/lame");
+        mp3lame.addIncludePath("deps/lame/mpglib");
+        mp3lame.addIncludePath("deps/lame/libmp3lame");
         mp3lame.addCSourceFiles(&.{
             "deps/lame/libmp3lame/VbrTag.c",
             "deps/lame/libmp3lame/bitstream.c",
@@ -155,9 +162,9 @@ const LibGroove = struct {
         ffmpeg.linkLibrary(zlib);
         ffmpeg.linkLibrary(mp3lame);
         ffmpeg.linkLibC();
-        ffmpeg.addIncludeDir("deps/ffmpeg");
-        ffmpeg.addIncludeDir("deps/zlib");
-        ffmpeg.addIncludeDir("deps/lame");
+        ffmpeg.addIncludePath("deps/ffmpeg");
+        ffmpeg.addIncludePath("deps/zlib");
+        ffmpeg.addIncludePath("deps/lame");
         ffmpeg.addCSourceFiles(&avcodec_sources, ffmpeg_cflags ++ [_][]const u8{
             "-DBUILDING_avcodec",
         });
@@ -181,7 +188,7 @@ const LibGroove = struct {
         pulse.setTarget(target);
         pulse.setBuildMode(mode);
         pulse.linkLibC();
-        pulse.addIncludeDir("deps/pulseaudio/src");
+        pulse.addIncludePath("deps/pulseaudio/src");
         pulse.addCSourceFiles(&.{
             "deps/pulseaudio/src/pulse/channelmap.c",
             "deps/pulseaudio/src/pulse/client-conf.c",
@@ -276,8 +283,8 @@ const LibGroove = struct {
         soundio.setBuildMode(mode);
         soundio.linkLibC();
         soundio.linkLibrary(pulse);
-        soundio.addIncludeDir("deps/soundio");
-        soundio.addIncludeDir("deps/pulseaudio/src");
+        soundio.addIncludePath("deps/soundio");
+        soundio.addIncludePath("deps/pulseaudio/src");
         soundio.addCSourceFiles(&.{
             "deps/soundio/src/soundio.c",
             "deps/soundio/src/util.c",
@@ -303,7 +310,7 @@ const LibGroove = struct {
         ebur128.setBuildMode(mode);
         ebur128.linkLibC();
         ebur128.linkSystemLibrary("m");
-        ebur128.addIncludeDir("deps/ebur128/ebur128/queue");
+        ebur128.addIncludePath("deps/ebur128/ebur128/queue");
         ebur128.addCSourceFiles(&.{
             "deps/ebur128/ebur128/ebur128.c",
         }, &.{});
@@ -313,8 +320,8 @@ const LibGroove = struct {
         chromaprint.setBuildMode(mode);
         chromaprint.linkLibC();
         chromaprint.linkSystemLibrary("c++");
-        chromaprint.addIncludeDir("deps/chromaprint/src");
-        chromaprint.addIncludeDir("deps/ffmpeg");
+        chromaprint.addIncludePath("deps/chromaprint/src");
+        chromaprint.addIncludePath("deps/ffmpeg");
         chromaprint.addCSourceFiles(&.{
             "deps/chromaprint/src/audio_processor.cpp",
             "deps/chromaprint/src/chroma.cpp",
@@ -362,11 +369,11 @@ const LibGroove = struct {
         groove.linkLibrary(ebur128);
         groove.linkLibrary(soundio);
         groove.linkLibC();
-        groove.addIncludeDir("deps/groove");
-        groove.addIncludeDir("deps");
-        groove.addIncludeDir("deps/ffmpeg");
-        groove.addIncludeDir("deps/ebur128/ebur128");
-        groove.addIncludeDir("deps/soundio");
+        groove.addIncludePath("deps/groove");
+        groove.addIncludePath("deps");
+        groove.addIncludePath("deps/ffmpeg");
+        groove.addIncludePath("deps/ebur128/ebur128");
+        groove.addIncludePath("deps/soundio");
         groove.addCSourceFiles(&.{
             "deps/groove/src/buffer.c",
             "deps/groove/src/file.c",
@@ -412,11 +419,11 @@ const LibGroove = struct {
         artifact.linkLibrary(libgroove.groove);
         artifact.linkLibrary(libgroove.mp3lame);
         artifact.linkLibrary(libgroove.zlib);
-        artifact.addIncludeDir("deps/groove");
-        artifact.addIncludeDir("deps");
-        artifact.addIncludeDir("deps/ffmpeg");
-        artifact.addIncludeDir("deps/ebur128/ebur128");
-        artifact.addIncludeDir("deps/soundio");
+        artifact.addIncludePath("deps/groove");
+        artifact.addIncludePath("deps");
+        artifact.addIncludePath("deps/ffmpeg");
+        artifact.addIncludePath("deps/ebur128/ebur128");
+        artifact.addIncludePath("deps/soundio");
     }
 };
 

@@ -27,7 +27,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     };
     errdefer library.deinit();
 
-    var music_dir = try std.fs.cwd().openDir(music_dir_path, .{ .iterate = true });
+    var music_dir = try std.fs.cwd().openIterableDir(music_dir_path, .{});
     defer music_dir.close();
 
     var walker = try music_dir.walk(g.gpa);

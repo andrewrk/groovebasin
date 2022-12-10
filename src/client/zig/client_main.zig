@@ -33,7 +33,8 @@ export fn main() void {
     websocket_handler.open();
 }
 
-pub fn panic(msg: []const u8, stacktrace: ?*std.builtin.StackTrace) noreturn {
+pub fn panic(msg: []const u8, stacktrace: ?*std.builtin.StackTrace, ra: ?usize) noreturn {
+    _ = ra;
     _ = stacktrace;
     env.panic(msg.ptr, msg.len);
     unreachable;

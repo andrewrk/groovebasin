@@ -81,11 +81,11 @@ inline fn unpackCallback(packed_callback: i64) UnpackedCallback {
 pub export fn delegateCallback(packed_callback: i64) void {
     const unpacked = unpackCallback(packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn () anyerror!void, unpacked.callback).*() catch |err| {
+        @ptrCast(*const fn () anyerror!void, unpacked.callback)() catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback).*(unpacked.context_int) catch |err| {
+        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback)(unpacked.context_int) catch |err| {
             @panic(@errorName(err));
         };
     }
@@ -94,11 +94,11 @@ pub export fn delegateCallback(packed_callback: i64) void {
 pub export fn delegateCallbackI32(packed_callback: i64, arg: i32) void {
     const unpacked = unpackCallback(packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback).*(arg) catch |err| {
+        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback)(arg) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32, i32) anyerror!void, unpacked.callback).*(unpacked.context_int, arg) catch |err| {
+        @ptrCast(*const fn (i32, i32) anyerror!void, unpacked.callback)(unpacked.context_int, arg) catch |err| {
             @panic(@errorName(err));
         };
     }
@@ -107,11 +107,11 @@ pub export fn delegateCallbackI32(packed_callback: i64, arg: i32) void {
 pub export fn delegateCallbackSliceU8(packed_callback: i64, ptr: [*]u8, len: usize) void {
     const unpacked = unpackCallback(packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn ([]u8) anyerror!void, unpacked.callback).*(ptr[0..len]) catch |err| {
+        @ptrCast(*const fn ([]u8) anyerror!void, unpacked.callback)(ptr[0..len]) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32, []u8) anyerror!void, unpacked.callback).*(unpacked.context_int, ptr[0..len]) catch |err| {
+        @ptrCast(*const fn (i32, []u8) anyerror!void, unpacked.callback)(unpacked.context_int, ptr[0..len]) catch |err| {
             @panic(@errorName(err));
         };
     }
@@ -120,11 +120,11 @@ pub export fn delegateCallbackSliceU8(packed_callback: i64, ptr: [*]u8, len: usi
 pub export fn delegateCallbackI32RI32(packed_callback: i64, arg: i32) i32 {
     const unpacked = unpackCallback(packed_callback);
     if (unpacked.is_void) {
-        return @ptrCast(*const fn (i32) anyerror!i32, unpacked.callback).*(arg) catch |err| {
+        return @ptrCast(*const fn (i32) anyerror!i32, unpacked.callback)(arg) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        return @ptrCast(*const fn (i32, i32) anyerror!i32, unpacked.callback).*(unpacked.context_int, arg) catch |err| {
+        return @ptrCast(*const fn (i32, i32) anyerror!i32, unpacked.callback)(unpacked.context_int, arg) catch |err| {
             @panic(@errorName(err));
         };
     }

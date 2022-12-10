@@ -96,7 +96,7 @@ pub fn main() anyerror!void {
             fatal("No {s} found; writing default. Take a peek and make sure the values are to your liking, then start GrooveBasin again.", .{config_json_path});
         },
         else => |e| {
-            fatal("Unable to read {s}: {s}", .{ config_json_path, e });
+            fatal("Unable to read {s}: {s}", .{ config_json_path, @errorName(e) });
         },
     };
     var token_stream = json.TokenStream.init(json_text);
@@ -601,29 +601,35 @@ const http_response_not_found = "" ++
     "\r\n";
 
 fn resolvePath(path: []const u8) ![]const u8 {
-    if (std.mem.eql(u8, path, "/")) return http_response_header_html ++ @embedFile("../public/index.html");
-    if (std.mem.eql(u8, path, "/app.css")) return http_response_header_css ++ @embedFile("../public/app.css");
-    if (std.mem.eql(u8, path, "/app.js")) return http_response_header_javascript ++ @embedFile("../public/app.js");
-    inline for ([_][]const u8{
-        "/favicon.png",
-        "/img/ui-icons_ffffff_256x240.png",
-        "/img/ui-bg_dots-small_30_a32d00_2x2.png",
-        "/img/ui-bg_flat_0_aaaaaa_40x100.png",
-        "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
-        "/img/ui-icons_98d2fb_256x240.png",
-        "/img/ui-icons_00498f_256x240.png",
-        "/img/ui-bg_gloss-wave_20_111111_500x100.png",
-        "/img/bright-10.png",
-        "/img/ui-icons_9ccdfc_256x240.png",
-        "/img/ui-bg_dots-small_40_00498f_2x2.png",
-        "/img/ui-bg_dots-small_20_333333_2x2.png",
-        "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
-        "/img/ui-bg_flat_40_292929_40x100.png",
-    }) |img_path| {
-        if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("../public" ++ img_path);
-    }
+    _ = path;
+    // instead of embed file let's read them on process startup from the installation lib dir
+    std.log.warn("TODO: implement serving static files again", .{});
+    //if (std.mem.eql(u8, path, "/"))
+    //    return http_response_header_html ++ @embedFile("../public/index.html");
+    //if (std.mem.eql(u8, path, "/app.css"))
+    //    return http_response_header_css ++ @embedFile("../public/app.css");
+    //if (std.mem.eql(u8, path, "/app.js"))
+    //    return http_response_header_javascript ++ @embedFile("../public/app.js");
+    //inline for ([_][]const u8{
+    //    "/favicon.png",
+    //    "/img/ui-icons_ffffff_256x240.png",
+    //    "/img/ui-bg_dots-small_30_a32d00_2x2.png",
+    //    "/img/ui-bg_flat_0_aaaaaa_40x100.png",
+    //    "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
+    //    "/img/ui-icons_98d2fb_256x240.png",
+    //    "/img/ui-icons_00498f_256x240.png",
+    //    "/img/ui-bg_gloss-wave_20_111111_500x100.png",
+    //    "/img/bright-10.png",
+    //    "/img/ui-icons_9ccdfc_256x240.png",
+    //    "/img/ui-bg_dots-small_40_00498f_2x2.png",
+    //    "/img/ui-bg_dots-small_20_333333_2x2.png",
+    //    "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
+    //    "/img/ui-bg_flat_40_292929_40x100.png",
+    //}) |img_path| {
+    //    if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("../public" ++ img_path);
+    //}
 
-    if (std.mem.eql(u8, path, "/client.wasm")) return http_response_header_wasm ++ @embedFile(@import("build_options").client_wasm_path);
+    //if (std.mem.eql(u8, path, "/client.wasm")) return http_response_header_wasm ++ @embedFile(@import("build_options").client_wasm_path);
 
     return http_response_not_found;
 }

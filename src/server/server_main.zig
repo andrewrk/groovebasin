@@ -145,6 +145,8 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
     try events.init();
     defer events.deinit();
 
+    try init_static_content();
+
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -575,62 +577,46 @@ const ConnectionHandler = struct {
     }
 };
 
-const http_response_header_html = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: text/html\r\n" ++
-    "\r\n";
-const http_response_header_css = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: text/css\r\n" ++
-    "\r\n";
-const http_response_header_javascript = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: application/javascript\r\n" ++
-    "\r\n";
-const http_response_header_png = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: image/png\r\n" ++
-    "\r\n";
-const http_response_header_wasm = "" ++
-    "HTTP/1.1 200 OK\r\n" ++
-    "Content-Type: application/wasm\r\n" ++
-    "\r\n";
-
 const http_response_not_found = "" ++
     "HTTP/1.1 404 Not Found\r\n" ++
     "\r\n";
 
-// TODO: read at startup and make this a hashtable of metadata.
-const static_file_allowlist = [_][]const u8{
-    "/",
-    "/app.css",
-    "/app.js",
-    "/favicon.png",
-    "/img/ui-icons_ffffff_256x240.png",
-    "/img/ui-bg_dots-small_30_a32d00_2x2.png",
-    "/img/ui-bg_flat_0_aaaaaa_40x100.png",
-    "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
-    "/img/ui-icons_98d2fb_256x240.png",
-    "/img/ui-icons_00498f_256x240.png",
-    "/img/ui-bg_gloss-wave_20_111111_500x100.png",
-    "/img/bright-10.png",
-    "/img/ui-icons_9ccdfc_256x240.png",
-    "/img/ui-bg_dots-small_40_00498f_2x2.png",
-    "/img/ui-bg_dots-small_20_333333_2x2.png",
-    "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
-    "/img/ui-bg_flat_40_292929_40x100.png",
-    "/client.wasm",
+const StaticFile = struct {
+    mime_type: []const u8,
+    content_length: u64,
+    relative_path: []const u8,
 };
-
-fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !void {
-    // Security is easy :)
-    for (static_file_allowlist) |allowed_path| {
-        if (std.mem.eql(u8, path, allowed_path)) break;
-    } else {
-        std.log.warn("path not in the allow list: {s}", .{path});
-        return connection.stream.writer().writeAll(http_response_not_found);
+var static_content_dir: std.fs.Dir = undefined;
+var static_content_map: std.StringHashMap(StaticFile) = undefined;
+fn init_static_content() !void {
+    // TODO: resolve relative to current executable maybe?
+    static_content_dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
+    static_content_map = std.StringHashMap(StaticFile).init(g.gpa);
+    for ([_][]const u8{
+        "/",
+        "/app.css",
+        "/app.js",
+        "/favicon.png",
+        "/img/ui-icons_ffffff_256x240.png",
+        "/img/ui-bg_dots-small_30_a32d00_2x2.png",
+        "/img/ui-bg_flat_0_aaaaaa_40x100.png",
+        "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
+        "/img/ui-icons_98d2fb_256x240.png",
+        "/img/ui-icons_00498f_256x240.png",
+        "/img/ui-bg_gloss-wave_20_111111_500x100.png",
+        "/img/bright-10.png",
+        "/img/ui-icons_9ccdfc_256x240.png",
+        "/img/ui-bg_dots-small_40_00498f_2x2.png",
+        "/img/ui-bg_dots-small_20_333333_2x2.png",
+        "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
+        "/img/ui-bg_flat_40_292929_40x100.png",
+        "/client.wasm",
+    }) |path| {
+        try static_content_map.putNoClobber(path, try resolveStaticFile(path));
     }
+}
 
+fn resolveStaticFile(path: []const u8) !StaticFile {
     var mime_type: []const u8 = undefined;
     var relative_path: []const u8 = path[1..];
     if (std.mem.eql(u8, path, "/")) {
@@ -647,25 +633,36 @@ fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !
         relative_path = "../client.wasm";
     } else unreachable;
 
-    // TODO: resolve relative to current executable maybe?
-    var dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
-    defer dir.close();
-
-    var file = try dir.openFile(relative_path, .{});
+    var file = try static_content_dir.openFile(relative_path, .{});
     defer file.close();
 
-    const content_size = (try file.stat()).size;
+    const content_length = (try file.stat()).size;
+    return StaticFile{
+        .mime_type = mime_type,
+        .content_length = content_length,
+        .relative_path = relative_path,
+    };
+}
+
+fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !void {
+    const static_file = static_content_map.get(path) orelse {
+        std.log.warn("not found: {s}", .{path});
+        return connection.stream.writer().writeAll(http_response_not_found);
+    };
+
+    var file = try static_content_dir.openFile(static_file.relative_path, .{});
+    defer file.close();
 
     try std.fmt.format(connection.stream.writer(), "" ++
         "HTTP/1.1 200 OK\r\n" ++
         "Content-Type: {s}\r\n" ++
         "Content-Length: {d}\r\n" ++
         "\r\n", .{
-        mime_type,
-        content_size,
+        static_file.mime_type,
+        static_file.content_length,
     });
 
-    try pump(file.reader(), connection.stream, content_size);
+    try pump(file.reader(), connection.stream, static_file.content_length);
 }
 
 /// Is this in the stdlib somewhere?
@@ -677,6 +674,7 @@ fn pump(reader: anytype, writer: anytype, total_amount: u64) !void {
         if (amount == 0) return error.EndOfStream;
         try writer.writeAll(buf[0..amount]);
         cursor += amount;
+        if (cursor > total_amount) return error.StreamTooLong;
     }
 }
 

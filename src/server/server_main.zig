@@ -259,7 +259,7 @@ const ConnectionHandler = struct {
         }
 
         // Getting static content
-        try handler.connection.stream.writer().writeAll(try resolvePath(path));
+        return serveStaticFile(&handler.connection, path);
     }
 
     fn streamEndpoint(handler: *ConnectionHandler) !void {
@@ -600,38 +600,84 @@ const http_response_not_found = "" ++
     "HTTP/1.1 404 Not Found\r\n" ++
     "\r\n";
 
-fn resolvePath(path: []const u8) ![]const u8 {
-    _ = path;
-    // instead of embed file let's read them on process startup from the installation lib dir
-    std.log.warn("TODO: implement serving static files again", .{});
-    //if (std.mem.eql(u8, path, "/"))
-    //    return http_response_header_html ++ @embedFile("../public/index.html");
-    //if (std.mem.eql(u8, path, "/app.css"))
-    //    return http_response_header_css ++ @embedFile("../public/app.css");
-    //if (std.mem.eql(u8, path, "/app.js"))
-    //    return http_response_header_javascript ++ @embedFile("../public/app.js");
-    //inline for ([_][]const u8{
-    //    "/favicon.png",
-    //    "/img/ui-icons_ffffff_256x240.png",
-    //    "/img/ui-bg_dots-small_30_a32d00_2x2.png",
-    //    "/img/ui-bg_flat_0_aaaaaa_40x100.png",
-    //    "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
-    //    "/img/ui-icons_98d2fb_256x240.png",
-    //    "/img/ui-icons_00498f_256x240.png",
-    //    "/img/ui-bg_gloss-wave_20_111111_500x100.png",
-    //    "/img/bright-10.png",
-    //    "/img/ui-icons_9ccdfc_256x240.png",
-    //    "/img/ui-bg_dots-small_40_00498f_2x2.png",
-    //    "/img/ui-bg_dots-small_20_333333_2x2.png",
-    //    "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
-    //    "/img/ui-bg_flat_40_292929_40x100.png",
-    //}) |img_path| {
-    //    if (std.mem.eql(u8, path, img_path)) return http_response_header_png ++ @embedFile("../public" ++ img_path);
-    //}
+// TODO: read at startup and make this a hashtable of metadata.
+const static_file_allowlist = [_][]const u8{
+    "/",
+    "/app.css",
+    "/app.js",
+    "/favicon.png",
+    "/img/ui-icons_ffffff_256x240.png",
+    "/img/ui-bg_dots-small_30_a32d00_2x2.png",
+    "/img/ui-bg_flat_0_aaaaaa_40x100.png",
+    "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
+    "/img/ui-icons_98d2fb_256x240.png",
+    "/img/ui-icons_00498f_256x240.png",
+    "/img/ui-bg_gloss-wave_20_111111_500x100.png",
+    "/img/bright-10.png",
+    "/img/ui-icons_9ccdfc_256x240.png",
+    "/img/ui-bg_dots-small_40_00498f_2x2.png",
+    "/img/ui-bg_dots-small_20_333333_2x2.png",
+    "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
+    "/img/ui-bg_flat_40_292929_40x100.png",
+    "/client.wasm",
+};
 
-    //if (std.mem.eql(u8, path, "/client.wasm")) return http_response_header_wasm ++ @embedFile(@import("build_options").client_wasm_path);
+fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !void {
+    // Security is easy :)
+    for (static_file_allowlist) |allowed_path| {
+        if (std.mem.eql(u8, path, allowed_path)) break;
+    } else {
+        std.log.warn("path not in the allow list: {s}", .{path});
+        return connection.stream.writer().writeAll(http_response_not_found);
+    }
 
-    return http_response_not_found;
+    var mime_type: []const u8 = undefined;
+    var relative_path: []const u8 = path[1..];
+    if (std.mem.eql(u8, path, "/")) {
+        mime_type = "text/html";
+        relative_path = "index.html";
+    } else if (std.mem.endsWith(u8, path, ".css")) {
+        mime_type = "text/css";
+    } else if (std.mem.endsWith(u8, path, ".js")) {
+        mime_type = "application/javascript";
+    } else if (std.mem.endsWith(u8, path, ".png")) {
+        mime_type = "image/png";
+    } else if (std.mem.eql(u8, path, "/client.wasm")) {
+        mime_type = "application/wasm";
+        relative_path = "../client.wasm";
+    } else unreachable;
+
+    // TODO: resolve relative to current executable maybe?
+    var dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
+    defer dir.close();
+
+    var file = try dir.openFile(relative_path, .{});
+    defer file.close();
+
+    const content_size = (try file.stat()).size;
+
+    try std.fmt.format(connection.stream.writer(), "" ++
+        "HTTP/1.1 200 OK\r\n" ++
+        "Content-Type: {s}\r\n" ++
+        "Content-Length: {d}\r\n" ++
+        "\r\n", .{
+        mime_type,
+        content_size,
+    });
+
+    try pump(file.reader(), connection.stream, content_size);
+}
+
+/// Is this in the stdlib somewhere?
+fn pump(reader: anytype, writer: anytype, total_amount: u64) !void {
+    var buf: [0x1000]u8 = undefined;
+    var cursor: u64 = 0;
+    while (cursor < total_amount) {
+        const amount = try reader.read(&buf);
+        if (amount == 0) return error.EndOfStream;
+        try writer.writeAll(buf[0..amount]);
+        cursor += amount;
+    }
 }
 
 const http_response_header_upgrade = "" ++

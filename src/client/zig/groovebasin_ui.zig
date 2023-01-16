@@ -535,7 +535,7 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
             if (text.len > 0) {
                 dom.setInputValue(chat_textbox, "");
             }
-            const msg = std.mem.trim(u8, text, &std.ascii.spaces);
+            const msg = std.mem.trim(u8, text, &std.ascii.whitespace);
             if (msg.len > 0) {
                 if (msg[0] == '/') {
                     // TODO: support any commands

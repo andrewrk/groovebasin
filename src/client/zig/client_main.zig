@@ -6,7 +6,7 @@ const ui = @import("groovebasin_ui.zig");
 const stream = @import("stream.zig");
 const g = @import("global.zig");
 
-pub fn log(
+fn log(
     comptime level: std.log.Level,
     comptime scope: @TypeOf(.EnumLiteral),
     comptime format: []const u8,
@@ -24,6 +24,10 @@ pub fn log(
 
     browser.print(msg);
 }
+
+pub const std_options = struct {
+    pub const logFn = log;
+};
 
 export fn main() void {
     std.log.info("hello world: {s}", .{"zig"});

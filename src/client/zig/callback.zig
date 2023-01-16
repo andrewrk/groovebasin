@@ -20,20 +20,20 @@ fn TypeForCallback(comptime callback: anytype, comptime ContextType: type) type 
     const callback_fn = @typeInfo(@TypeOf(callback)).Fn;
     const return_error_union = @typeInfo(callback_fn.return_type.?).ErrorUnion;
     std.debug.assert(return_error_union.error_set == anyerror);
-    const args = if (isAbiTypeVoid(ContextType)) callback_fn.args else blk: {
-        std.debug.assert(callback_fn.args[0].arg_type.? == ContextType);
-        break :blk callback_fn.args[1..];
+    const params = if (isAbiTypeVoid(ContextType)) callback_fn.params else blk: {
+        std.debug.assert(callback_fn.params[0].type.? == ContextType);
+        break :blk callback_fn.params[1..];
     };
-    switch (args.len) {
+    switch (params.len) {
         0 => {
             std.debug.assert(return_error_union.payload == void);
             return Callback;
         },
         1 => {
-            if (args[0].arg_type == []u8 or args[0].arg_type == []const u8) {
+            if (params[0].type == []u8 or params[0].type == []const u8) {
                 return CallbackSliceU8;
             }
-            std.debug.assert(@sizeOf(args[0].arg_type.?) == 4);
+            std.debug.assert(@sizeOf(params[0].type.?) == 4);
             if (isAbiTypeVoid(return_error_union.payload)) {
                 return CallbackI32;
             } else {

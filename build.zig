@@ -13,6 +13,7 @@ pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
 
     const client = b.addSharedLibrary("client", "src/client/zig/client_main.zig", .unversioned);
+    client.rdynamic = true;
     client.setBuildMode(switch (mode) {
         .ReleaseFast => .ReleaseSmall,
         else => mode,
@@ -2260,7 +2261,6 @@ const avfilter_sources = [_][]const u8{
     "deps/ffmpeg/libavfilter/vf_removelogo.c",
     "deps/ffmpeg/libavfilter/vf_rotate.c",
     "deps/ffmpeg/libavfilter/vf_scale.c",
-    "deps/ffmpeg/libavfilter/vf_scale_cuda.h",
     "deps/ffmpeg/libavfilter/vf_scdet.c",
     "deps/ffmpeg/libavfilter/vf_scroll.c",
     "deps/ffmpeg/libavfilter/vf_selectivecolor.c",

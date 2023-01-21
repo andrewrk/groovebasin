@@ -46,85 +46,78 @@ fn TypeForCallback(comptime callback: anytype, comptime ContextType: type) type 
 }
 
 pub fn packCallback(comptime callback: anytype, context: anytype) TypeForCallback(callback, @TypeOf(context)) {
-    comptime std.debug.assert(@alignOf(@TypeOf(&callback)) == 4);
-    const callback_int = @ptrToInt(&callback) | comptime if (isAbiTypeVoid(@TypeOf(context))) 0 else 1;
-    const context_int: u32 = switch (@typeInfo(@TypeOf(context))) {
+    const context_int: i32 = switch (@typeInfo(@TypeOf(context))) {
         .Void => 0,
-        .Int => @bitCast(u32, context),
-        .Pointer => @bitCast(u32, @ptrToInt(context)),
+        .Int => @bitCast(i32, context),
+        .Pointer => @bitCast(i32, @ptrToInt(context)),
         else => unreachable,
     };
 
     return TypeForCallback(callback, @TypeOf(context)){
-        .handle = @bitCast(i64, (@as(u64, context_int) << 32) | @as(u64, callback_int)),
+        .handle = @bitCast(i64, DecodedCallback{
+            .callback = @intCast(u31, @ptrToInt(&callback)),
+            .context_int = context_int,
+            .is_void = isAbiTypeVoid(@TypeOf(context)),
+        }),
     };
 }
 
-const SomeCallbackFn = *align(4) opaque {};
-const UnpackedCallback = struct {
-    context_int: i32,
-    callback: SomeCallbackFn,
+const DecodedCallback = packed struct {
+    callback: u31,
     is_void: bool,
+    context_int: i32,
+    comptime {
+        std.debug.assert(@sizeOf(DecodedCallback) == 8);
+    }
 };
-inline fn unpackCallback(packed_callback: i64) UnpackedCallback {
-    return UnpackedCallback{
-        .context_int = @intCast(i32, packed_callback >> 32),
-        .callback = @intToPtr(SomeCallbackFn, @intCast(usize, packed_callback & 0xffff_fffc)),
-        .is_void = switch (packed_callback & 0b11) {
-            0 => true,
-            1 => false,
-            else => unreachable,
-        },
-    };
-}
 
 pub export fn delegateCallback(packed_callback: i64) void {
-    const unpacked = unpackCallback(packed_callback);
+    const unpacked = @bitCast(DecodedCallback, packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn () anyerror!void, unpacked.callback)() catch |err| {
+        @intToPtr(*const fn () anyerror!void, unpacked.callback)() catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback)(unpacked.context_int) catch |err| {
+        @intToPtr(*const fn (i32) anyerror!void, unpacked.callback)(unpacked.context_int) catch |err| {
             @panic(@errorName(err));
         };
     }
 }
 
 pub export fn delegateCallbackI32(packed_callback: i64, arg: i32) void {
-    const unpacked = unpackCallback(packed_callback);
+    const unpacked = @bitCast(DecodedCallback, packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn (i32) anyerror!void, unpacked.callback)(arg) catch |err| {
+        @intToPtr(*const fn (i32) anyerror!void, unpacked.callback)(arg) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32, i32) anyerror!void, unpacked.callback)(unpacked.context_int, arg) catch |err| {
+        @intToPtr(*const fn (i32, i32) anyerror!void, unpacked.callback)(unpacked.context_int, arg) catch |err| {
             @panic(@errorName(err));
         };
     }
 }
 
 pub export fn delegateCallbackSliceU8(packed_callback: i64, ptr: [*]u8, len: usize) void {
-    const unpacked = unpackCallback(packed_callback);
+    const unpacked = @bitCast(DecodedCallback, packed_callback);
     if (unpacked.is_void) {
-        @ptrCast(*const fn ([]u8) anyerror!void, unpacked.callback)(ptr[0..len]) catch |err| {
+        @intToPtr(*const fn ([]u8) anyerror!void, unpacked.callback)(ptr[0..len]) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        @ptrCast(*const fn (i32, []u8) anyerror!void, unpacked.callback)(unpacked.context_int, ptr[0..len]) catch |err| {
+        @intToPtr(*const fn (i32, []u8) anyerror!void, unpacked.callback)(unpacked.context_int, ptr[0..len]) catch |err| {
             @panic(@errorName(err));
         };
     }
 }
 
 pub export fn delegateCallbackI32RI32(packed_callback: i64, arg: i32) i32 {
-    const unpacked = unpackCallback(packed_callback);
+    const unpacked = @bitCast(DecodedCallback, packed_callback);
     if (unpacked.is_void) {
-        return @ptrCast(*const fn (i32) anyerror!i32, unpacked.callback)(arg) catch |err| {
+        return @intToPtr(*const fn (i32) anyerror!i32, unpacked.callback)(arg) catch |err| {
             @panic(@errorName(err));
         };
     } else {
-        return @ptrCast(*const fn (i32, i32) anyerror!i32, unpacked.callback)(unpacked.context_int, arg) catch |err| {
+        return @intToPtr(*const fn (i32, i32) anyerror!i32, unpacked.callback)(unpacked.context_int, arg) catch |err| {
             @panic(@errorName(err));
         };
     }

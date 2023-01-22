@@ -58,6 +58,8 @@ pub fn build(b: *Builder) void {
         const paste_js_cmd = paste_js_exe.run();
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client/js",
+            "_generated_EventType.js",
+            "_generated_KeyboardEventCode.js",
             "audio.js",
             "bootstrap_wasm.js",
             "callback.js",

@@ -56,9 +56,6 @@ const env = {
         const id = decodeString(ptr, len);
         return dom.getElementById(id);
     },
-    setElementShown(handle, shown) {
-        return dom.setElementShown(handle, !!shown);
-    },
     setElementTextContent(handle, ptr, len) {
         const text = decodeString(ptr, len);
         return dom.setElementTextContent(handle, text);

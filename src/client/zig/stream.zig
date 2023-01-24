@@ -55,7 +55,7 @@ fn renderStreamButton() void {
     dom.setTextContent(stream_button_label, label);
     const is_on = stream_state != .off;
     ui.renderButtonIsOn(stream_button, is_on);
-    dom.setShown(client_volume_div, is_on);
+    ui.setShown(client_volume_div, is_on);
 }
 
 fn handleClientVolumeSliderChange() void {

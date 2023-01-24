@@ -135,17 +135,17 @@ fn onLeftWindowTabClick(clicked_index: usize, event: i32) anyerror!void {
 fn focusLeftWindowTab(index: usize) void {
     if (index == left_window_active_tab) return;
     dom.removeClass(left_window_tabs[left_window_active_tab].tab, "active");
-    dom.setShown(left_window_tabs[left_window_active_tab].pane, false);
+    setShown(left_window_tabs[left_window_active_tab].pane, false);
 
     left_window_active_tab = index;
     dom.addClass(left_window_tabs[left_window_active_tab].tab, "active");
-    dom.setShown(left_window_tabs[left_window_active_tab].pane, true);
+    setShown(left_window_tabs[left_window_active_tab].pane, true);
 }
 
 pub fn setLoadingState(state: LoadStatus) void {
     const show_ui = state == .good;
-    dom.setShown(main_grid_dom, show_ui);
-    dom.setShown(main_err_msg_dom, !show_ui);
+    setShown(main_grid_dom, show_ui);
+    setShown(main_err_msg_dom, !show_ui);
     if (state != .good) {
         // dom.setDocumentTitle(BASE_TITLE);
         dom.setTextContent(main_err_msg_text_dom, switch (state) {
@@ -163,9 +163,17 @@ pub fn setLag(lag_ns: i128) void {
     });
 }
 
+pub fn setShown(element: i32, shown: bool) void {
+    if (shown) {
+        dom.removeClass(element, "hidden");
+    } else {
+        dom.addClass(element, "hidden");
+    }
+}
+
 fn renderLibrary() void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
-    dom.setShown(library_no_items_dom, library.tracks.count() == 0);
+    setShown(library_no_items_dom, library.tracks.count() == 0);
 
     // Delete and recreate all items.
     {

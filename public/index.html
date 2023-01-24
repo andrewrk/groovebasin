@@ -17,7 +17,7 @@
         <button class="button" id="nowplaying-next" tabindex="-1"><label class="icon icon-seek-next" for="nowplaying-next"></label></button>
         <button class="button" id="stream-btn" tabindex="-1"><span class="icon icon-signal-diag"></span> <label id="stream-btn-label" for="stream-btn">Stream</label></button>
       </div>
-      <div id="client-vol" style="display: none">
+      <div id="client-vol" class="hidden">
         <span class="icon icon-volume-off"></span>
         <input type="range" id="client-vol-slider" min="0.0" max="1.0" value="1.0" step="0.001" tabindex="-1">
         <span class="icon icon-volume-on"></span>
@@ -55,14 +55,14 @@
             </p>
           </div>
         </div>
-        <div id="playlists-pane" class="widget" style="display: none">
+        <div id="playlists-pane" class="widget hidden">
           <input type="text" id="new-playlist-name" placeholder="New Playlist">
           <div id="playlists">
             <ul id="playlists-list">
             </ul>
           </div>
         </div>
-        <div id="upload-pane" class="widget" style="display: none">
+        <div id="upload-pane" class="widget hidden">
           <div id="upload">
             <h1>Import by URL</h1>
             <input id="upload-by-url" type="text" placeholder="Paste URL and press enter. Supports YouTube">
@@ -76,7 +76,7 @@
             <div>
               Automatically queue imported songs: <input class="button" type="button" id="auto-queue-uploads" value="On">
             </div>
-            <div id="import-progress" style="display: none">
+            <div id="import-progress" class="hidden">
               <h1>Ongoing Imports</h1>
               <div>
                 <ul id="import-progress-list">
@@ -85,25 +85,25 @@
             </div>
           </div>
         </div>
-        <div id="events-pane" class="widget gridlayout" style="display: none">
+        <div id="events-pane" class="widget gridlayout hidden">
             <div id="events-online-users"></div>
             <div id="events-list"></div>
             <div id="chat-box">
               <input type="text" id="chat-box-input" placeholder="chat">
             </div>
         </div>
-        <div id="settings-pane" class="widget" style="display: none">
+        <div id="settings-pane" class="widget hidden">
           <div id="settings">
             <div class="section">
               <h1>Authentication</h1>
-              <div id="ensure-admin" style="display: none;">
+              <div id="ensure-admin" class="hidden">
                 <p>
                 There is currently no admin account. Press this button to create the
                 admin account and print the username and password to the server log:
                 </p>
                 <input class="button" type="button" id="ensure-admin-btn" value="Make Admin Account">
               </div>
-              <div id="settings-register" style="display: none">
+              <div id="settings-register" class="hidden">
                 <input type="text" id="auth-username" placeholder="username" maxlength="64"><br>
                 <input type="password" id="auth-password" placeholder="password">
                 <input class="button" type="button" id="auth-show-password" value="Reveal"><br>
@@ -169,7 +169,7 @@
                 <input class="button" type="button" id="toggle-hardware-playback" value="On">
               </div>
               <div>Volume: <span id="vol-num"></span>%</div>
-              <div id="vol-warning" style="display: none">
+              <div id="vol-warning" class="hidden">
                 Greater than 100% volume compromises audio quality.
                 <a target="_blank" href="https://www.youtube.com/watch?v=iuEtQqC-Sqo">Loudness Zen</a>
               </div>
@@ -220,15 +220,15 @@
     <span class="icon icon-alert"></span>
     <div id="main-err-msg-text">Loading...</div>
   </div>
-  <div id="blackout" style="display: none"></div>
-  <div id="modal" class="widget" style="display: none" tabindex="-1">
+  <div id="blackout" class="hidden"></div>
+  <div id="modal" class="widget hidden" tabindex="-1">
     <div id="modal-header">
       <span id="modal-title">Keyboard Shortcuts</span>
       <button id="modal-close" class="button"><label class="icon icon-closethick"></label></button>
     </div>
     <div id="modal-content"></div>
   </div>
-  <div id="shortcuts" style="display: none" tabindex="-1">
+  <div id="shortcuts" class="hidden" tabindex="-1">
     <h1>Playback</h1>
     <dl>
       <dt>Space</dt>
@@ -423,7 +423,7 @@
       <dd>Hold while selecting to select all items in between</dd>
     </dl>
   </div>
-  <div id="edit-tags" style="display: none">
+  <div id="edit-tags" class="hidden">
     <div>
       <span class="field">
         <input type="checkbox" id="edit-tag-multi-name">
@@ -550,7 +550,7 @@
     <button class="button" id="edit-tags-next" type="button" accesskey="n"><span class="accesskey">N</span>ext</button>
     <button class="button" id="edit-tags-per"><label id="edit-tags-per-label" accesskey="r" for="edit-tags-per">Pe<span class="accesskey">r</span> Track</label></button>
   </div>
-  <ul id="context-menu" class="widget" style="display: none">
+  <ul id="context-menu" class="widget hidden">
     <li id="menu-queue"><a href="#">Queue</a></li>
     <li id="menu-queue-next"><a href="#">Queue Next</a></li>
     <li id="menu-queue-random"><a href="#">Queue in Random Order</a></li>
@@ -565,7 +565,7 @@
     <li id="menu-download"><a href="#" target="_blank">Download</a></li>
     <li id="menu-edit-tags"><a href="#">Edit Tags</a></li>
   </ul>
-  <div id="add-to-playlist-dialog" style="display: none">
+  <div id="add-to-playlist-dialog" class="hidden">
     <div>
       <input type="text" id="add-to-playlist-filter" placeholder="filter">
     </div>
@@ -573,7 +573,7 @@
     </ul>
     <div id="add-to-playlist-new"></div>
   </div>
-  <div id="add-remove-label-dialog" style="display: none">
+  <div id="add-remove-label-dialog" class="hidden">
     <div>
       <input type="text" id="add-remove-label-filter" placeholder="filter">
     </div>

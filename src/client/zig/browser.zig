@@ -2,7 +2,6 @@
 const std = @import("std");
 
 const env = @import("browser_env.zig");
-const g = @import("global.zig");
 const callback = @import("callback.zig");
 
 pub fn print(str: []const u8) void {

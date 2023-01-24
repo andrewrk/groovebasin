@@ -18,6 +18,9 @@ input,textarea,select{
 a:hover,a:active,a:focus{
     outline:0
 }
+.hidden {
+    display: none !important;
+}
 
 /* layout */
 html, body {

@@ -23,7 +23,9 @@ function getElementHandle(element) {
         return parseInt(handle_str, 16);
     }
     if (element.getAttribute("id") != null || !document.contains(element)) {
-        // using document.getElementById("handle-" + handle) isn't going to work.
+        // Using document.getElementById("h-" + handle) isn't going to work,
+        // because the element either already has an id (some static item hardcoded in the html),
+        // or isn't contained anywhere in the dom (e.g. a background new Audio() element).
         // Use the registry to find this element later.
         const {handle} = elementRegistry.alloc(element);
         handle_str = handle.toString(16);
@@ -31,7 +33,8 @@ function getElementHandle(element) {
         return handle;
     } else {
         // Give the element an id to use to find it later.
-        // This avoids pointers to deleted elements preventing them from being garbaged collected.
+        // Don't used the elementRegistry or else when the elements leave the dom,
+        // we'll be maintaining pointers to deleted elements preventing them from being garbaged collected.
         const handle = elementRegistry.nextHandle();
         handle_str = handle.toString(16);
         element.setAttribute("id", "h-" + handle_str);
@@ -44,10 +47,6 @@ function getElementById(id) {
     const element = document.getElementById(id);
     if (element == null) throw new Error("no such element: " + id);
     return getElementHandle(element);
-}
-
-function setElementShown(handle, shown) {
-    getElementByHandle(handle).style.display = shown ? "" : "none";
 }
 
 function setElementTextContent(handle, text) {
@@ -180,7 +179,6 @@ return {
     getElementByHandle,
     getElementHandle,
     getElementById,
-    setElementShown,
     setElementTextContent,
     getChildrenCount,
     getChild,

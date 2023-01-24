@@ -25,6 +25,7 @@ pub fn build(b: *Builder) void {
     client.addPackagePath("shared", "src/shared/index.zig");
     client.install();
 
+    // TODO: watch out for race conditions between this install and the paste-* commands generating content here.
     b.installDirectory(.{
         .source_dir = "public",
         .install_dir = .lib,
@@ -74,6 +75,22 @@ pub fn build(b: *Builder) void {
         paste_js_step.dependOn(&paste_js_cmd.step);
 
         server.step.dependOn(&paste_js_cmd.step);
+    }
+    {
+        const exe = b.addExecutable("paste-htmlcss", "tools/paste-htmlcss.zig");
+        exe.setTarget(target);
+        exe.setBuildMode(mode);
+        exe.install();
+
+        const cmd = exe.run();
+        cmd.addArgs(&[_][]const u8{
+            "src/client/htmlcss/index.html",
+            "src/client/htmlcss/app.css",
+        });
+        const step = b.step("paste-htmlcss", "compile the css and html together");
+        step.dependOn(&cmd.step);
+
+        server.step.dependOn(&cmd.step);
     }
 }
 

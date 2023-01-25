@@ -43,22 +43,19 @@ service. Groove Basin will never support DRM content.
 * File system monitoring. Add songs anywhere inside your music directory and
   they instantly appear in your library.
 
-## Installation on Ubuntu
+## Installation
 
-For Ubuntu 17.04 Zesty:
+This project is being actively developed, so the installation instructions are
+the same as the development instructions.
 
-1. `sudo apt-get install nodejs libgrooveloudness-dev libgroovefingerprinter-dev libgrooveplayer-dev libgroove-dev`
-2. Clone this repo and cd to it.
-3. `npm run build`
-4. `npm start`
+First, [download zig master branch](https://ziglang.org/download/#release-master).
+Then you can use this command to build and run the project:
 
-For Ubuntu 18.04 Bionic:
+```
+zig build run
+```
 
-* Install node-groove and its dependencies from source by following these instructions:
-  https://github.com/andrewrk/node-groove/blob/2.x/README.md#ubuntu-1804
-* Edit `package.json`, and change the `"groove"` dependency to point to the directory where node-groove is installed.
-  (The path is instead of a version number.)
-* Resume step 2 above.
+Have a look at `zig build --help` for more options.
 
 ## Configuration
 
@@ -67,22 +64,19 @@ directory. If not found it creates one for you with default values.
 
 Use this to set your music library location and other settings.
 
-It is recommended that you generate a self-signed certificate and use that
-instead of using the public one bundled with this source code.
-
 ## Screenshots
 
-![Search + drag/drop support](http://groovebasin.com/img/groovebasin-1.3.2-searchdragdrop.png)
-![Multi-select and context menu](http://groovebasin.com/img/groovebasin-1.3.2-libmenu.png)
-![Keyboard shortcuts](http://groovebasin.com/img/groovebasin-1.3.2-shortcuts.png)
-![Settings](http://groovebasin.com/img/groovebasin-1.3.2-settings.png)
-![Import](http://groovebasin.com/img/groovebasin-1.3.2-import.png)
-![Events](http://groovebasin.com/img/groovebasin-1.3.2-events.png)
+![Search + drag/drop support](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-searchdragdrop.png)
+![Multi-select and context menu](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-libmenu.png)
+![Keyboard shortcuts](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-shortcuts.png)
+![Settings](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-settings.png)
+![Import](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-import.png)
+![Events](https://s3.amazonaws.com/groovebasin.com/img/groovebasin-1.3.2-events.png)
 
 ## Developing
 
 ```
-$ npm run dev
+zig build run
 ```
 
 This will install dependencies, build generated files, and then start the
@@ -91,15 +85,14 @@ sever. It is up to you to restart it when you modify assets or server files.
 ### Community
 
 Pull requests, feature requests, and bug reports are welcome!
-Live discussion in #libgroove on Freenode.
 
 #### Articles
 
  * [My Quest to Build the Ultimate Music Player](http://andrewkelley.me/post/quest-build-ultimate-music-player.html)
- * [Turn Your Raspberry Pi into a Music Player Server](http://andrewkelley.me/post/raspberry-pi-music-player-server.html)
 
 ### Roadmap
 
- 0. Music library organization
- 0. Accoustid Integration
- 0. Finalize GrooveBasin protocol spec
+ 1. Rewrite it in Zig!
+ 2. Music library organization
+ 3. Accoustid Integration
+ 4. Finalize GrooveBasin protocol spec

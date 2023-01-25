@@ -121,7 +121,6 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
 
     log.info("music directory: {s}", .{music_dir_path});
 
-    Groove.set_logging(.INFO);
     log.debug("libgroove version: {s}", .{Groove.version()});
 
     const soundio = try SoundIo.create();
@@ -131,22 +130,28 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
     g.soundio.flush_events();
 
     const groove = try Groove.create();
+    Groove.set_logging(.INFO);
     g.groove = groove;
 
     var player = try Player.init(config.encodeBitRate);
     defer player.deinit();
 
+    std.log.info("init library", .{});
     try library.init(music_dir_path, config.dbPath);
     defer library.deinit();
 
+    std.log.info("init queue", .{});
     try queue.init();
     defer queue.deinit();
 
+    std.log.info("init events", .{});
     try events.init();
     defer events.deinit();
 
+    std.log.info("init static content", .{});
     try init_static_content();
 
+    std.log.info("init stream server", .{});
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -154,7 +159,7 @@ fn listen(arena: Allocator, config: ConfigJson) !void {
         fatal("unable to parse {s}:{d}: {s}", .{ config.host, config.port, @errorName(err) });
     };
     try server.listen(addr);
-    std.log.warn("listening at {}\n", .{server.listen_address});
+    std.log.info("listening at {}", .{server.listen_address});
 
     client_connections = Connections.init(g.gpa);
 
@@ -594,7 +599,6 @@ fn init_static_content() !void {
     static_content_map = std.StringHashMap(StaticFile).init(g.gpa);
     for ([_][]const u8{
         "/",
-        "/app.css",
         "/app.js",
         "/favicon.png",
         "/img/ui-icons_ffffff_256x240.png",

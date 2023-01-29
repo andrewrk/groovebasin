@@ -587,16 +587,16 @@ const http_response_not_found = "" ++
     "\r\n";
 
 const StaticFile = struct {
-    mime_type: []const u8,
-    content_length: u64,
-    relative_path: []const u8,
+    entire_response: []const u8,
 };
-var static_content_dir: std.fs.Dir = undefined;
 var static_content_map: std.StringHashMap(StaticFile) = undefined;
 fn init_static_content() !void {
-    // TODO: resolve relative to current executable maybe?
-    static_content_dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
     static_content_map = std.StringHashMap(StaticFile).init(g.gpa);
+
+    // TODO: resolve relative to current executable maybe?
+    var static_content_dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
+    defer static_content_dir.close();
+
     for ([_][]const u8{
         "/",
         "/app.js",
@@ -616,11 +616,11 @@ fn init_static_content() !void {
         "/img/ui-bg_flat_40_292929_40x100.png",
         "/client.wasm",
     }) |path| {
-        try static_content_map.putNoClobber(path, try resolveStaticFile(path));
+        try static_content_map.putNoClobber(path, try resolveStaticFile(static_content_dir, path));
     }
 }
 
-fn resolveStaticFile(path: []const u8) !StaticFile {
+fn resolveStaticFile(static_content_dir: std.fs.Dir, path: []const u8) !StaticFile {
     var mime_type: []const u8 = undefined;
     var relative_path: []const u8 = path[1..];
     if (std.mem.eql(u8, path, "/")) {
@@ -639,12 +639,20 @@ fn resolveStaticFile(path: []const u8) !StaticFile {
 
     var file = try static_content_dir.openFile(relative_path, .{});
     defer file.close();
+    const contents = try file.reader().readAllAlloc(g.gpa, 100_000_000);
+    defer g.gpa.free(contents);
 
-    const content_length = (try file.stat()).size;
     return StaticFile{
-        .mime_type = mime_type,
-        .content_length = content_length,
-        .relative_path = relative_path,
+        .entire_response = try std.fmt.allocPrint(g.gpa, "" ++
+            "HTTP/1.1 200 OK\r\n" ++
+            "Content-Type: {s}\r\n" ++
+            "Content-Length: {d}\r\n" ++
+            "\r\n" ++
+            "{s}", .{
+            mime_type,
+            contents.len,
+            contents,
+        }),
     };
 }
 
@@ -653,33 +661,7 @@ fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !
         std.log.warn("not found: {s}", .{path});
         return connection.stream.writer().writeAll(http_response_not_found);
     };
-
-    var file = try static_content_dir.openFile(static_file.relative_path, .{});
-    defer file.close();
-
-    try std.fmt.format(connection.stream.writer(), "" ++
-        "HTTP/1.1 200 OK\r\n" ++
-        "Content-Type: {s}\r\n" ++
-        "Content-Length: {d}\r\n" ++
-        "\r\n", .{
-        static_file.mime_type,
-        static_file.content_length,
-    });
-
-    try pump(file.reader(), connection.stream, static_file.content_length);
-}
-
-/// Is this in the stdlib somewhere?
-fn pump(reader: anytype, writer: anytype, total_amount: u64) !void {
-    var buf: [0x1000]u8 = undefined;
-    var cursor: u64 = 0;
-    while (cursor < total_amount) {
-        const amount = try reader.read(&buf);
-        if (amount == 0) return error.EndOfStream;
-        try writer.writeAll(buf[0..amount]);
-        cursor += amount;
-        if (cursor > total_amount) return error.StreamTooLong;
-    }
+    try connection.stream.writeAll(static_file.entire_response);
 }
 
 const http_response_header_upgrade = "" ++

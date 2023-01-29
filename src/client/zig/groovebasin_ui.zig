@@ -57,9 +57,6 @@ var modal_div: i32 = undefined;
 var modal_title_span: i32 = undefined;
 var shortcuts_popup_content_div: i32 = undefined;
 
-const icon_collapsed = "icon-triangle-1-e";
-const icon_expanded = "icon-triangle-1-se";
-
 pub fn init() void {
     dom.addWindowEventListener(.keydown, callback.packCallback(onWindowKeydown, {}));
 
@@ -190,8 +187,9 @@ fn renderLibrary() !void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
     setShown(library_no_items_dom, library.tracks.count() == 0);
 
-    var buf = std.ArrayList(u8).init(g.gpa);
-    defer buf.deinit();
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    var arena = arena_instance.allocator();
 
     // Delete and recreate all items.
     {
@@ -202,85 +200,69 @@ fn renderLibrary() !void {
         }
     }
     for (library.tracks.values()) |track, i| {
-        const track_key_str = formatKey(library.tracks.keys()[i]);
+        _ = arena_instance.reset(.retain_capacity);
 
-        // artist
-        dom.insertAdjacentHTML(library_artists_dom, .beforeend,
+        const track_key_buf = formatKey(library.tracks.keys()[i]);
+        const track_key_str = track_key_buf[0..];
+
+        dom.insertAdjacentHTML(library_artists_dom, .beforeend, try std.fmt.allocPrint(arena,
             \\<li>
-            \\  <div class="clickable expandable" data-type="artist">
-            \\    <div class="icon"></div>
-            \\    <span></span>
+            \\  <div class="clickable expandable" data-type="artist" data-track="{s}">
+            \\    <div class="icon icon-triangle-1-e"></div>
+            \\    <span>{s}</span>
             \\  </div>
-            \\  <ul></ul>
+            \\  <ul>
+            \\    <li>
+            \\      <div class="clickable expandable" data-type="album" data-track="{s}">
+            \\        <div class="icon icon-triangle-1-e"></div>
+            \\        <span>{s}</span>
+            \\      </div>
+            \\      <ul>
+            \\        <li>
+            \\          <div class="clickable" data-type="track" data-track="{s}">
+            \\            <span>{s}</span>
+            \\          </div>
+            \\        </li>
+            \\      </ul>
+            \\    </li>
+            \\  </ul>
             \\</li>
-        );
-        const artist_li = dom.getChild(library_artists_dom, @intCast(i32, i));
-
-        {
-            const artist_div = dom.getChild(artist_li, 0);
-            dom.setAttribute(artist_div, "data-track", &track_key_str);
-
-            const icon_div = dom.getChild(artist_div, 0);
-            dom.addClass(icon_div, icon_collapsed);
-            dom.removeClass(icon_div, icon_expanded);
-
-            const artist_span = dom.getChild(artist_div, 1);
-            dom.setTextContent(artist_span, library.getString(track.artist));
-        }
-
-        const albums_ul = dom.getChild(artist_li, 1);
-
-        // album
-        dom.insertAdjacentHTML(albums_ul, .beforeend,
-            \\<li>
-            \\  <div class="clickable expandable" data-type="album">
-            \\    <div class="icon"></div>
-            \\    <span></span>
-            \\  </div>
-            \\  <ul></ul>
-            \\</li>
-        );
-        const album_li = dom.getChild(albums_ul, 0);
-
-        {
-            const album_div = dom.getChild(album_li, 0);
-            dom.setAttribute(album_div, "data-track", &track_key_str);
-
-            const icon_div = dom.getChild(album_div, 0);
-            dom.addClass(icon_div, icon_collapsed);
-            dom.removeClass(icon_div, icon_expanded);
-
-            const album_span = dom.getChild(album_div, 1);
-            dom.setTextContent(album_span, library.getString(track.album));
-        }
-
-        const tracks_ul = dom.getChild(album_li, 1);
-
-        // track
-        dom.insertAdjacentHTML(tracks_ul, .beforeend,
-            \\<li>
-            \\  <div class="clickable" data-type="track">
-            \\    <span></span>
-            \\  </div>
-            \\</li>
-        );
-
-        const track_li = dom.getChild(tracks_ul, 0);
-        const track_div = dom.getChild(track_li, 0);
-        dom.setAttribute(track_div, "data-track", &track_key_str);
-        const track_span = dom.getChild(track_div, 0);
-        const title = library.getString(track.title);
-        dom.setTextContent(track_span, if (track.track_number != 0)
-            try formatSingleUse(&buf, "{d}. {s}", .{ track.track_number, title })
-        else
-            title);
+        , .{
+            track_key_str,
+            try escapeHtml(arena, library.getString(track.artist)),
+            track_key_str,
+            try escapeHtml(arena, library.getString(track.album)),
+            track_key_str,
+            try escapeHtml(arena, if (track.track_number != 0)
+                try std.fmt.allocPrint(arena, "{d}. {s}", .{ track.track_number, library.getString(track.title) })
+            else
+                library.getString(track.title)),
+        }));
     }
 }
 
-fn formatSingleUse(buffer: *std.ArrayList(u8), comptime fmt: []const u8, args: anytype) ![]const u8 {
-    buffer.clearRetainingCapacity();
-    try std.fmt.format(buffer.writer(), fmt, args);
-    return buffer.items;
+fn escapeHtml(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
+    const problems = "\"'&<>";
+    var problem_index = std.mem.indexOfAny(u8, s, problems) orelse return s;
+
+    var buffer = std.ArrayList(u8).init(allocator);
+    defer buffer.deinit();
+    var i: usize = 0;
+    while (true) {
+        try buffer.appendSlice(s[i..problem_index]);
+        switch (s[problem_index]) {
+            '"' => try buffer.appendSlice("&quot;"),
+            '\'' => try buffer.appendSlice("&apos;"),
+            '&' => try buffer.appendSlice("&amp;"),
+            '<' => try buffer.appendSlice("&lt;"),
+            '>' => try buffer.appendSlice("&gt;"),
+            else => unreachable,
+        }
+        i = problem_index + 1;
+        problem_index = std.mem.indexOfAnyPos(u8, s, i, problems) orelse break;
+    }
+    try buffer.appendSlice(s[i..]);
+    return buffer.toOwnedSlice();
 }
 
 fn renderQueue() !void {
@@ -292,11 +274,17 @@ fn renderQueue() !void {
             c -= 1;
         }
     }
-    var buf = std.ArrayList(u8).init(g.gpa);
+
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    var arena = arena_instance.allocator();
+
     var short_buf: [256]u8 = undefined;
     for (queue.items.values()) |item| {
+        _ = arena_instance.reset(.retain_capacity);
+
         const track = library.tracks.get(item.track_key).?;
-        dom.insertAdjacentHTML(queue_items_div, .beforeend, try formatSingleUse(&buf,
+        dom.insertAdjacentHTML(queue_items_div, .beforeend, try std.fmt.allocPrint(arena,
             \\<div class="pl-item">
             \\  <span class="track">{s}</span>
             \\  <span class="time">{s}</span>
@@ -315,11 +303,11 @@ fn renderQueue() !void {
             // time
             "3:69",
             // title
-            library.getString(track.title),
+            try escapeHtml(arena, library.getString(track.title)),
             // artist
-            library.getString(track.artist),
+            try escapeHtml(arena, library.getString(track.artist)),
             // album
-            library.getString(track.album),
+            try escapeHtml(arena, library.getString(track.album)),
         }));
     }
 }
@@ -464,7 +452,7 @@ fn onLibraryMouseDown(event: i32) anyerror!void {
     var arena = arena_instance.allocator();
 
     const modifiers = dom.getEventModifiers(event);
-    if (getModifier(modifiers, .alt)) return;
+    if (modifiers != 0) return;
     dom.preventDefault(event);
 
     var target = dom.getEventTarget(event);

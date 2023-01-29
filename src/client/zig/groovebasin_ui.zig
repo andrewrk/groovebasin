@@ -283,7 +283,7 @@ fn formatSingleUse(buffer: *std.ArrayList(u8), comptime fmt: []const u8, args: a
     return buffer.items;
 }
 
-fn renderQueue() void {
+fn renderQueue() !void {
     // Delete and recreate all items.
     {
         var c = dom.getChildrenCount(queue_items_div);
@@ -292,37 +292,35 @@ fn renderQueue() void {
             c -= 1;
         }
     }
+    var buf = std.ArrayList(u8).init(g.gpa);
     var short_buf: [256]u8 = undefined;
-    for (queue.items.values()) |item, i| {
+    for (queue.items.values()) |item| {
         const track = library.tracks.get(item.track_key).?;
-        dom.insertAdjacentHTML(queue_items_div, .beforeend,
+        dom.insertAdjacentHTML(queue_items_div, .beforeend, try formatSingleUse(&buf,
             \\<div class="pl-item">
-            \\  <span class="track"></span>
-            \\  <span class="time"></span>
+            \\  <span class="track">{s}</span>
+            \\  <span class="time">{s}</span>
             \\  <span class="middle">
-            \\    <span class="title"></span>
-            \\    <span class="artist"></span>
-            \\    <span class="album"></span>
+            \\    <span class="title">{s}</span>
+            \\    <span class="artist">{s}</span>
+            \\    <span class="album">{s}</span>
             \\  </span>
             \\</div>
-        );
-        const item_div = dom.getChild(queue_items_div, @intCast(i32, i));
-
-        // track
-        dom.setTextContent(dom.getChild(item_div, 0), if (track.track_number != 0)
-            std.fmt.bufPrint(short_buf[0..], "{d}", .{track.track_number}) catch unreachable
-        else
-            "");
-        // time
-        dom.setTextContent(dom.getChild(item_div, 1), "3:69");
-
-        const middle_div = dom.getChild(item_div, 2);
-        // title
-        dom.setTextContent(dom.getChild(middle_div, 0), library.getString(track.title));
-        // artist
-        dom.setTextContent(dom.getChild(middle_div, 1), library.getString(track.artist));
-        // album
-        dom.setTextContent(dom.getChild(middle_div, 2), library.getString(track.album));
+        , .{
+            // track
+            if (track.track_number != 0)
+                std.fmt.bufPrint(short_buf[0..], "{d}", .{track.track_number}) catch unreachable
+            else
+                "",
+            // time
+            "3:69",
+            // title
+            library.getString(track.title),
+            // artist
+            library.getString(track.artist),
+            // album
+            library.getString(track.album),
+        }));
     }
 }
 
@@ -456,7 +454,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     }
 
     if (render_library) try renderLibrary();
-    if (render_queue) renderQueue();
+    if (render_queue) try renderQueue();
     if (render_events) renderEvents();
 }
 

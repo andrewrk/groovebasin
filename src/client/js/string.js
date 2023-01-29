@@ -8,6 +8,7 @@ function decodeString(ptr, len) {
 
 const encoder = new TextEncoder();
 function encodeStringAlloc(allocatorCallback, s) {
+    if (s.length === 0) return 0n;
     const jsArray = encoder.encode(s);
     const len = jsArray.length;
     const ptr = allocatorCallback(len);

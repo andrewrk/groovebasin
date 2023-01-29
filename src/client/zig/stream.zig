@@ -69,7 +69,7 @@ fn onStreamButtonClick(event: i32) anyerror!void {
 
     toggleStreamButton();
 }
-fn toggleStreamButton() void {
+pub fn toggleStreamButton() void {
     if (stream_state == .off) {
         // Start streaming.
         browser.setAudioSrc(stream_audio_handle, "stream.mp3");

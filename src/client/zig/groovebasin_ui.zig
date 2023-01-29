@@ -494,6 +494,9 @@ fn onWindowKeydown(event: i32) anyerror!void {
             focusLeftWindowTab(0); // Library
             dom.focus(library_filter_textbox);
         },
+        k(.KeyS) => {
+            @import("stream.zig").toggleStreamButton();
+        },
         k2(.ctrl, .ArrowRight) => {
             log.info("TODO: next song", .{});
         },

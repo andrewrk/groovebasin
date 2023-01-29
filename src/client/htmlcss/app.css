@@ -207,7 +207,11 @@ button:hover .icon{
 }
 #modal{
     z-index:3;
-    position:fixed
+    position:fixed;
+    top: 50%;
+    left: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    max-height: 95%;
 }
 #modal-header{
     border-radius:4px;
@@ -223,6 +227,7 @@ button:hover .icon{
 }
 #modal-content{
     padding:4px 20px;
+    max-height: 90vh;
     overflow-x:auto;
     overflow-y:auto
 }

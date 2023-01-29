@@ -51,6 +51,12 @@ var queue_items_div: i32 = undefined;
 // now playing
 var lag_display_dom: i32 = undefined;
 
+// popup
+var blackout_div: i32 = undefined;
+var modal_div: i32 = undefined;
+var modal_title_span: i32 = undefined;
+var shortcuts_popup_content_div: i32 = undefined;
+
 const icon_collapsed = "icon-triangle-1-e";
 const icon_expanded = "icon-triangle-1-se";
 
@@ -101,6 +107,15 @@ pub fn init() void {
 
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
+
+    blackout_div = dom.getElementById("blackout");
+    dom.addEventListener(blackout_div, .keydown, callback.packCallback(onEscapeClosePopup, {}));
+    dom.addEventListener(blackout_div, .click, callback.packCallback(onAnythingClosePopup, {}));
+    modal_div = dom.getElementById("modal");
+    modal_title_span = dom.getElementById("modal-title");
+    shortcuts_popup_content_div = dom.getElementById("shortcuts");
+    dom.addEventListener(modal_div, .keydown, callback.packCallback(onEscapeClosePopup, {}));
+    dom.addEventListener(dom.getElementById("modal-close"), .click, callback.packCallback(onAnythingClosePopup, {}));
 
     library = Library{
         .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
@@ -497,6 +512,9 @@ fn onWindowKeydown(event: i32) anyerror!void {
         k(.KeyS) => {
             @import("stream.zig").toggleStreamButton();
         },
+        k2(.shift, .Slash) => {
+            showPopup();
+        },
         k2(.ctrl, .ArrowRight) => {
             log.info("TODO: next song", .{});
         },
@@ -563,4 +581,34 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
         else => return,
     }
     dom.preventDefault(event);
+}
+
+fn showPopup() void {
+    dom.setTextContent(modal_title_span, "Keyboard Shortcuts");
+    setShown(shortcuts_popup_content_div, true);
+
+    setShown(blackout_div, true);
+    setShown(modal_div, true);
+
+    dom.focus(shortcuts_popup_content_div);
+}
+
+fn closePopup() void {
+    setShown(blackout_div, false);
+    setShown(modal_div, false);
+}
+
+fn onEscapeClosePopup(event: i32) anyerror!void {
+    dom.stopPropagation(event);
+    switch (getModifiersAndCode(event)) {
+        k(.Escape) => {
+            closePopup();
+        },
+        else => return,
+    }
+    dom.preventDefault(event);
+}
+
+fn onAnythingClosePopup(_: i32) anyerror!void {
+    closePopup();
 }

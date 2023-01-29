@@ -170,5 +170,17 @@ fn grooveFileToTrack(
             std.mem.span(tag.value())
         else
             "(No Album)"),
+        .track_number = if (groove_file.metadata_get("track", null, 0)) |tag|
+            parseTrackNumber(std.mem.span(tag.value()))
+        else
+            0,
     };
+}
+
+fn parseTrackNumber(value: []const u8) i16 {
+    const numerator = if (std.mem.indexOfScalar(u8, value, '/')) |index|
+        value[0..index]
+    else
+        value;
+    return std.fmt.parseInt(i16, numerator, 10) catch 0;
 }

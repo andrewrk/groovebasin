@@ -52,6 +52,7 @@ pub const Track = extern struct {
     title: u32,
     artist: u32,
     album: u32,
+    track_number: i16,
 };
 
 pub const QueueHeader = extern struct {

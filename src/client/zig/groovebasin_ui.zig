@@ -186,9 +186,12 @@ pub fn setShown(element: i32, shown: bool) void {
     }
 }
 
-fn renderLibrary() void {
+fn renderLibrary() !void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
     setShown(library_no_items_dom, library.tracks.count() == 0);
+
+    var buf = std.ArrayList(u8).init(g.gpa);
+    defer buf.deinit();
 
     // Delete and recreate all items.
     {
@@ -266,8 +269,18 @@ fn renderLibrary() void {
         const track_div = dom.getChild(track_li, 0);
         dom.setAttribute(track_div, "data-track", &track_key_str);
         const track_span = dom.getChild(track_div, 0);
-        dom.setTextContent(track_span, library.getString(track.title));
+        const title = library.getString(track.title);
+        dom.setTextContent(track_span, if (track.track_number != 0)
+            try formatSingleUse(&buf, "{d}. {s}", .{ track.track_number, title })
+        else
+            title);
     }
+}
+
+fn formatSingleUse(buffer: *std.ArrayList(u8), comptime fmt: []const u8, args: anytype) ![]const u8 {
+    buffer.clearRetainingCapacity();
+    try std.fmt.format(buffer.writer(), fmt, args);
+    return buffer.items;
 }
 
 fn renderQueue() void {
@@ -279,6 +292,7 @@ fn renderQueue() void {
             c -= 1;
         }
     }
+    var short_buf: [256]u8 = undefined;
     for (queue.items.values()) |item, i| {
         const track = library.tracks.get(item.track_key).?;
         dom.insertAdjacentHTML(queue_items_div, .beforeend,
@@ -295,7 +309,10 @@ fn renderQueue() void {
         const item_div = dom.getChild(queue_items_div, @intCast(i32, i));
 
         // track
-        dom.setTextContent(dom.getChild(item_div, 0), "42");
+        dom.setTextContent(dom.getChild(item_div, 0), if (track.track_number != 0)
+            std.fmt.bufPrint(short_buf[0..], "{d}", .{track.track_number}) catch unreachable
+        else
+            "");
         // time
         dom.setTextContent(dom.getChild(item_div, 1), "3:69");
 
@@ -438,7 +455,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
         render_events = true;
     }
 
-    if (render_library) renderLibrary();
+    if (render_library) try renderLibrary();
     if (render_queue) renderQueue();
     if (render_events) renderEvents();
 }

@@ -513,7 +513,7 @@ fn onWindowKeydown(event: i32) anyerror!void {
             @import("stream.zig").toggleStreamButton();
         },
         k2(.shift, .Slash) => {
-            showPopup(shortcuts_popup_content_div);
+            showPopup();
         },
         k2(.ctrl, .ArrowRight) => {
             log.info("TODO: next song", .{});
@@ -583,14 +583,14 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
     dom.preventDefault(event);
 }
 
-fn showPopup(which_div: i32) void {
+fn showPopup() void {
     dom.setTextContent(modal_title_span, "Keyboard Shortcuts");
-    setShown(which_div, true);
+    setShown(shortcuts_popup_content_div, true);
 
     setShown(blackout_div, true);
     setShown(modal_div, true);
 
-    dom.focus(which_div);
+    dom.focus(shortcuts_popup_content_div);
 }
 
 fn closePopup() void {

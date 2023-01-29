@@ -51,6 +51,12 @@ var queue_items_div: i32 = undefined;
 // now playing
 var lag_display_dom: i32 = undefined;
 
+// popup
+var blackout_div: i32 = undefined;
+var modal_div: i32 = undefined;
+var modal_title_span: i32 = undefined;
+var shortcuts_popup_content_div: i32 = undefined;
+
 const icon_collapsed = "icon-triangle-1-e";
 const icon_expanded = "icon-triangle-1-se";
 
@@ -101,6 +107,11 @@ pub fn init() void {
 
     // this doesn't actually belong here.
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
+
+    blackout_div = dom.getElementById("blackout");
+    modal_div = dom.getElementById("modal");
+    modal_title_span = dom.getElementById("modal-title");
+    shortcuts_popup_content_div = dom.getElementById("shortcuts");
 
     library = Library{
         .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
@@ -497,6 +508,9 @@ fn onWindowKeydown(event: i32) anyerror!void {
         k(.KeyS) => {
             @import("stream.zig").toggleStreamButton();
         },
+        k2(.shift, .Slash) => {
+            showPopup(shortcuts_popup_content_div);
+        },
         k2(.ctrl, .ArrowRight) => {
             log.info("TODO: next song", .{});
         },
@@ -563,4 +577,14 @@ fn onChatTextboxKeydown(event: i32) anyerror!void {
         else => return,
     }
     dom.preventDefault(event);
+}
+
+fn showPopup(which_div: i32) void {
+    dom.setTextContent(modal_title_span, "Keyboard Shortcuts");
+    setShown(which_div, true);
+
+    setShown(blackout_div, true);
+    setShown(modal_div, true);
+
+    dom.focus(which_div);
 }

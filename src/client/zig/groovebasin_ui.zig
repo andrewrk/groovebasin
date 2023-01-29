@@ -109,9 +109,13 @@ pub fn init() void {
     lag_display_dom = dom.getElementById("nowplaying-time-elapsed");
 
     blackout_div = dom.getElementById("blackout");
+    dom.addEventListener(blackout_div, .keydown, callback.packCallback(onEscapeClosePopup, {}));
+    dom.addEventListener(blackout_div, .click, callback.packCallback(onAnythingClosePopup, {}));
     modal_div = dom.getElementById("modal");
     modal_title_span = dom.getElementById("modal-title");
     shortcuts_popup_content_div = dom.getElementById("shortcuts");
+    dom.addEventListener(modal_div, .keydown, callback.packCallback(onEscapeClosePopup, {}));
+    dom.addEventListener(dom.getElementById("modal-close"), .click, callback.packCallback(onAnythingClosePopup, {}));
 
     library = Library{
         .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
@@ -587,4 +591,24 @@ fn showPopup(which_div: i32) void {
     setShown(modal_div, true);
 
     dom.focus(which_div);
+}
+
+fn closePopup() void {
+    setShown(blackout_div, false);
+    setShown(modal_div, false);
+}
+
+fn onEscapeClosePopup(event: i32) anyerror!void {
+    dom.stopPropagation(event);
+    switch (getModifiersAndCode(event)) {
+        k(.Escape) => {
+            closePopup();
+        },
+        else => return,
+    }
+    dom.preventDefault(event);
+}
+
+fn onAnythingClosePopup(_: i32) anyerror!void {
+    closePopup();
 }

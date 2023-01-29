@@ -10,17 +10,17 @@ function getElementByHandle(handle) {
     if (element != null) {
         return element;
     }
-    element = document.getElementById("h-" + handle.toString(16));
+    element = document.getElementById("h-" + handle.toString(10));
     if (element != null) {
         return element;
     }
-    throw new Error("bogus element handle: 0x" + handle.toString(16));
+    throw new Error("bogus element handle: " + handle.toString(10));
 }
 
 function getElementHandle(element) {
     let handle_str = element.getAttribute("data-h");
     if (handle_str != null) {
-        return parseInt(handle_str, 16);
+        return parseInt(handle_str, 10);
     }
     if (element.getAttribute("id") != null || !document.contains(element)) {
         // Using document.getElementById("h-" + handle) isn't going to work,
@@ -28,7 +28,7 @@ function getElementHandle(element) {
         // or isn't contained anywhere in the dom (e.g. a background new Audio() element).
         // Use the registry to find this element later.
         const {handle} = elementRegistry.alloc(element);
-        handle_str = handle.toString(16);
+        handle_str = handle.toString(10);
         element.setAttribute("data-h", handle_str);
         return handle;
     } else {
@@ -36,7 +36,7 @@ function getElementHandle(element) {
         // Don't used the elementRegistry or else when the elements leave the dom,
         // we'll be maintaining pointers to deleted elements preventing them from being garbaged collected.
         const handle = elementRegistry.nextHandle();
-        handle_str = handle.toString(16);
+        handle_str = handle.toString(10);
         element.setAttribute("id", "h-" + handle_str);
         element.setAttribute("data-h", handle_str);
         return handle;

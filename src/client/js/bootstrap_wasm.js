@@ -60,19 +60,14 @@ const env = {
         const text = decodeString(ptr, len);
         return dom.setElementTextContent(handle, text);
     },
-    getChildrenCount(handle) {
-        return dom.getChildrenCount(handle);
-    },
-    getChild(handle, i) {
-        return dom.getChild(handle, i);
+    setElementInnerHtml(handle, ptr, len) {
+        const text = decodeString(ptr, len);
+        return dom.setElementInnerHtml(handle, text);
     },
     insertAdjacentHTML(handle, position_int, html_ptr, html_len) {
         const position = PositionType[position_int];
         const html = decodeString(html_ptr, html_len);
         return dom.insertAdjacentHTML(handle, position, html);
-    },
-    removeLastChild(handle) {
-        return dom.removeLastChild(handle);
     },
     addClass(handle, class_ptr, class_len) {
         const class_ = decodeString(class_ptr, class_len);

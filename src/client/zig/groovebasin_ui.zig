@@ -192,13 +192,7 @@ fn renderLibrary() !void {
     var arena = arena_instance.allocator();
 
     // Delete and recreate all items.
-    {
-        var library_dom_element_count = dom.getChildrenCount(library_artists_dom);
-        while (library_dom_element_count > 0) {
-            dom.removeLastChild(library_artists_dom);
-            library_dom_element_count -= 1;
-        }
-    }
+    dom.setInnerHtml(library_artists_dom, "");
     for (library.tracks.values()) |track, i| {
         _ = arena_instance.reset(.retain_capacity);
 
@@ -267,13 +261,7 @@ fn escapeHtml(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
 
 fn renderQueue() !void {
     // Delete and recreate all items.
-    {
-        var c = dom.getChildrenCount(queue_items_div);
-        while (c > 0) {
-            dom.removeLastChild(queue_items_div);
-            c -= 1;
-        }
-    }
+    dom.setInnerHtml(queue_items_div, "");
 
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
@@ -312,35 +300,29 @@ fn renderQueue() !void {
     }
 }
 
-pub fn renderEvents() void {
+pub fn renderEvents() !void {
+    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena_instance.deinit();
+    var arena = arena_instance.allocator();
+
     // Delete and recreate all items.
-    {
-        var c = dom.getChildrenCount(events_list_div);
-        while (c > 0) {
-            dom.removeLastChild(events_list_div);
-            c -= 1;
-        }
-    }
+    dom.setInnerHtml(events_list_div, "");
+
     const events_list = events.events.values();
     // TODO: sort by sort_key.
-    for (events_list) |event, i| {
-        dom.insertAdjacentHTML(events_list_div, .beforeend,
-            \\<div class="event">
-            \\  <span class="name"></span>
-            \\  <span class="msg"></span>
+    for (events_list) |event| {
+        _ = arena_instance.reset(.retain_capacity);
+
+        dom.insertAdjacentHTML(events_list_div, .beforeend, try std.fmt.allocPrint(arena,
+            \\<div class="event chat">
+            \\  <span class="name">{s}</span>
+            \\  <span class="msg">{s}</span>
             \\  <div style="clear: both;"></div>
             \\</div>
-        );
-
-        const event_div = dom.getChild(events_list_div, @intCast(i32, i));
-        dom.addClass(event_div, "chat");
-
-        const name_span = dom.getChild(event_div, 0);
-        dom.setTextContent(name_span, events.getString(event.name));
-        //dom.setTitle(name_span, some date represnetation);
-
-        const msg_span = dom.getChild(event_div, 1);
-        dom.setTextContent(msg_span, events.getString(event.content));
+        , .{
+            try escapeHtml(arena, events.getString(event.name)),
+            try escapeHtml(arena, events.getString(event.content)),
+        }));
     }
 }
 
@@ -443,7 +425,7 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
 
     if (render_library) try renderLibrary();
     if (render_queue) try renderQueue();
-    if (render_events) renderEvents();
+    if (render_events) try renderEvents();
 }
 
 fn onLibraryMouseDown(event: i32) anyerror!void {

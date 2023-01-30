@@ -53,24 +53,12 @@ function setElementTextContent(handle, text) {
     getElementByHandle(handle).textContent = text;
 }
 
-function getChildrenCount(handle) {
-    return getElementByHandle(handle).children.length;
-}
-
-function getChild(parent_handle, i) {
-    const parent = getElementByHandle(parent_handle);
-    const child = parent.children[i];
-    if (child == null) throw new Error("bad child index: " + i);
-    return getElementHandle(child);
+function setElementInnerHtml(handle, text) {
+    getElementByHandle(handle).innerHTML = text;
 }
 
 function insertAdjacentHTML(handle, position, html) {
     getElementByHandle(handle).insertAdjacentHTML(position, html);
-}
-
-function removeLastChild(handle) {
-    const element = getElementByHandle(handle);
-    element.removeChild(element.lastChild);
 }
 
 function addClass(handle, class_) {
@@ -180,10 +168,8 @@ return {
     getElementHandle,
     getElementById,
     setElementTextContent,
-    getChildrenCount,
-    getChild,
+    setElementInnerHtml,
     insertAdjacentHTML,
-    removeLastChild,
     addClass,
     removeClass,
     setAttribute,

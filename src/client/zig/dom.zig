@@ -16,13 +16,13 @@ pub fn setTextContent(handle: i32, text: []const u8) void {
     env.setElementTextContent(handle, text.ptr, text.len);
 }
 
-pub const getChildrenCount = env.getChildrenCount;
-pub const getChild = env.getChild;
+pub fn setInnerHtml(handle: i32, text: []const u8) void {
+    env.setElementInnerHtml(handle, text.ptr, text.len);
+}
 
 pub fn insertAdjacentHTML(handle: i32, position: InsertPosition, html: []const u8) void {
     env.insertAdjacentHTML(handle, position, html.ptr, html.len);
 }
-pub const removeLastChild = env.removeLastChild;
 
 pub fn addClass(handle: i32, class: []const u8) void {
     env.addClass(handle, class.ptr, class.len);

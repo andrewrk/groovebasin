@@ -3,23 +3,33 @@ const Builder = std.build.Builder;
 
 pub fn build(b: *Builder) void {
     const target = b.standardTargetOptions(.{});
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{
+        .preferred_optimize_mode = .ReleaseSafe,
+    });
+    const libgroove_optimize_mode = b.option(
+        std.builtin.OptimizeMode,
+        "libgroove-optimize",
+        "override optimization mode of libgroove and its dependencies",
+    );
 
     const groove_dep = b.dependency("groove", .{
-        // TODO: do this after zig implements passing build options to dependencies
-        //.mode = .ReleaseFast,
+        .optimize = libgroove_optimize_mode orelse .ReleaseFast,
+        .target = target,
     });
 
-    const client = b.addSharedLibrary("client", "src/client/zig/client_main.zig", .unversioned);
+    const client = b.addSharedLibrary(.{
+        .name = "client",
+        .root_source_file = .{ .path = "src/client/zig/client_main.zig" },
+        .optimize = switch (optimize) {
+            .ReleaseFast, .ReleaseSafe => .ReleaseSmall,
+            else => optimize,
+        },
+        .target = .{
+            .cpu_arch = .wasm32,
+            .os_tag = .freestanding,
+        },
+    });
     client.rdynamic = true;
-    client.setBuildMode(switch (mode) {
-        .ReleaseFast => .ReleaseSmall,
-        else => mode,
-    });
-    client.setTarget(.{
-        .cpu_arch = .wasm32,
-        .os_tag = .freestanding,
-    });
     client.addPackagePath("shared", "src/shared/index.zig");
     client.install();
 
@@ -31,9 +41,12 @@ pub fn build(b: *Builder) void {
         .install_subdir = "public",
     });
 
-    const server = b.addExecutable("groovebasin", "src/server/server_main.zig");
-    server.setTarget(target);
-    server.setBuildMode(mode);
+    const server = b.addExecutable(.{
+        .name = "groovebasin",
+        .root_source_file = .{ .path = "src/server/server_main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
     server.addPackagePath("shared", "src/shared/index.zig");
     const server_options = b.addOptions();
     server.addOptions("build_options", server_options);
@@ -48,10 +61,10 @@ pub fn build(b: *Builder) void {
     run_step.dependOn(&run_cmd.step);
 
     {
-        const paste_js_exe = b.addExecutable("paste-js", "tools/paste-js.zig");
-        paste_js_exe.setTarget(target);
-        paste_js_exe.setBuildMode(mode);
-        paste_js_exe.install();
+        const paste_js_exe = b.addExecutable(.{
+            .name = "paste-js",
+            .root_source_file = .{ .path = "tools/paste-js.zig" },
+        });
 
         const paste_js_cmd = paste_js_exe.run();
         paste_js_cmd.addArgs(&[_][]const u8{
@@ -74,10 +87,10 @@ pub fn build(b: *Builder) void {
         server.step.dependOn(&paste_js_cmd.step);
     }
     {
-        const exe = b.addExecutable("paste-htmlcss", "tools/paste-htmlcss.zig");
-        exe.setTarget(target);
-        exe.setBuildMode(mode);
-        exe.install();
+        const exe = b.addExecutable(.{
+            .name = "paste-htmlcss",
+            .root_source_file = .{ .path = "tools/paste-htmlcss.zig" },
+        });
 
         const cmd = exe.run();
         cmd.addArgs(&[_][]const u8{

@@ -30,7 +30,7 @@ pub fn build(b: *Builder) void {
         },
     });
     client.rdynamic = true;
-    client.addPackagePath("shared", "src/shared/index.zig");
+    client.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
     client.install();
 
     // TODO: watch out for race conditions between this install and the paste-*
@@ -47,7 +47,7 @@ pub fn build(b: *Builder) void {
         .target = target,
         .optimize = optimize,
     });
-    server.addPackagePath("shared", "src/shared/index.zig");
+    server.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
     const server_options = b.addOptions();
     server.addOptions("build_options", server_options);
     server_options.addOptionArtifact("client_wasm_path", client);

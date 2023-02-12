@@ -15,7 +15,7 @@ pub fn init(allocator: std.mem.Allocator) @This() {
 }
 
 pub fn deinit(l: *@This()) void {
-    l.strings.strings.deinit();
+    l.strings.deinit();
     l.tracks.deinit();
     l.* = undefined;
 }

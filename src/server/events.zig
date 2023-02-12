@@ -12,13 +12,17 @@ pub const StringPool = @import("shared").StringPool;
 
 pub var current_events_version: u64 = 1;
 pub var events: Events = undefined;
+pub var events_string_putter: StringPool.Putter = undefined;
 
 pub fn init() !void {
     events = Events{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
+        .strings = StringPool.init(g.gpa),
         .events = AutoArrayHashMap(u64, Event).init(g.gpa),
     };
     errdefer events.deinit();
+
+    events_string_putter = events.strings.initPutter();
+    errdefer events_string_putter.deinit();
 }
 
 pub fn deinit() void {

@@ -13,6 +13,7 @@ pub const StringPool = @import("shared").StringPool;
 
 pub var current_library_version: u64 = 1;
 pub var library: Library = undefined;
+var library_string_putter: StringPool.Putter = undefined;
 
 pub var music_dir_path: []const u8 = undefined;
 
@@ -23,6 +24,9 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
 
     library = Library.init(g.gpa);
     errdefer library.deinit();
+
+    library_string_putter = library.strings.initPutter();
+    errdefer library_string_putter.deinit();
 
     var music_dir = try std.fs.cwd().openIterableDir(music_dir_path, .{});
     defer music_dir.close();
@@ -54,7 +58,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
         }) |tag| {
             std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
-        try library.tracks.putNoClobber(id, try grooveFileToTrack(&library.strings, groove_file, entry.path));
+        try library.tracks.putNoClobber(id, try grooveFileToTrack(&library_string_putter, groove_file, entry.path));
         id += 1;
     }
 
@@ -66,7 +70,7 @@ fn writeLibrary(db_path: []const u8) !void {
     defer db_file.close();
 
     const header = Header{
-        .string_size = @intCast(u32, library.strings.strings.items.len),
+        .string_size = @intCast(u32, library.strings.buf.items.len),
         .track_count = @intCast(u32, library.tracks.count()),
     };
 
@@ -81,8 +85,8 @@ fn writeLibrary(db_path: []const u8) !void {
             .iov_len = @sizeOf(Header),
         },
         .{
-            .iov_base = library.strings.strings.items.ptr,
-            .iov_len = library.strings.strings.items.len,
+            .iov_base = library.strings.buf.items.ptr,
+            .iov_len = library.strings.buf.items.len,
         },
         .{
             .iov_base = @ptrCast([*]const u8, library.tracks.keys().ptr),
@@ -110,7 +114,7 @@ fn readLibrary(db_path: []const u8) anyerror!void {
 
     const header = try db_file.reader().readStruct(Header);
 
-    try l.strings.strings.resize(header.string_size);
+    try l.strings.buf.resize(header.string_size);
     try l.tracks.ensureTotalCapacity(header.track_count);
     const track_keys = try g.gpa.alloc(u64, header.track_count);
     defer g.gpa.free(track_keys);
@@ -119,8 +123,8 @@ fn readLibrary(db_path: []const u8) anyerror!void {
 
     var iovecs = [_]std.os.iovec{
         .{
-            .iov_base = l.strings.strings.items.ptr,
-            .iov_len = l.strings.strings.items.len,
+            .iov_base = l.strings.buf.items.ptr,
+            .iov_len = l.strings.buf.items.len,
         },
         .{
             .iov_base = @ptrCast([*]u8, track_keys.ptr),
@@ -144,7 +148,7 @@ const Header = extern struct {
 };
 
 fn grooveFileToTrack(
-    string_pool: *StringPool,
+    string_pool: *StringPool.Putter,
     groove_file: *Groove.File,
     file_path: []const u8,
 ) !Track {

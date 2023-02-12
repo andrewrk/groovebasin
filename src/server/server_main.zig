@@ -510,10 +510,10 @@ const ConnectionHandler = struct {
                 if (library.current_library_version != query_request.last_library) {
                     try response.writer().writeStruct(protocol.LibraryHeader{
                         // there there is is nothing wrong with this naming.
-                        .string_size = @intCast(u32, library.library.strings.strings.items.len),
+                        .string_size = @intCast(u32, library.library.strings.buf.items.len),
                         .track_count = @intCast(u32, library.library.tracks.count()),
                     });
-                    try response.writer().writeAll(library.library.strings.strings.items);
+                    try response.writer().writeAll(library.library.strings.buf.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
                 }
@@ -530,10 +530,10 @@ const ConnectionHandler = struct {
                 // Events
                 if (events.current_events_version != query_request.last_events) {
                     try response.writer().writeStruct(protocol.EventsHeader{
-                        .string_size = @intCast(u32, events.events.strings.strings.items.len),
+                        .string_size = @intCast(u32, events.events.strings.buf.items.len),
                         .item_count = @intCast(u32, events.events.events.count()),
                     });
-                    try response.writer().writeAll(events.events.strings.strings.items);
+                    try response.writer().writeAll(events.events.strings.buf.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.values()));
                 }
@@ -567,8 +567,8 @@ const ConnectionHandler = struct {
                 try request.reader().readNoEof(msg);
                 log.info("chat: {s}", .{msg});
 
-                const name_id = try events.events.strings.putString("joshprobably");
-                const content_id = try events.events.strings.putString(msg);
+                const name_id = try events.events_string_putter.putString("joshprobably");
+                const content_id = try events.events_string_putter.putString(msg);
                 try events.events.events.putNoClobber(events.events.events.count() + 1, protocol.Event{
                     .sort_key = 0,
                     .name = name_id,

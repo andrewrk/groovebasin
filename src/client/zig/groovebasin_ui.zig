@@ -20,6 +20,7 @@ const QueueItem = protocol.QueueItem;
 const Library = @import("shared").Library;
 const Queue = @import("shared").Queue;
 const Events = @import("shared").Events;
+const StringPool = @import("shared").StringPool;
 const Event = protocol.Event;
 
 const log = std.log.scoped(.ui);
@@ -114,17 +115,14 @@ pub fn init() void {
     dom.addEventListener(modal_div, .keydown, callback.packCallback(onEscapeClosePopup, {}));
     dom.addEventListener(dom.getElementById("modal-close"), .click, callback.packCallback(onAnythingClosePopup, {}));
 
-    library = Library{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
-    };
+    library = Library.init(g.gpa);
 
     queue = Queue{
         .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
     };
 
     events = Events{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
+        .strings = StringPool.init(g.gpa),
         .events = AutoArrayHashMap(u64, Event).init(g.gpa),
     };
 }
@@ -355,8 +353,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.library_version != last_library_version) {
         const library_header = try stream.reader().readStruct(protocol.LibraryHeader);
         // string pool
-        try library.strings.strings.resize(library_header.string_size);
-        try stream.reader().readNoEof(library.strings.strings.items);
+        try library.strings.buf.resize(library_header.string_size);
+        try stream.reader().readNoEof(library.strings.buf.items);
         // track keys and values
         library.tracks.clearRetainingCapacity();
         try library.tracks.ensureTotalCapacity(library_header.track_count);
@@ -402,8 +400,8 @@ fn handleQueryResponse(response: []const u8) anyerror!void {
     if (response_header.events_version != last_events_version) {
         const events_header = try stream.reader().readStruct(protocol.EventsHeader);
         // string pool
-        try events.strings.strings.resize(events_header.string_size);
-        try stream.reader().readNoEof(events.strings.strings.items);
+        try events.strings.buf.resize(events_header.string_size);
+        try stream.reader().readNoEof(events.strings.buf.items);
         // keys and values
         events.events.clearRetainingCapacity();
         try events.events.ensureTotalCapacity(events_header.item_count);

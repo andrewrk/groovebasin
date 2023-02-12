@@ -1,7 +1,7 @@
 const std = @import("std");
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
-const StringPool = @import("string_pool.zig").StringPool;
+const StringPool = @import("StringPool.zig");
 const Event = @import("protocol.zig").Event;
 
 pub const Events = struct {

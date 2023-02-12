@@ -21,10 +21,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
 
-    library = Library{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
-    };
+    library = Library.init(g.gpa);
     errdefer library.deinit();
 
     var music_dir = try std.fs.cwd().openIterableDir(music_dir_path, .{});
@@ -105,10 +102,7 @@ pub fn deinit() void {
 }
 
 fn readLibrary(db_path: []const u8) anyerror!void {
-    var l = Library{
-        .strings = .{ .strings = ArrayList(u8).init(g.gpa) },
-        .tracks = AutoArrayHashMap(u64, Track).init(g.gpa),
-    };
+    var l = Library.init(g.gpa);
     defer l.deinit();
 
     var db_file = try std.fs.cwd().openFile(db_path, .{});

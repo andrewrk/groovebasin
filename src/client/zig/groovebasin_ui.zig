@@ -185,11 +185,47 @@ fn renderLibrary() !void {
     dom.setTextContent(empty_library_message_dom, if (true) "No Results" else "loading...");
     setShown(library_no_items_dom, library.tracks.count() == 0);
 
+    var html_buf = ArrayList(u8).init(g.gpa);
+    defer html_buf.deinit();
+    var current_artist: ?u32 = null;
+    var current_album: ?u32 = null;
+
     var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
     defer arena_instance.deinit();
     var arena = arena_instance.allocator();
 
-    // Delete and recreate all items.
+    const begin_artist = comptime minifyHtml(
+        \\<li>
+        \\  <div class="clickable expandable" data-type="artist">
+        \\    <div class="icon icon-triangle-1-e"></div>
+        \\    <span>{s}</span>
+        \\  </div>
+        \\  <ul>
+    );
+    const begin_album = comptime minifyHtml(
+        \\    <li>
+        \\      <div class="clickable expandable" data-type="album">
+        \\        <div class="icon icon-triangle-1-e"></div>
+        \\        <span>{s}</span>
+        \\      </div>
+        \\      <ul>
+    );
+    const track_html = comptime minifyHtml(
+        \\        <li>
+        \\          <div class="clickable" data-type="track" data-track="{s}">
+        \\            <span>{s}</span>
+        \\          </div>
+        \\        </li>
+    );
+    const end_album = comptime minifyHtml(
+        \\      </ul>
+        \\    </li>
+    );
+    const end_artist = comptime minifyHtml(
+        \\  </ul>
+        \\</li>
+    );
+
     dom.setInnerHtml(library_artists_dom, "");
     for (library.tracks.values()) |track, i| {
         _ = arena_instance.reset(.retain_capacity);
@@ -197,39 +233,53 @@ fn renderLibrary() !void {
         const track_key_buf = formatKey(library.tracks.keys()[i]);
         const track_key_str = track_key_buf[0..];
 
-        dom.insertAdjacentHTML(library_artists_dom, .beforeend, try std.fmt.allocPrint(arena,
-            \\<li>
-            \\  <div class="clickable expandable" data-type="artist" data-track="{s}">
-            \\    <div class="icon icon-triangle-1-e"></div>
-            \\    <span>{s}</span>
-            \\  </div>
-            \\  <ul>
-            \\    <li>
-            \\      <div class="clickable expandable" data-type="album" data-track="{s}">
-            \\        <div class="icon icon-triangle-1-e"></div>
-            \\        <span>{s}</span>
-            \\      </div>
-            \\      <ul>
-            \\        <li>
-            \\          <div class="clickable" data-type="track" data-track="{s}">
-            \\            <span>{s}</span>
-            \\          </div>
-            \\        </li>
-            \\      </ul>
-            \\    </li>
-            \\  </ul>
-            \\</li>
-        , .{
-            track_key_str,
-            try escapeHtml(arena, library.getString(track.artist)),
-            track_key_str,
-            try escapeHtml(arena, library.getString(track.album)),
+        if (current_artist) |a| {
+            if (a != track.artist) {
+                // end album
+                try html_buf.appendSlice(end_album);
+                current_album = null;
+                // end artist
+                try html_buf.appendSlice(end_artist);
+                current_artist = null;
+                dom.insertAdjacentHTML(library_artists_dom, .beforeend, html_buf.items);
+                html_buf.clearRetainingCapacity();
+            }
+        }
+        if (current_album) |a| {
+            if (a != track.album) {
+                // end album
+                try html_buf.appendSlice(end_album);
+                current_album = null;
+            }
+        }
+        if (current_artist == null) {
+            // begin artist
+            try std.fmt.format(html_buf.writer(), begin_artist, .{
+                try escapeHtml(arena, library.getString(track.artist)),
+            });
+            current_artist = track.artist;
+        }
+        if (current_album == null) {
+            // begin album
+            try std.fmt.format(html_buf.writer(), begin_album, .{
+                try escapeHtml(arena, library.getString(track.album)),
+            });
+            current_album = track.album;
+        }
+        try std.fmt.format(html_buf.writer(), track_html, .{
             track_key_str,
             try escapeHtml(arena, if (track.track_number != 0)
                 try std.fmt.allocPrint(arena, "{d}. {s}", .{ track.track_number, library.getString(track.title) })
             else
                 library.getString(track.title)),
-        }));
+        });
+    }
+    if (current_album != null) {
+        try html_buf.appendSlice(end_album);
+    }
+    if (current_artist != null) {
+        try html_buf.appendSlice(end_artist);
+        dom.insertAdjacentHTML(library_artists_dom, .beforeend, html_buf.items);
     }
 }
 
@@ -255,6 +305,11 @@ fn escapeHtml(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
     }
     try buffer.appendSlice(s[i..]);
     return buffer.toOwnedSlice();
+}
+
+fn minifyHtml(comptime s: []const u8) []const u8 {
+    // TODO
+    return s;
 }
 
 fn renderQueue() !void {

@@ -307,9 +307,14 @@ fn escapeHtml(allocator: std.mem.Allocator, s: []const u8) ![]const u8 {
     return buffer.toOwnedSlice();
 }
 
-fn minifyHtml(comptime s: []const u8) []const u8 {
-    // TODO
-    return s;
+fn minifyHtml(comptime s_: []const u8) []const u8 {
+    // return s.trim().replaceAll(/>\s+/g, ">");
+    comptime var s = std.mem.trim(u8, s_, " \n");
+    comptime var index = 0;
+    while (true) {
+        index = 1 + (std.mem.indexOfScalarPos(u8, s, index, '>') orelse return s);
+        s = s[0..index] ++ std.mem.trimLeft(u8, s[index..], " \n");
+    }
 }
 
 fn renderQueue() !void {

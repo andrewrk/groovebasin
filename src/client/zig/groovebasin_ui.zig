@@ -227,10 +227,10 @@ fn renderLibrary() !void {
     );
 
     dom.setInnerHtml(library_artists_dom, "");
-    for (library.tracks.values(), 0..) |track, i| {
+    for (library.tracks.keys(), library.tracks.values()) |key, track| {
         _ = arena_instance.reset(.retain_capacity);
 
-        const track_key_buf = formatKey(library.tracks.keys()[i]);
+        const track_key_buf = formatKey(key);
         const track_key_str = track_key_buf[0..];
 
         if (current_artist) |a| {

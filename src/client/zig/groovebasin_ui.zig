@@ -87,7 +87,7 @@ pub fn init() void {
             .pane = dom.getElementById("settings-pane"),
         },
     };
-    for (left_window_tabs) |*tab_ui, i| {
+    for (&left_window_tabs, 0..) |*tab_ui, i| {
         dom.addEventListener(tab_ui.tab, .click, callback.packCallback(onLeftWindowTabClick, i));
     }
 
@@ -227,7 +227,7 @@ fn renderLibrary() !void {
     );
 
     dom.setInnerHtml(library_artists_dom, "");
-    for (library.tracks.values()) |track, i| {
+    for (library.tracks.values(), 0..) |track, i| {
         _ = arena_instance.reset(.retain_capacity);
 
         const track_key_buf = formatKey(library.tracks.keys()[i]);

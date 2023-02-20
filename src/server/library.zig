@@ -137,7 +137,7 @@ fn readLibrary(db_path: []const u8) anyerror!void {
     };
     _ = try db_file.readvAll(&iovecs);
 
-    for (track_keys) |k, i| {
+    for (track_keys, 0..) |k, i| {
         l.tracks.putAssumeCapacityNoClobber(k, track_values[i]);
     }
 }

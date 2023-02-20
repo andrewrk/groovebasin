@@ -37,7 +37,7 @@ fn generateKeyboardEventCode() !void {
         lt_code_gt_quot_name,
     } = .start;
     var name_start: usize = 0;
-    for (contents) |c, i| {
+    for (contents, 0..) |c, i| {
         switch (state) {
             .start => state = if (c == '<') .lt else .start,
             .lt => state = if (c == 'c') .lt_c else .start,
@@ -108,7 +108,7 @@ fn generateEventType() !void {
     } = .start;
     var name_start: usize = 0;
     var name_end: usize = 0;
-    for (contents) |c, i| {
+    for (contents, 0..) |c, i| {
         switch (state) {
             .start => state = if (c == '>') .gt else .start,
             .gt => switch (c) {
@@ -178,7 +178,7 @@ fn writeZigEnum(path: []const u8, enum_name: []const u8, item_names: [][]const u
         .{enum_name},
     );
 
-    for (item_names) |name, i| {
+    for (item_names, 0..) |name, i| {
         if (std.mem.eql(u8, name, "error") or
             std.mem.eql(u8, name, "suspend") or
             std.mem.eql(u8, name, "resume"))

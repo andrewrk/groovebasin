@@ -21,7 +21,7 @@ pub fn main() !void {
         strToIovec("<style>"),
         // file contents here.
         strToIovec("</style>"),
-        strToIovec(html_source[token_index + token.len..]),
+        strToIovec(html_source[token_index + token.len ..]),
     };
     try fout.writeFileAll(css_file, .{
         .headers_and_trailers = &things,

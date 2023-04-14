@@ -31,10 +31,10 @@ pub fn build(b: *Builder) void {
     });
     client.rdynamic = true;
     client.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
-    client.install();
+    b.installArtifact(client);
 
-    // TODO: watch out for race conditions between this install and the paste-*
-    // commands generating content here.
+    // TODO: update the pastejs and pastehtmlcss commands to use RunStep
+    // properly rather than writing directly to this installation directory
     b.installDirectory(.{
         .source_dir = "public",
         .install_dir = .lib,
@@ -52,9 +52,9 @@ pub fn build(b: *Builder) void {
     server.addOptions("build_options", server_options);
     server_options.addOptionArtifact("client_wasm_path", client);
     server.linkLibrary(groove_dep.artifact("groove"));
-    server.install();
+    b.installArtifact(server);
 
-    const run_cmd = server.run();
+    const run_cmd = b.addRunArtifact(server);
     run_cmd.step.dependOn(b.getInstallStep());
 
     const run_step = b.step("run", "Run the app");
@@ -66,7 +66,7 @@ pub fn build(b: *Builder) void {
             .root_source_file = .{ .path = "tools/paste-js.zig" },
         });
 
-        const paste_js_cmd = paste_js_exe.run();
+        const paste_js_cmd = b.addRunArtifact(paste_js_exe);
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client/js",
             "_generated_EventType.js",
@@ -92,7 +92,7 @@ pub fn build(b: *Builder) void {
             .root_source_file = .{ .path = "tools/paste-htmlcss.zig" },
         });
 
-        const cmd = exe.run();
+        const cmd = b.addRunArtifact(exe);
         cmd.addArgs(&[_][]const u8{
             "src/client/htmlcss/index.html",
             "src/client/htmlcss/app.css",

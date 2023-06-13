@@ -36,7 +36,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
 
     var id: u64 = 1;
     while (try walker.next()) |entry| {
-        if (entry.kind != .File) continue;
+        if (entry.kind != .file) continue;
 
         const groove_file = try g.groove.file_create();
         defer groove_file.destroy();

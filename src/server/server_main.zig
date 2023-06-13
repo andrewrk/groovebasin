@@ -99,9 +99,7 @@ pub fn main() anyerror!void {
             fatal("Unable to read {s}: {s}", .{ config_json_path, @errorName(e) });
         },
     };
-    var token_stream = json.TokenStream.init(json_text);
-    @setEvalBranchQuota(5000);
-    const config = try json.parse(ConfigJson, &token_stream, .{ .allocator = arena });
+    const config = try json.parseFromSlice(ConfigJson, arena, json_text, .{});
 
     return listen(arena, config);
 }

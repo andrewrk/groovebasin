@@ -612,7 +612,6 @@ fn init_static_content() !void {
         "/img/ui-bg_dots-small_20_333333_2x2.png",
         "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
         "/img/ui-bg_flat_40_292929_40x100.png",
-        "/client.wasm",
     }) |path| {
         try static_content_map.putNoClobber(path, try resolveStaticFile(static_content_dir, path));
     }
@@ -630,9 +629,6 @@ fn resolveStaticFile(static_content_dir: std.fs.Dir, path: []const u8) !StaticFi
         mime_type = "application/javascript";
     } else if (std.mem.endsWith(u8, path, ".png")) {
         mime_type = "image/png";
-    } else if (std.mem.eql(u8, path, "/client.wasm")) {
-        mime_type = "application/wasm";
-        relative_path = "../client.wasm";
     } else unreachable;
 
     var file = try static_content_dir.openFile(relative_path, .{});

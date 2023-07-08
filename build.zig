@@ -17,22 +17,6 @@ pub fn build(b: *Builder) void {
         .target = target,
     });
 
-    const client = b.addSharedLibrary(.{
-        .name = "client",
-        .root_source_file = .{ .path = "src/client/zig/client_main.zig" },
-        .optimize = switch (optimize) {
-            .ReleaseFast, .ReleaseSafe => .ReleaseSmall,
-            else => optimize,
-        },
-        .target = .{
-            .cpu_arch = .wasm32,
-            .os_tag = .freestanding,
-        },
-    });
-    client.rdynamic = true;
-    client.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
-    b.installArtifact(client);
-
     // TODO: update the pastejs and pastehtmlcss commands to use RunStep
     // properly rather than writing directly to this installation directory
     b.installDirectory(.{
@@ -48,9 +32,6 @@ pub fn build(b: *Builder) void {
         .optimize = optimize,
     });
     server.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
-    const server_options = b.addOptions();
-    server.addOptions("build_options", server_options);
-    server_options.addOptionArtifact("client_wasm_path", client);
     server.linkLibrary(groove_dep.artifact("groove"));
     b.installArtifact(server);
 

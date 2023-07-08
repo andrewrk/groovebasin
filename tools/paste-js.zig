@@ -14,18 +14,18 @@ pub fn main() !void {
 
     try output.writeAll(
         \\(function(modules) {
+        \\    var initializedModules = {};
         \\    function require(name) {
         \\        if (name in initializedModules) {
         \\            return initializedModules[name];
         \\        }
-        \\        return initializedModules[name] = modules[name](require);
+        \\        var module = {exports: {}}
+        \\        modules[name](require, module, module.exports);
+        \\        return initializedModules[name] = module.exports;
         \\    }
-        \\    var initializedModules = {};
         \\
         \\    for (var name in modules) {
-        \\        if (!(name in initializedModules)) {
-        \\            modules[name](require);
-        \\        }
+        \\        require(name);
         \\    }
         \\})({
         \\
@@ -41,7 +41,7 @@ pub fn main() !void {
         var things = [_]std.os.iovec_const{
             strToIovec("    \""),
             strToIovec(name),
-            strToIovec("\": function(require) {\n"),
+            strToIovec("\": function(require, module, exports) {\n"),
             // file contents here.
             strToIovec("    },\n"),
         };

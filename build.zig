@@ -69,17 +69,18 @@ pub fn build(b: *Builder) void {
         const paste_js_cmd = b.addRunArtifact(paste_js_exe);
         paste_js_cmd.addArgs(&[_][]const u8{
             "src/client/js",
-            "_generated_EventType.js",
-            "_generated_KeyboardEventCode.js",
-            "audio.js",
-            "bootstrap_wasm.js",
-            "callback.js",
-            "dom.js",
-            "enums.js",
-            "handleRegistry.js",
-            "string.js",
-            "wasmExports.js",
-            "websocket.js",
+            "curlydiff.js",
+            "diacritics.js",
+            "event_emitter.js",
+            "human-size.js",
+            "inherits.js",
+            "keese.js",
+            "main.js",
+            "mess.js",
+            "music-library-index.js",
+            "playerclient.js",
+            "socket.js",
+            "uuid.js",
         });
         const paste_js_step = b.step("paste-js", "compile the js");
         paste_js_step.dependOn(&paste_js_cmd.step);

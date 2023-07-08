@@ -1,3 +1,5 @@
+// Copied from https://github.com/andrewrk/node-diacritics
+// Version: 1.2.3
 exports.remove = removeDiacritics;
 
 var replacementList = [

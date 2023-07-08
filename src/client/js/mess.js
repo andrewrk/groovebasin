@@ -1,3 +1,5 @@
+// Copied from https://github.com/bobrik/node-mess
+// Version: 0.1.2
 (function(module) {
     // see https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
     // and http://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array-in-javascript#6274398

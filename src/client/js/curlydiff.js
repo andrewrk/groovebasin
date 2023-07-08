@@ -1,3 +1,5 @@
+// Copied from https://github.com/thejoshwolfe/curlydiff
+// Version: 2.0.1
 module.exports.diff = diff;
 module.exports.apply = apply;
 module.exports.isObject = isObject;

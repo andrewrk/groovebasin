@@ -1,3 +1,5 @@
+// Copied from https://github.com/andrewrk/node-human-size
+// Version: 1.1.0
 module.exports = humanSize;
 
 var mags = ' KMGTPEZY';

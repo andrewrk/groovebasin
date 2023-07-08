@@ -1,3 +1,6 @@
+// Copied from https://github.com/thejoshwolfe/node-keese
+// Version: 1.1.1
+
 // the basic characters in sorted order
 var alphabet = "0123456789?@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 var radix = alphabet.length;

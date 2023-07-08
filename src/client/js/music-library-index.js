@@ -1,3 +1,5 @@
+// Copied from https://github.com/andrewrk/node-music-library-index
+// Version: 2.1.0
 var removeDiacritics = require('diacritics').remove;
 
 module.exports = MusicLibraryIndex;

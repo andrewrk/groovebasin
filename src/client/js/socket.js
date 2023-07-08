@@ -33,6 +33,7 @@ function Socket() {
     }
 
     function onMessage(ev) {
+      console.log("received:", ev.data);
       var msg = JSON.parse(ev.data);
       self.emit(msg.name, msg.args);
     }
@@ -51,6 +52,7 @@ function Socket() {
 }
 
 Socket.prototype.send = function(name, args) {
+  console.log("sending:", name, args);
   this.ws.send(JSON.stringify({
     name: name,
     args: args,

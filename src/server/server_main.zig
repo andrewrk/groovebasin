@@ -339,21 +339,14 @@ const ConnectionHandler = struct {
             handler.resetArena();
 
             const request_payload = (try handler.readMessage()) orelse break;
-            log.info("request: {s}", .{std.fmt.fmtSliceHexLower(request_payload)});
+            log.info("request: {s}", .{request_payload});
 
-            var request_stream = std.io.fixedBufferStream(request_payload);
-            const request_header = try request_stream.reader().readStruct(protocol.RequestHeader);
+            const message = try std.json.parseFromSliceLeaky(Message, handler.arena(), request_payload, .{});
+            const response = try handler.handleRequest(message);
+            const response_payload = try std.json.stringify(response, .{});
 
-            var out_buffer: [0x1000]u8 = undefined;
-            var response_stream = std.io.fixedBufferStream(&out_buffer);
-            try response_stream.writer().writeStruct(protocol.ResponseHeader{
-                .seq_id = request_header.seq_id,
-            });
-
-            try handler.handleRequest(request_header.op, &request_stream, &response_stream);
-
-            log.info("response: {s}", .{std.fmt.fmtSliceHexLower(response_stream.getWritten())});
-            try handler.queueSendMessage(response_stream.getWritten());
+            log.info("response: {s}", .{response_payload});
+            try handler.queueSendMessage(response_payload);
         }
     }
 
@@ -367,8 +360,8 @@ const ConnectionHandler = struct {
         };
         const opcode_byte = header[0];
         // 0b10000000: FIN - this is a complete message.
-        // 0b00000010: opcode=2 - this is a binary message.
-        const expected_opcode_byte = 0b10000010;
+        // 0b00000001: opcode=1 - this is a text message.
+        const expected_opcode_byte = 0b10000001;
         if (opcode_byte != expected_opcode_byte) {
             log.warn("bad opcode byte: {}", .{opcode_byte});
             return null;
@@ -491,90 +484,15 @@ const ConnectionHandler = struct {
         try handler.connection.stream.writevAll(&iovecs);
     }
 
-    fn handleRequest(handler: *ConnectionHandler, op: protocol.Opcode, request: *std.io.FixedBufferStream([]u8), response: *std.io.FixedBufferStream([]u8)) !void {
-        switch (op) {
-            .ping => {
-                try response.writer().writeIntLittle(i128, std.time.nanoTimestamp());
+    fn handleRequest(handler: *ConnectionHandler, request: Message) std.json.Value!void {
+        switch (request.name) {
+            .setStreaming => {
+                // TODO
+                return .null;
             },
-            .query => {
-                const query_request = try request.reader().readStruct(protocol.QueryRequest);
-                try response.writer().writeStruct(protocol.QueryResponseHeader{
-                    .library_version = library.current_library_version,
-                    .queue_version = queue.current_queue_version,
-                    .events_version = events.current_events_version,
-                });
-
-                // Library
-                if (library.current_library_version != query_request.last_library) {
-                    try response.writer().writeStruct(protocol.LibraryHeader{
-                        // there there is is nothing wrong with this naming.
-                        .string_size = @intCast(u32, library.library.strings.buf.items.len),
-                        .track_count = @intCast(u32, library.library.tracks.count()),
-                    });
-                    try response.writer().writeAll(library.library.strings.buf.items);
-                    try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
-                    try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.values()));
-                }
-
-                // Queue
-                if (queue.current_queue_version != query_request.last_queue) {
-                    try response.writer().writeStruct(protocol.QueueHeader{
-                        .item_count = @intCast(u32, queue.queue.items.count()),
-                    });
-                    try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
-                    try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
-                }
-
-                // Events
-                if (events.current_events_version != query_request.last_events) {
-                    try response.writer().writeStruct(protocol.EventsHeader{
-                        .string_size = @intCast(u32, events.events.strings.buf.items.len),
-                        .item_count = @intCast(u32, events.events.events.count()),
-                    });
-                    try response.writer().writeAll(events.events.strings.buf.items);
-                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));
-                    try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.values()));
-                }
-            },
-            .enqueue => {
-                const enqueue_request = try request.reader().readStruct(protocol.EnqueueRequestHeader);
-
-                const track_key = enqueue_request.track_key;
-                const track = library.library.tracks.get(track_key) orelse return error.TrackNotFound;
-                try queue.queue.items.putNoClobber(queue.generateItemKey(), protocol.QueueItem{
-                    .sort_key = queue.generateSortKey(),
-                    .track_key = track_key,
-                });
-
-                const full_path = try fs.path.joinZ(handler.arena(), &.{
-                    library.music_dir_path, library.library.getString(track.file_path),
-                });
-
-                const test_file = try g.groove.file_create(); // TODO cleanup
-                try test_file.open(full_path, full_path); // TODO cleanup
-
-                log.debug("queuing up {s}", .{full_path});
-                _ = try handler.player.playlist.insert(test_file, 1.0, 1.0, null);
-
-                queue.current_queue_version += 1;
-                try broadcastPushMessage();
-            },
-            .send_chat => {
-                const sub_header = try request.reader().readStruct(protocol.SendChatRequestHeader);
-                const msg = try handler.arena().alloc(u8, sub_header.msg_len);
-                try request.reader().readNoEof(msg);
-                log.info("chat: {s}", .{msg});
-
-                const name_id = try events.events_string_putter.putString("joshprobably");
-                const content_id = try events.events_string_putter.putString(msg);
-                try events.events.events.putNoClobber(events.events.events.count() + 1, protocol.Event{
-                    .sort_key = 0,
-                    .name = name_id,
-                    .content = content_id,
-                });
-                events.current_events_version += 1;
-
-                try broadcastPushMessage();
+            .subscribe => {
+                // TODO
+                return .null;
             },
         }
     }
@@ -692,3 +610,12 @@ fn broadcastMessage(message: []const u8) !void {
         try handler.queueSendMessage(message);
     }
 }
+
+// TODO: move this elsewhere:
+const Message = struct {
+    name: enum {
+        setStreaming,
+        subscribe,
+    },
+    args: std.json.Value,
+};

@@ -20,7 +20,7 @@ pub fn build(b: *Builder) void {
     // TODO: update the pastejs and pastehtmlcss commands to use RunStep
     // properly rather than writing directly to this installation directory
     b.installDirectory(.{
-        .source_dir = "public",
+        .source_dir = .{ .path = "public" },
         .install_dir = .lib,
         .install_subdir = "public",
     });

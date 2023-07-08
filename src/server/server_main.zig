@@ -99,7 +99,7 @@ pub fn main() anyerror!void {
             fatal("Unable to read {s}: {s}", .{ config_json_path, @errorName(e) });
         },
     };
-    const config = try json.parseFromSlice(ConfigJson, arena, json_text, .{});
+    const config = try json.parseFromSliceLeaky(ConfigJson, arena, json_text, .{});
 
     return listen(arena, config);
 }
@@ -284,7 +284,7 @@ const ConnectionHandler = struct {
             const status = try handler.player.encoder.buffer_get(&buffer, true);
             _ = status;
             if (buffer) |buf| {
-                const data = buf.data[0][0..@intCast(usize, buf.size)];
+                const data = buf.data[0][0..@as(usize, @intCast(buf.size))];
                 try w.writeAll(data);
                 buf.unref();
             }
@@ -343,7 +343,7 @@ const ConnectionHandler = struct {
 
             const message = try std.json.parseFromSliceLeaky(Message, handler.arena(), request_payload, .{});
             const response = try handler.handleRequest(message);
-            const response_payload = try std.json.stringify(response, .{});
+            const response_payload = try std.json.stringifyAlloc(handler.arena(), response, .{});
 
             log.info("response: {s}", .{response_payload});
             try handler.queueSendMessage(response_payload);
@@ -399,7 +399,7 @@ const ConnectionHandler = struct {
         const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
         // read payload
-        const payload_aligned = try handler.arena().allocWithOptions(u8, std.mem.alignForward(len, 4), 4, null);
+        const payload_aligned = try handler.arena().allocWithOptions(u8, std.mem.alignForward(usize, len, 4), 4, null);
         const payload = payload_aligned[0..len];
         try handler.connection.stream.reader().readNoEof(payload);
 
@@ -460,13 +460,13 @@ const ConnectionHandler = struct {
         const header = switch (message.len) {
             0...125 => blk: {
                 // small size
-                header_buf[1] = @intCast(u8, message.len);
+                header_buf[1] = @as(u8, @intCast(message.len));
                 break :blk header_buf[0..2];
             },
             126...0xffff => blk: {
                 // 16-bit size
                 header_buf[1] = 126;
-                std.mem.writeIntBig(u16, header_buf[2..4], @intCast(u16, message.len));
+                std.mem.writeIntBig(u16, header_buf[2..4], @as(u16, @intCast(message.len)));
                 break :blk header_buf[0..4];
             },
             else => blk: {
@@ -484,7 +484,8 @@ const ConnectionHandler = struct {
         try handler.connection.stream.writevAll(&iovecs);
     }
 
-    fn handleRequest(handler: *ConnectionHandler, request: Message) std.json.Value!void {
+    fn handleRequest(handler: *ConnectionHandler, request: Message) !std.json.Value {
+        _ = handler;
         switch (request.name) {
             .setStreaming => {
                 // TODO

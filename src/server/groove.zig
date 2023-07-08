@@ -292,9 +292,9 @@ pub const Groove = opaque {
         extern fn groove_encoder_detach(encoder: *Encoder) CError;
 
         pub fn buffer_get(encoder: *Encoder, buffer: *?*Buffer, block: bool) Error!BUFFER {
-            const rc = groove_encoder_buffer_get(encoder, buffer, @boolToInt(block));
-            if (rc < 0) try wrapError(@intToEnum(CError, rc));
-            return @intToEnum(BUFFER, rc);
+            const rc = groove_encoder_buffer_get(encoder, buffer, @intFromBool(block));
+            if (rc < 0) try wrapError(@as(CError, @enumFromInt(rc)));
+            return @as(BUFFER, @enumFromInt(rc));
         }
         /// returns < 0 on error, #GROOVE_BUFFER_NO on aborted (block=1) or no buffer
         /// ready (block=0), #GROOVE_BUFFER_YES on buffer returned, and GROOVE_BUFFER_END

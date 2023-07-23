@@ -23,6 +23,43 @@ const TODO = struct {
     }
 };
 
+fn nameAndArgsParse(comptime T: type, allocator: Allocator, source: anytype, options: json.ParseOptions) !T {
+    // The fields can appear in any order, and we need to know the value of one before we can parse the other.
+    var dynamic_value = try json.parseFromTokenSourceLeaky(json.Value, allocator, source, options);
+    return nameAndArgsParseFromValue(T, allocator, dynamic_value, options);
+}
+fn nameAndArgsParseFromValue(comptime T: type, allocator: Allocator, source: json.Value, options: json.ParseOptions) !T {
+    if (source != .object) return error.UnexpectedToken;
+    const tag_name = switch (source.object.get("name") orelse return error.MissingField) {
+        .string => |s| s,
+        else => return error.UnexpectedToken,
+    };
+    const value = source.object.get("args") orelse return error.MissingField;
+    inline for (@typeInfo(T).Union.fields) |u_field| {
+        if (std.mem.eql(u8, u_field.name, tag_name)) {
+            return @unionInit(T, u_field.name, try json.innerParseFromValue(u_field.type, allocator, value, options));
+        }
+    } else return error.UnknownField;
+}
+fn nameAndArgsStringify(self: anytype, jw: anytype) !void {
+    const tag_name = @tagName(self);
+
+    try jw.beginObject();
+
+    try jw.objectField("name");
+    try jw.write(tag_name);
+
+    try jw.objectField("args");
+    inline for (@typeInfo(@TypeOf(self)).Union.fields) |u_field| {
+        if (std.mem.eql(u8, u_field.name, tag_name)) {
+            try jw.write(@field(self, u_field.name));
+            break;
+        }
+    } else unreachable;
+
+    try jw.endObject();
+}
+
 // Client-to-Server Control Messages
 pub const ClientToServerMessage = union(enum) {
     approve: TODO,
@@ -72,6 +109,16 @@ pub const ClientToServerMessage = union(enum) {
     lastFmGetSession: TODO,
     lastFmScrobblersAdd: TODO,
     lastFmScrobblersRemove: TODO,
+
+    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+        return nameAndArgsParse(@This(), allocator, source, options);
+    }
+    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+        return nameAndArgsParseFromValue(@This(), allocator, source, options);
+    }
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        return nameAndArgsStringify(self, jw);
+    }
 };
 
 pub const ServerToClientMessage = union(enum) {
@@ -104,6 +151,16 @@ pub const ServerToClientMessage = union(enum) {
     streamEndpoint: TODO,
     protocolMetadata: TODO,
     events: TODO,
+
+    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+        return nameAndArgsParse(@This(), allocator, source, options);
+    }
+    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+        return nameAndArgsParseFromValue(@This(), allocator, source, options);
+    }
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        return nameAndArgsStringify(self, jw);
+    }
 };
 
 pub const LibraryTrack = struct {

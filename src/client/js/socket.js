@@ -33,9 +33,11 @@ function Socket() {
     }
 
     function onMessage(ev) {
-      console.log("received:", ev.data);
       var msg = JSON.parse(ev.data);
-      self.emit(msg.name, msg.args);
+      var name = Object.keys(msg)[0];
+      var args = msg[name];
+      console.log("received:", name, args);
+      self.emit(name, args);
     }
 
     function timeoutThenCreateNew() {
@@ -53,8 +55,5 @@ function Socket() {
 
 Socket.prototype.send = function(name, args) {
   console.log("sending:", name, args);
-  this.ws.send(JSON.stringify({
-    name: name,
-    args: args,
-  }));
+  this.ws.send(JSON.stringify({[name]: args}));
 };

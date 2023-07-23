@@ -11,7 +11,8 @@ const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
-const protocol = @import("shared").protocol;
+const groovebasin_protocol = @import("groovebasin_protocol.zig");
+
 const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
@@ -88,7 +89,7 @@ pub fn main() anyerror!void {
             const config: ConfigJson = .{
                 .musicDirectory = try defaultMusicPath(arena),
             };
-            try json.stringify(config, .{ .whitespace = .{} }, buffered_writer.writer());
+            try json.stringify(config, .{}, buffered_writer.writer());
 
             try buffered_writer.flush();
             try atomic_file.finish();
@@ -339,14 +340,16 @@ const ConnectionHandler = struct {
             handler.resetArena();
 
             const request_payload = (try handler.readMessage()) orelse break;
-            log.info("request: {s}", .{request_payload});
+            log.info("received: {s}", .{request_payload});
 
-            const message = try std.json.parseFromSliceLeaky(Message, handler.arena(), request_payload, .{});
-            const response = try handler.handleRequest(message);
-            const response_payload = try std.json.stringifyAlloc(handler.arena(), response, .{});
-
-            log.info("response: {s}", .{response_payload});
-            try handler.queueSendMessage(response_payload);
+            var scanner = std.json.Scanner.initCompleteInput(handler.arena(), request_payload);
+            var diagnostics = std.json.Diagnostics{};
+            scanner.enableDiagnostics(&diagnostics);
+            const message = std.json.parseFromTokenSourceLeaky(groovebasin_protocol.ClientToServerMessage, handler.arena(), &scanner, .{}) catch |err| {
+                log.warn("json err: {}: line,col: {},{}", .{ err, diagnostics.getLine(), diagnostics.getColumn() });
+                return err;
+            };
+            try handler.handleRequest(message);
         }
     }
 
@@ -415,14 +418,18 @@ const ConnectionHandler = struct {
         return payload;
     }
 
-    fn queueSendMessage(handler: *ConnectionHandler, message: []const u8) !void {
+    fn queueSendMessage(handler: *ConnectionHandler, message: groovebasin_protocol.ServerToClientMessage) !void {
         if (handler.websocket_send_thread_shutdown) {
             // There's surely some kind of race condition memory leak here.
             return;
         }
+
+        const payload = try std.json.stringifyAlloc(handler.arena(), message, .{});
+        log.info("sending: {s}", .{payload});
+
         const node = try g.gpa.create(WebsocketReadQueue.Node);
         node.* = WebsocketReadQueue.Node{
-            .data = try g.gpa.dupe(u8, message),
+            .data = try g.gpa.dupe(u8, payload),
         };
         handler.websocket_send_queue.put(node);
     }
@@ -455,8 +462,8 @@ const ConnectionHandler = struct {
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.
-        // 0b00000010: opcode=2 - this is a binary message.
-        header_buf[0] = 0b10000010;
+        // 0b00000001: opcode=1 - this is a text message.
+        header_buf[0] = 0b10000001;
         const header = switch (message.len) {
             0...125 => blk: {
                 // small size
@@ -484,17 +491,39 @@ const ConnectionHandler = struct {
         try handler.connection.stream.writevAll(&iovecs);
     }
 
-    fn handleRequest(handler: *ConnectionHandler, request: Message) !std.json.Value {
-        _ = handler;
-        switch (request.name) {
+    fn handleRequest(handler: *ConnectionHandler, request: groovebasin_protocol.ClientToServerMessage) !void {
+        // startup messages:
+        //  .user
+        //  .time
+        //  .token
+        //  .lastFmApiKey
+        //  .user (again, this time as not a guest)
+        //  .streamEndpoint
+        //  .autoDjOn
+        //  .hardwarePlayback
+        //  .haveAdminUser
+        //  .labels - large database
+        //  .library - large database
+        //  .queue - large database
+        //  .scanning
+        //  .volume
+        //  .repeat
+        //  .currentTrack
+        //  .playlists - large database
+        //  .anonStreamers
+        //  .users (not to be confused with .user)
+        //  .events - large database
+        //  .importProgress
+        switch (request) {
             .setStreaming => {
                 // TODO
-                return .null;
             },
             .subscribe => {
-                // TODO
-                return .null;
+                try handler.queueSendMessage(.{
+                    .library = .{},
+                });
             },
+            else => unreachable,
         }
     }
 };
@@ -592,18 +621,9 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
-fn broadcastPushMessage() !void {
-    const entire_message = protocol.ResponseHeader{
-        .seq_id = 0x8000_0000,
-    };
-    try broadcastMessage(std.mem.asBytes(&entire_message));
-}
-
-fn broadcastMessage(message: []const u8) !void {
+fn broadcastMessage(message: groovebasin_protocol.ServerToClientMessage) !void {
     client_connections_mutex.lock();
     defer client_connections_mutex.unlock();
-
-    log.info("broadcast: {s}", .{std.fmt.fmtSliceHexLower(message)});
 
     var it = client_connections.iterator();
     while (it.next()) |entry| {
@@ -611,12 +631,3 @@ fn broadcastMessage(message: []const u8) !void {
         try handler.queueSendMessage(message);
     }
 }
-
-// TODO: move this elsewhere:
-const Message = struct {
-    name: enum {
-        setStreaming,
-        subscribe,
-    },
-    args: std.json.Value,
-};

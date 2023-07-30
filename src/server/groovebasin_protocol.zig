@@ -34,9 +34,13 @@ fn nameAndArgsParseFromValue(comptime T: type, allocator: Allocator, source: jso
         .string => |s| s,
         else => return error.UnexpectedToken,
     };
-    const value = source.object.get("args") orelse return error.MissingField;
     inline for (@typeInfo(T).Union.fields) |u_field| {
         if (std.mem.eql(u8, u_field.name, tag_name)) {
+            if (u_field.type == void) {
+                // Ignore void "args".
+                return @unionInit(T, u_field.name, {});
+            }
+            const value = source.object.get("args") orelse return error.MissingField;
             return @unionInit(T, u_field.name, try json.innerParseFromValue(u_field.type, allocator, value, options));
         }
     } else return error.UnknownField;
@@ -49,9 +53,13 @@ fn nameAndArgsStringify(self: anytype, jw: anytype) !void {
     try jw.objectField("name");
     try jw.write(tag_name);
 
-    try jw.objectField("args");
     inline for (@typeInfo(@TypeOf(self)).Union.fields) |u_field| {
         if (std.mem.eql(u8, u_field.name, tag_name)) {
+            if (u_field.type == void) {
+                // Omit void "args".
+                break;
+            }
+            try jw.objectField("args");
             try jw.write(@field(self, u_field.name));
             break;
         }

@@ -467,10 +467,19 @@ const ConnectionHandler = struct {
         const opcode_byte = header[0];
         // 0b10000000: FIN - this is a complete message.
         // 0b00000001: opcode=1 - this is a text message.
-        const expected_opcode_byte = 0b10000001;
-        if (opcode_byte != expected_opcode_byte) {
-            log.warn("bad opcode byte: {}", .{opcode_byte});
-            return null;
+        // 0b00001000: opcode=8 - denotes a connection close.
+        const complete_text_message_opcode = 0b10000001;
+        const close_message_opcode = 0b10001000;
+        switch (opcode_byte) {
+            complete_text_message_opcode => {},
+            close_message_opcode => {
+                log.info("websocket client requested clean shutdown", .{});
+                return null;
+            },
+            else => {
+                log.warn("bad opcode byte: {}", .{opcode_byte});
+                return null;
+            },
         }
 
         // read length

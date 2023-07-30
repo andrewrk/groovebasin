@@ -39,5 +39,11 @@ pub fn Channel(comptime FifoType: type) type {
                 };
             }
         }
+
+        pub fn get(self: *@This()) ?T {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            return self.fifo.readItem();
+        }
     };
 }

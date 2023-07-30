@@ -16,6 +16,7 @@ const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
+const server_logic = @import("server_logic.zig");
 
 const library = @import("library.zig");
 const queue = @import("queue.zig");
@@ -170,7 +171,8 @@ pub fn main() anyerror!void {
 
     _ = try std.Thread.spawn(.{}, listenThreadEntrypoint, .{});
 
-    return serverLogicMain();
+    serverLogicMain();
+    unreachable;
 }
 
 fn defaultMusicPath(arena: Allocator) ![]const u8 {
@@ -191,17 +193,38 @@ var client_connections_mutex = Mutex{};
 var player: Player = undefined;
 var config: ConfigJson = undefined;
 
-var to_server_channel = channel(LinearFifo(*ArenaAndClientToServerMessage, .{ .Static = 64 }).init());
+var to_server_channel = channel(LinearFifo(*ToServerMessage, .{ .Static = 64 }).init());
 
-const ArenaAndClientToServerMessage = struct {
-    /// backed by g.gpa.
-    arena: std.heap.ArenaAllocator,
-    client_id: *anyopaque,
-    message: groovebasin_protocol.ClientToServerMessage,
+const ToServerMessage = struct {
+    refcounter: RefCounter = .{},
+    event: union(enum) {
+        client_to_server_message: struct {
+            client_id: *anyopaque,
+            message: *RefCountedByteSlice,
+        },
+        client_connected: *anyopaque,
+        client_disconnected: *anyopaque,
+    },
 
-    pub fn destroySelf(self: *@This()) void {
-        self.arena.deinit();
-        g.gpa.destroy(self);
+    pub fn ref(self: *@This()) void {
+        self.refcounter.ref();
+        switch (self.event) {
+            .client_to_server_message => |m| {
+                m.message.ref(); // trace:ToServerMessage
+            },
+            else => {},
+        }
+    }
+    pub fn unref(self: *@This()) void {
+        if (self.refcounter.unref()) {
+            switch (self.event) {
+                .client_to_server_message => |m| {
+                    m.message.unref(); // trace:ToServerMessage
+                },
+                else => {},
+            }
+            g.gpa.destroy(self);
+        }
     }
 };
 
@@ -226,19 +249,14 @@ fn listen() !void {
     }
 
     while (true) {
-        const handler = c: {
-            const handler = try g.gpa.create(ConnectionHandler);
-            errdefer g.gpa.destroy(handler);
-            handler.* = .{
-                .arena_allocator = std.heap.ArenaAllocator.init(g.gpa),
-                .connection = try server.accept(),
-            };
-            break :c handler;
-        };
+        const connection = try server.accept();
+        const handler = try g.gpa.create(ConnectionHandler);
+        handler.* = .{ .connection = connection };
+        handler.ref(); // trace:ConnectionHandler.entrypoint
+
         _ = std.Thread.spawn(.{}, ConnectionHandler.entrypoint, .{handler}) catch |err| {
             log.err("handling connection failed: {}", .{err});
-            // These need to be cleaned up by someone:
-            handler.destroySelf();
+            handler.unref(); // trace:ConnectionHandler.entrypoint
             continue;
         };
     }
@@ -247,29 +265,40 @@ fn listen() !void {
 const WebsocketSendFifo = LinearFifo(?*RefCountedByteSlice, .{ .Static = 16 });
 
 const ConnectionHandler = struct {
-    arena_allocator: std.heap.ArenaAllocator,
     connection: net.StreamServer.Connection,
+    refcounter: RefCounter = .{},
 
     // only used for websocket handlers
     websocket_send_queue: Channel(WebsocketSendFifo) = channel(WebsocketSendFifo.init()),
-    websocket_send_thread: std.Thread = undefined,
-    websocket_send_thread_shutdown: bool = false,
+    is_closing: std.atomic.Atomic(bool) = .{ .value = false },
 
-    pub fn destroySelf(self: *@This()) void {
-        self.arena_allocator.deinit();
-        self.connection.stream.close();
-        g.gpa.destroy(self);
+    pub fn ref(self: *@This()) void {
+        self.refcounter.ref();
     }
-
-    fn arena(self: *@This()) Allocator {
-        return self.arena_allocator.allocator();
+    pub fn unref(self: *@This()) void {
+        if (self.refcounter.unref()) {
+            log.debug("destroying connection handler", .{});
+            self.close();
+            g.gpa.destroy(self);
+        }
+    }
+    pub fn close(self: *@This()) void {
+        if (self.is_closing.swap(true, .SeqCst) == true) return;
+        // We're the thread that does the shutdown.
+        self.connection.stream.close();
+        // Drain and unref everything in the send queue.
+        while (self.websocket_send_queue.get()) |item| {
+            item.?.unref();
+        }
+        // Wake up the send thread if necessary.
+        self.websocket_send_queue.put(null) catch unreachable;
     }
 
     fn entrypoint(self: *@This()) void {
         self.handleConnection() catch |err| {
             log.err("unable to handle connection: {s}", .{@errorName(err)});
         };
-        self.destroySelf();
+        self.unref(); // trace:ConnectionHandler.entrypoint
     }
 
     fn handleConnection(self: *@This()) !void {
@@ -369,67 +398,65 @@ const ConnectionHandler = struct {
             try self.connection.stream.writevAll(&iovecs);
         }
 
-        self.websocket_send_thread = std.Thread.spawn(.{}, @This().websocketSendLoop, .{self}) catch |err| {
+        self.ref(); // trace:websocketSendLoop
+        _ = std.Thread.spawn(.{}, @This().websocketSendLoop, .{self}) catch |err| {
             log.err("spawning websocket handler thread failed: {}", .{err});
+            self.unref(); // trace:websocketSendLoop
             return err;
         };
-        defer {
-            self.websocket_send_thread_shutdown = true;
-            self.websocket_send_thread.join();
-        }
+        defer self.close();
 
         // Welcome to the party.
         {
-            client_connections_mutex.lock();
-            defer client_connections_mutex.unlock();
-            try client_connections.putNoClobber(self, {});
-            log.info("client connections count++: {}", .{client_connections.count()});
+            const delivery = try g.gpa.create(ToServerMessage);
+            delivery.* = .{ .event = .{ .client_connected = @as(*anyopaque, self) } };
+            delivery.ref(); // trace:to_server_channel
+            to_server_channel.put(delivery) catch |err| {
+                log.warn("server overloaded!", .{});
+                delivery.unref(); // trace:to_server_channel
+                return err;
+            };
         }
         defer {
             // Goodbye from the party.
-            client_connections_mutex.lock();
-            defer client_connections_mutex.unlock();
-            if (!client_connections.remove(self)) unreachable;
-            log.info("client connections count--: {}", .{client_connections.count()});
+            if (g.gpa.create(ToServerMessage)) |delivery| {
+                delivery.* = .{ .event = .{ .client_disconnected = @as(*anyopaque, self) } };
+                delivery.ref(); // trace:to_server_channel
+                to_server_channel.put(delivery) catch {
+                    // TODO: this error should be impossible by design somehow.
+                    log.warn("server overloaded!", .{});
+                    delivery.unref(); // trace:to_server_channel
+                };
+            } else |_| {
+                // TODO: this error should be impossible by design somehow.
+                log.warn("server overloaded!", .{});
+            }
         }
 
         while (true) {
-            _ = self.arena_allocator.reset(.{ .retain_with_limit = 0x1000 });
-
             // Receive message.
-            const request_payload = (try self.readMessage()) orelse break;
-            log.info("received: {s}", .{request_payload});
+            const request = (try self.readMessage()) orelse break;
+            request.ref(); // trace:recv_buffer
+            defer request.unref(); // trace:recv_buffer
+            log.info("received: {s}", .{request.payload});
 
-            // Decode from JSON.
-            var scanner = std.json.Scanner.initCompleteInput(self.arena(), request_payload);
-            var diagnostics = std.json.Diagnostics{};
-            scanner.enableDiagnostics(&diagnostics);
-            const delivery = try g.gpa.create(ArenaAndClientToServerMessage);
-            delivery.* = .{
-                .arena = std.heap.ArenaAllocator.init(g.gpa),
+            const delivery = try g.gpa.create(ToServerMessage);
+            delivery.* = .{ .event = .{ .client_to_server_message = .{
                 .client_id = self,
-                .message = undefined,
-            };
-            errdefer delivery.destroySelf();
-            delivery.message = std.json.parseFromTokenSourceLeaky(
-                groovebasin_protocol.ClientToServerMessage,
-                delivery.arena.allocator(),
-                &scanner,
-                .{ .allocate = .alloc_always },
-            ) catch |err| {
-                log.warn("json err: {}: line,col: {},{}", .{ err, diagnostics.getLine(), diagnostics.getColumn() });
-                return err;
-            };
+                .message = request,
+            } } };
+            delivery.ref(); // trace:to_server_channel
 
             // Deliver to server logic thread.
             to_server_channel.put(delivery) catch |err| {
                 log.warn("server overloaded!", .{});
+                delivery.unref(); // trace:to_server_channel
                 return err;
             };
         }
     }
 
-    fn readMessage(self: *@This()) !?[]u8 {
+    fn readMessage(self: *@This()) !?*RefCountedByteSlice {
         // See https://tools.ietf.org/html/rfc6455
         // read first byte.
         var header = [_]u8{0} ** 2;
@@ -478,7 +505,8 @@ const ConnectionHandler = struct {
         const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
         // read payload
-        const payload_aligned = try self.arena().allocWithOptions(u8, std.mem.alignForward(usize, len, 4), 4, null);
+        const allocated_len = std.mem.alignForward(usize, len, 4);
+        const payload_aligned = try g.gpa.allocWithOptions(u8, allocated_len, 4, null);
         const payload = payload_aligned[0..len];
         try self.connection.stream.reader().readNoEof(payload);
 
@@ -491,33 +519,28 @@ const ConnectionHandler = struct {
                 payload_as_u32_array[i] ^= mask_native;
             }
         }
-        return payload;
+
+        const result = try g.gpa.create(RefCountedByteSlice);
+        result.* = .{ .payload = payload, .is_align_4 = true };
+        return result;
     }
 
     fn websocketSendLoop(self: *@This()) void {
+        defer self.unref(); // trace:websocketSendLoop
         while (true) {
-            const delivery = self.websocket_send_queue.getBlocking() orelse {
-                if (self.websocket_send_thread_shutdown) {
-                    self.connection.stream.close();
-                    return;
-                }
-                continue;
-            };
-            defer delivery.unref();
+            const delivery = self.websocket_send_queue.getBlocking() orelse break;
+            defer delivery.unref(); // trace:websocket_send_queue
 
-            self.writeMessageFromSendThread(delivery.payload) catch |err| switch (err) {
-                error.BrokenPipe => {
-                    log.warn("websocket closed unexpectedly: {}", .{err});
-                    self.websocket_send_thread_shutdown = true;
-                },
-                else => {
-                    log.err("error writing message to websocket: {}", .{err});
-                },
+            self.writeMessageFromSendThread(delivery.payload) catch |err| {
+                log.err("error writing message to websocket: {}", .{err});
+                break;
             };
         }
+        self.close();
     }
 
     fn writeMessageFromSendThread(self: *@This(), message: []const u8) !void {
+        log.info("sending: {s}", .{message});
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.
@@ -644,96 +667,70 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
-fn broadcastMessage(message: groovebasin_protocol.ServerToClientMessage, only_to_this_client: ?*anyopaque) !void {
-    const delivery = blk: {
-        const payload = try std.json.stringifyAlloc(g.gpa, message, .{});
-        errdefer g.gpa.free(payload);
-        log.info("broadcasting: {s}", .{payload});
-
-        const delivery = try g.gpa.create(RefCountedByteSlice);
-        delivery.* = .{ .payload = payload };
-        break :blk delivery;
+/// Takes ownership of message_bytes, even when an error is returned.
+pub fn sendMessageToClient(client_id: *anyopaque, message_bytes: []const u8) !void {
+    const handler: *ConnectionHandler = @ptrCast(@alignCast(client_id));
+    const delivery = g.gpa.create(RefCountedByteSlice) catch |err| {
+        g.gpa.free(message_bytes);
+        return err;
     };
-    delivery.ref();
-    defer delivery.unref();
-
-    client_connections_mutex.lock();
-    defer client_connections_mutex.unlock();
-
-    var it = client_connections.iterator();
-    while (it.next()) |entry| {
-        const handler = entry.key_ptr.*;
-        if (only_to_this_client) |client_id| {
-            if (client_id != @as(*anyopaque, handler)) continue;
-        }
-
-        delivery.ref();
-        handler.websocket_send_queue.put(delivery) catch |err| {
-            log.warn("websocket client send queue backed up. {}. closing.", .{err});
-            handler.websocket_send_thread_shutdown = true;
-        };
+    delivery.* = .{ .payload = message_bytes };
+    delivery.ref(); // trace:websocket_send_queue
+    if (handler.is_closing.load(.SeqCst)) {
+        // TODO: This is unsound. This flag needs to be attached to the queue mutex i think.
+        delivery.unref();
+        return;
     }
+    handler.websocket_send_queue.put(delivery) catch |err| {
+        log.warn("websocket client send queue backed up. {}. closing.", .{err});
+        handler.close();
+        delivery.unref(); // trace:websocket_send_queue
+    };
 }
 
-fn serverLogicMain() !void {
+fn serverLogicMain() noreturn {
     while (true) {
-        const incoming_delivery = to_server_channel.getBlocking();
-        defer incoming_delivery.destroySelf();
-        handleRequest(incoming_delivery.arena.allocator(), incoming_delivery.client_id, &incoming_delivery.message) catch |err| {
+        serverLogicOneIteration() catch |err| {
             log.warn("Error handling message: {}", .{err});
         };
     }
 }
 
-// TODO: move to another file.
-fn handleRequest(arena: Allocator, client_id: *anyopaque, message: *const groovebasin_protocol.ClientToServerMessage) !void {
-    // startup messages:
-    //  .user
-    //  .time
-    //  .token
-    //  .lastFmApiKey
-    //  .user (again, this time as not a guest)
-    //  .streamEndpoint
-    //  .autoDjOn
-    //  .hardwarePlayback
-    //  .haveAdminUser
-    //  .labels - large database
-    //  .library - large database
-    //  .queue - large database
-    //  .scanning
-    //  .volume
-    //  .repeat
-    //  .currentTrack
-    //  .playlists - large database
-    //  .anonStreamers
-    //  .users (not to be confused with .user)
-    //  .events - large database
-    //  .importProgress
-    _ = arena;
-    switch (message.*) {
-        .setStreaming => {
-            // TODO
+fn serverLogicOneIteration() !void {
+    const delivery = to_server_channel.getBlocking();
+    defer delivery.unref(); // trace:to_server_channel
+    switch (delivery.event) {
+        .client_to_server_message => |*incoming_delivery| {
+            try server_logic.handleRequest(
+                incoming_delivery.client_id,
+                incoming_delivery.message.payload,
+            );
         },
-        .subscribe => {
-            // TODO
-            try broadcastMessage(.{
-                .library = .{},
-            }, client_id);
+        .client_connected => |client_id| {
+            try server_logic.handleClientConnected(client_id);
         },
-        else => unreachable,
+        .client_disconnected => |client_id| {
+            try server_logic.handleClientDisconnected(client_id);
+        },
     }
 }
 
 const RefCountedByteSlice = struct {
     payload: []const u8,
     refcounter: RefCounter = .{},
+    is_align_4: bool = false,
 
     pub fn ref(self: *@This()) void {
         self.refcounter.ref();
     }
     pub fn unref(self: *@This()) void {
         if (self.refcounter.unref()) {
-            g.gpa.free(self.payload);
+            if (self.is_align_4) {
+                const allocated_payload: []align(4) const u8 = @alignCast(self.payload.ptr[0..std.mem.alignForward(usize, self.payload.len, 4)]);
+                g.gpa.free(allocated_payload);
+            } else {
+                g.gpa.free(self.payload);
+            }
             // later nerds
             g.gpa.destroy(self);
         }

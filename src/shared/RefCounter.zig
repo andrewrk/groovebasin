@@ -13,7 +13,7 @@ pub fn ref(self: *@This()) void {
 /// Returns true iff the count reached zero.
 pub fn unref(self: *@This()) bool {
     // Release ensures code before unref() happens-before the count is decremented and checked.
-    if (self.count.fetchSub(1, .Release) == 0) {
+    if (self.count.fetchSub(1, .Release) == 1) {
         // Acquire ensures count decrement and code before previous unrefs()s happens-before we return.
         self.count.fence(.Acquire);
         return true;

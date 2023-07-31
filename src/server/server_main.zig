@@ -88,7 +88,7 @@ pub fn main() anyerror!void {
             const config: ConfigJson = .{
                 .musicDirectory = try defaultMusicPath(arena),
             };
-            try json.stringify(config, .{ .whitespace = .{} }, buffered_writer.writer());
+            try json.stringify(config, .{ .whitespace = .indent_4 }, buffered_writer.writer());
 
             try buffered_writer.flush();
             try atomic_file.finish();
@@ -99,7 +99,7 @@ pub fn main() anyerror!void {
             fatal("Unable to read {s}: {s}", .{ config_json_path, @errorName(e) });
         },
     };
-    const config = try json.parseFromSlice(ConfigJson, arena, json_text, .{});
+    const config = try json.parseFromSliceLeaky(ConfigJson, arena, json_text, .{});
 
     return listen(arena, config);
 }
@@ -284,7 +284,7 @@ const ConnectionHandler = struct {
             const status = try handler.player.encoder.buffer_get(&buffer, true);
             _ = status;
             if (buffer) |buf| {
-                const data = buf.data[0][0..@intCast(usize, buf.size)];
+                const data = buf.data[0][0..@as(usize, @intCast(buf.size))];
                 try w.writeAll(data);
                 buf.unref();
             }
@@ -406,7 +406,7 @@ const ConnectionHandler = struct {
         const mask_native = std.mem.readIntNative(u32, &mask_buffer);
 
         // read payload
-        const payload_aligned = try handler.arena().allocWithOptions(u8, std.mem.alignForward(len, 4), 4, null);
+        const payload_aligned = try handler.arena().allocWithOptions(u8, std.mem.alignForward(usize, len, 4), 4, null);
         const payload = payload_aligned[0..len];
         try handler.connection.stream.reader().readNoEof(payload);
 
@@ -467,13 +467,13 @@ const ConnectionHandler = struct {
         const header = switch (message.len) {
             0...125 => blk: {
                 // small size
-                header_buf[1] = @intCast(u8, message.len);
+                header_buf[1] = @as(u8, @intCast(message.len));
                 break :blk header_buf[0..2];
             },
             126...0xffff => blk: {
                 // 16-bit size
                 header_buf[1] = 126;
-                std.mem.writeIntBig(u16, header_buf[2..4], @intCast(u16, message.len));
+                std.mem.writeIntBig(u16, header_buf[2..4], @as(u16, @intCast(message.len)));
                 break :blk header_buf[0..4];
             },
             else => blk: {
@@ -508,8 +508,8 @@ const ConnectionHandler = struct {
                 if (library.current_library_version != query_request.last_library) {
                     try response.writer().writeStruct(protocol.LibraryHeader{
                         // there there is is nothing wrong with this naming.
-                        .string_size = @intCast(u32, library.library.strings.buf.items.len),
-                        .track_count = @intCast(u32, library.library.tracks.count()),
+                        .string_size = @as(u32, @intCast(library.library.strings.buf.items.len)),
+                        .track_count = @as(u32, @intCast(library.library.tracks.count())),
                     });
                     try response.writer().writeAll(library.library.strings.buf.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(library.library.tracks.keys()));
@@ -519,7 +519,7 @@ const ConnectionHandler = struct {
                 // Queue
                 if (queue.current_queue_version != query_request.last_queue) {
                     try response.writer().writeStruct(protocol.QueueHeader{
-                        .item_count = @intCast(u32, queue.queue.items.count()),
+                        .item_count = @as(u32, @intCast(queue.queue.items.count())),
                     });
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.keys()));
                     try response.writer().writeAll(std.mem.sliceAsBytes(queue.queue.items.values()));
@@ -528,8 +528,8 @@ const ConnectionHandler = struct {
                 // Events
                 if (events.current_events_version != query_request.last_events) {
                     try response.writer().writeStruct(protocol.EventsHeader{
-                        .string_size = @intCast(u32, events.events.strings.buf.items.len),
-                        .item_count = @intCast(u32, events.events.events.count()),
+                        .string_size = @as(u32, @intCast(events.events.strings.buf.items.len)),
+                        .item_count = @as(u32, @intCast(events.events.events.count())),
                     });
                     try response.writer().writeAll(events.events.strings.buf.items);
                     try response.writer().writeAll(std.mem.sliceAsBytes(events.events.events.keys()));

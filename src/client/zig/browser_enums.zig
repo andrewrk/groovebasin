@@ -22,7 +22,7 @@ pub const EventModifierKey = enum(i32) {
     meta = 3,
 };
 pub fn getModifier(modifiers: EventModifiers, modifier: EventModifierKey) bool {
-    return modifiers & (@as(i32, 1) << @intCast(u5, @enumToInt(modifier))) != 0;
+    return modifiers & (@as(i32, 1) << @as(u5, @intCast(@intFromEnum(modifier)))) != 0;
 }
 
 pub const EventType = @import("./_generated_EventType.zig").EventType;

@@ -70,8 +70,8 @@ fn writeLibrary(db_path: []const u8) !void {
     defer db_file.close();
 
     const header = Header{
-        .string_size = @intCast(u32, library.strings.buf.items.len),
-        .track_count = @intCast(u32, library.tracks.count()),
+        .string_size = @as(u32, @intCast(library.strings.buf.items.len)),
+        .track_count = @as(u32, @intCast(library.tracks.count())),
     };
 
     // if we try to get library.tracks.keys().ptr when the count is zero, it
@@ -81,7 +81,7 @@ fn writeLibrary(db_path: []const u8) !void {
 
     var iovecs = [_]std.os.iovec_const{
         .{
-            .iov_base = @ptrCast([*]const u8, &header),
+            .iov_base = @as([*]const u8, @ptrCast(&header)),
             .iov_len = @sizeOf(Header),
         },
         .{
@@ -89,11 +89,11 @@ fn writeLibrary(db_path: []const u8) !void {
             .iov_len = library.strings.buf.items.len,
         },
         .{
-            .iov_base = @ptrCast([*]const u8, library.tracks.keys().ptr),
+            .iov_base = @as([*]const u8, @ptrCast(library.tracks.keys().ptr)),
             .iov_len = library.tracks.keys().len * @sizeOf(u64),
         },
         .{
-            .iov_base = @ptrCast([*]const u8, library.tracks.values().ptr),
+            .iov_base = @as([*]const u8, @ptrCast(library.tracks.values().ptr)),
             .iov_len = library.tracks.values().len * @sizeOf(Track),
         },
     };
@@ -127,11 +127,11 @@ fn readLibrary(db_path: []const u8) anyerror!void {
             .iov_len = l.strings.buf.items.len,
         },
         .{
-            .iov_base = @ptrCast([*]u8, track_keys.ptr),
+            .iov_base = @as([*]u8, @ptrCast(track_keys.ptr)),
             .iov_len = track_keys.len * @sizeOf(u64),
         },
         .{
-            .iov_base = @ptrCast([*]u8, track_values.ptr),
+            .iov_base = @as([*]u8, @ptrCast(track_values.ptr)),
             .iov_len = track_values.len * @sizeOf(Track),
         },
     };

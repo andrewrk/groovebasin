@@ -530,16 +530,16 @@ pub fn renderButtonIsOn(button: i32, is_on: bool) void {
 fn getModifiersAndCode(event: i32) u64 {
     const modifiers = dom.getEventModifiers(event);
     const code = dom.getKeyboardEventCode(event);
-    return @as(u64, @intCast(u31, modifiers)) << 32 | @intCast(u31, @enumToInt(code));
+    return @as(u64, @as(u31, @intCast(modifiers))) << 32 | @as(u31, @intCast(@intFromEnum(code)));
 }
 fn k(code: KeyboardEventCode) u64 {
-    return @intCast(u31, @enumToInt(code));
+    return @as(u31, @intCast(@intFromEnum(code)));
 }
 fn k2(modifier: EventModifierKey, code: KeyboardEventCode) u64 {
-    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier)) + 32)) | @intCast(u31, @enumToInt(code));
+    return (@as(u64, 1) << (@as(u6, @intCast(@intFromEnum(modifier))) + 32)) | @as(u31, @intCast(@intFromEnum(code)));
 }
 fn k3(modifier1: EventModifierKey, modifier2: EventModifierKey, code: KeyboardEventCode) u64 {
-    return (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier1)) + 32)) | (@as(u64, 1) << (@intCast(u6, @enumToInt(modifier2)) + 32)) | @intCast(u31, @enumToInt(code));
+    return (@as(u64, 1) << (@as(u6, @intCast(@intFromEnum(modifier1))) + 32)) | (@as(u64, 1) << (@as(u6, @intCast(@intFromEnum(modifier2))) + 32)) | @as(u31, @intCast(@intFromEnum(code)));
 }
 
 fn onWindowKeydown(event: i32) anyerror!void {

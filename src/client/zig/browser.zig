@@ -43,7 +43,7 @@ pub fn setAudioSrc(handle: i32, src: []const u8) void {
 
 pub fn unpackSlice(packed_slice: i64) []u8 {
     if (packed_slice == 0) return "";
-    const ptr = @intToPtr([*]u8, @bitCast(usize, @intCast(i32, packed_slice >> 32)));
-    const len = @bitCast(usize, @intCast(i32, packed_slice & 0xffff_ffff));
+    const ptr = @as([*]u8, @ptrFromInt(@as(usize, @bitCast(@as(i32, @intCast(packed_slice >> 32))))));
+    const len = @as(usize, @bitCast(@as(i32, @intCast(packed_slice & 0xffff_ffff))));
     return ptr[0..len];
 }

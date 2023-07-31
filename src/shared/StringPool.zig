@@ -52,7 +52,7 @@ pub const Putter = struct {
 
         if (gop.found_existing) return gop.key_ptr.*;
 
-        const index = @intCast(u32, self.pool.buf.items.len);
+        const index = @as(u32, @intCast(self.pool.buf.items.len));
         try self.pool.buf.ensureUnusedCapacity(s.len + 1);
         self.pool.buf.appendSliceAssumeCapacity(s);
         self.pool.buf.appendAssumeCapacity(0);

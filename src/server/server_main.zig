@@ -149,8 +149,8 @@ pub fn main() anyerror!void {
     Groove.set_logging(.INFO);
     g.groove = groove;
 
-    player = try Player.init(config.encodeBitRate);
-    defer player.deinit();
+    g.player = try Player.init(config.encodeBitRate);
+    defer g.player.deinit();
 
     log.info("init library", .{});
     try library.init(music_dir_path, config.dbPath);
@@ -190,7 +190,6 @@ const Connections = std.AutoHashMap(*ConnectionHandler, void);
 var client_connections: Connections = undefined;
 var client_connections_mutex = Mutex{};
 
-var player: Player = undefined;
 var config: ConfigJson = undefined;
 
 var to_server_channel = channel(LinearFifo(*ToServerMessage, .{ .Static = 64 }).init());
@@ -288,7 +287,7 @@ const ConnectionHandler = struct {
         self.connection.stream.close();
         // Drain and unref everything in the send queue.
         while (self.websocket_send_queue.get()) |item| {
-            item.?.unref();
+            item.?.unref(); // trace:websocket_send_queue
         }
         // Wake up the send thread if necessary.
         self.websocket_send_queue.put(null) catch unreachable;
@@ -368,7 +367,7 @@ const ConnectionHandler = struct {
 
         while (true) {
             var buffer: ?*Groove.Buffer = null;
-            const status = try player.encoder.buffer_get(&buffer, true);
+            const status = try g.player.encoder.buffer_get(&buffer, true);
             _ = status;
             if (buffer) |buf| {
                 defer buf.unref();

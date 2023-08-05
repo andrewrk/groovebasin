@@ -16,7 +16,7 @@ const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
-const server_logic = @import("server_logic.zig");
+const server_logic = @import("server_main.zig");
 
 const library = @import("library.zig");
 const queue = @import("queue.zig");

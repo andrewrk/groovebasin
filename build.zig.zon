@@ -3,8 +3,8 @@
     .version = "0.0.0",
     .dependencies = .{
         .groove = .{
-            .url = "https://github.com/andrewrk/libgroove/archive/645e68b5ebc2a2aad0708d9533acf02f9e82a2c8.tar.gz",
-            .hash = "1220f6721cf0f089f7fb20819dd596546dfbc01afe059954f11b759d3fc3abb923a6",
+            .url = "https://github.com/andrewrk/libgroove/archive/cf5a55776e7afc0653ef0fa7d5045d01fa8ad300.tar.gz",
+            .hash = "1220a0d8f003fda4cd9c3029f04e0a315216f60b2e3343f89fc2248ccd5edfe796fb",
         },
     },
 }

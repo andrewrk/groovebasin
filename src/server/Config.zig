@@ -20,22 +20,30 @@ ignoreExtensions: []const []const u8 = &.{
 const std = @import("std");
 const fs = std.fs;
 const json = std.json;
+const log = std.log;
 const Allocator = std.mem.Allocator;
 
+const g = @import("global.zig");
 const fatal = @import("server_main.zig").fatal;
 
-pub fn loadOrInitAndExit(arena: Allocator, path: []const u8) !@This() {
-    const max_config_size = 1 * 1024 * 1024;
-    const json_text = fs.cwd().readFileAlloc(arena, path, max_config_size) catch |err| switch (err) {
+pub fn loadOrInitAndExit(path: []const u8) !json.Parsed(@This()) {
+    const file = fs.cwd().openFile(path, .{}) catch |err| switch (err) {
         error.FileNotFound => {
+            var arena = std.heap.ArenaAllocator.init(g.gpa);
+            defer arena.deinit();
+
             var atomic_file = try fs.cwd().atomicFile(path, .{});
             defer atomic_file.deinit();
 
             var buffered_writer = std.io.bufferedWriter(atomic_file.file.writer());
 
             try json.stringify(@This(){
-                .musicDirectory = try defaultMusicPath(arena),
-            }, .{}, buffered_writer.writer());
+                .musicDirectory = try defaultMusicPath(arena.allocator()),
+            }, .{
+                .whitespace = .indent_4,
+            }, buffered_writer.writer());
+
+            try buffered_writer.writer().writeByte('\n');
 
             try buffered_writer.flush();
             try atomic_file.finish();
@@ -46,7 +54,15 @@ pub fn loadOrInitAndExit(arena: Allocator, path: []const u8) !@This() {
             fatal("Unable to read {s}: {s}", .{ path, @errorName(e) });
         },
     };
-    return try json.parseFromSliceLeaky(@This(), arena, json_text, .{});
+
+    var reader = json.reader(g.gpa, file.reader());
+    defer reader.deinit();
+    var diagnostics = json.Diagnostics{};
+    reader.enableDiagnostics(&diagnostics);
+    return json.parseFromTokenSource(@This(), g.gpa, &reader, .{}) catch |err| {
+        log.err("{s}:{}:{}: {s}", .{ path, diagnostics.getLine(), diagnostics.getColumn(), @errorName(err) });
+        return err;
+    };
 }
 
 pub fn defaultMusicPath(arena: Allocator) ![]const u8 {

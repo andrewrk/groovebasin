@@ -31,8 +31,6 @@ pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
     std.process.exit(1);
 }
 
-var config: Config = undefined;
-
 pub fn main() anyerror!void {
     var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa_instance.deinit();
@@ -60,7 +58,9 @@ pub fn main() anyerror!void {
         }
     }
 
-    config = try Config.loadOrInitAndExit(arena, config_json_path);
+    var parsed_config = try Config.loadOrInitAndExit(config_json_path);
+    defer parsed_config.deinit();
+    const config = parsed_config.value;
 
     // ================
     // startup sequence

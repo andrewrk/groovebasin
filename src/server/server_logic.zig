@@ -6,7 +6,7 @@ const log = std.log;
 const g = @import("global.zig");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
-const sendMessageToClient = @import("server_main.zig").sendMessageToClient;
+const sendMessageToClient = @import("web_server.zig").sendMessageToClient;
 
 pub fn handleClientConnected(client_id: *anyopaque) !void {
     _ = client_id;

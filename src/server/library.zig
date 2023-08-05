@@ -15,10 +15,7 @@ pub var current_library_version: u64 = 1;
 pub var library: Library = undefined;
 var library_string_putter: StringPool.Putter = undefined;
 
-pub var music_dir_path: []const u8 = undefined;
-
 pub fn init(music_directory: []const u8, db_path: []const u8) !void {
-    music_dir_path = music_directory;
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
 
@@ -28,7 +25,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     library_string_putter = library.strings.initPutter();
     errdefer library_string_putter.deinit();
 
-    var music_dir = try std.fs.cwd().openIterableDir(music_dir_path, .{});
+    var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
 
     var walker = try music_dir.walk(g.gpa);
@@ -42,7 +39,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
         defer groove_file.destroy();
 
         const full_path = try std.fs.path.joinZ(g.gpa, &.{
-            music_dir_path, entry.path,
+            music_directory, entry.path,
         });
         defer g.gpa.free(full_path);
 

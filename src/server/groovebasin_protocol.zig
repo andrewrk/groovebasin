@@ -2,6 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const json = std.json;
 const JsonHashMap = json.ArrayHashMap;
+const Tag = std.meta.Tag;
 
 const TODO = struct {
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
@@ -84,7 +85,7 @@ pub const ClientToServerMessage = union(enum) {
     login: TODO,
     logout: TODO,
     subscribe: struct {
-        name: []const u8,
+        name: Tag(Subscription),
         delta: bool = false,
         version: ?[]const u8 = null,
     },
@@ -139,26 +140,13 @@ pub const ServerToClientMessage = union(enum) {
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
     user: TODO,
+
     // Subscribed Information Change Messages
-    currentTrack: TODO,
-    autoDjOn: TODO,
-    autoDjHistorySize: TODO,
-    autoDjFutureSize: TODO,
-    repeat: TODO,
-    volume: TODO,
-    queue: TODO,
-    hardwarePlayback: TODO,
-    library: JsonHashMap(LibraryTrack),
-    libraryQueue: TODO,
-    scanning: TODO,
-    playlists: TODO,
-    importProgress: TODO,
-    anonStreamers: TODO,
-    haveAdminUser: TODO,
-    users: TODO,
-    streamEndpoint: TODO,
-    protocolMetadata: TODO,
-    events: TODO,
+    subscription: struct {
+        sub: Subscription,
+        // (this is not the JSON structure. see jsonStringify below.)
+        delta_version: ?[]const u8 = null,
+    },
 
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
         return nameAndArgsParse(@This(), allocator, source, options);
@@ -167,7 +155,39 @@ pub const ServerToClientMessage = union(enum) {
         return nameAndArgsParseFromValue(@This(), allocator, source, options);
     }
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        return nameAndArgsStringify(self, jw);
+        switch (self) {
+            .subscription => |data| {
+                const tag_name = @tagName(data.sub);
+
+                try jw.beginObject();
+                try jw.objectField("name");
+                try jw.write(tag_name);
+                try jw.objectField("args");
+
+                // Conditionally use delta format.
+                if (data.delta_version) |v| {
+                    try jw.beginObject();
+                    try jw.objectField("version");
+                    try jw.write(v);
+                    try jw.objectField("reset");
+                    try jw.write(true);
+                    try jw.objectField("delta");
+                }
+
+                inline for (@typeInfo(Subscription).Union.fields) |u_field| {
+                    if (std.mem.eql(u8, u_field.name, tag_name)) {
+                        try jw.write(@field(data.sub, u_field.name));
+                        break;
+                    }
+                } else unreachable;
+
+                if (data.delta_version) |_| {
+                    try jw.endObject();
+                }
+                try jw.endObject();
+            },
+            else => return nameAndArgsStringify(self, jw),
+        }
     }
 };
 
@@ -200,37 +220,28 @@ pub const LibraryTrack = struct {
     labels: JsonHashMap(AlwaysTheNumber1) = .{},
 };
 
-//chat
-//queue
-//currentTrack
-//autoPause
-//streamStart
-//streamStop
-//connect
-//part
-//register
-//login
-//move
-//pause
-//play
-//stop
-//seek
-//playlistRename
-//playlistDelete
-//playlistCreate
-//playlistAddItems
-//playlistRemoveItems
-//playlistMoveItems
-//clearQueue
-//remove
-//shuffle
-//import
-//labelCreate
-//labelRename
-//labelColorUpdate
-//labelDelete
-//labelAdd
-//labelRemove
+pub const Subscription = union(enum) {
+    currentTrack: TODO,
+    autoDjOn: TODO,
+    autoDjHistorySize: TODO,
+    autoDjFutureSize: TODO,
+    repeat: TODO,
+    volume: TODO,
+    queue: TODO,
+    hardwarePlayback: TODO,
+    library: JsonHashMap(LibraryTrack),
+    libraryQueue: TODO,
+    scanning: TODO,
+    playlists: TODO,
+    importProgress: TODO,
+    anonStreamers: TODO,
+    haveAdminUser: TODO,
+    users: TODO,
+    streamEndpoint: TODO,
+    protocolMetadata: TODO,
+    labels: TODO, // undocumented.
+    events: TODO,
+};
 
 const AlwaysTheNumber1 = struct {
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {

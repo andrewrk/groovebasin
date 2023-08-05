@@ -189,11 +189,23 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .setStreaming => {
             // TODO
         },
-        .subscribe => {
-            // TODO
-            try encodeAndSend(client_id, .{
-                .library = .{},
-            });
+        .subscribe => |args| {
+            var sub: groovebasin_protocol.Subscription = switch (args.name) {
+                .library => .{
+                    .library = .{},
+                },
+                else => return, // TODO: support more subscription streams.
+            };
+
+            // Not actually doing versioning. Just wrap in the appropriate structure.
+            if (args.delta) {
+                try encodeAndSend(client_id, .{ .subscription = .{
+                    .sub = sub,
+                    .delta_version = "delta-versioning-still-TODO",
+                } });
+            } else {
+                try encodeAndSend(client_id, .{ .subscription = .{ .sub = sub } });
+            }
         },
         else => unreachable,
     }

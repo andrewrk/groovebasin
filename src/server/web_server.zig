@@ -1,26 +1,16 @@
 const std = @import("std");
 const mem = std.mem;
 const net = std.net;
-const fs = std.fs;
-const os = std.os;
-const json = std.json;
 const log = std.log;
-const Allocator = std.mem.Allocator;
-const Mutex = std.Thread.Mutex;
 const Channel = @import("shared").Channel;
 const channel = @import("shared").channel;
 const RefCounter = @import("shared").RefCounter;
 const LinearFifo = std.fifo.LinearFifo;
 const Groove = @import("groove.zig").Groove;
-const SoundIo = @import("soundio.zig").SoundIo;
-const Player = @import("Player.zig");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const server_logic = @import("server_main.zig");
 
-const library = @import("library.zig");
-const queue = @import("queue.zig");
-const events = @import("events.zig");
 const g = @import("global.zig");
 
 // threads:
@@ -46,152 +36,7 @@ const g = @import("global.zig");
 // shutdown routine:
 //  uhhhh Ctrl+C lmao.
 
-pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
-    log.err(format, args);
-    std.process.exit(1);
-}
-
-const ConfigJson = struct {
-    host: []const u8 = "127.0.0.1",
-    port: u16 = 16242,
-    dbPath: []const u8 = "groovebasin.db",
-    musicDirectory: ?[]const u8 = null,
-    lastFmApiKey: []const u8 = "bb9b81026cd44fd086fa5533420ac9b4",
-    lastFmApiSecret: []const u8 = "2309a40ae3e271de966bf320498a8f09",
-    acoustidAppKey: []const u8 = "bgFvC4vW",
-    encodeQueueDuration: f64 = 8,
-    encodeBitRate: u32 = 256,
-    sslKey: ?[]const u8 = null,
-    sslCert: ?[]const u8 = null,
-    sslCaDir: ?[]const u8 = null,
-    googleApiKey: []const u8 = "AIzaSyDdTDD8-gu_kp7dXtT-53xKcVbrboNAkpM",
-    ignoreExtensions: []const []const u8 = &.{
-        ".jpg", ".jpeg", ".txt", ".png", ".log", ".cue", ".pdf", ".m3u",
-        ".nfo", ".ini",  ".xml", ".zip",
-    },
-};
-
-const usage =
-    \\Usage: groovebasin [options]
-    \\Options:
-    \\  --config [file]      Defaults to config.json in the cwd
-    \\  -h, --help           Print this help menu to stdout
-    \\
-;
-
-pub fn main() anyerror!void {
-    var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer _ = gpa_instance.deinit();
-    g.gpa = gpa_instance.allocator();
-
-    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
-    defer arena_instance.deinit();
-    const arena = arena_instance.allocator();
-
-    const args = try std.process.argsAlloc(arena);
-
-    var config_json_path: []const u8 = "config.json";
-    var i: usize = 1;
-    while (i < args.len) : (i += 1) {
-        const arg = args[i];
-        if (mem.eql(u8, arg, "--config")) {
-            if (i + 1 >= args.len) fatal("expected parameter after {s}", .{arg});
-            i += 1;
-            config_json_path = args[i];
-        } else if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
-            try std.io.getStdOut().writeAll(usage);
-            std.process.exit(0);
-        } else {
-            fatal("unrecognized argument: '{s}'", .{arg});
-        }
-    }
-
-    const max_config_size = 1 * 1024 * 1024;
-    const json_text = fs.cwd().readFileAlloc(arena, config_json_path, max_config_size) catch |err| switch (err) {
-        error.FileNotFound => {
-            var atomic_file = try fs.cwd().atomicFile(config_json_path, .{});
-            defer atomic_file.deinit();
-
-            var buffered_writer = std.io.bufferedWriter(atomic_file.file.writer());
-
-            try json.stringify(ConfigJson{
-                .musicDirectory = try defaultMusicPath(arena),
-            }, .{}, buffered_writer.writer());
-
-            try buffered_writer.flush();
-            try atomic_file.finish();
-
-            fatal("No {s} found; writing default. Take a peek and make sure the values are to your liking, then start GrooveBasin again.", .{config_json_path});
-        },
-        else => |e| {
-            fatal("Unable to read {s}: {s}", .{ config_json_path, @errorName(e) });
-        },
-    };
-    config = try json.parseFromSliceLeaky(ConfigJson, arena, json_text, .{});
-
-    // ================
-    // startup sequence
-    // ================
-
-    const music_dir_path = config.musicDirectory orelse try defaultMusicPath(arena);
-
-    log.info("music directory: {s}", .{music_dir_path});
-
-    log.debug("libgroove version: {s}", .{Groove.version()});
-
-    const soundio = try SoundIo.create();
-    g.soundio = soundio;
-    g.soundio.app_name = "GrooveBasin";
-    g.soundio.connect_backend(.Dummy) catch |err| fatal("unable to initialize sound: {s}", .{@errorName(err)});
-    g.soundio.flush_events();
-
-    const groove = try Groove.create();
-    Groove.set_logging(.INFO);
-    g.groove = groove;
-
-    g.player = try Player.init(config.encodeBitRate);
-    defer g.player.deinit();
-
-    log.info("init library", .{});
-    try library.init(music_dir_path, config.dbPath);
-    defer library.deinit();
-
-    log.info("init queue", .{});
-    try queue.init();
-    defer queue.deinit();
-
-    log.info("init events", .{});
-    try events.init();
-    defer events.deinit();
-
-    log.info("init static content", .{});
-    try init_static_content();
-
-    client_connections = Connections.init(g.gpa);
-
-    _ = try std.Thread.spawn(.{}, listenThreadEntrypoint, .{});
-
-    serverLogicMain();
-    unreachable;
-}
-
-fn defaultMusicPath(arena: Allocator) ![]const u8 {
-    if (std.os.getenvZ("XDG_MUSIC_DIR")) |xdg_path| return xdg_path;
-
-    if (std.os.getenv("HOME")) |home| {
-        return try fs.path.join(arena, &.{ home, "music" });
-    }
-
-    return "music";
-}
-
 // Server state
-const Connections = std.AutoHashMap(*ConnectionHandler, void);
-var client_connections: Connections = undefined;
-var client_connections_mutex = Mutex{};
-
-var config: ConfigJson = undefined;
-
 var to_server_channel = channel(LinearFifo(*ToServerMessage, .{ .Static = 64 }).init());
 
 const ToServerMessage = struct {
@@ -227,25 +72,24 @@ const ToServerMessage = struct {
     }
 };
 
-fn listenThreadEntrypoint() void {
-    listen() catch |err| {
+pub fn spawnListenThread(addr: net.Address) !void {
+    _ = try std.Thread.spawn(.{}, listenThreadEntrypoint, .{addr});
+}
+
+fn listenThreadEntrypoint(addr: net.Address) void {
+    listen(addr) catch |err| {
         log.err("listen thread failure: {}", .{err});
         @panic("if the listen thread dies, we all die.");
     };
 }
 
-fn listen() !void {
+fn listen(addr: net.Address) !void {
     log.info("init tcp server", .{});
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
-    {
-        const addr = net.Address.parseIp(config.host, config.port) catch |err| {
-            fatal("unable to parse {s}:{d}: {s}", .{ config.host, config.port, @errorName(err) });
-        };
-        try server.listen(addr);
-        log.info("listening at {}", .{server.listen_address});
-    }
+    try server.listen(addr);
+    log.info("listening at {}", .{server.listen_address});
 
     while (true) {
         const connection = try server.accept();
@@ -590,32 +434,19 @@ const StaticFile = struct {
     entire_response: []const u8,
 };
 var static_content_map: std.StringHashMap(StaticFile) = undefined;
-fn init_static_content() !void {
+
+/// static_content_dir can be closed after this function returns.
+/// For each path in all_paths, the path must start with '/'.
+/// One of the paths should be exactly "/", which is resolved to "index.html".
+/// Support file extnesions: `.css .js .png`. TODO: remove `.ccs` support.
+pub fn initStaticContent(static_content_dir: std.fs.Dir, all_paths: []const []const u8) !void {
     static_content_map = std.StringHashMap(StaticFile).init(g.gpa);
 
-    // TODO: resolve relative to current executable maybe?
-    var static_content_dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
-    defer static_content_dir.close();
-
-    for ([_][]const u8{
-        "/",
-        "/app.js",
-        "/favicon.png",
-        "/img/ui-icons_ffffff_256x240.png",
-        "/img/ui-bg_dots-small_30_a32d00_2x2.png",
-        "/img/ui-bg_flat_0_aaaaaa_40x100.png",
-        "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
-        "/img/ui-icons_98d2fb_256x240.png",
-        "/img/ui-icons_00498f_256x240.png",
-        "/img/ui-bg_gloss-wave_20_111111_500x100.png",
-        "/img/bright-10.png",
-        "/img/ui-icons_9ccdfc_256x240.png",
-        "/img/ui-bg_dots-small_40_00498f_2x2.png",
-        "/img/ui-bg_dots-small_20_333333_2x2.png",
-        "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
-        "/img/ui-bg_flat_40_292929_40x100.png",
-    }) |path| {
-        try static_content_map.putNoClobber(path, try resolveStaticFile(static_content_dir, path));
+    for (all_paths) |path| {
+        try static_content_map.putNoClobber(
+            path,
+            try resolveStaticFile(static_content_dir, path),
+        );
     }
 }
 
@@ -696,7 +527,7 @@ pub fn sendMessageToClient(client_id: *anyopaque, message_bytes: []const u8) !vo
     };
 }
 
-fn serverLogicMain() noreturn {
+pub fn mainLoop() noreturn {
     while (true) {
         serverLogicOneIteration() catch |err| {
             log.warn("Error handling message: {}", .{err});

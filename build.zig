@@ -27,7 +27,7 @@ pub fn build(b: *Builder) void {
 
     const server = b.addExecutable(.{
         .name = "groovebasin",
-        .root_source_file = .{ .path = "src/server/web_server.zig" },
+        .root_source_file = .{ .path = "src/server/server_main.zig" },
         .target = target,
         .optimize = optimize,
     });

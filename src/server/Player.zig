@@ -6,7 +6,7 @@ const Player = @This();
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
 const g = @import("global.zig");
-const fatal = @import("web_server.zig").fatal;
+const fatal = @import("server_main.zig").fatal;
 const log = std.log;
 
 pub fn init(bit_rate_k: u32) !Player {

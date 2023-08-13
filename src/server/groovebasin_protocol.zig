@@ -192,6 +192,8 @@ pub const ServerToClientMessage = union(enum) {
 };
 
 pub const LibraryTrack = struct {
+    /// The id in the library.
+    key: []const u8,
     /// Path of the song on disk relative to the music library root.
     file: []const u8 = "",
     /// How many seconds long this track is.

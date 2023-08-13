@@ -8,6 +8,9 @@ const g = @import("global.zig");
 const protocol = @import("shared").protocol;
 const Track = protocol.Track;
 
+const JsonHashMap = std.json.ArrayHashMap;
+const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
+
 pub const Library = @import("shared").Library;
 pub const StringPool = @import("shared").StringPool;
 
@@ -55,7 +58,8 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
         }) |tag| {
             std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
-        try library.tracks.putNoClobber(id, try grooveFileToTrack(&library_string_putter, groove_file, entry.path));
+        const track = try grooveFileToTrack(&library_string_putter, groove_file, entry.path);
+        try library.tracks.putNoClobber(id, track);
         id += 1;
     }
 
@@ -169,6 +173,29 @@ fn grooveFileToTrack(
             parseTrackNumber(std.mem.span(tag.value()))
         else
             0,
+    };
+}
+
+pub fn getSerializable(arena: std.mem.Allocator) !JsonHashMap(LibraryTrack) {
+    var result = JsonHashMap(LibraryTrack){};
+
+    var it = library.tracks.iterator();
+    while (it.next()) |kv| {
+        const id = kv.key_ptr.*;
+        const track = kv.value_ptr.*;
+        const id_string = try std.fmt.allocPrint(arena, "{}", .{id});
+        try result.map.putNoClobber(arena, id_string, trackToSerializedForm(&library.strings, id_string, track));
+    }
+    return result;
+}
+fn trackToSerializedForm(string_pool: *StringPool, id_string: []const u8, track: Track) LibraryTrack {
+    return .{
+        .key = id_string,
+        .file = string_pool.getString(track.file_path),
+        .name = string_pool.getString(track.title),
+        .artistName = string_pool.getString(track.artist),
+        .albumName = string_pool.getString(track.album),
+        .track = track.track_number,
     };
 }
 

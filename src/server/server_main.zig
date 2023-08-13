@@ -192,7 +192,7 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .subscribe => |args| {
             var sub: groovebasin_protocol.Subscription = switch (args.name) {
                 .library => .{
-                    .library = .{},
+                    .library = try library.getSerializable(arena.allocator()),
                 },
                 else => return, // TODO: support more subscription streams.
             };

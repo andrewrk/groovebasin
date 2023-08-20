@@ -7,6 +7,7 @@ const g = @import("global.zig");
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
+const keese = @import("keese.zig");
 
 pub var current_queue_version: u64 = 1;
 var items: AutoArrayHashMap(Id, InternalQueueItem) = undefined;
@@ -20,7 +21,7 @@ pub fn deinit() void {
 }
 
 pub const InternalQueueItem = struct {
-    sort_key: u64, // TODO: switch to a keese string.
+    sort_key: keese.Value,
     track_key: Id,
     is_random: bool,
 };
@@ -38,7 +39,7 @@ pub fn enqueue(new_items: anytype) !void {
             log.warn("overwriting existing queue item: {}", item_id);
         }
         gop.value_ptr.* = .{
-            .sort_key = 1, // TODO: proper keese support.
+            .sort_key = sort_key,
             .track_key = library_key,
             .is_random = false,
         };
@@ -59,7 +60,7 @@ pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.Que
 
 fn itemToSerializedForm(item: InternalQueueItem) groovebasin_protocol.QueueItem {
     return .{
-        .sortKey = "1", // TODO: proper keese support.
+        .sortKey = item.sort_key,
         .key = item.track_key,
         .isRandom = item.is_random,
     };

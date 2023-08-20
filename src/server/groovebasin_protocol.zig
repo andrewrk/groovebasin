@@ -3,6 +3,8 @@ const Allocator = std.mem.Allocator;
 const json = std.json;
 const Tag = std.meta.Tag;
 
+const keese = @import("keese.zig");
+
 const TODO = struct {
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
         _ = allocator;
@@ -224,7 +226,7 @@ pub const ClientToServerMessage = union(enum) {
     play: TODO,
     queue: IdMap(struct {
         key: Id,
-        sortKey: []const u8,
+        sortKey: keese.Value,
     }),
     seek: TODO,
     setStreaming: bool,
@@ -354,7 +356,7 @@ pub const LibraryTrack = struct {
 
 pub const QueueItem = struct {
     key: Id,
-    sortKey: []const u8,
+    sortKey: keese.Value,
     isRandom: bool,
 };
 

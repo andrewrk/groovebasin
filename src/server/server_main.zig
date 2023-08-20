@@ -8,6 +8,7 @@ const g = @import("global.zig");
 const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
+const keese = @import("keese.zig");
 
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
@@ -87,6 +88,10 @@ pub fn main() anyerror!void {
 
     g.player = try Player.init(config.encodeBitRate);
     defer g.player.deinit();
+
+    log.info("init keese", .{});
+    try keese.init(g.gpa);
+    defer keese.deinit();
 
     log.info("init library", .{});
     try library.init(music_dir_path, config.dbPath);

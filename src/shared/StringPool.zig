@@ -22,6 +22,14 @@ pub fn getString(self: @This(), i: u32) [:0]const u8 {
     return bytes[i..end :0];
 }
 
+pub fn putWithoutDeduplication(self: *@This(), s: []const u8) !u32 {
+    const index = @as(u32, @intCast(self.buf.items.len));
+    try self.buf.ensureUnusedCapacity(s.len + 1);
+    self.buf.appendSliceAssumeCapacity(s);
+    self.buf.appendAssumeCapacity(0);
+    return index;
+}
+
 pub fn initPutter(self: *@This()) Putter {
     return Putter.init(self);
 }
@@ -52,10 +60,7 @@ pub const Putter = struct {
 
         if (gop.found_existing) return gop.key_ptr.*;
 
-        const index = @as(u32, @intCast(self.pool.buf.items.len));
-        try self.pool.buf.ensureUnusedCapacity(s.len + 1);
-        self.pool.buf.appendSliceAssumeCapacity(s);
-        self.pool.buf.appendAssumeCapacity(0);
+        const index = try self.pool.putWithoutDeduplication(s);
         gop.key_ptr.* = index;
 
         return index;

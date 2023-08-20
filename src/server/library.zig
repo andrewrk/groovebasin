@@ -6,8 +6,6 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");
 
-const protocol = @import("shared").protocol;
-const Track = protocol.Track;
 const Library = @import("shared").Library;
 const StringPool = @import("shared").StringPool;
 
@@ -19,6 +17,14 @@ pub var current_library_version: u64 = 1;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
 var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
+
+pub const Track = extern struct {
+    file_path: u32,
+    title: u32,
+    artist: u32,
+    album: u32,
+    track_number: i16,
+};
 
 pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.

@@ -1,5 +1,6 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
+const Allocator = std.mem.Allocator;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
 const Groove = @import("groove.zig").Groove;
@@ -7,25 +8,27 @@ const g = @import("global.zig");
 
 const protocol = @import("shared").protocol;
 const Track = protocol.Track;
+const Library = @import("shared").Library;
+const StringPool = @import("shared").StringPool;
 
-const JsonHashMap = std.json.ArrayHashMap;
 const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
-
-pub const Library = @import("shared").Library;
-pub const StringPool = @import("shared").StringPool;
+const Id = @import("groovebasin_protocol.zig").Id;
+const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
 pub var current_library_version: u64 = 1;
-pub var library: Library = undefined;
+var tracks: AutoArrayHashMap(Id, Track) = undefined;
+var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
 
 pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
 
-    library = Library.init(g.gpa);
-    errdefer library.deinit();
-
-    library_string_putter = library.strings.initPutter();
+    tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
+    errdefer tracks.deinit();
+    strings = StringPool.init(g.gpa);
+    errdefer strings.deinit();
+    library_string_putter = strings.initPutter();
     errdefer library_string_putter.deinit();
 
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
@@ -34,7 +37,6 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     var walker = try music_dir.walk(g.gpa);
     defer walker.deinit();
 
-    var id: u64 = 1;
     while (try walker.next()) |entry| {
         if (entry.kind != .file) continue;
 
@@ -59,8 +61,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
             std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
         const track = try grooveFileToTrack(&library_string_putter, groove_file, entry.path);
-        try library.tracks.putNoClobber(id, track);
-        id += 1;
+        try generateIdAndPut(&tracks, track);
     }
 
     try writeLibrary(db_path);
@@ -71,13 +72,13 @@ fn writeLibrary(db_path: []const u8) !void {
     defer db_file.close();
 
     const header = Header{
-        .string_size = @as(u32, @intCast(library.strings.buf.items.len)),
-        .track_count = @as(u32, @intCast(library.tracks.count())),
+        .string_size = @as(u32, @intCast(strings.buf.items.len)),
+        .track_count = @as(u32, @intCast(tracks.count())),
     };
 
-    // if we try to get library.tracks.keys().ptr when the count is zero, it
+    // if we try to get tracks.keys().ptr when the count is zero, it
     // ends up being a null pointer
-    if (library.tracks.count() == 0)
+    if (tracks.count() == 0)
         return;
 
     var iovecs = [_]std.os.iovec_const{
@@ -86,16 +87,16 @@ fn writeLibrary(db_path: []const u8) !void {
             .iov_len = @sizeOf(Header),
         },
         .{
-            .iov_base = library.strings.buf.items.ptr,
-            .iov_len = library.strings.buf.items.len,
+            .iov_base = strings.buf.items.ptr,
+            .iov_len = strings.buf.items.len,
         },
         .{
-            .iov_base = @as([*]const u8, @ptrCast(library.tracks.keys().ptr)),
-            .iov_len = library.tracks.keys().len * @sizeOf(u64),
+            .iov_base = @as([*]const u8, @ptrCast(tracks.keys().ptr)),
+            .iov_len = tracks.keys().len * @sizeOf(u64),
         },
         .{
-            .iov_base = @as([*]const u8, @ptrCast(library.tracks.values().ptr)),
-            .iov_len = library.tracks.values().len * @sizeOf(Track),
+            .iov_base = @as([*]const u8, @ptrCast(tracks.values().ptr)),
+            .iov_len = tracks.values().len * @sizeOf(Track),
         },
     };
 
@@ -103,7 +104,8 @@ fn writeLibrary(db_path: []const u8) !void {
 }
 
 pub fn deinit() void {
-    library.deinit();
+    strings.deinit();
+    tracks.deinit();
 }
 
 fn readLibrary(db_path: []const u8) anyerror!void {
@@ -176,21 +178,20 @@ fn grooveFileToTrack(
     };
 }
 
-pub fn getSerializable(arena: std.mem.Allocator) !JsonHashMap(LibraryTrack) {
-    var result = JsonHashMap(LibraryTrack){};
+pub fn getSerializable(arena: Allocator) !IdMap(LibraryTrack) {
+    var result = IdMap(LibraryTrack){};
 
-    var it = library.tracks.iterator();
+    var it = tracks.iterator();
     while (it.next()) |kv| {
         const id = kv.key_ptr.*;
         const track = kv.value_ptr.*;
-        const id_string = try std.fmt.allocPrint(arena, "{}", .{id});
-        try result.map.putNoClobber(arena, id_string, trackToSerializedForm(&library.strings, id_string, track));
+        try result.map.putNoClobber(arena, id, trackToSerializedForm(&strings, id, track));
     }
     return result;
 }
-fn trackToSerializedForm(string_pool: *StringPool, id_string: []const u8, track: Track) LibraryTrack {
+fn trackToSerializedForm(string_pool: *StringPool, id: Id, track: Track) LibraryTrack {
     return .{
-        .key = id_string,
+        .key = id,
         .file = string_pool.getString(track.file_path),
         .name = string_pool.getString(track.title),
         .artistName = string_pool.getString(track.artist),
@@ -205,4 +206,17 @@ fn parseTrackNumber(value: []const u8) i16 {
     else
         value;
     return std.fmt.parseInt(i16, numerator, 10) catch 0;
+}
+
+fn generateIdAndPut(map: anytype, value: anytype) !void {
+    for (0..10) |_| {
+        const gop = try map.getOrPut(Id.random());
+        if (!gop.found_existing) {
+            gop.value_ptr.* = value;
+            return;
+        }
+        // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
+        std.log.warn("Rerolling random id to avoid collisions", .{});
+    }
+    return error.FailedToGenerateRandomNumberAvoidingCollisions;
 }

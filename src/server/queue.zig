@@ -1,40 +1,66 @@
 const std = @import("std");
 const AutoArrayHashMap = std.AutoArrayHashMap;
+const log = std.log;
 
 const g = @import("global.zig");
 
-const protocol = @import("shared").protocol;
-const QueueItem = protocol.QueueItem;
-
-const Queue = @import("shared").Queue;
+const groovebasin_protocol = @import("groovebasin_protocol.zig");
+const Id = @import("groovebasin_protocol.zig").Id;
+const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
 pub var current_queue_version: u64 = 1;
-pub var queue: Queue = undefined;
+var items: AutoArrayHashMap(Id, InternalQueueItem) = undefined;
 
 pub fn init() !void {
-    queue = Queue{
-        .items = AutoArrayHashMap(u64, QueueItem).init(g.gpa),
-    };
-    errdefer queue.deinit();
+    items = AutoArrayHashMap(Id, InternalQueueItem).init(g.gpa);
 }
 
 pub fn deinit() void {
-    queue.deinit();
+    items.deinit();
 }
 
-var next_item_key: u64 = 10;
-var next_sort_key: u64 = 1;
+pub const InternalQueueItem = struct {
+    sort_key: u64, // TODO: switch to a keese string.
+    track_key: Id,
+    is_random: bool,
+};
 
-pub fn generateItemKey() u64 {
-    defer {
-        next_item_key += 1;
+pub fn enqueue(new_items: anytype) !void {
+    try items.ensureUnusedCapacity(new_items.map.count());
+    var it = new_items.map.iterator();
+    while (it.next()) |kv| {
+        const item_id = kv.key_ptr.*;
+        const library_key = kv.value_ptr.key;
+        const sort_key = kv.value_ptr.sortKey;
+        log.info("enqueuing: {}: {} @{s}", .{ item_id, library_key, sort_key });
+        const gop = items.getOrPutAssumeCapacity(item_id);
+        if (gop.found_existing) {
+            log.warn("overwriting existing queue item: {}", item_id);
+        }
+        gop.value_ptr.* = .{
+            .sort_key = 1, // TODO: proper keese support.
+            .track_key = library_key,
+            .is_random = false,
+        };
     }
-    return next_item_key;
 }
 
-pub fn generateSortKey() u64 {
-    defer {
-        next_sort_key += 1_000_000_000;
+pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {
+    var result = IdMap(groovebasin_protocol.QueueItem){};
+
+    var it = items.iterator();
+    while (it.next()) |kv| {
+        const id = kv.key_ptr.*;
+        const queue_item = kv.value_ptr.*;
+        try result.map.putNoClobber(arena, id, itemToSerializedForm(queue_item));
     }
-    return next_sort_key;
+    return result;
+}
+
+fn itemToSerializedForm(item: InternalQueueItem) groovebasin_protocol.QueueItem {
+    return .{
+        .sortKey = "1", // TODO: proper keese support.
+        .key = item.track_key,
+        .isRandom = item.is_random,
+    };
 }

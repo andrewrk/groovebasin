@@ -1,7 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const json = std.json;
-const JsonHashMap = json.ArrayHashMap;
 const Tag = std.meta.Tag;
 
 const TODO = struct {
@@ -23,6 +22,134 @@ const TODO = struct {
         @panic("TODO");
     }
 };
+
+pub const Id = struct {
+    value: u192,
+
+    pub fn random() @This() {
+        var buf: [24]u8 = undefined;
+        std.crypto.random.bytes(&buf);
+        return .{ .value = std.mem.readIntNative(u192, &buf) };
+    }
+
+    pub fn parse(s: []const u8) !@This() {
+        if (s.len != 32) return error.InvalidUuidLen;
+        var buf: [24]u8 = undefined;
+        try std.base64.url_safe.Decoder.decode(&buf, s);
+        return .{ .value = std.mem.readIntNative(u192, &buf) };
+    }
+    pub fn write(self: @This(), out_buffer: *[32]u8) void {
+        var native: [24]u8 = undefined;
+        std.mem.writeIntNative(u192, &native, self.value);
+        std.debug.assert(std.base64.url_safe.Encoder.encode(out_buffer, &native).len == 32);
+    }
+
+    // JSON interface
+    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+        _ = options;
+        switch (try source.nextAlloc(.alloc_if_needed)) {
+            .string => |s| return parse(s),
+            .allocated_string => |s| {
+                defer allocator.free(s);
+                return parse(s) catch return error.UnexpectedToken;
+            },
+            else => return error.UnexpectedToken,
+        }
+    }
+    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+        _ = allocator;
+        _ = options;
+        switch (source) {
+            .string => |s| return parse(s) catch return error.UnexpectedToken,
+            else => return error.UnexpectedToken,
+        }
+    }
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        var buf: [32]u8 = undefined;
+        self.write(&buf);
+        try jw.write(&buf);
+    }
+
+    // std.fmt interface
+    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        var buf: [32]u8 = undefined;
+        self.write(&buf);
+        return writer.writeAll(&buf);
+    }
+};
+
+pub fn IdMap(comptime T: type) type {
+    // Adapted from std.json.ArrayHashMap.
+    return struct {
+        map: Map = .{},
+
+        pub const Map = std.AutoArrayHashMapUnmanaged(Id, T);
+
+        pub fn deinit(self: *@This(), allocator: Allocator) void {
+            self.map.deinit(allocator);
+        }
+
+        pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+            var map = Map{};
+            errdefer map.deinit(allocator);
+
+            if (.object_begin != try source.next()) return error.UnexpectedToken;
+            while (true) {
+                const token = try source.nextAlloc(allocator, options.allocate.?);
+                switch (token) {
+                    inline .string, .allocated_string => |s| {
+                        const id = Id.parse(s) catch return error.UnexpectedToken;
+                        const gop = try map.getOrPut(allocator, id);
+                        if (gop.found_existing) {
+                            switch (options.duplicate_field_behavior) {
+                                .use_first => {
+                                    // Parse and ignore the redundant value.
+                                    // We don't want to skip the value, because we want type checking.
+                                    _ = try json.innerParse(T, allocator, source, options);
+                                    continue;
+                                },
+                                .@"error" => return error.DuplicateField,
+                                .use_last => {},
+                            }
+                        }
+                        gop.value_ptr.* = try json.innerParse(T, allocator, source, options);
+                    },
+                    .object_end => break,
+                    else => unreachable,
+                }
+            }
+            return .{ .map = map };
+        }
+
+        pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+            if (source != .object) return error.UnexpectedToken;
+
+            var map = Map{};
+            errdefer map.deinit(allocator);
+
+            var it = source.object.iterator();
+            while (it.next()) |kv| {
+                const id = Id.parse(kv.key_ptr.*) catch return error.UnexpectedToken;
+                try map.put(allocator, id, try json.innerParseFromValue(T, allocator, kv.value_ptr.*, options));
+            }
+            return .{ .map = map };
+        }
+
+        pub fn jsonStringify(self: @This(), jws: anytype) !void {
+            try jws.beginObject();
+            var it = self.map.iterator();
+            while (it.next()) |kv| {
+                var buf: [32]u8 = undefined;
+                kv.key_ptr.*.write(&buf);
+                try jws.objectField(&buf);
+                try jws.write(kv.value_ptr.*);
+            }
+            try jws.endObject();
+        }
+    };
+}
 
 fn nameAndArgsParse(comptime T: type, allocator: Allocator, source: anytype, options: json.ParseOptions) !T {
     // The fields can appear in any order, and we need to know the value of one before we can parse the other.
@@ -95,7 +222,10 @@ pub const ClientToServerMessage = union(enum) {
     move: TODO,
     pause: TODO,
     play: TODO,
-    queue: TODO,
+    queue: IdMap(struct {
+        key: Id,
+        sortKey: []const u8,
+    }),
     seek: TODO,
     setStreaming: bool,
     remove: TODO,
@@ -192,8 +322,8 @@ pub const ServerToClientMessage = union(enum) {
 };
 
 pub const LibraryTrack = struct {
-    /// The id in the library.
-    key: []const u8,
+    /// (undocumented) The id in the library.
+    key: Id,
     /// Path of the song on disk relative to the music library root.
     file: []const u8 = "",
     /// How many seconds long this track is.
@@ -219,7 +349,13 @@ pub const LibraryTrack = struct {
     composerName: []const u8 = "",
     performerName: []const u8 = "",
     /// The ids of labels that apply to this song. The values are always 1.
-    labels: JsonHashMap(AlwaysTheNumber1) = .{},
+    labels: IdMap(AlwaysTheNumber1) = .{},
+};
+
+pub const QueueItem = struct {
+    key: Id,
+    sortKey: []const u8,
+    isRandom: bool,
 };
 
 pub const Subscription = union(enum) {
@@ -229,9 +365,9 @@ pub const Subscription = union(enum) {
     autoDjFutureSize: TODO,
     repeat: TODO,
     volume: TODO,
-    queue: TODO,
+    queue: IdMap(QueueItem),
     hardwarePlayback: TODO,
-    library: JsonHashMap(LibraryTrack),
+    library: IdMap(LibraryTrack),
     libraryQueue: TODO,
     scanning: TODO,
     playlists: TODO,
@@ -239,7 +375,7 @@ pub const Subscription = union(enum) {
     anonStreamers: TODO,
     haveAdminUser: TODO,
     users: TODO,
-    streamEndpoint: TODO,
+    streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.
     events: TODO,

@@ -194,6 +194,12 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
                 .library => .{
                     .library = try library.getSerializable(arena.allocator()),
                 },
+                .streamEndpoint => .{
+                    .streamEndpoint = "stream.mp3",
+                },
+                .queue => .{
+                    .queue = try queue.getSerializable(arena.allocator()),
+                },
                 else => return, // TODO: support more subscription streams.
             };
 
@@ -206,6 +212,10 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
             } else {
                 try encodeAndSend(client_id, .{ .subscription = .{ .sub = sub } });
             }
+        },
+        .queue => |args| {
+            try queue.enqueue(args);
+            // TODO: broadcast changes to the queue.
         },
         else => unreachable,
     }

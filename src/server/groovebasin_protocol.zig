@@ -232,7 +232,7 @@ pub const ClientToServerMessage = union(enum) {
     }),
     seek: TODO,
     setStreaming: bool,
-    remove: TODO,
+    remove: []Id,
     repeat: TODO,
     requestApproval: TODO,
     setVolume: TODO,

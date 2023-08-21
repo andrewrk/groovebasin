@@ -68,6 +68,16 @@ pub fn move(arena: Allocator, args: anytype) !void {
     try subscription.broadcastChanges(arena, .queue);
 }
 
+pub fn remove(arena: Allocator, args: []Id) !void {
+    for (args) |item_id| {
+        if (!items.swapRemove(item_id)) {
+            log.warn("attempt to remove non-existent item: {}", .{item_id});
+        }
+    }
+    current_queue_version = Id.random();
+    try subscription.broadcastChanges(arena, .queue);
+}
+
 pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {
     var result = IdMap(groovebasin_protocol.QueueItem){};
 

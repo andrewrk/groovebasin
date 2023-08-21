@@ -13,7 +13,7 @@ const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
-pub var current_library_version: u64 = 1;
+pub var current_library_version: Id = undefined;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
 var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
@@ -30,6 +30,7 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
 
+    current_library_version = Id.random();
     tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
     errdefer tracks.deinit();
     strings = StringPool.init(g.gpa);

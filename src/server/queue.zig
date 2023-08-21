@@ -1,5 +1,6 @@
 const std = @import("std");
 const AutoArrayHashMap = std.AutoArrayHashMap;
+const Allocator = std.mem.Allocator;
 const log = std.log;
 
 const g = @import("global.zig");
@@ -8,11 +9,13 @@ const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const keese = @import("keese.zig");
+const subscription = @import("subscription.zig");
 
-pub var current_queue_version: u64 = 1;
+pub var current_queue_version: Id = undefined;
 var items: AutoArrayHashMap(Id, InternalQueueItem) = undefined;
 
 pub fn init() !void {
+    current_queue_version = Id.random();
     items = AutoArrayHashMap(Id, InternalQueueItem).init(g.gpa);
 }
 
@@ -26,7 +29,7 @@ pub const InternalQueueItem = struct {
     is_random: bool,
 };
 
-pub fn enqueue(new_items: anytype) !void {
+pub fn enqueue(arena: Allocator, new_items: anytype) !void {
     try items.ensureUnusedCapacity(new_items.map.count());
     var it = new_items.map.iterator();
     while (it.next()) |kv| {
@@ -44,6 +47,8 @@ pub fn enqueue(new_items: anytype) !void {
             .is_random = false,
         };
     }
+    current_queue_version = Id.random();
+    try subscription.broadcastChanges(arena, .queue);
 }
 
 pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {

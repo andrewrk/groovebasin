@@ -9,6 +9,7 @@ const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
 const keese = @import("keese.zig");
+const subscription = @import("subscription.zig");
 
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
@@ -89,19 +90,15 @@ pub fn main() anyerror!void {
     g.player = try Player.init(config.encodeBitRate);
     defer g.player.deinit();
 
-    log.info("init keese", .{});
+    log.info("init subsystems", .{});
+    try subscription.init();
+    defer subscription.deinit();
     try keese.init(g.gpa);
     defer keese.deinit();
-
-    log.info("init library", .{});
     try library.init(music_dir_path, config.dbPath);
     defer library.deinit();
-
-    log.info("init queue", .{});
     try queue.init();
     defer queue.deinit();
-
-    log.info("init events", .{});
     try events.init();
     defer events.deinit();
 
@@ -140,7 +137,7 @@ pub fn handleClientConnected(client_id: *anyopaque) !void {
     _ = client_id;
 }
 pub fn handleClientDisconnected(client_id: *anyopaque) !void {
-    _ = client_id;
+    subscription.handleClientDisconnected(client_id);
 }
 
 fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_protocol.ClientToServerMessage {
@@ -159,7 +156,7 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
     };
 }
 
-fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.ServerToClientMessage) !void {
+pub fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.ServerToClientMessage) !void {
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
     try web_server.sendMessageToClient(client_id, message_bytes);
 }
@@ -195,32 +192,10 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
             // TODO
         },
         .subscribe => |args| {
-            var sub: groovebasin_protocol.Subscription = switch (args.name) {
-                .library => .{
-                    .library = try library.getSerializable(arena.allocator()),
-                },
-                .streamEndpoint => .{
-                    .streamEndpoint = "stream.mp3",
-                },
-                .queue => .{
-                    .queue = try queue.getSerializable(arena.allocator()),
-                },
-                else => return, // TODO: support more subscription streams.
-            };
-
-            // Not actually doing versioning. Just wrap in the appropriate structure.
-            if (args.delta) {
-                try encodeAndSend(client_id, .{ .subscription = .{
-                    .sub = sub,
-                    .delta_version = "delta-versioning-still-TODO",
-                } });
-            } else {
-                try encodeAndSend(client_id, .{ .subscription = .{ .sub = sub } });
-            }
+            try subscription.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
         },
         .queue => |args| {
-            try queue.enqueue(args);
-            // TODO: broadcast changes to the queue.
+            try queue.enqueue(arena.allocator(), args);
         },
         else => unreachable,
     }

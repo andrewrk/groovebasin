@@ -216,7 +216,7 @@ pub const ClientToServerMessage = union(enum) {
     subscribe: struct {
         name: Tag(Subscription),
         delta: bool = false,
-        version: ?[]const u8 = null,
+        version: ?Id = null,
     },
     updateTags: TODO,
     updateUser: TODO,
@@ -277,7 +277,7 @@ pub const ServerToClientMessage = union(enum) {
     subscription: struct {
         sub: Subscription,
         // (this is not the JSON structure. see jsonStringify below.)
-        delta_version: ?[]const u8 = null,
+        delta_version: ?Id = null,
     },
 
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {

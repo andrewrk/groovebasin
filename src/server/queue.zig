@@ -51,6 +51,23 @@ pub fn enqueue(arena: Allocator, new_items: anytype) !void {
     try subscription.broadcastChanges(arena, .queue);
 }
 
+pub fn move(arena: Allocator, args: anytype) !void {
+    var it = args.map.iterator();
+    while (it.next()) |kv| {
+        const item_id = kv.key_ptr.*;
+        const sort_key = kv.value_ptr.sortKey;
+        const item = (items.getEntry(item_id) orelse {
+            log.warn("attempt to move non-existent item: {}", .{item_id});
+            continue;
+        }).value_ptr;
+        log.info("moving: {}: @{} -> @{}", .{ item_id, item.sort_key, sort_key });
+        item.sort_key = sort_key;
+        // TODO: check for collisions?
+    }
+    current_queue_version = Id.random();
+    try subscription.broadcastChanges(arena, .queue);
+}
+
 pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {
     var result = IdMap(groovebasin_protocol.QueueItem){};
 

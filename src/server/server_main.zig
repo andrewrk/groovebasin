@@ -197,6 +197,9 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .queue => |args| {
             try queue.enqueue(arena.allocator(), args);
         },
+        .move => |args| {
+            try queue.move(arena.allocator(), args);
+        },
         else => unreachable,
     }
 }

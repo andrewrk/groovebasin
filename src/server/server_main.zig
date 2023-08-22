@@ -9,7 +9,8 @@ const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
 const keese = @import("keese.zig");
-const subscription = @import("subscription.zig");
+const subscriptions = @import("subscriptions.zig");
+const users = @import("users.zig");
 
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
@@ -91,8 +92,10 @@ pub fn main() anyerror!void {
     defer g.player.deinit();
 
     log.info("init subsystems", .{});
-    try subscription.init();
-    defer subscription.deinit();
+    try users.init();
+    defer users.deinit();
+    try subscriptions.init();
+    defer subscriptions.deinit();
     try keese.init(g.gpa);
     defer keese.deinit();
     try library.init(music_dir_path, config.dbPath);
@@ -137,7 +140,7 @@ pub fn handleClientConnected(client_id: *anyopaque) !void {
     _ = client_id;
 }
 pub fn handleClientDisconnected(client_id: *anyopaque) !void {
-    subscription.handleClientDisconnected(client_id);
+    subscriptions.handleClientDisconnected(client_id);
 }
 
 fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_protocol.ClientToServerMessage {
@@ -188,11 +191,14 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
     //  .events - large database
     //  .importProgress
     switch (message) {
+        .ensureAdminUser => {
+            try users.ensureAdminUser(arena.allocator());
+        },
         .setStreaming => {
             // TODO
         },
         .subscribe => |args| {
-            try subscription.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
+            try subscriptions.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
         },
         .queue => |args| {
             try queue.enqueue(arena.allocator(), args);

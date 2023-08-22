@@ -67,6 +67,9 @@ fn lookup(client_id: *anyopaque, name: Tag(Subscription)) ?*ClientSubscriptionDa
 fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var version: ?Id = null;
     var sub: Subscription = switch (client_data.name) {
+        .haveAdminUser => .{
+            .haveAdminUser = false,
+        },
         .library => blk: {
             version = library.current_library_version;
             break :blk .{ .library = try library.getSerializable(arena) };

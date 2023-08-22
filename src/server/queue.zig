@@ -9,7 +9,7 @@ const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const keese = @import("keese.zig");
-const subscription = @import("subscription.zig");
+const subscriptions = @import("subscriptions.zig");
 
 pub var current_queue_version: Id = undefined;
 var items: AutoArrayHashMap(Id, InternalQueueItem) = undefined;
@@ -48,7 +48,7 @@ pub fn enqueue(arena: Allocator, new_items: anytype) !void {
         };
     }
     current_queue_version = Id.random();
-    try subscription.broadcastChanges(arena, .queue);
+    try subscriptions.broadcastChanges(arena, .queue);
 }
 
 pub fn move(arena: Allocator, args: anytype) !void {
@@ -65,7 +65,7 @@ pub fn move(arena: Allocator, args: anytype) !void {
         // TODO: check for collisions?
     }
     current_queue_version = Id.random();
-    try subscription.broadcastChanges(arena, .queue);
+    try subscriptions.broadcastChanges(arena, .queue);
 }
 
 pub fn remove(arena: Allocator, args: []Id) !void {
@@ -75,7 +75,7 @@ pub fn remove(arena: Allocator, args: []Id) !void {
         }
     }
     current_queue_version = Id.random();
-    try subscription.broadcastChanges(arena, .queue);
+    try subscriptions.broadcastChanges(arena, .queue);
 }
 
 pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {

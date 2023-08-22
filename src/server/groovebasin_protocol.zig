@@ -207,7 +207,7 @@ pub const ClientToServerMessage = union(enum) {
     autoDjOn: TODO,
     autoDjHistorySize: TODO,
     autoDjFutureSize: TODO,
-    ensureAdminUser: TODO,
+    ensureAdminUser: void,
     hardwarePlayback: TODO,
     importNames: TODO,
     importUrl: TODO,
@@ -377,7 +377,7 @@ pub const Subscription = union(enum) {
     playlists: TODO,
     importProgress: TODO,
     anonStreamers: TODO,
-    haveAdminUser: TODO,
+    haveAdminUser: bool,
     users: TODO,
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
@@ -401,4 +401,20 @@ const AlwaysTheNumber1 = struct {
         _ = self;
         try jw.write(1);
     }
+};
+
+pub const Permissions = struct {
+    read: bool,
+    add: bool,
+    control: bool,
+    playlist: bool,
+    admin: bool,
+};
+
+pub const default_permissions = Permissions{
+    .read = true,
+    .add = true,
+    .control = true,
+    .playlist = false,
+    .admin = false,
 };

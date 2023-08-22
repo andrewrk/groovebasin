@@ -187,12 +187,13 @@ fn grooveFileToTrack(
 
 pub fn getSerializable(arena: Allocator) !IdMap(LibraryTrack) {
     var result = IdMap(LibraryTrack){};
+    try result.map.ensureTotalCapacity(arena, tracks.count());
 
     var it = tracks.iterator();
     while (it.next()) |kv| {
         const id = kv.key_ptr.*;
         const track = kv.value_ptr.*;
-        try result.map.putNoClobber(arena, id, trackToSerializedForm(&strings, id, track));
+        result.map.putAssumeCapacityNoClobber(id, trackToSerializedForm(&strings, id, track));
     }
     return result;
 }

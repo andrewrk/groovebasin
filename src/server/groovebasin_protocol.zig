@@ -362,6 +362,14 @@ pub const QueueItem = struct {
     isRandom: bool,
 };
 
+pub const PublicUserInfo = struct {
+    name: []const u8,
+    perms: Permissions,
+    requested: bool,
+    connected: bool,
+    streaming: bool,
+};
+
 pub const Subscription = union(enum) {
     currentTrack: TODO,
     autoDjOn: TODO,
@@ -378,7 +386,7 @@ pub const Subscription = union(enum) {
     importProgress: TODO,
     anonStreamers: TODO,
     haveAdminUser: bool,
-    users: TODO,
+    users: IdMap(PublicUserInfo),
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.

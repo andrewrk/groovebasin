@@ -8,6 +8,7 @@ const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;
+const users = @import("users.zig");
 
 const Subscription = @import("groovebasin_protocol.zig").Subscription;
 const Id = @import("groovebasin_protocol.zig").Id;
@@ -67,15 +68,15 @@ fn lookup(client_id: *anyopaque, name: Tag(Subscription)) ?*ClientSubscriptionDa
 fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var version: ?Id = null;
     var sub: Subscription = switch (client_data.name) {
-        .haveAdminUser => .{
-            .haveAdminUser = false,
+        .haveAdminUser => .{ .haveAdminUser = users.haveAdminUser() },
+        .streamEndpoint => .{ .streamEndpoint = "stream.mp3" },
+        .users => blk: {
+            version = users.current_version;
+            break :blk .{ .users = try users.getSerializable(arena) };
         },
         .library => blk: {
             version = library.current_library_version;
             break :blk .{ .library = try library.getSerializable(arena) };
-        },
-        .streamEndpoint => .{
-            .streamEndpoint = "stream.mp3",
         },
         .queue => blk: {
             version = queue.current_queue_version;

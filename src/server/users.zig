@@ -6,9 +6,12 @@ const log = std.log;
 const g = @import("global.zig");
 
 const StringPool = @import("shared").StringPool;
-const Id = @import("groovebasin_protocol.zig").Id;
-const Permissions = @import("groovebasin_protocol.zig").Permissions;
 const subscriptions = @import("subscriptions.zig");
+
+const Id = @import("groovebasin_protocol.zig").Id;
+const IdMap = @import("groovebasin_protocol.zig").IdMap;
+const Permissions = @import("groovebasin_protocol.zig").Permissions;
+const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
 
 const UserAccount = struct {
     name: u32,
@@ -25,9 +28,15 @@ const PasswordHash = struct {
     hash: [32]u8,
 };
 
+const Session = struct {
+    user_id: Id,
+    claims_to_be_streaming: bool = false,
+};
+
 pub var current_version: Id = undefined;
-var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var strings: StringPool = undefined;
+var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
+var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
 
 pub fn init() !void {
     current_version = Id.random();
@@ -39,14 +48,22 @@ pub fn deinit() void {
     strings.deinit();
 }
 
+pub fn haveAdminUser() bool {
+    for (user_accounts.values()) |*user| {
+        if (user.perms.admin) return true;
+    }
+    return false;
+}
+
 pub fn ensureAdminUser(arena: Allocator) !void {
-    // TODO: check if there's one already.
+    if (haveAdminUser()) return;
 
     var name_str: ["Admin-123456".len]u8 = "Admin-XXXXXX".*;
     for (name_str[name_str.len - 6 ..]) |*c| {
         c.* = std.crypto.random.intRangeAtMost(u8, '0', '9');
     }
     const name = try strings.putWithoutDeduplication(&name_str);
+    // TODO: validate uniqueness of username.
 
     var password_hash: PasswordHash = undefined;
     std.crypto.random.bytes(&password_hash.salt);
@@ -83,5 +100,34 @@ pub fn ensureAdminUser(arena: Allocator) !void {
     log.info("Password: {s}", .{password_text[0..]});
 
     current_version = Id.random();
+    try subscriptions.broadcastChanges(arena, .haveAdminUser);
     try subscriptions.broadcastChanges(arena, .users);
+}
+
+pub fn getSerializable(arena: Allocator) !IdMap(PublicUserInfo) {
+    var result = IdMap(PublicUserInfo){};
+    try result.map.ensureTotalCapacity(arena, user_accounts.count());
+
+    var it = user_accounts.iterator();
+    while (it.next()) |kv| {
+        const user_id = kv.key_ptr.*;
+        const account = kv.value_ptr;
+        result.map.putAssumeCapacityNoClobber(user_id, .{
+            .name = strings.getString(account.name),
+            .perms = account.perms,
+            .requested = account.requested,
+            .connected = false,
+            .streaming = false,
+        });
+    }
+
+    for (sessions.values()) |*session| {
+        var public_info = result.map.getEntry(session.user_id).?.value_ptr;
+        public_info.connected = true;
+        if (session.claims_to_be_streaming) {
+            public_info.streaming = true;
+        }
+    }
+
+    return result;
 }

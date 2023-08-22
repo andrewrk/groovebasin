@@ -80,12 +80,13 @@ pub fn remove(arena: Allocator, args: []Id) !void {
 
 pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {
     var result = IdMap(groovebasin_protocol.QueueItem){};
+    try result.map.ensureTotalCapacity(arena, items.count());
 
     var it = items.iterator();
     while (it.next()) |kv| {
         const id = kv.key_ptr.*;
         const queue_item = kv.value_ptr.*;
-        try result.map.putNoClobber(arena, id, itemToSerializedForm(queue_item));
+        result.map.putAssumeCapacityNoClobber(id, itemToSerializedForm(queue_item));
     }
     return result;
 }

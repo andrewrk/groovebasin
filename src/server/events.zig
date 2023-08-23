@@ -2,6 +2,7 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 
+const Id = @import("groovebasin_protocol.zig").Id;
 const g = @import("global.zig");
 
 pub const Event = extern struct {
@@ -31,4 +32,10 @@ pub fn init() !void {
 pub fn deinit() void {
     strings.deinit();
     events.deinit();
+}
+
+pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
+    _ = guest_id;
+    _ = real_id;
+    // TODO
 }

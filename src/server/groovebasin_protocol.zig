@@ -211,7 +211,10 @@ pub const ClientToServerMessage = union(enum) {
     hardwarePlayback: TODO,
     importNames: TODO,
     importUrl: TODO,
-    login: TODO,
+    login: struct {
+        username: []const u8,
+        password: []u8,
+    },
     logout: TODO,
     subscribe: struct {
         name: Tag(Subscription),
@@ -273,7 +276,14 @@ pub const ServerToClientMessage = union(enum) {
     lastFmApiKey: TODO,
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
-    user: TODO,
+    user: struct {
+        id: Id,
+        name: []const u8,
+        perms: Permissions,
+        registered: bool,
+        requested: bool,
+        approved: bool,
+    },
 
     // Subscribed Information Change Messages
     subscription: struct {

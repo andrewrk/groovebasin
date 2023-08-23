@@ -203,6 +203,9 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
     //  .events - large database
     //  .importProgress
     switch (message) {
+        .login => |args| {
+            try users.login(arena.allocator(), client_id, args.username, args.password);
+        },
         .ensureAdminUser => {
             try users.ensureAdminUser(arena.allocator());
         },

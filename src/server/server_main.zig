@@ -206,6 +206,9 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .login => |args| {
             try users.login(arena.allocator(), client_id, args.username, args.password);
         },
+        .logout => {
+            try users.logout(arena.allocator(), client_id);
+        },
         .ensureAdminUser => {
             try users.ensureAdminUser(arena.allocator());
         },

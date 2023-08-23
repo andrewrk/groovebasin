@@ -215,7 +215,7 @@ pub const ClientToServerMessage = union(enum) {
         username: []const u8,
         password: []u8,
     },
-    logout: TODO,
+    logout: void,
     subscribe: struct {
         name: Tag(Subscription),
         delta: bool = false,

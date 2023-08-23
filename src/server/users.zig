@@ -104,6 +104,13 @@ pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
+pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
+    const session = sessions.getEntry(client_id).?.value_ptr;
+    session.user_id = try createGuestAccount();
+    try sendSelfUserInfo(client_id);
+    try subscriptions.broadcastChanges(arena, .users);
+}
+
 pub fn login(arena: Allocator, client_id: *anyopaque, username: []const u8, password: []u8) !void {
     defer shred(password);
     var additional_sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
@@ -219,11 +226,14 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
 }
 
 fn changeUserName(user_id: Id, new_username: []const u8) !void {
+    try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
+    try strings.ensureUnusedCapacity(new_username.len);
     const account = user_accounts.getEntry(user_id).?.value_ptr;
-    const by_name_gop = try username_to_user_id.getOrPutContextAdapted(g.gpa, new_username, StringsAdaptedContext{}, StringsContext{});
-    errdefer username_to_user_id.swapRemoveAt(by_name_gop.index);
-    const name = try strings.putWithoutDeduplication(new_username);
+
     std.debug.assert(username_to_user_id.swapRemove(account.name));
+    const name = strings.putWithoutDeduplicationAssumeCapacity(new_username);
+    const by_name_gop = username_to_user_id.getOrPutAssumeCapacityAdapted(new_username, StringsAdaptedContext{});
+    std.debug.assert(!by_name_gop.found_existing);
     account.name = name;
     by_name_gop.key_ptr.* = name;
     by_name_gop.value_ptr.* = user_id;
@@ -247,7 +257,7 @@ fn createGuestAccount() !Id {
     for (name_str[name_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
-    return createAccount(&name_str, null, guest_perms);
+    return createAccount(&name_str, null, false, guest_perms);
 }
 
 pub fn ensureAdminUser(arena: Allocator) !void {
@@ -271,7 +281,7 @@ pub fn ensureAdminUser(arena: Allocator) !void {
         h.final(&password_hash.hash);
     }
 
-    _ = try createAccount(&name_str, password_hash, .{
+    _ = try createAccount(&name_str, password_hash, true, .{
         .read = true,
         .add = true,
         .control = true,
@@ -288,22 +298,30 @@ pub fn ensureAdminUser(arena: Allocator) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
-fn createAccount(name_str: []const u8, password_hash: ?PasswordHash, perms: Permissions) !Id {
-    const by_name_gop = try username_to_user_id.getOrPutContextAdapted(g.gpa, name_str, StringsAdaptedContext{}, StringsContext{});
+fn createAccount(
+    name_str: []const u8,
+    password_hash: ?PasswordHash,
+    registered_requested_approved: bool,
+    perms: Permissions,
+) !Id {
+    try user_accounts.ensureUnusedCapacity(1);
+    try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
+    try strings.ensureUnusedCapacity(name_str.len);
+
+    const by_name_gop = username_to_user_id.getOrPutAssumeCapacityAdapted(name_str, StringsAdaptedContext{});
     if (by_name_gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
-    errdefer username_to_user_id.swapRemoveAt(by_name_gop.index);
-    const name = try strings.putWithoutDeduplication(name_str);
+    const name = strings.putWithoutDeduplicationAssumeCapacity(name_str);
 
     const user_id = Id.random();
-    const gop = try user_accounts.getOrPut(user_id);
+    const gop = user_accounts.getOrPutAssumeCapacity(user_id);
     if (gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
     const user = gop.value_ptr;
     user.* = UserAccount{
         .name = name,
         .password_hash = password_hash,
-        .registered = false,
-        .requested = false,
-        .approved = false,
+        .registered = registered_requested_approved,
+        .requested = registered_requested_approved,
+        .approved = registered_requested_approved,
         .perms = perms,
     };
     by_name_gop.key_ptr.* = name;

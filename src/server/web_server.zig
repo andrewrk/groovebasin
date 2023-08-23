@@ -281,6 +281,7 @@ const ConnectionHandler = struct {
             const request = (try self.readMessage()) orelse break;
             request.ref(); // trace:recv_buffer
             defer request.unref(); // trace:recv_buffer
+            // TODO: this logs passwords in clear text:
             log.debug("received: {s}", .{request.payload});
 
             const delivery = try g.gpa.create(ToServerMessage);

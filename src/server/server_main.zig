@@ -29,6 +29,11 @@ const usage =
     \\
 ;
 
+pub const std_options = struct {
+    // std.log configuration.
+    pub const log_level = .info;
+};
+
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
     log.err(format, args);
     std.process.exit(1);
@@ -137,10 +142,17 @@ pub fn main() anyerror!void {
 }
 
 pub fn handleClientConnected(client_id: *anyopaque) !void {
-    _ = client_id;
+    var arena = ArenaAllocator.init(g.gpa);
+    defer arena.deinit();
+
+    try users.handleClientConnected(arena.allocator(), client_id);
 }
 pub fn handleClientDisconnected(client_id: *anyopaque) !void {
+    var arena = ArenaAllocator.init(g.gpa);
+    defer arena.deinit();
+
     subscriptions.handleClientDisconnected(client_id);
+    try users.handleClientDisconnected(arena.allocator(), client_id);
 }
 
 fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_protocol.ClientToServerMessage {
@@ -194,8 +206,8 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .ensureAdminUser => {
             try users.ensureAdminUser(arena.allocator());
         },
-        .setStreaming => {
-            // TODO
+        .setStreaming => |args| {
+            try users.setStreaming(arena.allocator(), client_id, args);
         },
         .subscribe => |args| {
             try subscriptions.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);

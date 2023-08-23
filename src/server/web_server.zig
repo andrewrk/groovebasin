@@ -181,12 +181,12 @@ const ConnectionHandler = struct {
 
         if (should_upgrade_websocket) {
             const websocket_key = sec_websocket_key orelse return error.WebsocketUpgradeMissingSecKey;
-            log.info("GET websocket: {s}", .{path});
+            log.debug("GET websocket: {s}", .{path});
             // This is going to stay open for a long time.
             return self.serveWebsocket(websocket_key);
         }
 
-        log.info("GET: {s}", .{path});
+        log.debug("GET: {s}", .{path});
 
         if (mem.eql(u8, path, "/stream.mp3")) {
             // This is going to stay open for a long time.
@@ -281,7 +281,7 @@ const ConnectionHandler = struct {
             const request = (try self.readMessage()) orelse break;
             request.ref(); // trace:recv_buffer
             defer request.unref(); // trace:recv_buffer
-            log.info("received: {s}", .{request.payload});
+            log.debug("received: {s}", .{request.payload});
 
             const delivery = try g.gpa.create(ToServerMessage);
             delivery.* = .{ .event = .{ .client_to_server_message = .{
@@ -316,7 +316,7 @@ const ConnectionHandler = struct {
         switch (opcode_byte) {
             complete_text_message_opcode => {},
             close_message_opcode => {
-                log.info("websocket client requested clean shutdown", .{});
+                log.debug("websocket client requested clean shutdown", .{});
                 return null;
             },
             else => {
@@ -392,7 +392,7 @@ const ConnectionHandler = struct {
     }
 
     fn writeMessageFromSendThread(self: *@This(), message: []const u8) !void {
-        log.info("sending: {s}", .{message});
+        log.debug("sending: {s}", .{message});
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.

@@ -14,11 +14,18 @@ const Permissions = @import("groovebasin_protocol.zig").Permissions;
 const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
 
 const UserAccount = struct {
+    /// Display name and login username.
     name: u32,
-    password_hash: PasswordHash,
+    /// Null for freshly generated guest accounts.
+    password_hash: ?PasswordHash,
+    /// True iff the user has specified the name of this account.
+    /// Could be renamed to non_guest.
     registered: bool,
+    /// Has the user clicked the Request Approval button?
     requested: bool,
+    /// Has an admin clicked the Approve button (after the above request)?
     approved: bool,
+    /// Short for permissions, not hairstyling.
     perms: Permissions,
 };
 
@@ -37,15 +44,48 @@ pub var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
+var guest_perms: Permissions = .{
+    // Can be changed by admins.
+    .read = true,
+    .add = true,
+    .control = true,
+    .playlist = false,
+    .admin = false,
+};
 
 pub fn init() !void {
     current_version = Id.random();
-    user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
     strings = StringPool.init(g.gpa);
+    user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
+    sessions = AutoArrayHashMap(*anyopaque, Session).init(g.gpa);
 }
 pub fn deinit() void {
-    user_accounts.deinit();
     strings.deinit();
+    user_accounts.deinit();
+    sessions.deinit();
+}
+
+pub fn handleClientConnected(arena: Allocator, client_id: *anyopaque) !void {
+    // Every new connection starts as a guest.
+    // If you want to be not a guest, send a login message.
+    const user_id = try createGuestAccount();
+    try sessions.putNoClobber(client_id, .{
+        .user_id = user_id,
+        .claims_to_be_streaming = false,
+    });
+
+    try subscriptions.broadcastChanges(arena, .users);
+}
+
+pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
+    std.debug.assert(sessions.swapRemove(client_id));
+    try subscriptions.broadcastChanges(arena, .users);
+}
+
+pub fn setStreaming(arena: Allocator, client_id: *anyopaque, is_streaming: bool) !void {
+    sessions.getEntry(client_id).?.value_ptr.claims_to_be_streaming = is_streaming;
+
+    try subscriptions.broadcastChanges(arena, .users);
 }
 
 pub fn haveAdminUser() bool {
@@ -53,6 +93,29 @@ pub fn haveAdminUser() bool {
         if (user.perms.admin) return true;
     }
     return false;
+}
+
+fn createGuestAccount() !Id {
+    var name_str: ["Guest-123456".len]u8 = "Guest-XXXXXX".*;
+    for (name_str[name_str.len - 6 ..]) |*c| {
+        c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
+    }
+    const name = try strings.putWithoutDeduplication(&name_str);
+    // TODO: validate uniqueness of username.
+
+    const gop = try user_accounts.getOrPut(Id.random());
+    if (gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
+    const user = gop.value_ptr;
+    user.* = UserAccount{
+        .name = name,
+        .password_hash = null,
+        .registered = false,
+        .requested = false,
+        .approved = false,
+        .perms = guest_perms,
+    };
+    // publishing users event happens one call up.
+    return gop.key_ptr.*;
 }
 
 pub fn ensureAdminUser(arena: Allocator) !void {

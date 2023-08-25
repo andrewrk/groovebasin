@@ -12,7 +12,9 @@ const events = @import("events.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;
 
 const Id = @import("groovebasin_protocol.zig").Id;
+const IdOrGuest = @import("groovebasin_protocol.zig").IdOrGuest;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
+const IdOrGuestMap = @import("groovebasin_protocol.zig").IdOrGuestMap;
 const Permissions = @import("groovebasin_protocol.zig").Permissions;
 const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
 
@@ -336,13 +338,28 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
-pub fn updateUser(arena: Allocator, user_id: Id, perms: Permissions) !void {
+pub fn updateUser(arena: Allocator, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
     const old_have_admin_user = haveAdminUser();
     var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
 
-    const account = user_accounts.getEntry(user_id).?.value_ptr;
-    account.perms = perms;
-    try collectSessionsForAccount(user_id, &sessions_to_notify);
+    switch (user_id_or_guest_pseudo_user_id) {
+        .id => |user_id| {
+            const account = user_accounts.getEntry(user_id).?.value_ptr;
+            account.perms = perms;
+            try collectSessionsForAccount(user_id, &sessions_to_notify);
+        },
+        .guest => {
+            guest_perms = perms;
+            var it = user_accounts.iterator();
+            while (it.next()) |kv| {
+                const user_id = kv.key_ptr.*;
+                const account = kv.value_ptr;
+                if (account.approved) continue;
+                account.perms = guest_perms;
+                try collectSessionsForAccount(user_id, &sessions_to_notify);
+            }
+        },
+    }
 
     try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
     try subscriptions.broadcastChanges(arena, .users);
@@ -460,15 +477,15 @@ fn sendSelfUserInfo(client_id: *anyopaque) !void {
     });
 }
 
-pub fn getSerializable(arena: Allocator) !IdMap(PublicUserInfo) {
-    var result = IdMap(PublicUserInfo){};
-    try result.map.ensureTotalCapacity(arena, user_accounts.count());
+pub fn getSerializable(arena: Allocator) !IdOrGuestMap(PublicUserInfo) {
+    var result = IdOrGuestMap(PublicUserInfo){};
+    try result.map.ensureTotalCapacity(arena, user_accounts.count() + 1);
 
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
-        result.map.putAssumeCapacityNoClobber(user_id, .{
+        result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
             .name = strings.getString(account.name),
             .perms = account.perms,
             .requested = account.requested,
@@ -479,12 +496,25 @@ pub fn getSerializable(arena: Allocator) !IdMap(PublicUserInfo) {
     }
 
     for (sessions.values()) |*session| {
-        var public_info = result.map.getEntry(session.user_id).?.value_ptr;
+        var public_info = result.map.getEntry(.{ .id = session.user_id }).?.value_ptr;
         public_info.connected = true;
         if (session.claims_to_be_streaming) {
             public_info.streaming = true;
         }
     }
+
+    result.map.putAssumeCapacityNoClobber(.guest, .{
+        // Displayed in the permission edit UI:
+        .name = "Guests",
+        // This is the important information:
+        .perms = guest_perms,
+        // This gest the pseudo user to show up in the permission edit UI:
+        .requested = true,
+        .approved = true,
+        // Unused:
+        .connected = false,
+        .streaming = false,
+    });
 
     return result;
 }

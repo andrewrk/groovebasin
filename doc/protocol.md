@@ -433,7 +433,7 @@ Note this message allows editing tags for multiple songs at once.
 
  * Permission: `admin`
  * Type: `{userId, perms}`
- * `userId`: `string`. ID of the user to update.
+ * `userId`: `string`. ID of the user to update or the guest pseudo ID.
  * `perms`: `object`. Permissions to assign to the user.
 
 ### unsubscribe
@@ -955,7 +955,7 @@ and credentials printed to stdio.
 ### users
 
  * Type: `{userId: {name, perms, requested, approved, connected, streaming}}`
- * `userId`: `string`. ID of the user.
+ * `userId`: `string`. ID of the user or the guest pseudo ID.
  * `name`: `string`. Name of the user.
  * `perms`: `object`. Permissions the user has.
  * `requested`: `boolean`. Whether the user has requested approval.

@@ -40,17 +40,18 @@ pub const Id = struct {
         try std.base64.url_safe.Decoder.decode(&buf, s);
         return .{ .value = std.mem.readIntNative(u192, &buf) };
     }
-    pub fn write(self: @This(), out_buffer: *[32]u8) void {
+    pub fn write(self: @This(), out_buffer: *[32]u8) []const u8 {
         var native: [24]u8 = undefined;
         std.mem.writeIntNative(u192, &native, self.value);
         std.debug.assert(std.base64.url_safe.Encoder.encode(out_buffer, &native).len == 32);
+        return out_buffer;
     }
 
     // JSON interface
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
         _ = options;
         switch (try source.nextAlloc(.alloc_if_needed)) {
-            .string => |s| return parse(s),
+            .string => |s| return parse(s) catch return error.UnexpectedToken,
             .allocated_string => |s| {
                 defer allocator.free(s);
                 return parse(s) catch return error.UnexpectedToken;
@@ -68,8 +69,7 @@ pub const Id = struct {
     }
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
         var buf: [32]u8 = undefined;
-        self.write(&buf);
-        try jw.write(&buf);
+        try jw.write(self.write(&buf));
     }
 
     // std.fmt interface
@@ -77,17 +77,74 @@ pub const Id = struct {
         _ = fmt;
         _ = options;
         var buf: [32]u8 = undefined;
-        self.write(&buf);
-        return writer.writeAll(&buf);
+        return writer.writeAll(self.write(&buf));
+    }
+};
+
+pub const IdOrGuest = union(enum) {
+    id: Id,
+    guest,
+
+    const guest_pseudo_id = "(guest)";
+
+    // JsonMap interface.
+    pub fn parse(s: []const u8) !@This() {
+        if (std.mem.eql(u8, s, guest_pseudo_id)) return .guest;
+        return .{ .id = try Id.parse(s) };
+    }
+    pub fn write(self: @This(), buf: *[32]u8) []const u8 {
+        switch (self) {
+            .id => |id| return id.write(buf),
+            .guest => return guest_pseudo_id,
+        }
+    }
+
+    // JSON interface
+    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+        _ = options;
+        switch (try source.nextAlloc(.alloc_if_needed)) {
+            .string => |s| return parse(s) catch return error.UnexpectedToken,
+            .allocated_string => |s| {
+                defer allocator.free(s);
+                return parse(s) catch return error.UnexpectedToken;
+            },
+            else => return error.UnexpectedToken,
+        }
+    }
+    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+        _ = allocator;
+        _ = options;
+        switch (source) {
+            .string => |s| return parse(s) catch return error.UnexpectedToken,
+            else => return error.UnexpectedToken,
+        }
+    }
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        var buf: [32]u8 = undefined;
+        try jw.write(self.write(&buf));
+    }
+
+    // std.fmt interface
+    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        var buf: [32]u8 = undefined;
+        return writer.writeAll(self.write(&buf));
     }
 };
 
 pub fn IdMap(comptime T: type) type {
+    return JsonMap(Id, T);
+}
+pub fn IdOrGuestMap(comptime T: type) type {
+    return JsonMap(IdOrGuest, T);
+}
+fn JsonMap(comptime Key: type, comptime T: type) type {
     // Adapted from std.json.ArrayHashMap.
     return struct {
         map: Map = .{},
 
-        pub const Map = std.AutoArrayHashMapUnmanaged(Id, T);
+        pub const Map = std.AutoArrayHashMapUnmanaged(Key, T);
 
         pub fn deinit(self: *@This(), allocator: Allocator) void {
             self.map.deinit(allocator);
@@ -102,7 +159,7 @@ pub fn IdMap(comptime T: type) type {
                 const token = try source.nextAlloc(allocator, options.allocate.?);
                 switch (token) {
                     inline .string, .allocated_string => |s| {
-                        const id = Id.parse(s) catch return error.UnexpectedToken;
+                        const id = Key.parse(s) catch return error.UnexpectedToken;
                         const gop = try map.getOrPut(allocator, id);
                         if (gop.found_existing) {
                             switch (options.duplicate_field_behavior) {
@@ -133,7 +190,7 @@ pub fn IdMap(comptime T: type) type {
 
             var it = source.object.iterator();
             while (it.next()) |kv| {
-                const id = Id.parse(kv.key_ptr.*) catch return error.UnexpectedToken;
+                const id = Key.parse(kv.key_ptr.*) catch return error.UnexpectedToken;
                 try map.put(allocator, id, try json.innerParseFromValue(T, allocator, kv.value_ptr.*, options));
             }
             return .{ .map = map };
@@ -144,8 +201,7 @@ pub fn IdMap(comptime T: type) type {
             var it = self.map.iterator();
             while (it.next()) |kv| {
                 var buf: [32]u8 = undefined;
-                kv.key_ptr.*.write(&buf);
-                try jws.objectField(&buf);
+                try jws.objectField(kv.key_ptr.*.write(&buf));
                 try jws.write(kv.value_ptr.*);
             }
             try jws.endObject();
@@ -228,7 +284,7 @@ pub const ClientToServerMessage = union(enum) {
     },
     updateTags: TODO,
     updateUser: struct {
-        userId: Id,
+        userId: IdOrGuest,
         perms: Permissions,
     },
     unsubscribe: TODO,
@@ -405,7 +461,7 @@ pub const Subscription = union(enum) {
     importProgress: TODO,
     anonStreamers: TODO,
     haveAdminUser: bool,
-    users: IdMap(PublicUserInfo),
+    users: IdOrGuestMap(PublicUserInfo),
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.

@@ -845,6 +845,7 @@ Type:
 ```
 {
   key: {
+    key,
     name,
     artistName,
     albumArtistName,
@@ -958,6 +959,7 @@ and credentials printed to stdio.
  * `name`: `string`. Name of the user.
  * `perms`: `object`. Permissions the user has.
  * `requested`: `boolean`. Whether the user has requested approval.
+ * `approved`: `boolean`. Whether or not the user was approved.
  * `connected`: `boolean`. Whether the user is currently connected.
  * `streaming`: `boolean`. Whether the user is connected to the stream.
 

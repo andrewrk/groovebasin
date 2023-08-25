@@ -347,6 +347,29 @@ pub fn updateUser(arena: Allocator, user_id: Id, perms: Permissions) !void {
     }
 }
 
+pub fn deleteUsers(arena: Allocator, user_ids: []const Id) !void {
+    const old_have_admin_user = haveAdminUser();
+    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
+
+    for (user_ids) |user_id| {
+        var it = sessions.iterator();
+        while (it.next()) |kv| {
+            if (kv.value_ptr.user_id.value == user_id.value) {
+                kv.value_ptr.user_id = try createGuestAccount();
+                try sessions_to_notify.append(kv.key_ptr.*);
+            }
+        }
+        try events.tombstoneUser(user_id);
+        deleteAccount(user_id);
+    }
+
+    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
+    try subscriptions.broadcastChanges(arena, .users);
+    if (old_have_admin_user != haveAdminUser()) {
+        try subscriptions.broadcastChanges(arena, .haveAdminUser);
+    }
+}
+
 fn createAccount(
     name_str: []const u8,
     password_hash: ?PasswordHash,

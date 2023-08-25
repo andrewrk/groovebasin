@@ -199,6 +199,9 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .updateUser => |args| {
             try users.updateUser(arena.allocator(), args.userId, args.perms);
         },
+        .deleteUsers => |args| {
+            try users.deleteUsers(arena.allocator(), args);
+        },
         .setStreaming => |args| {
             try users.setStreaming(arena.allocator(), client_id, args);
         },

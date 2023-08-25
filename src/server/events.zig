@@ -39,3 +39,8 @@ pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
     _ = real_id;
     // TODO
 }
+
+pub fn tombstoneUser(user_id: Id) !void {
+    _ = user_id;
+    // TODO
+}

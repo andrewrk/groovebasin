@@ -208,7 +208,7 @@ pub const ClientToServerMessage = union(enum) {
     },
     chat: TODO,
     deleteTracks: TODO,
-    deleteUsers: TODO,
+    deleteUsers: []const Id,
     autoDjOn: TODO,
     autoDjHistorySize: TODO,
     autoDjFutureSize: TODO,

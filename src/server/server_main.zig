@@ -31,7 +31,7 @@ const usage =
 
 pub const std_options = struct {
     // std.log configuration.
-    pub const log_level = .info;
+    //pub const log_level = .info;
 };
 
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
@@ -177,32 +177,10 @@ pub fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.Server
 }
 
 pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
+    // TODO: permission checks on the apis.
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    const message = try parseMessage(arena.allocator(), message_bytes);
-    // startup messages:
-    //  .user
-    //  .time
-    //  .token
-    //  .lastFmApiKey
-    //  .user (again, this time as not a guest)
-    //  .streamEndpoint
-    //  .autoDjOn
-    //  .hardwarePlayback
-    //  .haveAdminUser
-    //  .labels - large database
-    //  .library - large database
-    //  .queue - large database
-    //  .scanning
-    //  .volume
-    //  .repeat
-    //  .currentTrack
-    //  .playlists - large database
-    //  .anonStreamers
-    //  .users (not to be confused with .user)
-    //  .events - large database
-    //  .importProgress
-    switch (message) {
+    switch (try parseMessage(arena.allocator(), message_bytes)) {
         .login => |args| {
             try users.login(arena.allocator(), client_id, args.username, args.password);
         },
@@ -212,12 +190,20 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         .ensureAdminUser => {
             try users.ensureAdminUser(arena.allocator());
         },
+        .requestApproval => {
+            try users.requestApproval(arena.allocator(), client_id);
+        },
+        .approve => |args| {
+            try users.approve(arena.allocator(), args);
+        },
         .setStreaming => |args| {
             try users.setStreaming(arena.allocator(), client_id, args);
         },
+
         .subscribe => |args| {
             try subscriptions.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
         },
+
         .queue => |args| {
             try queue.enqueue(arena.allocator(), args);
         },

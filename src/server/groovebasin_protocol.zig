@@ -200,7 +200,12 @@ fn nameAndArgsStringify(self: anytype, jw: anytype) !void {
 
 // Client-to-Server Control Messages
 pub const ClientToServerMessage = union(enum) {
-    approve: TODO,
+    approve: []const struct {
+        id: Id,
+        replaceId: ?Id,
+        approved: bool,
+        name: []const u8,
+    },
     chat: TODO,
     deleteTracks: TODO,
     deleteUsers: TODO,
@@ -237,7 +242,7 @@ pub const ClientToServerMessage = union(enum) {
     setStreaming: bool,
     remove: []Id,
     repeat: TODO,
-    requestApproval: TODO,
+    requestApproval: void,
     setVolume: TODO,
     stop: TODO,
     playlistCreate: TODO,
@@ -376,6 +381,7 @@ pub const PublicUserInfo = struct {
     name: []const u8,
     perms: Permissions,
     requested: bool,
+    approved: bool,
     connected: bool,
     streaming: bool,
 };

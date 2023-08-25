@@ -32,6 +32,9 @@ pub fn deinit() void {
 pub fn subscribe(arena: Allocator, client_id: *anyopaque, name: Tag(Subscription), delta: bool, version: ?Id) !void {
     if (lookup(client_id, name)) |_| return error.BadRequest; // already subscribed
     const client_data = try client_subscriptions.addOne();
+    errdefer {
+        _ = client_subscriptions.pop();
+    }
     client_data.* = .{
         .client_id = client_id,
         .name = name,
@@ -51,10 +54,13 @@ pub fn handleClientDisconnected(client_id: *anyopaque) void {
     }
 }
 
-pub fn broadcastChanges(arena: Allocator, name: Tag(Subscription)) !void {
+pub fn broadcastChanges(arena: Allocator, name: Tag(Subscription)) error{OutOfMemory}!void {
     for (client_subscriptions.items) |*item| {
         if (item.name != name) continue;
-        try publishData(arena, item);
+        publishData(arena, item) catch |err| switch (err) {
+            error.BadRequest => unreachable,
+            error.OutOfMemory => |e| return e,
+        };
     }
 }
 

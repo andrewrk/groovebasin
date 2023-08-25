@@ -1,4 +1,5 @@
 const std = @import("std");
+const ArrayList = std.ArrayList;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 const Allocator = std.mem.Allocator;
 const log = std.log;
@@ -50,7 +51,7 @@ var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
 var guest_perms: Permissions = .{
     // Can be changed by admins.
     .read = true,
-    .add = true,
+    .add = false,
     .control = true,
     .playlist = false,
     .admin = false,
@@ -113,23 +114,21 @@ pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
 
 pub fn login(arena: Allocator, client_id: *anyopaque, username: []const u8, password: []u8) !void {
     defer shred(password);
-    var additional_sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
-    loginImpl(arena, client_id, username, password, &additional_sessions_to_notify) catch |err| {
+    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
+    try sessions_to_notify.append(client_id);
+    loginImpl(arena, client_id, username, password, &sessions_to_notify) catch |err| {
         if (err == error.InvalidLogin) {
             // TODO: send the user an error?
         } else return err;
     };
-    try sendSelfUserInfo(client_id);
-    for (additional_sessions_to_notify.items) |additional_client_id| {
-        try sendSelfUserInfo(additional_client_id);
-    }
+    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
 }
 fn loginImpl(
     arena: Allocator,
     client_id: *anyopaque,
     username: []const u8,
     password: []u8,
-    additional_sessions_to_notify: *std.ArrayList(*anyopaque),
+    sessions_to_notify: *std.ArrayList(*anyopaque),
 ) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
     const session_account = user_accounts.getEntry(session.user_id).?.value_ptr;
@@ -172,19 +171,7 @@ fn loginImpl(
         } else {
             // An actual regular login, which is the most complex case.
             const guest_user_id = session.user_id;
-            // We're about to delete this user, so make sure all sessions get upgraded.
-            var it = sessions.iterator();
-            while (it.next()) |kv| {
-                if (kv.value_ptr.user_id.value == guest_user_id.value) {
-                    // One of these is the session we're dealing with.
-                    kv.value_ptr.user_id = target_user_id;
-                    if (kv.key_ptr.* != client_id) {
-                        try additional_sessions_to_notify.append(kv.key_ptr.*);
-                    }
-                }
-            }
-            try events.revealTrueIdentity(guest_user_id, target_user_id);
-            deleteAccount(guest_user_id);
+            try mergeAccounts(guest_user_id, target_user_id, sessions_to_notify);
         }
     } else {
         // Create account: change username, change password, and register.
@@ -298,6 +285,53 @@ pub fn ensureAdminUser(arena: Allocator) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
+pub fn requestApproval(arena: Allocator, client_id: *anyopaque) !void {
+    const account = user_accounts.getEntry(sessions.get(client_id).?.user_id).?.value_ptr;
+
+    account.requested = true;
+
+    try subscriptions.broadcastChanges(arena, .users);
+}
+
+pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
+    // This might end up with duplicates:
+    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
+    for (args) |approval| {
+        var requesting_user_id = approval.id;
+        const replace_user_id = approval.replaceId;
+        const is_approved = approval.approved;
+        const new_name = approval.name;
+
+        var requesting_account = (user_accounts.getEntry(requesting_user_id) orelse {
+            log.warn("ignoring bogus userid: {}", .{requesting_user_id});
+            continue;
+        }).value_ptr;
+        try collectSessionsForAccount(requesting_user_id, &sessions_to_notify);
+        if (!is_approved) {
+            // Just undo the request.
+            requesting_account.requested = false;
+            continue;
+        }
+
+        if (replace_user_id) |true_user_id| {
+            try mergeAccounts(requesting_user_id, true_user_id, &sessions_to_notify);
+            requesting_user_id = true_user_id;
+            requesting_account = user_accounts.getEntry(requesting_user_id).?.value_ptr;
+        } else {
+            requesting_account.approved = true;
+        }
+
+        const old_name = strings.getString(requesting_account.name);
+        if (!std.mem.eql(u8, old_name, new_name)) {
+            // This is also a feature of the approve workflow.
+            try changeUserName(requesting_user_id, new_name);
+        }
+    }
+
+    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
+    try subscriptions.broadcastChanges(arena, .users);
+}
+
 fn createAccount(
     name_str: []const u8,
     password_hash: ?PasswordHash,
@@ -329,6 +363,39 @@ fn createAccount(
 
     // publishing users event happens above this call.
     return user_id;
+}
+
+fn mergeAccounts(doomed_user_id: Id, true_user_id: Id, sessions_to_notify: *ArrayList(*anyopaque)) !void {
+    const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
+    // We're about to delete this user, so make sure all sessions get upgraded.
+    var it = sessions.iterator();
+    while (it.next()) |kv| {
+        if (kv.value_ptr.user_id.value == doomed_user_id.value) {
+            kv.value_ptr.user_id = true_user_id;
+            try sessions_to_notify.append(kv.key_ptr.*);
+        }
+    }
+    try events.revealTrueIdentity(doomed_user_id, true_user_id);
+    deleteAccount(Id{ .value = workaround_miscomiplation });
+}
+
+fn collectSessionsForAccount(user_id: Id, out_sessions: *ArrayList(*anyopaque)) !void {
+    var it = sessions.iterator();
+    while (it.next()) |kv| {
+        if (kv.value_ptr.user_id.value == user_id.value) {
+            try out_sessions.append(kv.key_ptr.*);
+        }
+    }
+}
+fn sendSelfUserInfoDeduplicated(sessions_to_notify: []const *anyopaque) !void {
+    for (sessions_to_notify, 0..) |client_id, i| {
+        // dedup
+        for (0..i) |j| {
+            if (sessions_to_notify[i] == sessions_to_notify[j]) break;
+        } else {
+            try sendSelfUserInfo(client_id);
+        }
+    }
 }
 
 fn deleteAccount(user_id: Id) void {
@@ -363,6 +430,7 @@ pub fn getSerializable(arena: Allocator) !IdMap(PublicUserInfo) {
             .name = strings.getString(account.name),
             .perms = account.perms,
             .requested = account.requested,
+            .approved = account.approved,
             .connected = false,
             .streaming = false,
         });

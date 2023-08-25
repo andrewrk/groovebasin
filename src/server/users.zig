@@ -105,6 +105,10 @@ pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
+pub fn getSessionPermissions(client_id: *anyopaque) Permissions {
+    return user_accounts.get(sessions.get(client_id).?.user_id).?.perms;
+}
+
 pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
     session.user_id = try createGuestAccount();

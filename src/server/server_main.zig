@@ -177,6 +177,7 @@ pub fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.Server
 }
 
 pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
+    const perms = users.getSessionPermissions(client_id);
     // TODO: permission checks on the apis.
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
@@ -194,12 +195,15 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
             try users.requestApproval(arena.allocator(), client_id);
         },
         .approve => |args| {
+            try checkPermission(perms.admin);
             try users.approve(arena.allocator(), args);
         },
         .updateUser => |args| {
+            try checkPermission(perms.admin);
             try users.updateUser(arena.allocator(), args.userId, args.perms);
         },
         .deleteUsers => |args| {
+            try checkPermission(perms.admin);
             try users.deleteUsers(arena.allocator(), args);
         },
         .setStreaming => |args| {
@@ -207,18 +211,26 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         },
 
         .subscribe => |args| {
+            try checkPermission(perms.read);
             try subscriptions.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
         },
 
         .queue => |args| {
+            try checkPermission(perms.control);
             try queue.enqueue(arena.allocator(), args);
         },
         .move => |args| {
+            try checkPermission(perms.control);
             try queue.move(arena.allocator(), args);
         },
         .remove => |args| {
+            try checkPermission(perms.control);
             try queue.remove(arena.allocator(), args);
         },
         else => unreachable,
     }
+}
+
+fn checkPermission(has_permission: bool) !void {
+    if (!has_permission) return error.PermissionDenied;
 }

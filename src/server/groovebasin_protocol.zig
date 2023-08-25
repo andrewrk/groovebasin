@@ -227,7 +227,10 @@ pub const ClientToServerMessage = union(enum) {
         version: ?Id = null,
     },
     updateTags: TODO,
-    updateUser: TODO,
+    updateUser: struct {
+        userId: Id,
+        perms: Permissions,
+    },
     unsubscribe: TODO,
     move: IdMap(struct {
         sortKey: keese.Value,

@@ -332,6 +332,21 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
+pub fn updateUser(arena: Allocator, user_id: Id, perms: Permissions) !void {
+    const old_have_admin_user = haveAdminUser();
+    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
+
+    const account = user_accounts.getEntry(user_id).?.value_ptr;
+    account.perms = perms;
+    try collectSessionsForAccount(user_id, &sessions_to_notify);
+
+    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
+    try subscriptions.broadcastChanges(arena, .users);
+    if (old_have_admin_user != haveAdminUser()) {
+        try subscriptions.broadcastChanges(arena, .haveAdminUser);
+    }
+}
+
 fn createAccount(
     name_str: []const u8,
     password_hash: ?PasswordHash,

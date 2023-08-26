@@ -6,6 +6,7 @@ const Allocator = std.mem.Allocator;
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const Event = @import("groovebasin_protocol.zig").Event;
+const EventUserId = @import("groovebasin_protocol.zig").EventUserId;
 const Datetime = @import("groovebasin_protocol.zig").Datetime;
 
 const g = @import("global.zig");
@@ -18,10 +19,10 @@ pub const InternalEvent = struct {
     date: Datetime,
     // TODO: we really don't need this. just sort on date.
     sort_key: keese.Value,
+    who: EventUserId,
     type: union(enum) {
         chat: struct {
             text: u32, // in strings.
-            user_id: ?Id, // null for a tombstoned user.
             is_slash_me: bool,
         },
     },
@@ -33,10 +34,14 @@ pub var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
 
+var deleted_text: u32 = undefined;
+
 pub fn init() !void {
     current_version = Id.random();
     strings = StringPool.init(g.gpa);
     events = AutoArrayHashMap(Id, InternalEvent).init(g.gpa);
+
+    deleted_text = try strings.putWithoutDeduplication("<deleted>");
 }
 
 pub fn deinit() void {
@@ -60,27 +65,47 @@ pub fn chat(arena: Allocator, client_id: *anyopaque, text: []const u8, is_slash_
     gop.value_ptr.* = InternalEvent{
         .date = getNow(),
         .sort_key = sort_key,
+        .who = .{ .user = user_id },
         .type = .{
             .chat = .{
-                .user_id = user_id,
                 .text = strings.putWithoutDeduplicationAssumeCapacity(text),
                 .is_slash_me = is_slash_me,
             },
         },
     };
 
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .events);
 }
 
-pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
-    _ = guest_id;
-    _ = real_id;
-    // TODO
+pub fn revealTrueIdentity(arena: Allocator, guest_id: Id, real_id: Id) !void {
+    for (events.values()) |*event| {
+        if (event.who == .user and event.who.user.value == guest_id.value) {
+            event.who = .{ .user = real_id };
+            current_version = Id.random();
+        }
+    }
+    try subscriptions.broadcastChanges(arena, .events);
 }
 
-pub fn tombstoneUser(user_id: Id) !void {
-    _ = user_id;
-    // TODO
+pub fn tombstoneUser(arena: Allocator, user_id: Id) !void {
+    for (events.values()) |*event| {
+        if (event.who == .user and event.who.user.value == user_id.value) {
+            event.who = .deleted_user;
+            switch (event.type) {
+                .chat => |*data| {
+                    data.* = .{
+                        .text = deleted_text,
+                        // make it italics or something:
+                        .is_slash_me = true,
+                        // (this is still not unambiguous)
+                    };
+                },
+            }
+            current_version = Id.random();
+        }
+    }
+    try subscriptions.broadcastChanges(arena, .events);
 }
 
 pub fn getSerializable(arena: Allocator) !IdMap(Event) {
@@ -95,7 +120,7 @@ pub fn getSerializable(arena: Allocator) !IdMap(Event) {
                 .date = event.date,
                 .sortKey = event.sort_key,
                 .type = .chat,
-                .userId = data.user_id,
+                .userId = event.who,
                 .text = strings.getString(data.text),
                 .displayClass = if (data.is_slash_me) .me else null,
             },

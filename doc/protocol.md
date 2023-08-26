@@ -188,6 +188,8 @@ Depending on the message, `messageArguments` might be any of the JSON types:
  * Type: `[fieldName]`
  * `fieldName`: description of field
 
+Any object field with a `null` value may be omitted from the object.
+
 After establishing a WebSocket connection, the next thing you probably want to
 do is [subscribe](#subscribe) to information relevant to you.
 
@@ -1027,7 +1029,7 @@ to properly detect and support them.
    string specifying the order the events should be displayed in.
  * `type`: `string`. Depending on the event type there may be more fields.
    See below for details.
- * `userId`: `string`. Sometimes used; see below.
+ * `userId`: `string`. `null` for system events, otherwise either the ID of the user who generated the event, or `"(deleted")` for a deleted user.
  * `text`: `string`. Sometimes used; see below.
  * `trackId`: `string`. Sometimes used; see below.
  * `pos`: `number`. Sometimes used; see below.

@@ -151,6 +151,32 @@ pub const IdOrGuest = union(enum) {
     }
 };
 
+pub const EventUserId = union(enum) {
+    user: Id,
+    system,
+    deleted_user,
+
+    const deleted_pseudo_id = "(deleted)";
+
+    // JSON interface
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        switch (self) {
+            .user => |id| return id.jsonStringify(jw),
+            .system => return jw.write(null),
+            .deleted_user => return jw.write(deleted_pseudo_id),
+        }
+    }
+
+    // std.fmt interface
+    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        switch (self) {
+            .user => |id| return id.format(fmt, options, writer),
+            .system => return writer.writeAll("null"),
+            .deleted_user => return writer.writeAll(deleted_pseudo_id),
+        }
+    }
+};
+
 pub fn IdMap(comptime T: type) type {
     return JsonMap(Id, T);
 }
@@ -472,7 +498,7 @@ pub const Event = struct {
         chat,
     },
     sortKey: ?keese.Value = null,
-    userId: ?Id = null,
+    userId: EventUserId = .system,
     text: ?[]const u8 = null,
     trackId: ?TODO = null,
     pos: ?TODO = null,

@@ -99,11 +99,13 @@ pub fn handleClientConnected(arena: Allocator, client_id: *anyopaque) !void {
     });
 
     try sendSelfUserInfo(client_id);
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .users);
 }
 
 pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
     std.debug.assert(sessions.swapRemove(client_id));
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .users);
 }
 
@@ -118,6 +120,7 @@ pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
     session.user_id = try createGuestAccount();
     try sendSelfUserInfo(client_id);
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .users);
 }
 
@@ -180,7 +183,7 @@ fn loginImpl(
         } else {
             // An actual regular login, which is the most complex case.
             const guest_user_id = session.user_id;
-            try mergeAccounts(guest_user_id, target_user_id, sessions_to_notify);
+            try mergeAccounts(arena, guest_user_id, target_user_id, sessions_to_notify);
         }
     } else {
         // Create account: change username, change password, and register.
@@ -189,6 +192,7 @@ fn loginImpl(
         session_account.registered = true;
     }
 
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .users);
 }
 
@@ -238,6 +242,7 @@ fn changeUserName(user_id: Id, new_username: []const u8) !void {
 pub fn setStreaming(arena: Allocator, client_id: *anyopaque, is_streaming: bool) !void {
     sessions.getEntry(client_id).?.value_ptr.claims_to_be_streaming = is_streaming;
 
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .users);
 }
 
@@ -307,7 +312,7 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
     var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
     for (args) |approval| {
         var requesting_user_id = approval.id;
-        const replace_user_id = approval.replaceId;
+        const replace_user_id = approval.replaceId orelse requesting_user_id;
         const is_approved = approval.approved;
         const new_name = approval.name;
 
@@ -315,6 +320,10 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
             log.warn("ignoring bogus userid: {}", .{requesting_user_id});
             continue;
         }).value_ptr;
+        if (!user_accounts.contains(replace_user_id)) {
+            log.warn("ignoring bogus replace userid: {}", .{replace_user_id});
+            continue;
+        }
         try collectSessionsForAccount(requesting_user_id, &sessions_to_notify);
         if (!is_approved) {
             // Just undo the request.
@@ -322,9 +331,9 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
             continue;
         }
 
-        if (replace_user_id) |true_user_id| {
-            try mergeAccounts(requesting_user_id, true_user_id, &sessions_to_notify);
-            requesting_user_id = true_user_id;
+        if (replace_user_id.value != requesting_user_id.value) {
+            try mergeAccounts(arena, requesting_user_id, replace_user_id, &sessions_to_notify);
+            requesting_user_id = replace_user_id;
             requesting_account = user_accounts.getEntry(requesting_user_id).?.value_ptr;
         } else {
             requesting_account.approved = true;
@@ -383,7 +392,7 @@ pub fn deleteUsers(arena: Allocator, user_ids: []const Id) !void {
                 try sessions_to_notify.append(kv.key_ptr.*);
             }
         }
-        try events.tombstoneUser(user_id);
+        try events.tombstoneUser(arena, user_id);
         deleteAccount(user_id);
     }
 
@@ -427,7 +436,7 @@ fn createAccount(
     return user_id;
 }
 
-fn mergeAccounts(doomed_user_id: Id, true_user_id: Id, sessions_to_notify: *ArrayList(*anyopaque)) !void {
+fn mergeAccounts(arena: Allocator, doomed_user_id: Id, true_user_id: Id, sessions_to_notify: *ArrayList(*anyopaque)) !void {
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
@@ -437,7 +446,7 @@ fn mergeAccounts(doomed_user_id: Id, true_user_id: Id, sessions_to_notify: *Arra
             try sessions_to_notify.append(kv.key_ptr.*);
         }
     }
-    try events.revealTrueIdentity(doomed_user_id, true_user_id);
+    try events.revealTrueIdentity(arena, doomed_user_id, true_user_id);
     deleteAccount(Id{ .value = workaround_miscomiplation });
 }
 

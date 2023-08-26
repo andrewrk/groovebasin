@@ -5,10 +5,8 @@ pub fn main() !void {
     defer arena_allocator.deinit();
     const args = try std.process.argsAlloc(arena_allocator.allocator());
 
-    var src_dir = try std.fs.cwd().openDir(args[1], .{});
-    defer src_dir.close();
-
-    var fout = try std.fs.cwd().createFile("public/app.js", .{});
+    const out_file_name = args[1];
+    var fout = try std.fs.cwd().createFile(out_file_name, .{});
     defer fout.close();
     const output = fout.writer();
 
@@ -33,9 +31,10 @@ pub fn main() !void {
 
     for (args[2..]) |arg| {
         if (!std.mem.endsWith(u8, arg, ".js")) return error.BadFileExtension;
-        var name = arg[0 .. arg.len - ".js".len];
+        const basename = std.fs.path.basename(arg);
+        const name = basename[0 .. basename.len - ".js".len];
 
-        var fin = try src_dir.openFile(arg, .{});
+        var fin = try std.fs.cwd().openFile(arg, .{});
         defer fin.close();
 
         var things = [_]std.os.iovec_const{
@@ -56,8 +55,7 @@ pub fn main() !void {
         \\
     );
 
-    // We're done. No need to run deferred deinitializers.
-    if (true) std.process.exit(0);
+    return std.process.cleanExit();
 }
 
 fn strToIovec(s: []const u8) std.os.iovec_const {

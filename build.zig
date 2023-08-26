@@ -17,8 +17,6 @@ pub fn build(b: *Builder) void {
         .target = target,
     });
 
-    // TODO: update the paste-js and paste-htmlcss commands to use RunStep
-    // properly rather than writing directly to this installation directory
     b.installDirectory(.{
         .source_dir = .{ .path = "public" },
         .install_dir = .lib,
@@ -47,26 +45,31 @@ pub fn build(b: *Builder) void {
         });
 
         const paste_js_cmd = b.addRunArtifact(paste_js_exe);
-        paste_js_cmd.addArgs(&[_][]const u8{
-            "src/client/js",
-            "curlydiff.js",
-            "diacritics.js",
-            "event_emitter.js",
-            "human-size.js",
-            "inherits.js",
-            "keese.js",
-            "main.js",
-            "mess.js",
-            "music-library-index.js",
-            "playerclient.js",
-            "socket.js",
-            "uuid.js",
-        });
-        const paste_js_step = b.step("paste-js", "compile the js");
-        paste_js_step.dependOn(&paste_js_cmd.step);
 
-        server.step.dependOn(&paste_js_cmd.step);
+        b.getInstallStep().dependOn(&b.addInstallFileWithDir(
+            paste_js_cmd.addOutputFileArg("app.js"),
+            .lib,
+            "public/app.js",
+        ).step);
+
+        for ([_][]const u8{
+            "src/client/js/curlydiff.js",
+            "src/client/js/diacritics.js",
+            "src/client/js/event_emitter.js",
+            "src/client/js/human-size.js",
+            "src/client/js/inherits.js",
+            "src/client/js/keese.js",
+            "src/client/js/main.js",
+            "src/client/js/mess.js",
+            "src/client/js/music-library-index.js",
+            "src/client/js/playerclient.js",
+            "src/client/js/socket.js",
+            "src/client/js/uuid.js",
+        }) |input_file| {
+            paste_js_cmd.addFileArg(.{ .path = input_file });
+        }
     }
+
     {
         const exe = b.addExecutable(.{
             .name = "paste-htmlcss",
@@ -74,13 +77,13 @@ pub fn build(b: *Builder) void {
         });
 
         const cmd = b.addRunArtifact(exe);
-        cmd.addArgs(&[_][]const u8{
-            "src/client/htmlcss/index.html",
-            "src/client/htmlcss/app.css",
-        });
-        const step = b.step("paste-htmlcss", "compile the css and html together");
-        step.dependOn(&cmd.step);
+        cmd.addFileArg(.{ .path = "src/client/htmlcss/index.html" });
+        cmd.addFileArg(.{ .path = "src/client/htmlcss/app.css" });
 
-        server.step.dependOn(&cmd.step);
+        b.getInstallStep().dependOn(&b.addInstallFileWithDir(
+            cmd.addOutputFileArg("index.html"),
+            .lib,
+            "public/index.html",
+        ).step);
     }
 }

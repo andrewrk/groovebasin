@@ -1,10 +1,9 @@
 const std = @import("std");
 
-var gpa: std.mem.Allocator = undefined;
 pub fn main() !void {
     var arena_allocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena_allocator.deinit();
-    gpa = arena_allocator.allocator();
+    const gpa = arena_allocator.allocator();
     const args = try std.process.argsAlloc(gpa);
 
     const html_source = try std.fs.cwd().readFileAlloc(gpa, args[1], 10_000_000);
@@ -13,7 +12,8 @@ pub fn main() !void {
     const token = "<!--CSS_GOES_HERE-->";
     const token_index = std.mem.indexOf(u8, html_source, token).?;
 
-    var fout = try std.fs.cwd().createFile("public/index.html", .{});
+    const output_html_file = args[3];
+    var fout = try std.fs.cwd().createFile(output_html_file, .{});
     defer fout.close();
 
     var things = [_]std.os.iovec_const{

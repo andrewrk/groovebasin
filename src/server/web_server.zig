@@ -29,9 +29,8 @@ const g = @import("global.zig");
 //   recv thread: json.parse'd into a special arena backed by gpa.
 //   main thread: continues using special arena.
 //   main thread: deinit special arena.
-//  each broadcast message:
-//   main thread: create refcounted message backed by gpa. increment for each relevant send thread.
-//   each relevant send thread: decrement ref, eventually free from gpa.
+//  each sent message:
+//   TODO: document this one.
 //
 // shutdown routine:
 //  uhhhh Ctrl+C lmao.

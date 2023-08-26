@@ -14,6 +14,7 @@ const keese = @import("keese.zig");
 const subscriptions = @import("subscriptions.zig");
 const getNow = @import("server_main.zig").getNow;
 const users = @import("users.zig");
+const db = @import("db.zig");
 
 pub const InternalEvent = struct {
     date: Datetime,
@@ -30,7 +31,7 @@ pub const InternalEvent = struct {
 
 const StringPool = @import("StringPool.zig");
 
-pub var current_version: Id = undefined;
+var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
 
@@ -78,14 +79,14 @@ pub fn chat(arena: Allocator, client_id: *anyopaque, text: []const u8, is_slash_
     try subscriptions.broadcastChanges(arena, .events);
 }
 
-pub fn revealTrueIdentity(arena: Allocator, guest_id: Id, real_id: Id) !void {
+pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void {
     for (events.values()) |*event| {
         if (event.who == .user and event.who.user.value == guest_id.value) {
             event.who = .{ .user = real_id };
             current_version = Id.random();
         }
     }
-    try subscriptions.broadcastChanges(arena, .events);
+    changes.broadcastChanges(.events);
 }
 
 pub fn tombstoneUser(arena: Allocator, user_id: Id) !void {
@@ -108,7 +109,8 @@ pub fn tombstoneUser(arena: Allocator, user_id: Id) !void {
     try subscriptions.broadcastChanges(arena, .events);
 }
 
-pub fn getSerializable(arena: Allocator) !IdMap(Event) {
+pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
+    out_version.* = current_version;
     var result: IdMap(Event) = .{};
     try result.map.ensureUnusedCapacity(arena, events.count());
 

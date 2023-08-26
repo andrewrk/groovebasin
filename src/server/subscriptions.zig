@@ -76,22 +76,10 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var sub: Subscription = switch (client_data.name) {
         .haveAdminUser => .{ .haveAdminUser = users.haveAdminUser() },
         .streamEndpoint => .{ .streamEndpoint = "stream.mp3" },
-        .users => blk: {
-            version = users.current_version;
-            break :blk .{ .users = try users.getSerializable(arena) };
-        },
-        .library => blk: {
-            version = library.current_library_version;
-            break :blk .{ .library = try library.getSerializable(arena) };
-        },
-        .queue => blk: {
-            version = queue.current_queue_version;
-            break :blk .{ .queue = try queue.getSerializable(arena) };
-        },
-        .events => blk: {
-            version = events.current_version;
-            break :blk .{ .events = try events.getSerializable(arena) };
-        },
+        .users => .{ .users = try users.getSerializable(arena, &version) },
+        .library => .{ .library = try library.getSerializable(arena, &version) },
+        .queue => .{ .queue = try queue.getSerializable(arena, &version) },
+        .events => .{ .events = try events.getSerializable(arena, &version) },
         else => return, // TODO: support more subscription streams.
     };
 

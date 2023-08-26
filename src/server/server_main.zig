@@ -11,6 +11,7 @@ const events = @import("events.zig");
 const keese = @import("keese.zig");
 const subscriptions = @import("subscriptions.zig");
 const users = @import("users.zig");
+const db = @import("db.zig");
 
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
@@ -96,19 +97,21 @@ pub fn main() anyerror!void {
     g.player = try Player.init(config.encodeBitRate);
     defer g.player.deinit();
 
-    log.info("init subsystems", .{});
     try users.init();
     defer users.deinit();
     try subscriptions.init();
     defer subscriptions.deinit();
     try keese.init(g.gpa);
     defer keese.deinit();
-    try library.init(music_dir_path, config.dbPath);
+    try library.init();
     defer library.deinit();
     try queue.init();
     defer queue.deinit();
     try events.init();
     defer events.deinit();
+
+    log.info("load db", .{});
+    try db.load(config.dbPath);
 
     log.info("init static content", .{});
     {
@@ -179,13 +182,28 @@ pub fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.Server
 }
 
 pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
-    const perms = users.getSessionPermissions(client_id);
-    // TODO: permission checks on the apis.
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    switch (try parseMessage(arena.allocator(), message_bytes)) {
+    const message = try parseMessage(arena.allocator(), message_bytes);
+
+    var changes = db.Changes.init(arena.allocator());
+    defer changes.deinit();
+
+    const err_maybe = handleRequestImpl(&changes, client_id, &message);
+
+    try changes.flush();
+
+    return err_maybe;
+}
+
+fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *const groovebasin_protocol.ClientToServerMessage) !void {
+    var arena = ArenaAllocator.init(g.gpa); // TODO: deprecate this in favor of using `changes`.
+    defer arena.deinit();
+
+    const perms = users.getSessionPermissions(client_id);
+    switch (message.*) {
         .login => |args| {
-            try users.login(arena.allocator(), client_id, args.username, args.password);
+            try users.login(changes, client_id, args.username, args.password);
         },
         .logout => {
             try users.logout(arena.allocator(), client_id);
@@ -198,7 +216,7 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
         },
         .approve => |args| {
             try checkPermission(perms.admin);
-            try users.approve(arena.allocator(), args);
+            try users.approve(changes, args);
         },
         .updateUser => |args| {
             try checkPermission(perms.admin);

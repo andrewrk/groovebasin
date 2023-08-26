@@ -11,11 +11,11 @@ const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const keese = @import("keese.zig");
 const subscriptions = @import("subscriptions.zig");
 
-pub var current_queue_version: Id = undefined;
+var current_version: Id = undefined;
 var items: AutoArrayHashMap(Id, InternalQueueItem) = undefined;
 
 pub fn init() !void {
-    current_queue_version = Id.random();
+    current_version = Id.random();
     items = AutoArrayHashMap(Id, InternalQueueItem).init(g.gpa);
 }
 
@@ -47,7 +47,7 @@ pub fn enqueue(arena: Allocator, new_items: anytype) !void {
             .is_random = false,
         };
     }
-    current_queue_version = Id.random();
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .queue);
 }
 
@@ -64,7 +64,7 @@ pub fn move(arena: Allocator, args: anytype) !void {
         item.sort_key = sort_key;
         // TODO: check for collisions?
     }
-    current_queue_version = Id.random();
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .queue);
 }
 
@@ -74,11 +74,12 @@ pub fn remove(arena: Allocator, args: []Id) !void {
             log.warn("attempt to remove non-existent item: {}", .{item_id});
         }
     }
-    current_queue_version = Id.random();
+    current_version = Id.random();
     try subscriptions.broadcastChanges(arena, .queue);
 }
 
-pub fn getSerializable(arena: std.mem.Allocator) !IdMap(groovebasin_protocol.QueueItem) {
+pub fn getSerializable(arena: std.mem.Allocator, out_version: *?Id) !IdMap(groovebasin_protocol.QueueItem) {
+    out_version.* = current_version;
     var result = IdMap(groovebasin_protocol.QueueItem){};
     try result.map.ensureTotalCapacity(arena, items.count());
 

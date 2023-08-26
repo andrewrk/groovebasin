@@ -9,6 +9,7 @@ const g = @import("global.zig");
 const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
 const events = @import("events.zig");
+const db = @import("db.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;
 
 const Id = @import("groovebasin_protocol.zig").Id;
@@ -45,7 +46,7 @@ const Session = struct {
     claims_to_be_streaming: bool = false,
 };
 
-pub var current_version: Id = undefined;
+var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var username_to_user_id: std.ArrayHashMapUnmanaged(u32, Id, StringsContext, true) = .{};
@@ -124,24 +125,19 @@ pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
-pub fn login(arena: Allocator, client_id: *anyopaque, username: []const u8, password: []u8) !void {
-    defer shred(password);
-    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
-    try sessions_to_notify.append(client_id);
-    loginImpl(arena, client_id, username, password, &sessions_to_notify) catch |err| {
+pub fn login(changes: *db.Changes, client_id: *anyopaque, username: []const u8, password: []u8) !void {
+    defer std.crypto.utils.secureZero(u8, password);
+
+    // Send this even in case of error.
+    try changes.sendSelfUserInfo(client_id);
+
+    loginImpl(changes, client_id, username, password) catch |err| {
         if (err == error.InvalidLogin) {
             // TODO: send the user an error?
         } else return err;
     };
-    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
 }
-fn loginImpl(
-    arena: Allocator,
-    client_id: *anyopaque,
-    username: []const u8,
-    password: []u8,
-    sessions_to_notify: *std.ArrayList(*anyopaque),
-) !void {
+fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, password: []u8) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
     const session_account = user_accounts.getEntry(session.user_id).?.value_ptr;
 
@@ -183,7 +179,7 @@ fn loginImpl(
         } else {
             // An actual regular login, which is the most complex case.
             const guest_user_id = session.user_id;
-            try mergeAccounts(arena, guest_user_id, target_user_id, sessions_to_notify);
+            try mergeAccounts(changes, guest_user_id, target_user_id);
         }
     } else {
         // Create account: change username, change password, and register.
@@ -193,12 +189,7 @@ fn loginImpl(
     }
 
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .users);
-}
-
-fn shred(sensitive: []u8) void {
-    // TOO MUCH SECURITY
-    std.crypto.random.bytes(sensitive);
+    changes.broadcastChanges(.users);
 }
 
 fn changePassword(account: *UserAccount, new_password: []const u8) void {
@@ -307,9 +298,8 @@ pub fn requestApproval(arena: Allocator, client_id: *anyopaque) !void {
     try subscriptions.broadcastChanges(arena, .users);
 }
 
-pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
+pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
     // This might end up with duplicates:
-    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
     for (args) |approval| {
         var requesting_user_id = approval.id;
         const replace_user_id = approval.replaceId orelse requesting_user_id;
@@ -324,7 +314,7 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
             log.warn("ignoring bogus replace userid: {}", .{replace_user_id});
             continue;
         }
-        try collectSessionsForAccount(requesting_user_id, &sessions_to_notify);
+        try sendSelfUserInfoForUserId(changes, requesting_user_id);
         if (!is_approved) {
             // Just undo the request.
             requesting_account.requested = false;
@@ -332,7 +322,7 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
         }
 
         if (replace_user_id.value != requesting_user_id.value) {
-            try mergeAccounts(arena, requesting_user_id, replace_user_id, &sessions_to_notify);
+            try mergeAccounts(changes, requesting_user_id, replace_user_id);
             requesting_user_id = replace_user_id;
             requesting_account = user_accounts.getEntry(requesting_user_id).?.value_ptr;
         } else {
@@ -346,8 +336,7 @@ pub fn approve(arena: Allocator, args: anytype) error{OutOfMemory}!void {
         }
     }
 
-    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
 pub fn updateUser(arena: Allocator, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
@@ -436,21 +425,31 @@ fn createAccount(
     return user_id;
 }
 
-fn mergeAccounts(arena: Allocator, doomed_user_id: Id, true_user_id: Id, sessions_to_notify: *ArrayList(*anyopaque)) !void {
+fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !void {
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == doomed_user_id.value) {
             kv.value_ptr.user_id = true_user_id;
-            try sessions_to_notify.append(kv.key_ptr.*);
+            try changes.sendSelfUserInfo(kv.key_ptr.*);
         }
     }
-    try events.revealTrueIdentity(arena, doomed_user_id, true_user_id);
+    try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
     deleteAccount(Id{ .value = workaround_miscomiplation });
 }
 
+fn sendSelfUserInfoForUserId(changes: *db.Changes, user_id: Id) !void {
+    var it = sessions.iterator();
+    while (it.next()) |kv| {
+        if (kv.value_ptr.user_id.value == user_id.value) {
+            try changes.sendSelfUserInfo(kv.key_ptr.*);
+        }
+    }
+}
+
 fn collectSessionsForAccount(user_id: Id, out_sessions: *ArrayList(*anyopaque)) !void {
+    // TODO: delete this function
     var it = sessions.iterator();
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == user_id.value) {
@@ -474,7 +473,7 @@ fn deleteAccount(user_id: Id) void {
     std.debug.assert(username_to_user_id.swapRemove(account.name));
 }
 
-fn sendSelfUserInfo(client_id: *anyopaque) !void {
+pub fn sendSelfUserInfo(client_id: *anyopaque) !void {
     const user_id = sessions.get(client_id).?.user_id;
     const account = user_accounts.get(user_id).?;
     try encodeAndSend(client_id, .{
@@ -489,7 +488,8 @@ fn sendSelfUserInfo(client_id: *anyopaque) !void {
     });
 }
 
-pub fn getSerializable(arena: Allocator) !IdOrGuestMap(PublicUserInfo) {
+pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(PublicUserInfo) {
+    out_version.* = current_version;
     var result = IdOrGuestMap(PublicUserInfo){};
     try result.map.ensureTotalCapacity(arena, user_accounts.count() + 1);
 

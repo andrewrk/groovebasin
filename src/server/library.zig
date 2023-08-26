@@ -12,7 +12,7 @@ const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
-pub var current_library_version: Id = undefined;
+var current_version: Id = undefined;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
 var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
@@ -25,18 +25,23 @@ pub const Track = extern struct {
     track_number: i16,
 };
 
-pub fn init(music_directory: []const u8, db_path: []const u8) !void {
+pub fn init() !void {
+    current_version = Id.random();
+    tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
+    strings = StringPool.init(g.gpa);
+    library_string_putter = strings.initPutter();
+}
+
+pub fn deinit() void {
+    tracks.deinit();
+    library_string_putter.deinit();
+    strings.deinit();
+}
+
+pub fn loadFromDisk(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
     _ = db_path;
-
-    current_library_version = Id.random();
-    tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
-    errdefer tracks.deinit();
-    strings = StringPool.init(g.gpa);
-    errdefer strings.deinit();
-    library_string_putter = strings.initPutter();
-    errdefer library_string_putter.deinit();
 
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
@@ -72,11 +77,6 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     }
 }
 
-pub fn deinit() void {
-    strings.deinit();
-    tracks.deinit();
-}
-
 fn grooveFileToTrack(
     string_pool: *StringPool.Putter,
     groove_file: *Groove.File,
@@ -105,7 +105,8 @@ fn grooveFileToTrack(
     };
 }
 
-pub fn getSerializable(arena: Allocator) !IdMap(LibraryTrack) {
+pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack) {
+    out_version.* = current_version;
     var result = IdMap(LibraryTrack){};
     try result.map.ensureTotalCapacity(arena, tracks.count());
 

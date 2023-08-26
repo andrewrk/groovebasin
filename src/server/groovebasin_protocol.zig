@@ -547,7 +547,7 @@ const AlwaysTheNumber1 = struct {
     }
 };
 
-pub const Permissions = struct {
+pub const Permissions = packed struct {
     read: bool,
     add: bool,
     control: bool,

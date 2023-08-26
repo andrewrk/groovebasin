@@ -150,17 +150,25 @@ pub fn main() anyerror!void {
 pub fn handleClientConnected(client_id: *anyopaque) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
+    var changes = db.Changes.init(arena.allocator());
 
     // Welcome messages
     try encodeAndSend(client_id, .{ .time = getNow() });
-    try users.handleClientConnected(arena.allocator(), client_id);
+    const err_maybe = users.handleClientConnected(&changes, client_id);
+
+    try changes.flush();
+    return err_maybe;
 }
 pub fn handleClientDisconnected(client_id: *anyopaque) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
+    var changes = db.Changes.init(arena.allocator());
 
     subscriptions.handleClientDisconnected(client_id);
-    try users.handleClientDisconnected(arena.allocator(), client_id);
+    const err_maybe = users.handleClientDisconnected(&changes, client_id);
+
+    try changes.flush();
+    return err_maybe;
 }
 
 fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_protocol.ClientToServerMessage {
@@ -195,7 +203,6 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
     const err_maybe = handleRequestImpl(&changes, client_id, &message);
 
     try changes.flush();
-
     return err_maybe;
 }
 
@@ -209,13 +216,13 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
             try users.login(changes, client_id, args.username, args.password);
         },
         .logout => {
-            try users.logout(arena.allocator(), client_id);
+            try users.logout(changes, client_id);
         },
         .ensureAdminUser => {
-            try users.ensureAdminUser(arena.allocator());
+            try users.ensureAdminUser(changes);
         },
         .requestApproval => {
-            try users.requestApproval(arena.allocator(), client_id);
+            try users.requestApproval(changes, client_id);
         },
         .approve => |args| {
             try checkPermission(perms.admin);
@@ -223,14 +230,14 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
         },
         .updateUser => |args| {
             try checkPermission(perms.admin);
-            try users.updateUser(arena.allocator(), args.userId, args.perms);
+            try users.updateUser(changes, args.userId, args.perms);
         },
         .deleteUsers => |args| {
             try checkPermission(perms.admin);
-            try users.deleteUsers(arena.allocator(), args);
+            try users.deleteUsers(changes, args);
         },
         .setStreaming => |args| {
-            try users.setStreaming(arena.allocator(), client_id, args);
+            try users.setStreaming(changes, client_id, args);
         },
 
         .subscribe => |args| {

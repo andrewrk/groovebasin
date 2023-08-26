@@ -89,7 +89,7 @@ pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void
     changes.broadcastChanges(.events);
 }
 
-pub fn tombstoneUser(arena: Allocator, user_id: Id) !void {
+pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
     for (events.values()) |*event| {
         if (event.who == .user and event.who.user.value == user_id.value) {
             event.who = .deleted_user;
@@ -106,7 +106,7 @@ pub fn tombstoneUser(arena: Allocator, user_id: Id) !void {
             current_version = Id.random();
         }
     }
-    try subscriptions.broadcastChanges(arena, .events);
+    changes.broadcastChanges(.events);
 }
 
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {

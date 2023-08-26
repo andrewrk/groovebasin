@@ -90,10 +90,10 @@ pub fn deinit() void {
     sessions.deinit();
 }
 
-pub fn handleClientConnected(arena: Allocator, client_id: *anyopaque) !void {
+pub fn handleClientConnected(changes: *db.Changes, client_id: *anyopaque) !void {
     // Every new connection starts as a guest.
     // If you want to be not a guest, send a login message.
-    const user_id = try createGuestAccount();
+    const user_id = try createGuestAccount(changes);
     try sessions.putNoClobber(client_id, .{
         .user_id = user_id,
         .claims_to_be_streaming = false,
@@ -101,13 +101,13 @@ pub fn handleClientConnected(arena: Allocator, client_id: *anyopaque) !void {
 
     try sendSelfUserInfo(client_id);
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
-pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
+pub fn handleClientDisconnected(changes: *db.Changes, client_id: *anyopaque) !void {
     std.debug.assert(sessions.swapRemove(client_id));
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
 pub fn getSessionPermissions(client_id: *anyopaque) Permissions {
@@ -117,12 +117,12 @@ pub fn userIdFromClientId(client_id: *anyopaque) Id {
     return sessions.get(client_id).?.user_id;
 }
 
-pub fn logout(arena: Allocator, client_id: *anyopaque) !void {
+pub fn logout(changes: *db.Changes, client_id: *anyopaque) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
-    session.user_id = try createGuestAccount();
+    session.user_id = try createGuestAccount(changes);
     try sendSelfUserInfo(client_id);
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
 pub fn login(changes: *db.Changes, client_id: *anyopaque, username: []const u8, password: []u8) !void {
@@ -230,11 +230,11 @@ fn changeUserName(user_id: Id, new_username: []const u8) !void {
     by_name_gop.value_ptr.* = user_id;
 }
 
-pub fn setStreaming(arena: Allocator, client_id: *anyopaque, is_streaming: bool) !void {
+pub fn setStreaming(changes: *db.Changes, client_id: *anyopaque, is_streaming: bool) !void {
     sessions.getEntry(client_id).?.value_ptr.claims_to_be_streaming = is_streaming;
 
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
 pub fn haveAdminUser() bool {
@@ -244,15 +244,15 @@ pub fn haveAdminUser() bool {
     return false;
 }
 
-fn createGuestAccount() !Id {
+fn createGuestAccount(changes: *db.Changes) !Id {
     var name_str: ["Guest-123456".len]u8 = "Guest-XXXXXX".*;
     for (name_str[name_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
-    return createAccount(&name_str, null, false, guest_perms);
+    return createAccount(changes, &name_str, null, false, guest_perms);
 }
 
-pub fn ensureAdminUser(arena: Allocator) !void {
+pub fn ensureAdminUser(changes: *db.Changes) !void {
     if (haveAdminUser()) return;
 
     var name_str: ["Admin-123456".len]u8 = "Admin-XXXXXX".*;
@@ -273,7 +273,7 @@ pub fn ensureAdminUser(arena: Allocator) !void {
         h.final(&password_hash.hash);
     }
 
-    _ = try createAccount(&name_str, password_hash, true, .{
+    _ = try createAccount(changes, &name_str, password_hash, true, .{
         .read = true,
         .add = true,
         .control = true,
@@ -286,16 +286,16 @@ pub fn ensureAdminUser(arena: Allocator) !void {
     log.info("Password: {s}", .{password_text[0..]});
 
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .haveAdminUser);
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.haveAdminUser);
+    changes.broadcastChanges(.users);
 }
 
-pub fn requestApproval(arena: Allocator, client_id: *anyopaque) !void {
+pub fn requestApproval(changes: *db.Changes, client_id: *anyopaque) !void {
     const account = user_accounts.getEntry(sessions.get(client_id).?.user_id).?.value_ptr;
 
     account.requested = true;
 
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
 }
 
 pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
@@ -339,15 +339,14 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
     changes.broadcastChanges(.users);
 }
 
-pub fn updateUser(arena: Allocator, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
+pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
     const old_have_admin_user = haveAdminUser();
-    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
 
     switch (user_id_or_guest_pseudo_user_id) {
         .id => |user_id| {
             const account = user_accounts.getEntry(user_id).?.value_ptr;
             account.perms = perms;
-            try collectSessionsForAccount(user_id, &sessions_to_notify);
+            try sendSelfUserInfoForUserId(changes, user_id);
         },
         .guest => {
             guest_perms = perms;
@@ -357,47 +356,46 @@ pub fn updateUser(arena: Allocator, user_id_or_guest_pseudo_user_id: IdOrGuest, 
                 const account = kv.value_ptr;
                 if (account.approved) continue;
                 account.perms = guest_perms;
-                try collectSessionsForAccount(user_id, &sessions_to_notify);
+                try sendSelfUserInfoForUserId(changes, user_id);
             }
         },
     }
 
-    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
     if (old_have_admin_user != haveAdminUser()) {
-        try subscriptions.broadcastChanges(arena, .haveAdminUser);
+        changes.broadcastChanges(.haveAdminUser);
     }
 }
 
-pub fn deleteUsers(arena: Allocator, user_ids: []const Id) !void {
+pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
     const old_have_admin_user = haveAdminUser();
-    var sessions_to_notify = std.ArrayList(*anyopaque).init(arena);
 
     for (user_ids) |user_id| {
         var it = sessions.iterator();
         while (it.next()) |kv| {
             if (kv.value_ptr.user_id.value == user_id.value) {
-                kv.value_ptr.user_id = try createGuestAccount();
-                try sessions_to_notify.append(kv.key_ptr.*);
+                kv.value_ptr.user_id = try createGuestAccount(changes);
+                try changes.sendSelfUserInfo(kv.key_ptr.*);
             }
         }
-        try events.tombstoneUser(arena, user_id);
+        try events.tombstoneUser(changes, user_id);
         deleteAccount(user_id);
     }
 
-    try sendSelfUserInfoDeduplicated(sessions_to_notify.items);
-    try subscriptions.broadcastChanges(arena, .users);
+    changes.broadcastChanges(.users);
     if (old_have_admin_user != haveAdminUser()) {
-        try subscriptions.broadcastChanges(arena, .haveAdminUser);
+        changes.broadcastChanges(.haveAdminUser);
     }
 }
 
 fn createAccount(
+    changes: *db.Changes,
     name_str: []const u8,
     password_hash: ?PasswordHash,
     registered_requested_approved: bool,
     perms: Permissions,
 ) !Id {
+    _ = changes; // TODO
     try user_accounts.ensureUnusedCapacity(1);
     try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
     try strings.ensureUnusedCapacity(name_str.len);
@@ -444,26 +442,6 @@ fn sendSelfUserInfoForUserId(changes: *db.Changes, user_id: Id) !void {
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == user_id.value) {
             try changes.sendSelfUserInfo(kv.key_ptr.*);
-        }
-    }
-}
-
-fn collectSessionsForAccount(user_id: Id, out_sessions: *ArrayList(*anyopaque)) !void {
-    // TODO: delete this function
-    var it = sessions.iterator();
-    while (it.next()) |kv| {
-        if (kv.value_ptr.user_id.value == user_id.value) {
-            try out_sessions.append(kv.key_ptr.*);
-        }
-    }
-}
-fn sendSelfUserInfoDeduplicated(sessions_to_notify: []const *anyopaque) !void {
-    for (sessions_to_notify, 0..) |client_id, i| {
-        // dedup
-        for (0..i) |j| {
-            if (sessions_to_notify[i] == sessions_to_notify[j]) break;
-        } else {
-            try sendSelfUserInfo(client_id);
         }
     }
 }

@@ -95,7 +95,8 @@ pub fn main() anyerror!void {
     g.groove = groove;
 
     g.player = try Player.init(config.encodeBitRate);
-    defer g.player.deinit();
+    // TODO: fix the deinit bug in libgroove
+    //defer g.player.deinit();
 
     try users.init();
     defer users.deinit();

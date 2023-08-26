@@ -1298,6 +1298,7 @@ files. Groove Basin supports uploading .zip files.
 ### TBD
 
 * Datetimes changed from always string to either string or integer.
+* An event `userId` can be `"(deleted)"` to indicate a deleted user. (Previous behavior deleted all events originating from users who get deleted.)
 
 ### 0.0.1
 

@@ -4,9 +4,25 @@ const std = @import("std");
 
 buf: std.ArrayList(u8),
 
-/// TODO: make this a non-exhaustive enum
-pub const Index = u32;
-pub const OptionalIndex = u32;
+pub const Index = enum(u32) {
+    empty,
+    _,
+
+    pub fn toOptional(self: @This()) OptionalIndex {
+        return @enumFromInt(@intFromEnum(self));
+    }
+};
+
+pub const OptionalIndex = enum(u32) {
+    empty,
+    none = std.math.maxInt(u32),
+    _,
+
+    pub fn unwrap(self: @This()) ?Index {
+        if (self == .none) return null;
+        return @enumFromInt(@intFromEnum(self));
+    }
+};
 
 pub fn init(allocator: std.mem.Allocator) @This() {
     return .{
@@ -18,20 +34,24 @@ pub fn deinit(self: *@This()) void {
     self.* = undefined;
 }
 
-pub fn getString(self: @This(), i: u32) [:0]const u8 {
+pub fn getString(self: @This(), i: Index) [:0]const u8 {
     // Couldn't figure out how to use std.mem.span() here.
     const bytes = self.buf.items;
-    var end: usize = i;
+    var end = @intFromEnum(i);
     while (bytes[end] != 0) end += 1;
-    return bytes[i..end :0];
+    return bytes[@intFromEnum(i)..end :0];
 }
 
-pub fn putWithoutDeduplication(self: *@This(), s: []const u8) !u32 {
+pub fn getOptionalString(self: @This(), optional_index: OptionalIndex) ?[:0]const u8 {
+    return getString(self, optional_index.unwrap() orelse return null);
+}
+
+pub fn putWithoutDeduplication(self: *@This(), s: []const u8) !Index {
     try self.ensureUnusedCapacity(s.len);
     return self.putWithoutDeduplicationAssumeCapacity(s);
 }
-pub fn putWithoutDeduplicationAssumeCapacity(self: *@This(), s: []const u8) u32 {
-    const index = @as(u32, @intCast(self.buf.items.len));
+pub fn putWithoutDeduplicationAssumeCapacity(self: *@This(), s: []const u8) Index {
+    const index: Index = @enumFromInt(self.buf.items.len);
     self.buf.appendSliceAssumeCapacity(s);
     self.buf.appendAssumeCapacity(0);
     return index;
@@ -46,7 +66,7 @@ pub fn initPutter(self: *@This()) Putter {
 
 pub const Putter = struct {
     pool: *StringPool,
-    dedup_table: std.HashMapUnmanaged(u32, void, Context, 20),
+    dedup_table: std.HashMapUnmanaged(Index, void, Context, 20),
 
     pub fn init(pool: *StringPool) Putter {
         return .{
@@ -60,7 +80,7 @@ pub const Putter = struct {
         self.dedup_table.deinit(self.pool.buf.allocator);
     }
 
-    pub fn putString(self: *@This(), s: []const u8) !u32 {
+    pub fn putString(self: *@This(), s: []const u8) !Index {
         try self.pool.ensureUnusedCapacity(s.len);
         const gop = try self.dedup_table.getOrPutContextAdapted(
             self.pool.buf.allocator,
@@ -79,10 +99,10 @@ pub const Putter = struct {
 
     const Context = struct {
         pool: *const StringPool,
-        pub fn hash(self: @This(), k: u32) u64 {
+        pub fn hash(self: @This(), k: Index) u64 {
             return std.hash.Wyhash.hash(0, self.pool.getString(k));
         }
-        pub fn eql(_: @This(), _: u32, _: u32) bool {
+        pub fn eql(_: @This(), _: Index, _: Index) bool {
             unreachable; // unused.
         }
     };
@@ -91,7 +111,7 @@ pub const Putter = struct {
         pub fn hash(_: @This(), k: []const u8) u64 {
             return std.hash.Wyhash.hash(0, k);
         }
-        pub fn eql(self: @This(), a: []const u8, b: u32) bool {
+        pub fn eql(self: @This(), a: []const u8, b: Index) bool {
             return std.mem.eql(u8, a, self.pool.getString(b));
         }
     };

@@ -20,7 +20,7 @@ var library_string_putter: StringPool.Putter = undefined;
 
 const Track = struct {
     file_path: StringPool.Index,
-    title: StringPool.OptionalIndex,
+    title: StringPool.Index,
     artist: StringPool.OptionalIndex,
     composer: StringPool.OptionalIndex,
     performer: StringPool.OptionalIndex,
@@ -50,7 +50,7 @@ pub fn deinit() void {
 }
 
 pub fn loadFromDisk(music_directory: []const u8) !void {
-    assert(0 == try library_string_putter.putString(""));
+    assert(.empty == try library_string_putter.putString(""));
 
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
@@ -124,14 +124,17 @@ fn grooveFileToTrack(
         .title = try string_pool.putString(trim(getMetadata(groove_file, "title") orelse
             filenameWithoutExt(file_path))),
 
-        .artist = if (getMetadata(groove_file, "artist")) |s| try string_pool.putString(trim(s)) else 0,
+        .artist = if (getMetadata(groove_file, "artist")) |s|
+            (try string_pool.putString(trim(s))).toOptional()
+        else
+            .none,
 
         .composer = if (getMetadata(groove_file, "composer") orelse
-            getMetadata(groove_file, "TCM")) |s| try string_pool.putString(trim(s)) else 0,
+            getMetadata(groove_file, "TCM")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
 
-        .performer = if (getMetadata(groove_file, "performer")) |s| try string_pool.putString(trim(s)) else 0,
-        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| try string_pool.putString(trim(s)) else 0,
-        .album = if (getMetadata(groove_file, "album")) |s| try string_pool.putString(trim(s)) else 0,
+        .performer = if (getMetadata(groove_file, "performer")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
+        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
+        .album = if (getMetadata(groove_file, "album")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
 
         .compilation = isCompilation(groove_file, "TCP") or
             isCompilation(groove_file, "TCMP") or
@@ -147,7 +150,7 @@ fn grooveFileToTrack(
 
         .duration = groove_file.duration(),
         .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch null) else null,
-        .genre = if (getMetadata(groove_file, "genre")) |s| try string_pool.putString(trim(s)) else 0,
+        .genre = if (getMetadata(groove_file, "genre")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
     };
 }
 
@@ -169,12 +172,12 @@ fn trackToSerializedForm(string_pool: *StringPool, id: Id, track: Track) Library
         .key = id,
         .file = string_pool.getString(track.file_path),
         .name = string_pool.getString(track.title),
-        .artistName = string_pool.getString(track.artist),
-        .albumArtistName = string_pool.getString(track.album_artist),
-        .albumName = string_pool.getString(track.album),
-        .genre = string_pool.getString(track.genre),
-        .composerName = string_pool.getString(track.composer),
-        .performerName = string_pool.getString(track.performer),
+        .artistName = string_pool.getOptionalString(track.artist) orelse "",
+        .albumArtistName = string_pool.getOptionalString(track.album_artist) orelse "",
+        .albumName = string_pool.getOptionalString(track.album) orelse "",
+        .genre = string_pool.getOptionalString(track.genre) orelse "",
+        .composerName = string_pool.getOptionalString(track.composer) orelse "",
+        .performerName = string_pool.getOptionalString(track.performer) orelse "",
         .track = track.track_number orelse 0,
         .trackCount = track.track_count orelse 0,
         .disc = track.disc_number orelse 0,

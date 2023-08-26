@@ -20,7 +20,7 @@ pub const Value = union(enum) {
         int: u16,
         frac: u16,
     },
-    dynamic: u32, // offset into the keese string pool.
+    dynamic: StringPool.Index,
 
     // JSON interface
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {

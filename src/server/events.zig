@@ -23,7 +23,7 @@ pub const InternalEvent = struct {
     who: EventUserId,
     type: union(enum) {
         chat: struct {
-            text: u32, // in strings.
+            text: StringPool.Index,
             is_slash_me: bool,
         },
     },
@@ -35,7 +35,7 @@ var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
 
-var deleted_text: u32 = undefined;
+var deleted_text: StringPool.Index = undefined;
 
 pub fn init() !void {
     current_version = Id.random();

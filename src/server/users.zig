@@ -21,7 +21,7 @@ const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
 
 const UserAccount = struct {
     /// Display name and login username.
-    name: u32,
+    name: StringPool.Index,
     /// Null for freshly generated guest accounts.
     password_hash: ?PasswordHash,
     /// True iff the user has specified the name of this account.
@@ -49,7 +49,7 @@ const Session = struct {
 var current_version: Id = undefined;
 var strings: StringPool = undefined;
 var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
-var username_to_user_id: std.ArrayHashMapUnmanaged(u32, Id, StringsContext, true) = .{};
+var username_to_user_id: std.ArrayHashMapUnmanaged(StringPool.Index, Id, StringsContext, true) = .{};
 var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
 var guest_perms: Permissions = .{
     // Can be changed by admins.
@@ -61,10 +61,10 @@ var guest_perms: Permissions = .{
 };
 
 const StringsContext = struct {
-    pub fn hash(_: @This(), k: u32) u32 {
+    pub fn hash(_: @This(), k: StringPool.Index) u32 {
         return @truncate(std.hash.Wyhash.hash(0, strings.getString(k)));
     }
-    pub fn eql(_: @This(), a: u32, b: u32, _: usize) bool {
+    pub fn eql(_: @This(), a: StringPool.Index, b: StringPool.Index, _: usize) bool {
         return std.mem.eql(u8, strings.getString(a), strings.getString(b));
     }
 };
@@ -72,7 +72,7 @@ const StringsAdaptedContext = struct {
     pub fn hash(_: @This(), k: []const u8) u32 {
         return @truncate(std.hash.Wyhash.hash(0, k));
     }
-    pub fn eql(_: @This(), a: []const u8, b: u32, _: usize) bool {
+    pub fn eql(_: @This(), a: []const u8, b: StringPool.Index, _: usize) bool {
         return std.mem.eql(u8, a, strings.getString(b));
     }
 };

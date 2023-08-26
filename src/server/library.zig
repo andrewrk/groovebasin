@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const AutoArrayHashMap = std.AutoArrayHashMap;
@@ -17,12 +18,22 @@ var tracks: AutoArrayHashMap(Id, Track) = undefined;
 var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
 
-pub const Track = extern struct {
-    file_path: u32,
-    title: u32,
-    artist: u32,
-    album: u32,
-    track_number: i16,
+const Track = struct {
+    file_path: StringPool.Index,
+    title: StringPool.OptionalIndex,
+    artist: StringPool.OptionalIndex,
+    composer: StringPool.OptionalIndex,
+    performer: StringPool.OptionalIndex,
+    album_artist: StringPool.OptionalIndex,
+    album: StringPool.OptionalIndex,
+    compilation: bool,
+    track_number: ?i16,
+    track_count: ?i16,
+    disc_number: ?i16,
+    disc_count: ?i16,
+    duration: f64,
+    year: ?i16,
+    genre: StringPool.OptionalIndex,
 };
 
 pub fn init() !void {
@@ -39,6 +50,8 @@ pub fn deinit() void {
 }
 
 pub fn loadFromDisk(music_directory: []const u8) !void {
+    assert(0 == try library_string_putter.putString(""));
+
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
 
@@ -73,31 +86,68 @@ pub fn loadFromDisk(music_directory: []const u8) !void {
     }
 }
 
+fn getMetadata(groove_file: *Groove.File, key: [*:0]const u8) ?[:0]const u8 {
+    const tag = groove_file.metadata_get(key, null, 0) orelse return null;
+    return std.mem.span(tag.value());
+}
+
+fn isCompilation(groove_file: *Groove.File, key: [*:0]const u8) bool {
+    const s = getMetadata(groove_file, key) orelse return false;
+    if (s.len == 0) return false;
+    return s[0] != '0';
+}
+
+fn filenameWithoutExt(p: []const u8) []const u8 {
+    const basename = std.fs.path.basename(p);
+    const ext = std.fs.path.extension(basename);
+    return basename[0 .. basename.len - ext.len];
+}
+
+fn trim(s: []const u8) []const u8 {
+    return std.mem.trim(u8, s, " \r\n\t");
+}
+
 fn grooveFileToTrack(
     string_pool: *StringPool.Putter,
     groove_file: *Groove.File,
     file_path: []const u8,
 ) !Track {
-    // ported from https://github.com/andrewrk/groovebasin/blob/07dd1ee01d77beb901d8b9adeaf21c5f7030c70f/lib/player.js#L2850-L2888
-    // TODO reserve index 0 for null strings and use that instead of fake data (e.g. "(No Title)")
+    const parsed_track = parseTrackTuple(getMetadata(groove_file, "track") orelse
+        "");
+    const parsed_disc = parseTrackTuple(getMetadata(groove_file, "disc") orelse
+        getMetadata(groove_file, "TPA") orelse
+        getMetadata(groove_file, "TPOS") orelse
+        "");
     return Track{
         .file_path = try string_pool.putString(file_path),
-        .title = try string_pool.putString(if (groove_file.metadata_get("title", null, 0)) |tag|
-            std.mem.span(tag.value())
-        else
-            "(No Title)"),
-        .artist = try string_pool.putString(if (groove_file.metadata_get("artist", null, 0)) |tag|
-            std.mem.span(tag.value())
-        else
-            "(No Artist)"),
-        .album = try string_pool.putString(if (groove_file.metadata_get("album", null, 0)) |tag|
-            std.mem.span(tag.value())
-        else
-            "(No Album)"),
-        .track_number = if (groove_file.metadata_get("track", null, 0)) |tag|
-            parseTrackNumber(std.mem.span(tag.value()))
-        else
-            0,
+
+        .title = try string_pool.putString(trim(getMetadata(groove_file, "title") orelse
+            filenameWithoutExt(file_path))),
+
+        .artist = if (getMetadata(groove_file, "artist")) |s| try string_pool.putString(trim(s)) else 0,
+
+        .composer = if (getMetadata(groove_file, "composer") orelse
+            getMetadata(groove_file, "TCM")) |s| try string_pool.putString(trim(s)) else 0,
+
+        .performer = if (getMetadata(groove_file, "performer")) |s| try string_pool.putString(trim(s)) else 0,
+        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| try string_pool.putString(trim(s)) else 0,
+        .album = if (getMetadata(groove_file, "album")) |s| try string_pool.putString(trim(s)) else 0,
+
+        .compilation = isCompilation(groove_file, "TCP") or
+            isCompilation(groove_file, "TCMP") or
+            isCompilation(groove_file, "COMPILATION") or
+            isCompilation(groove_file, "Compilation") or
+            isCompilation(groove_file, "cpil") or
+            isCompilation(groove_file, "WM/IsCompilation"),
+
+        .track_number = parsed_track.numerator,
+        .track_count = parsed_track.denominator,
+        .disc_number = parsed_disc.numerator,
+        .disc_count = parsed_disc.denominator,
+
+        .duration = groove_file.duration(),
+        .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch null) else null,
+        .genre = if (getMetadata(groove_file, "genre")) |s| try string_pool.putString(trim(s)) else 0,
     };
 }
 
@@ -120,17 +170,61 @@ fn trackToSerializedForm(string_pool: *StringPool, id: Id, track: Track) Library
         .file = string_pool.getString(track.file_path),
         .name = string_pool.getString(track.title),
         .artistName = string_pool.getString(track.artist),
+        .albumArtistName = string_pool.getString(track.album_artist),
         .albumName = string_pool.getString(track.album),
-        .track = track.track_number,
+        .genre = string_pool.getString(track.genre),
+        .composerName = string_pool.getString(track.composer),
+        .performerName = string_pool.getString(track.performer),
+        .track = track.track_number orelse 0,
+        .trackCount = track.track_count orelse 0,
+        .disc = track.disc_number orelse 0,
+        .discCount = track.disc_count orelse 0,
+        .duration = track.duration,
+        .compilation = track.compilation,
+        .year = track.year orelse 0,
+    };
+}
+const TrackTuple = struct {
+    numerator: ?i16,
+    denominator: ?i16,
+};
+
+fn parseTrackTuple(s: []const u8) TrackTuple {
+    if (s.len == 0) return .{
+        .numerator = null,
+        .denominator = null,
+    };
+
+    if (std.mem.indexOfScalar(u8, s, '/')) |index| {
+        const denom_string = s[index + 1 ..];
+        return .{
+            .numerator = std.fmt.parseInt(i16, s[0..index], 10) catch null,
+            .denominator = if (denom_string.len == 0)
+                null
+            else
+                std.fmt.parseInt(i16, denom_string, 10) catch null,
+        };
+    }
+
+    return .{
+        .numerator = std.fmt.parseInt(i16, s, 10) catch null,
+        .denominator = null,
     };
 }
 
-fn parseTrackNumber(value: []const u8) i16 {
-    const numerator = if (std.mem.indexOfScalar(u8, value, '/')) |index|
-        value[0..index]
-    else
-        value;
-    return std.fmt.parseInt(i16, numerator, 10) catch 0;
+test parseTrackTuple {
+    const expectEqual = std.testing.expectEqual;
+    try expectEqual(@as(?i16, null), parseTrackTuple("").numerator);
+    try expectEqual(@as(?i16, null), parseTrackTuple("").denominator);
+
+    try expectEqual(@as(?i16, 1), parseTrackTuple("1/100").numerator);
+    try expectEqual(@as(?i16, 100), parseTrackTuple("1/100").denominator);
+
+    try expectEqual(@as(?i16, null), parseTrackTuple("/-50").numerator);
+    try expectEqual(@as(?i16, -50), parseTrackTuple("/-50").denominator);
+
+    try expectEqual(@as(?i16, 10), parseTrackTuple("10").numerator);
+    try expectEqual(@as(?i16, null), parseTrackTuple("10").denominator);
 }
 
 fn generateIdAndPut(map: anytype, value: anytype) !void {

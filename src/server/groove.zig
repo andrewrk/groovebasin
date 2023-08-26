@@ -154,6 +154,7 @@ pub const Groove = opaque {
         /// combination of format headers and heuristics. It can be inaccurate.
         /// The most accurate way to learn the duration of a file is to use
         /// GrooveLoudnessDetector
+        pub const duration = groove_file_duration;
         extern fn groove_file_duration(file: *File) f64;
         /// get the audio format of the main audio stream of a file
         extern fn groove_file_audio_format(file: *File, audio_format: *AudioFormat) void;

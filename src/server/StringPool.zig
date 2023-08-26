@@ -4,6 +4,10 @@ const std = @import("std");
 
 buf: std.ArrayList(u8),
 
+/// TODO: make this a non-exhaustive enum
+pub const Index = u32;
+pub const OptionalIndex = u32;
+
 pub fn init(allocator: std.mem.Allocator) @This() {
     return .{
         .buf = std.ArrayList(u8).init(allocator),

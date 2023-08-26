@@ -113,6 +113,8 @@ pub fn main() anyerror!void {
     log.info("load db", .{});
     try db.load(config.dbPath);
 
+    try library.loadFromDisk(music_dir_path);
+
     log.info("init static content", .{});
     {
         // TODO: resolve relative to current executable maybe?

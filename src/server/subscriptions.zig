@@ -88,6 +88,10 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
             version = queue.current_queue_version;
             break :blk .{ .queue = try queue.getSerializable(arena) };
         },
+        .events => blk: {
+            version = events.current_version;
+            break :blk .{ .events = try events.getSerializable(arena) };
+        },
         else => return, // TODO: support more subscription streams.
     };
 

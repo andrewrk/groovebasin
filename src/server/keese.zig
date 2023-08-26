@@ -70,11 +70,8 @@ pub const Value = union(enum) {
     }
 };
 
-pub fn parse(s: []const u8) !Value {
-    const magnitude = blk: for (s, 0..) |c, i| {
-        if (c == '~') continue;
-        break :blk i;
-    } else return error.MalformedKeeseValue; // No digits.
+pub fn parse(s: []const u8) error{ MalformedKeeseValue, OutOfMemory }!Value {
+    const magnitude = try getMagnitude(s);
     const implicit_decimal_point = magnitude + magnitude + 1;
 
     if (implicit_decimal_point > s.len) return error.MalformedKeeseValue; // More magnitude than digits.
@@ -109,6 +106,14 @@ pub fn parse(s: []const u8) !Value {
     }
 
     return .{ .fixed = .{ .int = int_value, .frac = frac_value } };
+}
+
+fn getMagnitude(s: []const u8) !usize {
+    for (s, 0..) |c, i| {
+        if (c == '~') continue;
+        return i;
+    }
+    return error.MalformedKeeseValue; // No digits.
 }
 
 fn dynamicFallback(s: []const u8, magnitude: usize) !Value {
@@ -197,10 +202,92 @@ pub fn order(a: Value, b: Value) Order {
     unreachable;
 }
 
-pub fn between(low: ?Value, high: ?Value) Value {
+pub fn between(low: ?Value, high: ?Value) error{OutOfMemory}!Value {
+    if (low) |l| {
+        if (high) |h| {
+            return mid(l, h);
+        } else {
+            return above(l);
+        }
+    } else if (high) |h| {
+        return below(h);
+    } else {
+        return starting_value;
+    }
+}
+
+/// Start at 1 rather than 0 so that it's possible to go below the starting value.
+pub const starting_value = Value{ .fixed = .{ .int = 1, .frac = 0 } };
+pub fn mid(low: Value, high: Value) error{OutOfMemory}!Value {
     _ = low;
     _ = high;
-    @panic("TODO: do we need to generate keese values server side?");
+    @panic("TODO");
+}
+pub fn below(high: Value) error{OutOfMemory}!Value {
+    _ = high;
+    @panic("TODO");
+}
+/// Generate a value avbove the given value.
+/// Implemented by ignoring the fractional component and incrementing the integer component.
+pub fn above(low: Value) error{OutOfMemory}!Value {
+    switch (low) {
+        .fixed => return {
+            if (low.fixed.int < 0xffff) {
+                // Common case.
+                return .{ .fixed = .{ .int = low.fixed.int + 1, .frac = 0 } };
+            } else {
+                // Bump from fixed into dynamic.
+                return parse("~~E00") catch |e| switch (e) {
+                    error.MalformedKeeseValue => unreachable,
+                    error.OutOfMemory => |err| return err,
+                };
+            }
+        },
+        .dynamic => |s| {
+            const low_str = strings.getString(s);
+
+            const magnitude = getMagnitude(low_str) catch unreachable;
+            const implicit_decimal_point = magnitude + magnitude + 1;
+
+            // Allocate two more bytes of scratch space for bumping up the magnitude. example:
+            //  low_str:   "~~~zzzFFF"
+            //      buf: "~~~~1000"
+            const buf = try strings.buf.allocator.alloc(u8, implicit_decimal_point + 2);
+            defer strings.buf.allocator.free(buf);
+
+            var i: usize = 2 + implicit_decimal_point - 1;
+            var carry: u8 = 1;
+            while (i >= 2 + magnitude) : (i -= 1) {
+                var v: u8 = carry + @as(u8, @intCast(alphabet_lookup_table[low_str[i - 2]]));
+                if (v >= 0x40) {
+                    v -= 0x40;
+                    carry = 1;
+                } else {
+                    carry = 0;
+                }
+                buf[i] = alphabet[v];
+            }
+
+            var buf_start: usize = undefined;
+            if (carry > 0) {
+                // need an extra digit.
+                buf[1 + magnitude] = alphabet[carry];
+                buf_start = 0;
+                for (buf[buf_start .. 1 + magnitude]) |*c| c.* = '~';
+            } else {
+                // No extra digits.
+                buf_start = 2;
+                for (buf[buf_start .. 2 + magnitude]) |*c| c.* = '~';
+            }
+
+            // This might get optimized back to a fixed representation if the starting value
+            // was dynamic due to frac precition rather than int magnitude.
+            return parse(buf[buf_start..]) catch |e| switch (e) {
+                error.MalformedKeeseValue => unreachable,
+                error.OutOfMemory => |err| return err,
+            };
+        },
+    }
 }
 
 const testing = std.testing;
@@ -260,6 +347,41 @@ fn testWriteFixed(s: []const u8) !void {
     var buf: [8]u8 = undefined;
     const restringified = writeFixed(&buf, value.fixed.int, value.fixed.frac);
     try testing.expectEqualStrings(s, restringified);
+}
+
+test "keese above" {
+    try init(testing.allocator);
+    defer deinit();
+
+    try testExpectAbove("2", "1");
+    try testExpectAbove("~~E00", "~~Dzz"); // bump from fixed into dynamic.
+    try testExpectAbove("~~E01", "~~E00"); // dynamic to dynamic.
+    try testExpectAbove("~~E0a", "~~E0Z"); // use the alphabet. don't just +1 the ascii value.
+    try testExpectAbove("~~~1000", "~~zzz"); // increase magnitude.
+    try testExpectAbove("2", "1UU"); // truncate franctional component.
+    try testExpectAbove("2", "1UUUUU"); // optimize from dynamic to fixed by truncating fractional component.
+    try testExpectAbove("~~~~~123457", "~~~~~123456"); // lots of digits.
+    try testExpectAbove("~~~~~123500", "~~~~~1234zzFFF"); // bring it all together.
+}
+
+fn testExpectAbove(expected: []const u8, start: []const u8) !void {
+    const start_value = try parse(start);
+    const end_value = try above(start_value);
+    try expectKeeseValue(expected, end_value);
+}
+
+fn expectKeeseValue(expected: []const u8, value: Value) !void {
+    switch (value) {
+        .fixed => {
+            var buf: [8]u8 = undefined;
+            const got = writeFixed(&buf, value.fixed.int, value.fixed.frac);
+            try testing.expectEqualStrings(expected, got);
+        },
+        .dynamic => |s| {
+            const got = strings.getString(s);
+            try testing.expectEqualStrings(expected, got);
+        },
+    }
 }
 
 test "keese order" {

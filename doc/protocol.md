@@ -1,6 +1,6 @@
 # Groove Basin Protocol Specification
 
-Version 0.0.1, published on 2015-08-18.
+This document is a draft. It will be a version greater than 0.0.1 when tagged.
 
 Note: The Groove Basin protocol is not stable yet. When a version of
 Groove Basin is released which stabilizes the protocol, the major version will
@@ -188,11 +188,6 @@ Depending on the message, `messageArguments` might be any of the JSON types:
  * Type: `[fieldName]`
  * `fieldName`: description of field
 
-Datetimes are always communicated as a `string`, in simplified extended ISO
-format ([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)), which is always 24
-characters long: `YYYY-MM-DDTHH:mm:ss.sssZ`. The timezone is always zero UTC
-offset, as denoted by the suffix "Z".
-
 After establishing a WebSocket connection, the next thing you probably want to
 do is [subscribe](#subscribe) to information relevant to you.
 
@@ -237,6 +232,25 @@ Instead of `/` and `+`, clients must use `_` and `-` as these symbols are safe
 to be put in an HTML id attribute without being escaped.
 
 The server must reject messages which violate this constraint.
+
+### Calibrating Datetimes
+
+A datetime is defined to be either a string or a number that can be passed to
+[JavaScript's `new Date(x)` constructor](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/Date).
+When a datetime is a number, it is an integer number of milliseconds since the UNIX Epoch.
+
+When a datetime is a `string`, it is in simplified extended ISO format
+([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)), which is always 24
+characters long: `YYYY-MM-DDTHH:mm:ss.sssZ`. The timezone is always zero UTC
+offset, as denoted by the suffix "Z".
+The string representation of datetimes will be deprecated.
+
+(A quick note on integer precision: an unsigned integer with at least 41 bits is required
+to encode the datetime of Groove Basin's first commit in milliseconds since the UNIX Epoch.
+42 bits gets us to year 2109. IEEE 754 64-bit floats (JavaScript numbers) have 53-bits of
+integer precision, which is enough to last for the next 287k years.)
+
+All datetimes from the server must be calibrated by computing a client-server offset derived from the [time](#time) message. This corrects for clock drift between the server and client. The server may intentionally give wildly offset datetimes to make sure that client developers remember to calibrate all datetimes from the server.
 
 ## Client-to-Server Control Messages
 
@@ -671,11 +685,11 @@ stream.
 
 ### time
 
- * Type: `string`. Current datetime according to the server.
+ * Type: `datetime`. Current datetime according to the server.
 
-Sent on first connection, when the system time changes, and periodically
-to combat clock drift. Pause time and playback start time are relative to this
-time.
+Sent on first connection, when the system time changes, and periodically to combat clock drift.
+All datetime values in this API should be calibrated by using this time.
+See [Calibrating Datetimes](#calibrating-datetimes).
 
 The client does not [subscribe](#subscribe) to get this information because the
 value is constantly changing.
@@ -787,7 +801,7 @@ something that will likely change before the protocol reaches 1.0.0.
  * Type: `{currentItemId, isPlaying, trackStartDate, pausedTime}`
  * `currentItemId`: `string` or `null`. The play queue ID currently playing.
  * `isPlaying`: `boolean`. `true` if playing; `false` if paused.
- * `trackStartDate`: `string`. datetime representing what time it was on the
+ * `trackStartDate`: `datetime`. datetime representing what time it was on the
    server when frame 0 of the current song was played.
  * `pausedTime`: `number`. Only relevant when `isPlaying` is `false`. How many
    seconds into the song the position is.
@@ -919,7 +933,7 @@ reached.
  * Type: `{id: {name, mtime, items: {itemId: {songId, sortKey}}}}`
  * `id`: `string`. Playlist ID.
  * `name`: `string`.
- * `mtime`: `string`. Datetime of last modification time of playlist.
+ * `mtime`: `datetime`. Datetime of last modification time of playlist.
  * `items`: `object`. Set of playlist items.
    * `itemId`: `string`. ID of the playlist item in the playlist.
    * `key`: `string`. ID of the song in the music library.
@@ -932,7 +946,7 @@ To display playlist items in the correct order, sort them by `sortKey`.
 
  * Type: `{id: {date, filenameHintWithoutPath, bytesWritten, size}}`
  * `id`: `string`. Import job ID.
- * `date`: `string`.
+ * `date`: `datetime`.
  * `filenameHintWithoutPath`: `string`.
  * `bytesWritten`: `number`. How many bytes have been imported so far.
  * `size`: `number`. How many bytes this file is.
@@ -1008,7 +1022,7 @@ to properly detect and support them.
 
  * Type: `{id: {date, type, sortKey, userId, text, trackId, pos, displayClass, playlistId}}`
  * `id`: `string`. Event ID.
- * `date`: `string`. Datetime when the event occurred.
+ * `date`: `datetime`. Datetime when the event occurred.
  * `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
    string specifying the order the events should be displayed in.
  * `type`: `string`. Depending on the event type there may be more fields.
@@ -1278,6 +1292,10 @@ Advanced servers may support uploading things like file archives and torrent
 files. Groove Basin supports uploading .zip files.
 
 ## Version History
+
+### TBD
+
+* Datetimes changed from always string to either string or integer.
 
 ### 0.0.1
 

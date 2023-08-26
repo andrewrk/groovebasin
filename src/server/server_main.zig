@@ -145,6 +145,8 @@ pub fn handleClientConnected(client_id: *anyopaque) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
 
+    // Welcome messages
+    try encodeAndSend(client_id, .{ .time = getNow() });
     try users.handleClientConnected(arena.allocator(), client_id);
 }
 pub fn handleClientDisconnected(client_id: *anyopaque) !void {
@@ -227,10 +229,21 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
             try checkPermission(perms.control);
             try queue.remove(arena.allocator(), args);
         },
+
+        .chat => |args| {
+            try checkPermission(perms.control);
+            try events.chat(arena.allocator(), client_id, args.text, args.displayClass != null);
+        },
+
         else => unreachable,
     }
 }
 
 fn checkPermission(has_permission: bool) !void {
     if (!has_permission) return error.PermissionDenied;
+}
+
+pub const skew_testing_offset = -123_000_000;
+pub fn getNow() groovebasin_protocol.Datetime {
+    return .{ .value = std.time.milliTimestamp() };
 }

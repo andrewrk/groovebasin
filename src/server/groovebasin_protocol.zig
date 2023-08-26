@@ -25,6 +25,24 @@ const TODO = struct {
     }
 };
 
+pub const Datetime = struct {
+    /// Milliseconds since UNIX Epoch.
+    /// Actually, this can be milliseconds since any fixed arbitrary point in time,
+    /// because of client-server clock skew correction.
+    value: i64,
+    /// Set this to test that clients are properly calibrating client-server clock skew.
+    const skew_testing_offset = 123_000_000;
+    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
+        return .{ .value = skew_testing_offset - try json.innerParse(i64, allocator, source, options) };
+    }
+    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
+        return .{ .value = skew_testing_offset - try json.innerParseFromValue(i64, allocator, source, options) };
+    }
+    pub fn jsonStringify(self: @This(), jw: anytype) !void {
+        return jw.write(skew_testing_offset + self.value);
+    }
+};
+
 pub const Id = struct {
     value: u192,
 
@@ -262,7 +280,10 @@ pub const ClientToServerMessage = union(enum) {
         approved: bool,
         name: []const u8,
     },
-    chat: TODO,
+    chat: struct {
+        text: []const u8,
+        displayClass: ?enum { me } = null,
+    },
     deleteTracks: TODO,
     deleteUsers: []const Id,
     autoDjOn: TODO,
@@ -335,7 +356,7 @@ pub const ServerToClientMessage = union(enum) {
     // Server-to-Client Control Messages
     @"error": TODO,
     seek: TODO,
-    time: TODO,
+    time: Datetime,
     token: TODO,
     lastFmApiKey: TODO,
     lastFmGetSessionSuccess: TODO,
@@ -445,6 +466,20 @@ pub const PublicUserInfo = struct {
     streaming: bool,
 };
 
+pub const Event = struct {
+    date: Datetime,
+    type: enum {
+        chat,
+    },
+    sortKey: ?keese.Value = null,
+    userId: ?Id = null,
+    text: ?[]const u8 = null,
+    trackId: ?TODO = null,
+    pos: ?TODO = null,
+    displayClass: ?enum { me } = null,
+    playlistId: ?TODO = null,
+};
+
 pub const Subscription = union(enum) {
     currentTrack: TODO,
     autoDjOn: TODO,
@@ -465,7 +500,7 @@ pub const Subscription = union(enum) {
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.
-    events: TODO,
+    events: IdMap(Event),
 };
 
 const AlwaysTheNumber1 = struct {

@@ -108,7 +108,10 @@ pub fn handleClientDisconnected(arena: Allocator, client_id: *anyopaque) !void {
 }
 
 pub fn getSessionPermissions(client_id: *anyopaque) Permissions {
-    return user_accounts.get(sessions.get(client_id).?.user_id).?.perms;
+    return user_accounts.get(userIdFromClientId(client_id)).?.perms;
+}
+pub fn userIdFromClientId(client_id: *anyopaque) Id {
+    return sessions.get(client_id).?.user_id;
 }
 
 pub fn logout(arena: Allocator, client_id: *anyopaque) !void {

@@ -28,7 +28,7 @@ pub const InternalEvent = struct {
     },
 };
 
-pub const StringPool = @import("shared").StringPool;
+const StringPool = @import("StringPool.zig");
 
 pub var current_version: Id = undefined;
 var strings: StringPool = undefined;

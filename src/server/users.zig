@@ -6,7 +6,7 @@ const log = std.log;
 
 const g = @import("global.zig");
 
-const StringPool = @import("shared").StringPool;
+const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
 const events = @import("events.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;

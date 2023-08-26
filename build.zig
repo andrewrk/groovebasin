@@ -31,7 +31,6 @@ pub fn build(b: *Builder) void {
         .target = target,
         .optimize = optimize,
     });
-    server.addAnonymousModule("shared", .{ .source_file = .{ .path = "src/shared/index.zig" } });
     server.linkLibrary(groove_dep.artifact("groove"));
     b.installArtifact(server);
 

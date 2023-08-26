@@ -2,9 +2,9 @@ const std = @import("std");
 const mem = std.mem;
 const net = std.net;
 const log = std.log;
-const Channel = @import("shared").Channel;
-const channel = @import("shared").channel;
-const RefCounter = @import("shared").RefCounter;
+const Channel = @import("threadsafe_queue.zig").Channel;
+const channel = @import("threadsafe_queue.zig").channel;
+const RefCounter = @import("RefCounter.zig");
 const LinearFifo = std.fifo.LinearFifo;
 const Groove = @import("groove.zig").Groove;
 

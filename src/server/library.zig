@@ -6,8 +6,7 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");
 
-const Library = @import("shared").Library;
-const StringPool = @import("shared").StringPool;
+const StringPool = @import("StringPool.zig");
 
 const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
 const Id = @import("groovebasin_protocol.zig").Id;
@@ -29,6 +28,7 @@ pub const Track = extern struct {
 pub fn init(music_directory: []const u8, db_path: []const u8) !void {
     // TODO: try reading from disk sometimes.
     // try readLibrary(db_path);
+    _ = db_path;
 
     current_library_version = Id.random();
     tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
@@ -70,92 +70,12 @@ pub fn init(music_directory: []const u8, db_path: []const u8) !void {
         const track = try grooveFileToTrack(&library_string_putter, groove_file, entry.path);
         try generateIdAndPut(&tracks, track);
     }
-
-    try writeLibrary(db_path);
-}
-
-fn writeLibrary(db_path: []const u8) !void {
-    var db_file = try std.fs.cwd().createFile(db_path, .{});
-    defer db_file.close();
-
-    const header = Header{
-        .string_size = @as(u32, @intCast(strings.buf.items.len)),
-        .track_count = @as(u32, @intCast(tracks.count())),
-    };
-
-    // if we try to get tracks.keys().ptr when the count is zero, it
-    // ends up being a null pointer
-    if (tracks.count() == 0)
-        return;
-
-    var iovecs = [_]std.os.iovec_const{
-        .{
-            .iov_base = @as([*]const u8, @ptrCast(&header)),
-            .iov_len = @sizeOf(Header),
-        },
-        .{
-            .iov_base = strings.buf.items.ptr,
-            .iov_len = strings.buf.items.len,
-        },
-        .{
-            .iov_base = @as([*]const u8, @ptrCast(tracks.keys().ptr)),
-            .iov_len = tracks.keys().len * @sizeOf(u64),
-        },
-        .{
-            .iov_base = @as([*]const u8, @ptrCast(tracks.values().ptr)),
-            .iov_len = tracks.values().len * @sizeOf(Track),
-        },
-    };
-
-    try db_file.writevAll(&iovecs);
 }
 
 pub fn deinit() void {
     strings.deinit();
     tracks.deinit();
 }
-
-fn readLibrary(db_path: []const u8) anyerror!void {
-    var l = Library.init(g.gpa);
-    defer l.deinit();
-
-    var db_file = try std.fs.cwd().openFile(db_path, .{});
-    defer db_file.close();
-
-    const header = try db_file.reader().readStruct(Header);
-
-    try l.strings.buf.resize(header.string_size);
-    try l.tracks.ensureTotalCapacity(header.track_count);
-    const track_keys = try g.gpa.alloc(u64, header.track_count);
-    defer g.gpa.free(track_keys);
-    const track_values = try g.gpa.alloc(Track, header.track_count);
-    defer g.gpa.free(track_values);
-
-    var iovecs = [_]std.os.iovec{
-        .{
-            .iov_base = l.strings.buf.items.ptr,
-            .iov_len = l.strings.buf.items.len,
-        },
-        .{
-            .iov_base = @as([*]u8, @ptrCast(track_keys.ptr)),
-            .iov_len = track_keys.len * @sizeOf(u64),
-        },
-        .{
-            .iov_base = @as([*]u8, @ptrCast(track_values.ptr)),
-            .iov_len = track_values.len * @sizeOf(Track),
-        },
-    };
-    _ = try db_file.readvAll(&iovecs);
-
-    for (track_keys, track_values) |k, v| {
-        l.tracks.putAssumeCapacityNoClobber(k, v);
-    }
-}
-
-const Header = extern struct {
-    string_size: u32,
-    track_count: u32,
-};
 
 fn grooveFileToTrack(
     string_pool: *StringPool.Putter,

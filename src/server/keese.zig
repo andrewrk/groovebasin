@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const Order = std.math.Order;
 const json = std.json;
 
-const StringPool = @import("shared").StringPool;
+const StringPool = @import("StringPool.zig");
 
 var strings: StringPool = undefined;
 

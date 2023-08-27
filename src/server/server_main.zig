@@ -104,7 +104,7 @@ pub fn main() anyerror!void {
     defer subscriptions.deinit();
     try keese.init(g.gpa);
     defer keese.deinit();
-    try library.init();
+    try library.init(music_dir_path);
     defer library.deinit();
     try queue.init();
     defer queue.deinit();
@@ -114,7 +114,7 @@ pub fn main() anyerror!void {
     log.info("load db", .{});
     try db.load(config.dbPath);
 
-    try library.loadFromDisk(music_dir_path);
+    try library.loadFromDisk();
 
     log.info("init static content", .{});
     {
@@ -262,8 +262,45 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
             try checkPermission(perms.control);
             try events.chat(arena.allocator(), client_id, args.text, args.displayClass != null);
         },
-
-        else => unreachable,
+        .deleteTracks => @panic("TODO"),
+        .autoDjOn => @panic("TODO"),
+        .autoDjHistorySize => @panic("TODO"),
+        .autoDjFutureSize => @panic("TODO"),
+        .hardwarePlayback => @panic("TODO"),
+        .importNames => @panic("TODO"),
+        .importUrl => @panic("TODO"),
+        .updateTags => @panic("TODO"),
+        .unsubscribe => @panic("TODO"),
+        .pause => {
+            try checkPermission(perms.control);
+            try queue.pause(changes, client_id);
+        },
+        .play => {
+            try checkPermission(perms.control);
+            try queue.play(changes, client_id);
+        },
+        .seek => |args| {
+            try checkPermission(perms.control);
+            try queue.seek(changes, client_id, args.id, args.pos);
+        },
+        .repeat => @panic("TODO"),
+        .setVolume => @panic("TODO"),
+        .stop => @panic("TODO"),
+        .playlistCreate => @panic("TODO"),
+        .playlistRename => @panic("TODO"),
+        .playlistDelete => @panic("TODO"),
+        .playlistAddItems => @panic("TODO"),
+        .playlistRemoveItems => @panic("TODO"),
+        .playlistMoveItems => @panic("TODO"),
+        .labelCreate => @panic("TODO"),
+        .labelRename => @panic("TODO"),
+        .labelColorUpdate => @panic("TODO"),
+        .labelDelete => @panic("TODO"),
+        .labelAdd => @panic("TODO"),
+        .labelRemove => @panic("TODO"),
+        .lastFmGetSession => @panic("TODO"),
+        .lastFmScrobblersAdd => @panic("TODO"),
+        .lastFmScrobblersRemove => @panic("TODO"),
     }
 }
 
@@ -271,7 +308,6 @@ fn checkPermission(has_permission: bool) !void {
     if (!has_permission) return error.PermissionDenied;
 }
 
-pub const skew_testing_offset = -123_000_000;
 pub fn getNow() groovebasin_protocol.Datetime {
     return .{ .value = std.time.milliTimestamp() };
 }

@@ -338,13 +338,16 @@ pub const ClientToServerMessage = union(enum) {
     move: IdMap(struct {
         sortKey: keese.Value,
     }),
-    pause: TODO,
-    play: TODO,
+    pause: void,
+    play: void,
     queue: IdMap(struct {
         key: Id,
         sortKey: keese.Value,
     }),
-    seek: TODO,
+    seek: struct {
+        id: Id,
+        pos: f64,
+    },
     setStreaming: bool,
     remove: []Id,
     repeat: TODO,
@@ -506,8 +509,21 @@ pub const Event = struct {
     playlistId: ?TODO = null,
 };
 
+pub const CurrentTrack = struct {
+    /// `string` or `null`. The play queue ID currently playing.
+    currentItemId: ?Id,
+    /// `boolean`. `true` if playing; `false` if paused.
+    isPlaying: bool,
+    /// datetime representing what time it was on the server when frame 0 of
+    /// the current song was played.
+    trackStartDate: ?Datetime,
+    /// `number`. Only relevant when `isPlaying` is `false`. How many seconds
+    /// into the song the position is.
+    pausedTime: ?f64,
+};
+
 pub const Subscription = union(enum) {
-    currentTrack: TODO,
+    currentTrack: CurrentTrack,
     autoDjOn: TODO,
     autoDjHistorySize: TODO,
     autoDjFutureSize: TODO,

@@ -161,8 +161,8 @@ pub const Groove = opaque {
     };
 
     pub const Playlist = extern struct {
-        head: *Item,
-        tail: *Item,
+        head: ?*Item,
+        tail: ?*Item,
         gain: f64,
 
         pub const destroy = groove_playlist_destroy;
@@ -294,8 +294,8 @@ pub const Groove = opaque {
 
         pub fn buffer_get(encoder: *Encoder, buffer: *?*Buffer, block: bool) Error!BUFFER {
             const rc = groove_encoder_buffer_get(encoder, buffer, @intFromBool(block));
-            if (rc < 0) try wrapError(@as(CError, @enumFromInt(rc)));
-            return @as(BUFFER, @enumFromInt(rc));
+            if (rc < 0) try wrapError(@enumFromInt(rc));
+            return @enumFromInt(rc);
         }
         /// returns < 0 on error, #GROOVE_BUFFER_NO on aborted (block=1) or no buffer
         /// ready (block=0), #GROOVE_BUFFER_YES on buffer returned, and GROOVE_BUFFER_END

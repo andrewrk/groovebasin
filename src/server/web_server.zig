@@ -210,11 +210,18 @@ const ConnectionHandler = struct {
 
         while (true) {
             var buffer: ?*Groove.Buffer = null;
+
+            var item: *Groove.Playlist.Item = undefined;
+            var seconds: f64 = undefined;
+            g.player.playlist.position(&item, &seconds);
+
+            log.debug("stream endpoint buffer_get (playlist head: {d})", .{seconds});
             const status = try g.player.encoder.buffer_get(&buffer, true);
             _ = status;
             if (buffer) |buf| {
                 defer buf.unref();
-                const data = buf.data[0][0..@as(usize, @intCast(buf.size))];
+                const data = buf.data[0][0..@intCast(buf.size)];
+                log.debug("stream endpoint writing {d} bytes", .{data.len});
                 try w.writeAll(data);
             }
         }

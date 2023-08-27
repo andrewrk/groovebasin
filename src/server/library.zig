@@ -3,6 +3,7 @@ const assert = std.debug.assert;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const AutoArrayHashMap = std.AutoArrayHashMap;
+const log = std.log;
 
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");
@@ -17,6 +18,7 @@ var current_version: Id = undefined;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
 var strings: StringPool = undefined;
 var library_string_putter: StringPool.Putter = undefined;
+var music_directory: []const u8 = undefined;
 
 const Track = struct {
     file_path: StringPool.Index,
@@ -36,11 +38,12 @@ const Track = struct {
     genre: StringPool.OptionalIndex,
 };
 
-pub fn init() !void {
+pub fn init(music_directory_init: []const u8) !void {
     current_version = Id.random();
     tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
     strings = StringPool.init(g.gpa);
     library_string_putter = strings.initPutter();
+    music_directory = music_directory_init;
 }
 
 pub fn deinit() void {
@@ -49,9 +52,11 @@ pub fn deinit() void {
     strings.deinit();
 }
 
-pub fn loadFromDisk(music_directory: []const u8) !void {
+pub fn loadFromDisk() !void {
     assert(.empty == try library_string_putter.putString(""));
 
+    // TODO: update libgroove to support openat so we can store the music_dir fd
+    // only and not do the absolute file concatenation below
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
 
@@ -69,7 +74,7 @@ pub fn loadFromDisk(music_directory: []const u8) !void {
         });
         defer g.gpa.free(full_path);
 
-        std.log.debug("found: {s}", .{full_path});
+        log.debug("found: {s}", .{full_path});
 
         try groove_file.open(full_path, full_path);
         defer groove_file.close();
@@ -79,7 +84,7 @@ pub fn loadFromDisk(music_directory: []const u8) !void {
             it = groove_file.metadata_get("", it, 0);
             break :t it;
         }) |tag| {
-            std.log.debug("  {s}={s}", .{ tag.key(), tag.value() });
+            log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
         const track = try grooveFileToTrack(&library_string_putter, groove_file, entry.path);
         try generateIdAndPut(&tracks, track);
@@ -238,7 +243,29 @@ fn generateIdAndPut(map: anytype, value: anytype) !void {
             return;
         }
         // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
-        std.log.warn("Rerolling random id to avoid collisions", .{});
+        log.warn("Rerolling random id to avoid collisions", .{});
     }
     return error.FailedToGenerateRandomNumberAvoidingCollisions;
+}
+
+pub fn loadGrooveFile(library_key: Id) error{ OutOfMemory, TrackNotFound, LoadFailure }!*Groove.File {
+    const groove_file = try g.groove.file_create();
+    errdefer groove_file.destroy();
+
+    const track = tracks.get(library_key) orelse return error.TrackNotFound;
+    const file_path = strings.getString(track.file_path);
+
+    const full_path = try std.fs.path.joinZ(g.gpa, &.{ music_directory, file_path });
+    defer g.gpa.free(full_path);
+
+    groove_file.open(full_path, full_path) catch |err| switch (err) {
+        error.OutOfMemory => return error.OutOfMemory,
+        else => {
+            log.err("unable to open groove file '{s}': {s}", .{ full_path, @errorName(err) });
+            return error.LoadFailure;
+        },
+    };
+    errdefer groove_file.close();
+
+    return groove_file;
 }

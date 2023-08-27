@@ -27,7 +27,7 @@ pub fn init(bit_rate_k: u32) !Player {
     player.name = "GrooveBasin";
     try player.attach(playlist);
 
-    encoder.bit_rate = @as(c_int, @intCast(bit_rate_k * 1000));
+    encoder.bit_rate = @intCast(bit_rate_k * 1000);
     encoder.format_short_name = "mp3";
     encoder.codec_short_name = "mp3";
     try encoder.attach(playlist);

@@ -80,6 +80,7 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
         .library => .{ .library = try library.getSerializable(arena, &version) },
         .queue => .{ .queue = try queue.getSerializable(arena, &version) },
         .events => .{ .events = try events.getSerializable(arena, &version) },
+        .currentTrack => .{ .currentTrack = queue.getSerializedCurrentTrack() },
         else => return, // TODO: support more subscription streams.
     };
 

@@ -46,9 +46,8 @@ const Session = struct {
     claims_to_be_streaming: bool = false,
 };
 
-var current_version: Id = undefined;
-var strings: StringPool = undefined;
-var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
+pub var strings: StringPool = undefined;
+pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var username_to_user_id: std.ArrayHashMapUnmanaged(StringPool.Index, Id, StringsContext, true) = .{};
 var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
 var guest_perms: Permissions = .{
@@ -78,7 +77,6 @@ const StringsAdaptedContext = struct {
 };
 
 pub fn init() !void {
-    current_version = Id.random();
     strings = StringPool.init(g.gpa);
     user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
     sessions = AutoArrayHashMap(*anyopaque, Session).init(g.gpa);
@@ -88,6 +86,16 @@ pub fn deinit() void {
     strings.deinit();
     user_accounts.deinit();
     sessions.deinit();
+}
+
+pub fn handleLoaded() !void {
+    try username_to_user_id.ensureTotalCapacity(g.gpa, user_accounts.count());
+    var it = user_accounts.iterator();
+    while (it.next()) |kv| {
+        const id = kv.key_ptr.*;
+        const account = kv.value_ptr;
+        _ = username_to_user_id.putAssumeCapacity(account.name, id);
+    }
 }
 
 pub fn handleClientConnected(changes: *db.Changes, client_id: *anyopaque) !void {
@@ -100,13 +108,11 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: *anyopaque) !void 
     });
 
     try sendSelfUserInfo(client_id);
-    current_version = Id.random();
     changes.broadcastChanges(.users);
 }
 
 pub fn handleClientDisconnected(changes: *db.Changes, client_id: *anyopaque) !void {
     std.debug.assert(sessions.swapRemove(client_id));
-    current_version = Id.random();
     changes.broadcastChanges(.users);
 }
 
@@ -121,7 +127,6 @@ pub fn logout(changes: *db.Changes, client_id: *anyopaque) !void {
     const session = sessions.getEntry(client_id).?.value_ptr;
     session.user_id = try createGuestAccount(changes);
     try sendSelfUserInfo(client_id);
-    current_version = Id.random();
     changes.broadcastChanges(.users);
 }
 
@@ -143,7 +148,7 @@ fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
 
     // We always need a password.
     const min_password_len = 1; // lmao
-    if (password.len < min_password_len) return error.PasswordTooShort;
+    if (password.len < min_password_len) return error.BadRequest; // password too short
 
     // These things can happen here:
     // 1. session username == given username
@@ -161,10 +166,13 @@ fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
     //        leaving no trace that it ever existed.
     // Perhaps these should have been different APIs.
 
+    try changes.user_accounts.ensureUnusedCapacity(1);
+
     if (std.mem.eql(u8, username, strings.getString(session_account.name))) {
         // If you're trying to login to yourself, it always works.
         // Use this to change your password.
         changePassword(session_account, password);
+        changes.user_accounts.putAssumeCapacity(session.user_id, {});
         return;
     }
 
@@ -183,12 +191,12 @@ fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
         }
     } else {
         // Create account: change username, change password, and register.
-        try changeUserName(session.user_id, username);
+        try changeUserName(changes, session.user_id, username);
         changePassword(session_account, password);
         session_account.registered = true;
+        changes.user_accounts.putAssumeCapacity(session.user_id, {});
     }
 
-    current_version = Id.random();
     changes.broadcastChanges(.users);
 }
 
@@ -216,9 +224,10 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
     if (!std.mem.eql(u8, &hash, &account.password_hash.?.hash)) return error.InvalidLogin;
 }
 
-fn changeUserName(user_id: Id, new_username: []const u8) !void {
+fn changeUserName(changes: *db.Changes, user_id: Id, new_username: []const u8) !void {
     try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
     try strings.ensureUnusedCapacity(new_username.len);
+    try changes.user_accounts.ensureUnusedCapacity(1);
     const account = user_accounts.getEntry(user_id).?.value_ptr;
 
     std.debug.assert(username_to_user_id.swapRemove(account.name));
@@ -228,12 +237,13 @@ fn changeUserName(user_id: Id, new_username: []const u8) !void {
     account.name = name;
     by_name_gop.key_ptr.* = name;
     by_name_gop.value_ptr.* = user_id;
+
+    changes.user_accounts.putAssumeCapacity(user_id, {});
 }
 
 pub fn setStreaming(changes: *db.Changes, client_id: *anyopaque, is_streaming: bool) !void {
     sessions.getEntry(client_id).?.value_ptr.claims_to_be_streaming = is_streaming;
 
-    current_version = Id.random();
     changes.broadcastChanges(.users);
 }
 
@@ -285,21 +295,25 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
     log.info("Username: {s}", .{name_str[0..]});
     log.info("Password: {s}", .{password_text[0..]});
 
-    current_version = Id.random();
     changes.broadcastChanges(.haveAdminUser);
-    changes.broadcastChanges(.users);
 }
 
 pub fn requestApproval(changes: *db.Changes, client_id: *anyopaque) !void {
-    const account = user_accounts.getEntry(sessions.get(client_id).?.user_id).?.value_ptr;
+    const user_id = sessions.get(client_id).?.user_id;
+    const account = user_accounts.getEntry(user_id).?.value_ptr;
+    if (account.requested) return; // You're good.
 
+    try changes.user_accounts.put(user_id, {});
     account.requested = true;
-
     changes.broadcastChanges(.users);
 }
 
 pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
-    // This might end up with duplicates:
+    // the most changes from a single approval is:
+    // * deleting (merging) one user
+    // * name changing the other user
+    try changes.user_accounts.ensureUnusedCapacity(2 * args.len);
+
     for (args) |approval| {
         var requesting_user_id = approval.id;
         const replace_user_id = approval.replaceId orelse requesting_user_id;
@@ -318,6 +332,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
         if (!is_approved) {
             // Just undo the request.
             requesting_account.requested = false;
+            changes.user_accounts.putAssumeCapacity(requesting_user_id, {});
             continue;
         }
 
@@ -327,12 +342,13 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_account = user_accounts.getEntry(requesting_user_id).?.value_ptr;
         } else {
             requesting_account.approved = true;
+            changes.user_accounts.putAssumeCapacity(requesting_user_id, {});
         }
 
         const old_name = strings.getString(requesting_account.name);
         if (!std.mem.eql(u8, old_name, new_name)) {
             // This is also a feature of the approve workflow.
-            try changeUserName(requesting_user_id, new_name);
+            try changeUserName(changes, requesting_user_id, new_name);
         }
     }
 
@@ -344,19 +360,26 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
 
     switch (user_id_or_guest_pseudo_user_id) {
         .id => |user_id| {
-            const account = user_accounts.getEntry(user_id).?.value_ptr;
-            account.perms = perms;
+            const account = (user_accounts.getEntry(user_id) orelse {
+                log.warn("ignoring bogus userid: {}", .{user_id});
+                return;
+            }).value_ptr;
             try sendSelfUserInfoForUserId(changes, user_id);
+            try changes.user_accounts.put(user_id, {});
+            account.perms = perms;
         },
         .guest => {
             guest_perms = perms;
+            //changes.guest_perms = true;
             var it = user_accounts.iterator();
             while (it.next()) |kv| {
                 const user_id = kv.key_ptr.*;
                 const account = kv.value_ptr;
                 if (account.approved) continue;
-                account.perms = guest_perms;
+
                 try sendSelfUserInfoForUserId(changes, user_id);
+                try changes.user_accounts.put(user_id, {});
+                account.perms = guest_perms;
             }
         },
     }
@@ -368,6 +391,7 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
 }
 
 pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
+    try changes.user_accounts.ensureUnusedCapacity(user_ids.len);
     const old_have_admin_user = haveAdminUser();
 
     for (user_ids) |user_id| {
@@ -379,6 +403,7 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
             }
         }
         try events.tombstoneUser(changes, user_id);
+        changes.user_accounts.putAssumeCapacity(user_id, {});
         deleteAccount(user_id);
     }
 
@@ -395,8 +420,8 @@ fn createAccount(
     registered_requested_approved: bool,
     perms: Permissions,
 ) !Id {
-    _ = changes; // TODO
     try user_accounts.ensureUnusedCapacity(1);
+    try changes.user_accounts.ensureUnusedCapacity(1);
     try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
     try strings.ensureUnusedCapacity(name_str.len);
 
@@ -418,12 +443,15 @@ fn createAccount(
     };
     by_name_gop.key_ptr.* = name;
     by_name_gop.value_ptr.* = user_id;
+    changes.user_accounts.putAssumeCapacity(user_id, {});
+    changes.broadcastChanges(.users);
 
     // publishing users event happens above this call.
     return user_id;
 }
 
 fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !void {
+    try changes.user_accounts.ensureUnusedCapacity(1);
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
@@ -434,6 +462,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
         }
     }
     try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
+    changes.user_accounts.putAssumeCapacity(Id{ .value = workaround_miscomiplation }, {});
     deleteAccount(Id{ .value = workaround_miscomiplation });
 }
 
@@ -467,7 +496,13 @@ pub fn sendSelfUserInfo(client_id: *anyopaque) !void {
 }
 
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(PublicUserInfo) {
-    out_version.* = current_version;
+    // This version number never matters. Sessions beginning/ending changes the
+    // hash, which means there's no scenario in which a newly connecting client
+    // would get a cache hit on their previous version of the users. Delta
+    // compression for live connections is still meaningful, so we don't want
+    // this to stay null, but this number never does anything meaningful.
+    out_version.* = Id.random();
+
     var result = IdOrGuestMap(PublicUserInfo){};
     try result.map.ensureTotalCapacity(arena, user_accounts.count() + 1);
 

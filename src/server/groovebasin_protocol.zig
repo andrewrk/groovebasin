@@ -450,7 +450,7 @@ pub const ServerToClientMessage = union(enum) {
 };
 
 pub const LibraryTrack = struct {
-    /// The id in the library.
+    /// (undocumented) The id in the library.
     key: Id,
     /// Path of the song on disk relative to the music library root.
     file: []const u8 = "",

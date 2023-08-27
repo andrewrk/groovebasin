@@ -34,6 +34,10 @@ pub fn deinit(self: *@This()) void {
     self.* = undefined;
 }
 
+pub fn len(self: @This()) u32 {
+    return @intCast(self.buf.items.len);
+}
+
 pub fn getString(self: @This(), i: Index) [:0]const u8 {
     // Couldn't figure out how to use std.mem.span() here.
     const bytes = self.buf.items;

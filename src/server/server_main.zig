@@ -113,6 +113,12 @@ pub fn main() anyerror!void {
 
     log.info("load db", .{});
     try db.load(config.dbPath);
+    try users.handleLoaded();
+    //try subscriptions.handleLoaded();
+    //try keese.handleLoaded();
+    //try library.handleLoaded();
+    //try queue.handleLoaded();
+    //try events.handleLoaded();
 
     try library.loadFromDisk();
 

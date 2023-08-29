@@ -14,7 +14,6 @@ const encodeAndSend = @import("server_main.zig").encodeAndSend;
 
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdOrGuest = @import("groovebasin_protocol.zig").IdOrGuest;
-const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const IdOrGuestMap = @import("groovebasin_protocol.zig").IdOrGuestMap;
 const Permissions = @import("groovebasin_protocol.zig").Permissions;
 const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
@@ -22,17 +21,30 @@ const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
 const UserAccount = struct {
     /// Display name and login username.
     username: StringPool.Index,
-    /// Null for freshly generated guest accounts.
-    password_hash: ?PasswordHash,
-    /// True iff the user has specified the name of this account.
-    /// Could be renamed to non_guest.
-    registered: bool,
-    /// Has the user clicked the Request Approval button?
-    requested: bool,
-    /// Has an admin clicked the Approve button (after the above request)?
-    approved: bool,
-    /// Short for permissions, not hairstyling.
-    perms: Permissions,
+    password_hash: PasswordHash,
+    registration_stage: RegistrationStage,
+    permissions: InternalPermissions,
+};
+
+const RegistrationStage = enum(u3) {
+    /// Freshly generated.
+    guest_without_password = 0,
+    /// Clients can (and do) set a random password automatically for guest accounts.
+    guest_with_password = 1,
+    /// If the user ever changes their name, they get here. This is required to advance.
+    named_by_user = 2,
+    /// Makes the user show up in the admin approval view.
+    requested_approval = 3,
+    /// Finally the user can have non-guest permissions.
+    approved = 4,
+    _,
+};
+const InternalPermissions = packed struct {
+    read: bool,
+    add: bool,
+    control: bool,
+    playlist: bool,
+    admin: bool,
 };
 
 /// Uses sha256
@@ -51,7 +63,7 @@ pub var strings: StringPool = undefined;
 pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var username_to_user_id: std.ArrayHashMapUnmanaged(StringPool.Index, Id, StringsContext, true) = .{};
 var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
-var guest_perms: Permissions = .{
+var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
     .add = false,
@@ -119,8 +131,8 @@ pub fn handleClientDisconnected(changes: *db.Changes, client_id: *anyopaque) !vo
 pub fn getUserId(client_id: *anyopaque) Id {
     return getSession(client_id).user_id;
 }
-pub fn getPermissions(user_id: Id) Permissions {
-    return getUserAccount(user_id).perms;
+pub fn getPermissions(user_id: Id) InternalPermissions {
+    return getUserAccount(user_id).permissions;
 }
 
 pub fn logout(changes: *db.Changes, client_id: *anyopaque) !void {
@@ -176,7 +188,7 @@ fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
         const target_account = getUserAccount(target_user_id);
         try checkPassword(target_account, password);
         // You're in.
-        if (session_account.registered) {
+        if (@intFromEnum(session_account.registration_stage) >= @intFromEnum(RegistrationStage.named_by_user)) {
             // Switch login.
             session.user_id = target_user_id;
         } else {
@@ -185,10 +197,10 @@ fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
             try mergeAccounts(changes, guest_user_id, target_user_id);
         }
     } else {
-        // Create account: change username, change password, and register.
+        // change username, change password. Sorta like "creating an account".
         try changeUsername(session.user_id, session_account, username);
         changePassword(session_account, password);
-        session_account.registered = true;
+        session_account.registration_stage = .named_by_user;
     }
 
     changes.broadcastChanges(.users);
@@ -207,15 +219,15 @@ fn changePassword(account: *UserAccount, new_password: []const u8) void {
 }
 
 fn checkPassword(account: *const UserAccount, password: []const u8) error{InvalidLogin}!void {
-    if (account.password_hash == null) return error.InvalidLogin; // That's someone else's freshly created guest account.
+    if (account.registration_stage == .guest_without_password) return error.InvalidLogin;
 
     var h = std.crypto.hash.sha2.Sha256.init(.{});
-    h.update(&account.password_hash.?.salt);
+    h.update(&account.password_hash.salt);
     h.update(password);
     var hash: [32]u8 = undefined;
     h.final(&hash);
 
-    if (!std.mem.eql(u8, &hash, &account.password_hash.?.hash)) return error.InvalidLogin;
+    if (!std.mem.eql(u8, &hash, &account.password_hash.hash)) return error.InvalidLogin;
 }
 
 fn changeUsername(user_id: Id, account: *UserAccount, new_username_str: []const u8) !void {
@@ -232,7 +244,7 @@ pub fn setStreaming(changes: *db.Changes, client_id: *anyopaque, is_streaming: b
 
 pub fn haveAdminUser() bool {
     for (user_accounts.values()) |*user| {
-        if (user.perms.admin) return true;
+        if (user.permissions.admin) return true;
     }
     return false;
 }
@@ -242,7 +254,7 @@ fn createGuestAccount(changes: *db.Changes) !Id {
     for (username_str[username_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
-    return createAccount(changes, &username_str, null, false, guest_perms);
+    return createAccount(changes, &username_str, std.mem.zeroes(PasswordHash), .guest_without_password, guest_perms);
 }
 
 pub fn ensureAdminUser(changes: *db.Changes) !void {
@@ -266,7 +278,7 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
         h.final(&password_hash.hash);
     }
 
-    _ = try createAccount(changes, &username_str, password_hash, true, .{
+    _ = try createAccount(changes, &username_str, password_hash, .approved, .{
         .read = true,
         .add = true,
         .control = true,
@@ -284,7 +296,12 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
 pub fn requestApproval(changes: *db.Changes, client_id: *anyopaque) !void {
     const user_id = getUserId(client_id);
     const account = try getUserAccountForEditing(changes, user_id);
-    account.requested = true;
+    switch (account.registration_stage) {
+        .named_by_user => {
+            account.registration_stage = .requested_approval;
+        },
+        else => return error.BadRequest,
+    }
 }
 
 pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
@@ -303,9 +320,13 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             continue;
         }
         var requesting_account = try getUserAccountForEditing(changes, requesting_user_id);
+        if (requesting_account.registration_stage != .requested_approval) {
+            log.warn("ignoring approve decision for not-requested user id: {}", .{requesting_user_id});
+            continue;
+        }
         if (!is_approved) {
             // Just undo the request.
-            requesting_account.requested = false;
+            requesting_account.registration_stage = .named_by_user;
             continue;
         }
 
@@ -314,7 +335,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_user_id = replace_user_id;
             requesting_account = try getUserAccountForEditing(changes, requesting_user_id);
         } else {
-            requesting_account.approved = true;
+            requesting_account.registration_stage = .approved;
         }
 
         const old_username = strings.getString(requesting_account.username);
@@ -337,22 +358,22 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
                 return;
             }
             const account = try getUserAccountForEditing(changes, user_id);
-            account.perms = perms;
+            account.permissions = convertPermsissions(perms);
         },
         .guest => {
-            guest_perms = perms;
+            guest_perms = convertPermsissions(perms);
             //changes.guest_perms = true;
             var it = user_accounts.iterator();
             while (it.next()) |kv| {
                 const user_id = kv.key_ptr.*;
                 const account = kv.value_ptr;
-                if (account.approved) continue;
+                if (account.registration_stage == .approved) continue;
 
                 try sendSelfUserInfoForUserId(changes, user_id);
                 try changes.user_accounts.put(user_id, {});
                 changes.broadcastChanges(.users);
 
-                account.perms = guest_perms;
+                account.permissions = guest_perms;
             }
         },
     }
@@ -394,9 +415,9 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
 fn createAccount(
     changes: *db.Changes,
     username_str: []const u8,
-    password_hash: ?PasswordHash,
-    registered_requested_approved: bool,
-    perms: Permissions,
+    password_hash: PasswordHash,
+    registration_stage: RegistrationStage,
+    permissions: InternalPermissions,
 ) !Id {
     try user_accounts.ensureUnusedCapacity(1);
     try changes.user_accounts.ensureUnusedCapacity(1);
@@ -414,10 +435,8 @@ fn createAccount(
     user.* = UserAccount{
         .username = username,
         .password_hash = password_hash,
-        .registered = registered_requested_approved,
-        .requested = registered_requested_approved,
-        .approved = registered_requested_approved,
-        .perms = perms,
+        .registration_stage = registration_stage,
+        .permissions = permissions,
     };
     by_username_gop.key_ptr.* = username;
     by_username_gop.value_ptr.* = user_id;
@@ -488,10 +507,22 @@ pub fn sendSelfUserInfo(client_id: *anyopaque) !void {
         .user = .{
             .id = user_id,
             .name = strings.getString(account.username),
-            .perms = account.perms,
-            .registered = account.registered,
-            .requested = account.requested,
-            .approved = account.approved,
+            .perms = convertPermsissions(account.permissions),
+            .registered = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password => false,
+                .named_by_user, .requested_approval, .approved => true,
+                _ => unreachable,
+            },
+            .requested = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password, .named_by_user => false,
+                .requested_approval, .approved => true,
+                _ => unreachable,
+            },
+            .approved = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password, .named_by_user, .requested_approval => false,
+                .approved => true,
+                _ => unreachable,
+            },
         },
     });
 }
@@ -513,9 +544,17 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(Public
         const account = kv.value_ptr;
         result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
             .name = strings.getString(account.username),
-            .perms = account.perms,
-            .requested = account.requested,
-            .approved = account.approved,
+            .perms = convertPermsissions(account.permissions),
+            .requested = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password, .named_by_user => false,
+                .requested_approval, .approved => true,
+                _ => unreachable,
+            },
+            .approved = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password, .named_by_user, .requested_approval => false,
+                .approved => true,
+                _ => unreachable,
+            },
             .connected = false,
             .streaming = false,
         });
@@ -533,7 +572,7 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(Public
         // Displayed in the permission edit UI:
         .name = "Guests",
         // This is the important information:
-        .perms = guest_perms,
+        .perms = convertPermsissions(guest_perms),
         // This gest the pseudo user to show up in the permission edit UI:
         .requested = true,
         .approved = true,
@@ -543,4 +582,14 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(Public
     });
 
     return result;
+}
+
+fn convertPermsissions(other_permissions: anytype) if (@TypeOf(other_permissions) == Permissions) InternalPermissions else Permissions {
+    return .{
+        .read = other_permissions.read,
+        .add = other_permissions.add,
+        .control = other_permissions.control,
+        .playlist = other_permissions.playlist,
+        .admin = other_permissions.admin,
+    };
 }

@@ -390,14 +390,7 @@ pub const ServerToClientMessage = union(enum) {
     lastFmApiKey: TODO,
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
-    user: struct {
-        id: Id,
-        name: []const u8,
-        perms: Permissions,
-        registered: bool,
-        requested: bool,
-        approved: bool,
-    },
+    user: SelfUserInfo,
 
     // Subscribed Information Change Messages
     subscription: struct {
@@ -493,6 +486,14 @@ pub const PublicUserInfo = struct {
     approved: bool,
     connected: bool,
     streaming: bool,
+};
+pub const SelfUserInfo = struct {
+    id: Id,
+    name: []const u8,
+    perms: Permissions,
+    registered: bool,
+    requested: bool,
+    approved: bool,
 };
 
 pub const Event = struct {

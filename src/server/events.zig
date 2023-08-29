@@ -50,8 +50,7 @@ pub fn deinit() void {
     events.deinit();
 }
 
-pub fn chat(arena: Allocator, client_id: *anyopaque, text: []const u8, is_slash_me: bool) !void {
-    const user_id = users.userIdFromClientId(client_id);
+pub fn chat(arena: Allocator, user_id: Id, text: []const u8, is_slash_me: bool) !void {
     try strings.ensureUnusedCapacity(text.len);
     try events.ensureUnusedCapacity(1);
     const sort_key = if (events.count() == 0)

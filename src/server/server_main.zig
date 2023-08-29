@@ -216,7 +216,8 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
     var arena = ArenaAllocator.init(g.gpa); // TODO: deprecate this in favor of using `changes`.
     defer arena.deinit();
 
-    const perms = users.getSessionPermissions(client_id);
+    const user_id = users.getUserId(client_id);
+    const perms = users.getPermissions(user_id);
     switch (message.*) {
         .login => |args| {
             try users.login(changes, client_id, args.username, args.password);
@@ -266,7 +267,7 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
 
         .chat => |args| {
             try checkPermission(perms.control);
-            try events.chat(arena.allocator(), client_id, args.text, args.displayClass != null);
+            try events.chat(arena.allocator(), user_id, args.text, args.displayClass != null);
         },
         .deleteTracks => @panic("TODO"),
         .autoDjOn => @panic("TODO"),
@@ -279,15 +280,15 @@ fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *cons
         .unsubscribe => @panic("TODO"),
         .pause => {
             try checkPermission(perms.control);
-            try queue.pause(changes, client_id);
+            try queue.pause(changes, user_id);
         },
         .play => {
             try checkPermission(perms.control);
-            try queue.play(changes, client_id);
+            try queue.play(changes, user_id);
         },
         .seek => |args| {
             try checkPermission(perms.control);
-            try queue.seek(changes, client_id, args.id, args.pos);
+            try queue.seek(changes, user_id, args.id, args.pos);
         },
         .repeat => @panic("TODO"),
         .setVolume => @panic("TODO"),

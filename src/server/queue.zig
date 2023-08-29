@@ -50,9 +50,9 @@ pub fn deinit() void {
     items.deinit();
 }
 
-pub fn seek(changes: *db.Changes, client_id: *anyopaque, id: Id, pos: f64) !void {
+pub fn seek(changes: *db.Changes, user_id: Id, id: Id, pos: f64) !void {
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
-    _ = client_id;
+    _ = user_id;
 
     seek_request = .{
         .id = id,
@@ -62,9 +62,9 @@ pub fn seek(changes: *db.Changes, client_id: *anyopaque, id: Id, pos: f64) !void
     changes.broadcastChanges(.currentTrack);
 }
 
-pub fn play(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn play(changes: *db.Changes, user_id: Id) !void {
     // TODO: add the play event ("poopsmith3 pressed play")
-    _ = client_id;
+    _ = user_id;
 
     if (current_item) |cur| switch (cur.state) {
         .playing => return, // already playing
@@ -88,9 +88,9 @@ pub fn play(changes: *db.Changes, client_id: *anyopaque) !void {
     changes.broadcastChanges(.currentTrack);
 }
 
-pub fn pause(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn pause(changes: *db.Changes, user_id: Id) !void {
     // TODO: add the pause event ("poopsmith3 pressed pause")
-    _ = client_id;
+    _ = user_id;
 
     if (current_item) |cur| switch (cur.state) {
         .paused => return, // already paused

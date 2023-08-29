@@ -1,6 +1,6 @@
 var EventEmitter = require('event_emitter');
 var inherits = require('inherits');
-var uuid = require('uuid');
+var randomId = require('randomId');
 var MusicLibraryIndex = require('music-library-index');
 var keese = require('keese');
 var curlydiff = require('curlydiff');
@@ -522,7 +522,7 @@ PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextK
   for (var i = 0; i < keys.length; i += 1) {
     var key = keys[i];
     var sortKey = sortKeys[i];
-    var id = uuid();
+    var id = randomId();
     items[id] = {
       key: key,
       sortKey: sortKey,
@@ -915,7 +915,7 @@ PlayerClient.prototype.resetServerState = function(){
 };
 
 PlayerClient.prototype.createPlaylist = function(name) {
-  var id = uuid();
+  var id = randomId();
   this.sendCommand('playlistCreate', {
     id: id,
     name: name,
@@ -985,7 +985,7 @@ PlayerClient.prototype.addLabel = function(labelId, keys) {
 };
 
 PlayerClient.prototype.createLabel = function(name) {
-  var id = uuid();
+  var id = randomId();
   this.sendCommand('labelCreate', {
     id: id,
     name: name,

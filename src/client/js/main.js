@@ -2,7 +2,7 @@ var shuffle = require('mess');
 var humanSize = require('human-size');
 var PlayerClient = require('playerclient');
 var Socket = require('socket');
-var uuid = require('uuid');
+var randomId = require('randomId');
 
 var autoDjOn = false;
 var hardwarePlaybackOn = false;
@@ -4522,7 +4522,7 @@ function init() {
       // We didn't have a user account saved. The server assigned us a name.
       // Generate a password and call dibs on the account.
       localState.authUsername = myUser.name;
-      localState.authPassword = uuid() + uuid() + uuid();
+      localState.authPassword = randomId() + randomId() + randomId();
       saveLocalState();
       sendAuth();
     }

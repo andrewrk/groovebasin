@@ -64,7 +64,7 @@ pub fn build(b: *Builder) void {
             "src/client/js/music-library-index.js",
             "src/client/js/playerclient.js",
             "src/client/js/socket.js",
-            "src/client/js/uuid.js",
+            "src/client/js/randomId.js",
         }) |input_file| {
             paste_js_cmd.addFileArg(.{ .path = input_file });
         }

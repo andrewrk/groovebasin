@@ -21,7 +21,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 3,
+    dev_version: u16 = 4,
 };
 
 const write_buffer_size = 0x100_000;

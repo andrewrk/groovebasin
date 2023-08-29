@@ -4484,7 +4484,7 @@ function init() {
       // We didn't have a user account saved. The server assigned us a name.
       // Generate a password and call dibs on the account.
       localState.authUsername = myUser.name;
-      localState.authPassword = uuid();
+      localState.authPassword = uuid() + uuid() + uuid();
       saveLocalState();
       sendAuth();
     }

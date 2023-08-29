@@ -229,7 +229,7 @@ PlayerClient.prototype.sortEventsFromServer = function() {
       ev.track = this.library.trackTable[serverEvent.trackId];
     }
     if (serverEvent.userId) {
-      if (serverEvent.userId == '(deleted)') {
+      if (serverEvent.userId == '(del)') {
         ev.user = {name: "<deleted user>"};
       } else {
         ev.user = this.usersTable[serverEvent.userId];

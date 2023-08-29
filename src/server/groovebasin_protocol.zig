@@ -44,24 +44,24 @@ pub const Datetime = struct {
 };
 
 pub const Id = struct {
-    value: u192,
+    value: u48,
 
     pub fn random() @This() {
-        var buf: [24]u8 = undefined;
+        var buf: [6]u8 = undefined;
         std.crypto.random.bytes(&buf);
-        return .{ .value = std.mem.readIntNative(u192, &buf) };
+        return .{ .value = std.mem.readIntNative(u48, &buf) };
     }
 
     pub fn parse(s: []const u8) !@This() {
-        if (s.len != 32) return error.InvalidUuidLen;
-        var buf: [24]u8 = undefined;
+        if (s.len != 8) return error.InvalidUuidLen;
+        var buf: [6]u8 = undefined;
         try std.base64.url_safe.Decoder.decode(&buf, s);
-        return .{ .value = std.mem.readIntNative(u192, &buf) };
+        return .{ .value = std.mem.readIntNative(u48, &buf) };
     }
-    pub fn write(self: @This(), out_buffer: *[32]u8) []const u8 {
-        var native: [24]u8 = undefined;
-        std.mem.writeIntNative(u192, &native, self.value);
-        std.debug.assert(std.base64.url_safe.Encoder.encode(out_buffer, &native).len == 32);
+    pub fn write(self: @This(), out_buffer: *[8]u8) []const u8 {
+        var native: [6]u8 = undefined;
+        std.mem.writeIntNative(u48, &native, self.value);
+        std.debug.assert(std.base64.url_safe.Encoder.encode(out_buffer, &native).len == 8);
         return out_buffer;
     }
 
@@ -86,7 +86,7 @@ pub const Id = struct {
         }
     }
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        var buf: [32]u8 = undefined;
+        var buf: [8]u8 = undefined;
         try jw.write(self.write(&buf));
     }
 
@@ -94,7 +94,7 @@ pub const Id = struct {
     pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        var buf: [32]u8 = undefined;
+        var buf: [8]u8 = undefined;
         return writer.writeAll(self.write(&buf));
     }
 };
@@ -110,7 +110,7 @@ pub const IdOrGuest = union(enum) {
         if (std.mem.eql(u8, s, guest_pseudo_id)) return .guest;
         return .{ .id = try Id.parse(s) };
     }
-    pub fn write(self: @This(), buf: *[32]u8) []const u8 {
+    pub fn write(self: @This(), buf: *[8]u8) []const u8 {
         switch (self) {
             .id => |id| return id.write(buf),
             .guest => return guest_pseudo_id,
@@ -138,7 +138,7 @@ pub const IdOrGuest = union(enum) {
         }
     }
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        var buf: [32]u8 = undefined;
+        var buf: [8]u8 = undefined;
         try jw.write(self.write(&buf));
     }
 
@@ -146,7 +146,7 @@ pub const IdOrGuest = union(enum) {
     pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        var buf: [32]u8 = undefined;
+        var buf: [8]u8 = undefined;
         return writer.writeAll(self.write(&buf));
     }
 };
@@ -156,7 +156,7 @@ pub const EventUserId = union(enum) {
     system,
     deleted_user,
 
-    const deleted_pseudo_id = "(deleted)";
+    const deleted_pseudo_id = "(del)";
 
     // JSON interface
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
@@ -244,7 +244,7 @@ fn JsonMap(comptime Key: type, comptime T: type) type {
             try jws.beginObject();
             var it = self.map.iterator();
             while (it.next()) |kv| {
-                var buf: [32]u8 = undefined;
+                var buf: [8]u8 = undefined;
                 try jws.objectField(kv.key_ptr.*.write(&buf));
                 try jws.write(kv.value_ptr.*);
             }

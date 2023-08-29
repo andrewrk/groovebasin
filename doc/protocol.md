@@ -17,123 +17,7 @@ describes what messages are available to send and what information is available
 to retrieve. Using this, a client could simultaneously support music players
 with fewer features and music players with more features than Groove Basin.
 
-- [Overview](#overview)
-  - [Establishing a Connection](#establishing-a-connection)
-  - [Authentication](#authentication)
-  - [Generating UUIDs](#generating-uuids)
-- [Client-to-Server Control Messages](#client-to-server-control-messages)
-  - [approve](#approve)
-  - [chat](#chat)
-  - [deleteTracks](#deletetracks)
-  - [deleteUsers](#deleteusers)
-  - [autoDjOn](#autodjon)
-  - [autoDjHistorySize](#autodjhistorysize)
-  - [autoDjFutureSize](#autodjfuturesize)
-  - [ensureAdminUser](#ensureadminuser)
-  - [hardwarePlayback](#hardwareplayback)
-  - [importNames](#importnames)
-  - [importUrl](#importurl)
-  - [login](#login)
-  - [logout](#logout)
-  - [subscribe](#subscribe)
-  - [updateTags](#updatetags)
-  - [updateUser](#updateuser)
-  - [unsubscribe](#unsubscribe)
-  - [move](#move)
-  - [pause](#pause)
-  - [play](#play)
-  - [queue](#queue)
-  - [seek](#seek)
-  - [setStreaming](#setstreaming)
-  - [remove](#remove)
-  - [repeat](#repeat)
-  - [requestApproval](#requestapproval)
-  - [setVolume](#setvolume)
-  - [stop](#stop)
-  - [playlistCreate](#playlistcreate)
-  - [playlistRename](#playlistrename)
-  - [playlistDelete](#playlistdelete)
-  - [playlistAddItems](#playlistadditems)
-  - [playlistRemoveItems](#playlistremoveitems)
-  - [playlistMoveItems](#playlistmoveitems)
-  - [labelCreate](#labelcreate)
-  - [labelRename](#labelrename)
-  - [labelColorUpdate](#labelcolorupdate)
-  - [labelDelete](#labeldelete)
-  - [labelAdd](#labeladd)
-  - [labelRemove](#labelremove)
-  - [lastFmGetSession](#lastfmgetsession)
-  - [lastFmScrobblersAdd](#lastfmscrobblersadd)
-  - [lastFmScrobblersRemove](#lastfmscrobblersremove)
-- [Server-to-Client Control Messages](#server-to-client-control-messages)
-  - [error](#error)
-  - [seek](#seek-1)
-  - [time](#time)
-  - [token](#token)
-  - [lastFmApiKey](#lastfmapikey)
-  - [lastFmGetSessionSuccess](#lastfmgetsessionsuccess)
-  - [lastFmGetSessionError](#lastfmgetsessionerror)
-  - [user](#user)
-- [Subscribed Information Change Messages](#subscribed-information-change-messages)
-  - [currentTrack](#currenttrack)
-  - [autoDjOn](#autodjon-1)
-  - [autoDjHistorySize](#autodjhistorysize-1)
-  - [autoDjFutureSize](#autodjfuturesize-1)
-  - [repeat](#repeat-1)
-  - [volume](#volume)
-  - [queue](#queue-1)
-  - [hardwarePlayback](#hardwareplayback-1)
-  - [library](#library)
-  - [libraryQueue](#libraryqueue)
-  - [scanning](#scanning)
-  - [playlists](#playlists)
-  - [importProgress](#importprogress)
-  - [anonStreamers](#anonstreamers)
-  - [haveAdminUser](#haveadminuser)
-  - [users](#users)
-  - [streamEndpoint](#streamendpoint)
-  - [protocolMetadata](#protocolmetadata)
-  - [events](#events)
-    - [chat](#chat-1)
-    - [queue](#queue-2)
-    - [currentTrack](#currenttrack-1)
-    - [autoPause](#autopause)
-    - [streamStart](#streamstart)
-    - [streamStop](#streamstop)
-    - [connect](#connect)
-    - [part](#part)
-    - [register](#register)
-    - [login](#login-1)
-    - [move](#move-1)
-    - [pause](#pause-1)
-    - [play](#play-1)
-    - [stop](#stop-1)
-    - [seek](#seek-2)
-    - [playlistRename](#playlistrename-1)
-    - [playlistDelete](#playlistdelete-1)
-    - [playlistCreate](#playlistcreate-1)
-    - [playlistAddItems](#playlistadditems-1)
-    - [playlistRemoveItems](#playlistremoveitems-1)
-    - [playlistMoveItems](#playlistmoveitems-1)
-    - [clearQueue](#clearqueue)
-    - [remove](#remove-1)
-    - [shuffle](#shuffle)
-    - [import](#import)
-    - [labelCreate](#labelcreate-1)
-    - [labelRename](#labelrename-1)
-    - [labelColorUpdate](#labelcolorupdate-1)
-    - [labelDelete](#labeldelete-1)
-    - [labelAdd](#labeladd-1)
-    - [labelRemove](#labelremove-1)
-- [Client-to-Server HTTP Messages](#client-to-server-http-messages)
-  - [GET /library/](#get-library)
-  - [GET /library/[folder]/](#get-libraryfolder)
-  - [GET /library/[songFilePath]](#get-librarysongfilepath)
-  - [GET /download/keys](#get-downloadkeys)
-  - [GET /[streamEndpoint]](#get-streamendpoint)
-  - [POST /upload](#post-upload)
-- [Version History](#version-history)
-  - [0.0.1](#001)
+TODO: generate TOC here.
 
 ## Overview
 
@@ -151,10 +35,6 @@ The Groove Basin Protocol allows you to do these things:
 Groove Basin itself serves as an example implementation of the Groove Basin
 Protocol. It contains both a client and a server.
 
-Additionally, there is [gbremote](https://github.com/andrewrk/gbremote), a
-simple Node.js module and command line client demonstrating how to use the
-Groove Basin Protocol.
-
 ### Establishing a Connection
 
 The Groove Basin protocol operates within the HTTP protocol. Ideally, the
@@ -166,8 +46,13 @@ After establishing an HTTP connection, establish a WebSocket connection. This
 WebSocket connection is referred to as the *control connection* in this
 document.
 
-The control connection is JSON-formatted and newline-delimited. Each message
-is formatted like this:
+After establishing a WebSocket connection, the next thing you probably want to
+do is [subscribe](#subscribe) to information relevant to you.
+
+### The WebSocket API
+
+The control connection uses JSON-encoded WebSocket pacakets. Each message is
+contained in this container structure:
 
 ```js
 {"name": "messageName", "args": messageArguments}
@@ -188,10 +73,32 @@ Depending on the message, `messageArguments` might be any of the JSON types:
  * Type: `[fieldName]`
  * `fieldName`: description of field
 
-Any object field with a `null` value may be omitted from the object.
+Any object field with a `null` value may be omitted from the object, including
+the top-level `"args"` field.
 
-After establishing a WebSocket connection, the next thing you probably want to
-do is [subscribe](#subscribe) to information relevant to you.
+#### ID
+
+The `ID` type is 48 random bits encoded in 8 characters of URL-safe base64. In
+JSON, it is encoded as a string.
+
+The alphabet for URL-safe base64 is:
+```
+ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_
+```
+
+Examples of IDs: `"2S5H3RzF"`, `"jtE17a-U"`, `"_g0WoN0n"`.
+
+#### Datetime
+
+The `Datetime` type is a number of milliseconds relative to an unspecified
+point in time. To translate a datetime into an absolute time, use the datetime
+from the [time](#time) message from the server and calculate an offset since
+then.
+
+(A quick note on integer precision: an unsigned integer with at least 41 bits is required
+to encode the datetime of Groove Basin's first commit in milliseconds since the UNIX Epoch.
+42 bits gets us to year 2109. IEEE 754 64-bit floats (JavaScript numbers) have 53-bits of
+integer precision, which is enough to last for the next 287k years.)
 
 ### Authentication
 
@@ -225,43 +132,14 @@ To authenticate as a user and possibly gain more permissions, send a
 
 See also [logout](#logout) message.
 
-### Generating UUIDs
-
-Sometimes it is the client's job to generate a random UUID. To do this,
-
-Generate 24 bytes of random data and then base64 encode it to a 32-byte string.
-Instead of `/` and `+`, clients must use `_` and `-` as these symbols are safe
-to be put in an HTML id attribute without being escaped.
-
-The server must reject messages which violate this constraint.
-
-### Calibrating Datetimes
-
-A datetime is defined to be either a string or a number that can be passed to
-[JavaScript's `new Date(x)` constructor](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/Date).
-When a datetime is a number, it is an integer number of milliseconds since the UNIX Epoch.
-
-When a datetime is a `string`, it is in simplified extended ISO format
-([ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)), which is always 24
-characters long: `YYYY-MM-DDTHH:mm:ss.sssZ`. The timezone is always zero UTC
-offset, as denoted by the suffix "Z".
-The string representation of datetimes will be deprecated.
-
-(A quick note on integer precision: an unsigned integer with at least 41 bits is required
-to encode the datetime of Groove Basin's first commit in milliseconds since the UNIX Epoch.
-42 bits gets us to year 2109. IEEE 754 64-bit floats (JavaScript numbers) have 53-bits of
-integer precision, which is enough to last for the next 287k years.)
-
-All datetimes from the server must be calibrated by computing a client-server offset derived from the [time](#time) message. This corrects for clock drift between the server and client. The server may intentionally give wildly offset datetimes to make sure that client developers remember to calibrate all datetimes from the server.
-
 ## Client-to-Server Control Messages
 
 ### approve
 
  * Permission: `admin`
  * Type: `[{id, replaceId, approved, name}]`
- * `id`: `string`. The id of the user requesting to be approved.
- * `replaceId`: `string` or `null`. If you want to delete the original user
+ * `id`: `ID`. The id of the user requesting to be approved.
+ * `replaceId`: `ID` or `null`. If you want to delete the original user
    and merge them into another user, put that user id here. Otherwise use `null`
    to approve as a new user.
  * `approved`: `boolean`. `true` to approve, `false` to reject.
@@ -285,7 +163,7 @@ Sends a chat message.
 
  * Permission: `admin`
  * Type: `[key]`
- * `key`: The ID of the song you wish to delete.
+ * `key`: `ID`. The ID of the song you wish to delete.
 
 Deletes multiple tracks at once.
 
@@ -293,7 +171,7 @@ Deletes multiple tracks at once.
 
  * Permission: `admin`
  * Type: `[id]`
- * `id`: The ID of the user you wish to delete.
+ * `id`: `ID`. The ID of the user you wish to delete.
 
 ### autoDjOn
 
@@ -426,7 +304,7 @@ See also [unsubscribe](#unsubscribe).
 
  * Permission: `admin`
  * Type: `{songId: {propName: propValue}}`
- * `songId`: `string`. The song ID to update tags for.
+ * `songId`: `ID`. The song ID to update tags for.
  * `propName`: `string`. Tag name. One of the following. See [library](#library)
    for details.
    - `name`
@@ -449,7 +327,7 @@ Note this message allows editing tags for multiple songs at once.
 
  * Permission: `admin`
  * Type: `{userId, perms}`
- * `userId`: `string`. ID of the user to update or the guest pseudo ID.
+ * `userId`: `ID`. ID of the user to update or the guest pseudo ID.
  * `perms`: `object`. Permissions to assign to the user.
 
 ### unsubscribe
@@ -463,7 +341,7 @@ See also [subscribe](#subscribe)
 
  * Permission: `control`
  * Type: `{itemId: {sortKey}}`
- * `itemId`: `string`. ID of the playlist item to move.
+ * `itemId`: `ID`. ID of the playlist item to move.
  * `sortKey`: `string`. Describes the new position of the playlist item.
 
 Moving play queue items by updating their sort key values. Use the
@@ -484,9 +362,8 @@ desired sort keys.
 
  * Permission: `control`
  * Type: `{itemId: {key, sortKey}}`
- * `itemId`: `string`. [Randomly generated UUID](#generating-uuids) to identify
-   the new queue item.
- * `key`: `string`. ID of the song this queue item is for.
+ * `itemId`: `ID`. [ID](#id) to identify the new queue item.
+ * `key`: `ID`. ID of the song this queue item is for.
  * `sortKey`:`string`. [keese](https://github.com/thejoshwolfe/node-keese)
    value used to determine the position of the queue item.
 
@@ -494,7 +371,7 @@ desired sort keys.
 
  * Permission: `control`
  * Type: `{id, pos}`
- * `id`: `string`. ID of the play queue item to play.
+ * `id`: `ID`. ID of the play queue item to play.
  * `pos`: `number`. Position in seconds into the song to start playing.
 
 ### setStreaming
@@ -511,7 +388,7 @@ endpoint).
 
  * Permission: `control`
  * Type: `[id]`
- * `id`: `string`. ID of the play queue item to remove.
+ * `id`: `ID`. ID of the play queue item to remove.
 
 ### repeat
 
@@ -547,22 +424,21 @@ to have permissions beyond guest permissions, the user must be approved.
 
  * Permission: `playlist`
  * Type: `{id, name}`
- * `id`: `string`. [Randomly generated UUID](#generating-uuids) to identify
-   the new playlist.
+ * `id`: `ID`. [ID](#id) to identify the new playlist.
  * `name`: `string`.
 
 ### playlistRename
 
  * Permission: `playlist`
  * Type: `{id, name}`
- * `id`: `string`. The ID of the playlist to rename.
+ * `id`: `ID`. The ID of the playlist to rename.
  * `name`: `string`. New name of the playlist.
 
 ### playlistDelete
 
  * Permission: `playlist`
  * Type: `[id]`
- * `id`: ID of a playlist to delete.
+ * `id`: `ID`. The ID of a playlist to delete.
 
 Delete any number of playlists.
 
@@ -570,11 +446,10 @@ Delete any number of playlists.
 
  * Permission: `playlist`
  * Type: `{id, items: {itemId: {key, sortKey}}}`
- * `id`: `string`. ID of the playlist to add items to.
+ * `id`: `ID`. ID of the playlist to add items to.
  * `items`: `object`
-   - `itemId`: `string`. [Randomly generated UUID](#generating-uuids) to identify
-     the new playlist item.
-   - `key`: `string`. ID of the song this playlist item is associated with.
+   - `itemId`: `ID`. [ID](#id) to identify the new playlist item.
+   - `key`: `ID`. ID of the song this playlist item is associated with.
    - `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
      value used to order the playlist item in the playlist.
 
@@ -582,15 +457,15 @@ Delete any number of playlists.
 
  * Permission: `playlist`
  * Type: `{playlistId: [itemId]}`
- * `playlistId`: `string`. ID of a playlist to remove items from.
- * `itemId`: `string`. ID of a playlist item to remove.
+ * `playlistId`: `ID`. ID of a playlist to remove items from.
+ * `itemId`: `ID`. ID of a playlist item to remove.
 
 ### playlistMoveItems
 
  * Permission: `playlist`
  * Type: `{playlistId: {itemId: {sortKey}}}`
- * `playlistId`: `string`. ID of a playlist to move items in.
- * `itemId`: `string`. Id of a playlist item to move.
+ * `playlistId`: `ID`. ID of a playlist to move items in.
+ * `itemId`: `ID`. Id of a playlist item to move.
  * `sortKey`: `string`. New [keese](https://github.com/thejoshwolfe/node-keese)
    value used to order the playlist item in the playlist.
 
@@ -598,43 +473,42 @@ Delete any number of playlists.
 
  * Permission: `playlist`
  * Type: `{id, name}`
- * `id`: `string`. [Randomly generated UUID](#generating-uuids) to identify the
-   new label.
+ * `id`: `ID`. [ID](#id) to identify the new label.
  * `name`: `string`.
 
 ### labelRename
 
  * Permission: `playlist`
  * Type: `{id, name}`
- * `id`: `string`. ID of the label to rename.
+ * `id`: `ID`. ID of the label to rename.
  * `name`: `string`. New name.
 
 ### labelColorUpdate
 
  * Permission: `playlist`
  * Type: `{id, color}`
- * `id`: `string`. ID of the label to rename.
+ * `id`: `ID`. ID of the label to rename.
  * `color`: `string`. New color.
 
 ### labelDelete
 
  * Permission: `playlist`
  * Type: `[id]`
- * `id`: `string`. A label ID to delete.
+ * `id`: `ID`. A label ID to delete.
 
 ### labelAdd
 
  * Permission: `playlist`
  * Type: `{songId: [labelId]}`
- * `songId`: `string`. ID of the song to add labels to.
- * `labelId`: `string`. ID of a label to add to the song.
+ * `songId`: `ID`. ID of the song to add labels to.
+ * `labelId`: `ID`. ID of a label to add to the song.
 
 ### labelRemove
 
  * Permission: `playlist`
  * Type: `{songId: [labelId]}`
- * `songId`: `string`. ID of the song to remove labels from.
- * `labelId`: `string`. ID of a label to remove from the song.
+ * `songId`: `ID`. ID of the song to remove labels from.
+ * `labelId`: `ID`. ID of a label to remove from the song.
 
 ### lastFmGetSession
 
@@ -737,7 +611,7 @@ protocol reaches 1.0.0.
 ### user
 
  * Type: `{id, name, perms, registered, requested, approved}`
- * `id`: `string`. User ID of the connection.
+ * `id`: `ID`. User ID of the connection.
  * `name`: `string`. User name of the connection.
  * `perms`: `object`. permissions the connection currently has.
  * `registered`: `boolean`. Whether or not the user registered.
@@ -801,7 +675,7 @@ something that will likely change before the protocol reaches 1.0.0.
 ### currentTrack
 
  * Type: `{currentItemId, isPlaying, trackStartDate, pausedTime}`
- * `currentItemId`: `string` or `null`. The play queue ID currently playing.
+ * `currentItemId`: `ID` or `null`. The play queue ID currently playing.
  * `isPlaying`: `boolean`. `true` if playing; `false` if paused.
  * `trackStartDate`: `datetime`. datetime representing what time it was on the
    server when frame 0 of the current song was played.
@@ -841,8 +715,8 @@ Repeat states:
 ### queue
 
  * Type: `{id: {key, sortKey, isRandom}}`
- * `id`: `string`. The play queue item ID.
- * `key`: `string`. The ID of the song this queue item refers to.
+ * `id`: `ID`. The play queue item ID.
+ * `key`: `ID`. The ID of the song this queue item refers to.
  * `sortKey`: `string`. A [keese](https://github.com/thejoshwolfe/node-keese)
    string indicating the order of this item in the play queue.
  * `isRandom`: `boolean`. Indicates whether this queue item was queued by the
@@ -883,7 +757,7 @@ Type:
 }
 ```
 
- * `key`: `string`. ID of the song in the music library.
+ * `key`: `ID`. ID of the song in the music library.
  * `file`: `string`. Path of the song on disk relative to the music library
    root.
  * `duration`: `number`. How many seconds long this track is. Once the track
@@ -902,7 +776,7 @@ Type:
  * `composerName`: `string`
  * `performerName`: `string`
  * `labels`: `object`. The value is always `1`.
-   - `labelId`: `string`. ID of a label that applies to this song.
+   - `labelId`: `ID`. ID of a label that applies to this song.
 
 It is strongly recommended to use the delta subscription mode with this
 information.
@@ -933,12 +807,12 @@ reached.
 ### playlists
 
  * Type: `{id: {name, mtime, items: {itemId: {songId, sortKey}}}}`
- * `id`: `string`. Playlist ID.
+ * `id`: `ID`. Playlist ID.
  * `name`: `string`.
  * `mtime`: `datetime`. Datetime of last modification time of playlist.
  * `items`: `object`. Set of playlist items.
-   * `itemId`: `string`. ID of the playlist item in the playlist.
-   * `key`: `string`. ID of the song in the music library.
+   * `itemId`: `ID`. ID of the playlist item in the playlist.
+   * `key`: `ID`. ID of the song in the music library.
    * `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
      string which tells the position of the item in the playlist.
 
@@ -947,7 +821,7 @@ To display playlist items in the correct order, sort them by `sortKey`.
 ### importProgress
 
  * Type: `{id: {date, filenameHintWithoutPath, bytesWritten, size}}`
- * `id`: `string`. Import job ID.
+ * `id`: `ID`. Import job ID.
  * `date`: `datetime`.
  * `filenameHintWithoutPath`: `string`.
  * `bytesWritten`: `number`. How many bytes have been imported so far.
@@ -971,7 +845,7 @@ and credentials printed to stdio.
 ### users
 
  * Type: `{userId: {name, perms, requested, approved, connected, streaming}}`
- * `userId`: `string`. ID of the user or the guest pseudo ID.
+ * `userId`: `ID`. ID of the user or the guest pseudo ID.
  * `name`: `string`. Name of the user.
  * `perms`: `object`. Permissions the user has.
  * `requested`: `boolean`. Whether the user has requested approval.
@@ -1023,19 +897,19 @@ to properly detect and support them.
 ### events
 
  * Type: `{id: {date, type, sortKey, userId, text, trackId, pos, displayClass, playlistId}}`
- * `id`: `string`. Event ID.
+ * `id`: `ID`. Event ID.
  * `date`: `datetime`. Datetime when the event occurred.
  * `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
    string specifying the order the events should be displayed in.
  * `type`: `string`. Depending on the event type there may be more fields.
    See below for details.
- * `userId`: `string`. `null` for system events, otherwise either the ID of the user who generated the event, or `"(deleted")` for a deleted user.
+ * `userId`: `ID`. `null` for system events, otherwise either the ID of the user who generated the event, or `"(del)"` for a deleted user.
  * `text`: `string`. Sometimes used; see below.
- * `trackId`: `string`. Sometimes used; see below.
+ * `trackId`: `ID`. Sometimes used; see below.
  * `pos`: `number`. Sometimes used; see below.
  * `displayClass`: `string`. Sometimes used; see below.
- * `playlistId`: `string`. Sometimes used; see below.
- * `labelId`: `string`. Sometimes used; see below.
+ * `playlistId`: `ID`. Sometimes used; see below.
+ * `labelId`: `ID`. Sometimes used; see below.
  * `subCount`: `number`. Sometimes used; see below.
 
 Event history.
@@ -1297,8 +1171,9 @@ files. Groove Basin supports uploading .zip files.
 
 ### TBD
 
-* Datetimes changed from always string to either string or integer.
-* An event `userId` can be `"(deleted)"` to indicate a deleted user. (Previous behavior deleted all events originating from users who get deleted.)
+* Datetimes changed from string to integer.
+* An event `userId` can be `"(del)"` to indicate a deleted user. (Previous behavior deleted all events originating from users who get deleted.)
+* UUID replaced by ID, which is a quarter the size.
 
 ### 0.0.1
 

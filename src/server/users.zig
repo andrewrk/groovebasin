@@ -12,11 +12,12 @@ const events = @import("events.zig");
 const db = @import("db.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;
 
-const Id = @import("groovebasin_protocol.zig").Id;
-const IdOrGuest = @import("groovebasin_protocol.zig").IdOrGuest;
-const IdOrGuestMap = @import("groovebasin_protocol.zig").IdOrGuestMap;
-const Permissions = @import("groovebasin_protocol.zig").Permissions;
-const PublicUserInfo = @import("groovebasin_protocol.zig").PublicUserInfo;
+const protocol = @import("groovebasin_protocol.zig");
+const Id = protocol.Id;
+const IdOrGuest = protocol.IdOrGuest;
+const IdOrGuestMap = protocol.IdOrGuestMap;
+const Permissions = protocol.Permissions;
+const PublicUserInfo = protocol.PublicUserInfo;
 
 const UserAccount = struct {
     /// Display name and login username.
@@ -53,7 +54,7 @@ const PasswordHash = struct {
     hash: [32]u8,
 };
 
-const Session = struct {
+const InternalSession = struct {
     user_id: Id,
     claims_to_be_streaming: bool = false,
 };
@@ -62,7 +63,7 @@ const Session = struct {
 pub var strings: StringPool = undefined;
 pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var username_to_user_id: std.ArrayHashMapUnmanaged(StringPool.Index, Id, StringsContext, true) = .{};
-var sessions: AutoArrayHashMap(*anyopaque, Session) = undefined;
+var sessions: AutoArrayHashMap(Id, InternalSession) = undefined;
 var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
@@ -92,7 +93,7 @@ const StringsAdaptedContext = struct {
 pub fn init() !void {
     strings = StringPool.init(g.gpa);
     user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
-    sessions = AutoArrayHashMap(*anyopaque, Session).init(g.gpa);
+    sessions = AutoArrayHashMap(Id, InternalSession).init(g.gpa);
 }
 pub fn deinit() void {
     username_to_user_id.deinit(g.gpa);
@@ -111,7 +112,7 @@ pub fn handleLoaded() !void {
     }
 }
 
-pub fn handleClientConnected(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
     // Every new connection starts as a guest.
     // If you want to be not a guest, send a login message.
     const user_id = try createGuestAccount(changes);
@@ -120,31 +121,30 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: *anyopaque) !void 
         .claims_to_be_streaming = false,
     });
 
-    try sendSelfUserInfo(client_id);
+    try encodeAndSend(client_id, .{
+        .sessionId = client_id,
+    });
 }
 
-pub fn handleClientDisconnected(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn handleClientDisconnected(changes: *db.Changes, client_id: Id) !void {
     std.debug.assert(sessions.swapRemove(client_id));
     changes.broadcastChanges(.users);
 }
 
-pub fn getUserId(client_id: *anyopaque) Id {
+pub fn getUserId(client_id: Id) Id {
     return getSession(client_id).user_id;
 }
 pub fn getPermissions(user_id: Id) InternalPermissions {
     return getUserAccount(user_id).permissions;
 }
 
-pub fn logout(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn logout(changes: *db.Changes, client_id: Id) !void {
     const session = try getSessionForEditing(changes, client_id);
     session.user_id = try createGuestAccount(changes);
 }
 
-pub fn login(changes: *db.Changes, client_id: *anyopaque, username: []const u8, password: []u8) !void {
+pub fn login(changes: *db.Changes, client_id: Id, username: []const u8, password: []u8) !void {
     defer std.crypto.utils.secureZero(u8, password);
-
-    // Send this even in case of error.
-    try changes.sendSelfUserInfo(client_id);
 
     loginImpl(changes, client_id, username, password) catch |err| {
         if (err == error.InvalidLogin) {
@@ -152,7 +152,7 @@ pub fn login(changes: *db.Changes, client_id: *anyopaque, username: []const u8, 
         } else return err;
     };
 }
-fn loginImpl(changes: *db.Changes, client_id: *anyopaque, username: []const u8, password: []u8) !void {
+fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password: []u8) !void {
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
@@ -237,7 +237,7 @@ fn changeUsername(user_id: Id, account: *UserAccount, new_username_str: []const 
     username_to_user_id.putAssumeCapacityNoClobber(account.username, user_id);
 }
 
-pub fn setStreaming(changes: *db.Changes, client_id: *anyopaque, is_streaming: bool) !void {
+pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !void {
     const account = try getSessionForEditing(changes, client_id);
     account.claims_to_be_streaming = is_streaming;
 }
@@ -293,7 +293,7 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
     changes.broadcastChanges(.haveAdminUser);
 }
 
-pub fn requestApproval(changes: *db.Changes, client_id: *anyopaque) !void {
+pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
     const user_id = getUserId(client_id);
     const account = try getUserAccountForEditing(changes, user_id);
     switch (account.registration_stage) {
@@ -369,7 +369,6 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
                 const account = kv.value_ptr;
                 if (account.registration_stage == .approved) continue;
 
-                try sendSelfUserInfoForUserId(changes, user_id);
                 try changes.user_accounts.put(user_id, {});
                 changes.broadcastChanges(.users);
 
@@ -396,7 +395,7 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
         var it = sessions.iterator();
         while (it.next()) |kv| {
             if (kv.value_ptr.user_id.value == user_id.value) {
-                try changes.sendSelfUserInfo(kv.key_ptr.*);
+                changes.broadcastChanges(.sessions);
                 if (replacement_guest_id == null) {
                     replacement_guest_id = try createGuestAccount(changes);
                 }
@@ -455,20 +454,11 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == doomed_user_id.value) {
             kv.value_ptr.user_id = true_user_id;
-            try changes.sendSelfUserInfo(kv.key_ptr.*);
+            changes.broadcastChanges(.sessions);
         }
     }
     try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
     try deleteAccount(changes, Id{ .value = workaround_miscomiplation });
-}
-
-fn sendSelfUserInfoForUserId(changes: *db.Changes, user_id: Id) !void {
-    var it = sessions.iterator();
-    while (it.next()) |kv| {
-        if (kv.value_ptr.user_id.value == user_id.value) {
-            try changes.sendSelfUserInfo(kv.key_ptr.*);
-        }
-    }
 }
 
 /// all sessions should be migrated off this user id before calling this.
@@ -479,13 +469,12 @@ fn deleteAccount(changes: *db.Changes, user_id: Id) !void {
     std.debug.assert(username_to_user_id.swapRemove(account.username));
 }
 
-fn getSession(client_id: *anyopaque) *const Session {
+fn getSession(client_id: Id) *const InternalSession {
     return sessions.getEntry(client_id).?.value_ptr;
 }
-fn getSessionForEditing(changes: *db.Changes, client_id: *anyopaque) !*Session {
+fn getSessionForEditing(changes: *db.Changes, client_id: Id) !*InternalSession {
     const session = sessions.getEntry(client_id).?.value_ptr;
-    try changes.sendSelfUserInfo(client_id);
-    changes.broadcastChanges(.users);
+    changes.broadcastChanges(.sessions);
     return session;
 }
 
@@ -494,45 +483,37 @@ fn getUserAccount(user_id: Id) *const UserAccount {
 }
 fn getUserAccountForEditing(changes: *db.Changes, user_id: Id) !*UserAccount {
     const account = user_accounts.getEntry(user_id).?.value_ptr;
-    try sendSelfUserInfoForUserId(changes, user_id);
     try changes.user_accounts.put(user_id, {});
     changes.broadcastChanges(.users);
     return account;
 }
 
-pub fn sendSelfUserInfo(client_id: *anyopaque) !void {
-    const user_id = sessions.get(client_id).?.user_id;
-    const account = user_accounts.get(user_id).?;
-    try encodeAndSend(client_id, .{
-        .user = .{
-            .id = user_id,
-            .name = strings.getString(account.username),
-            .perms = convertPermsissions(account.permissions),
-            .registered = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password => false,
-                .named_by_user, .requested_approval, .approved => true,
-                _ => unreachable,
-            },
-            .requested = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password, .named_by_user => false,
-                .requested_approval, .approved => true,
-                _ => unreachable,
-            },
-            .approved = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password, .named_by_user, .requested_approval => false,
-                .approved => true,
-                _ => unreachable,
-            },
-        },
-    });
-}
-
-pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(PublicUserInfo) {
+pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.IdMap(protocol.Session) {
     // This version number never matters. Sessions beginning/ending changes the
     // hash, which means there's no scenario in which a newly connecting client
-    // would get a cache hit on their previous version of the users. Delta
+    // would get a cache hit on their previous version of the sessions. Delta
     // compression for live connections is still meaningful, so we don't want
     // this to stay null, but this number never does anything meaningful.
+    out_version.* = Id.random();
+
+    var result = protocol.IdMap(protocol.Session){};
+    try result.map.ensureTotalCapacity(arena, sessions.count());
+
+    var it = sessions.iterator();
+    while (it.next()) |kv| {
+        const id = kv.key_ptr.*;
+        const session = kv.value_ptr;
+        result.map.putAssumeCapacityNoClobber(id, .{
+            .userId = session.user_id,
+            .streaming = session.claims_to_be_streaming,
+        });
+    }
+
+    return result;
+}
+
+pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(PublicUserInfo) {
+    // TODO: meaningful versioning.
     out_version.* = Id.random();
 
     var result = IdOrGuestMap(PublicUserInfo){};
@@ -545,27 +526,14 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(Public
         result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
             .name = strings.getString(account.username),
             .perms = convertPermsissions(account.permissions),
-            .requested = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password, .named_by_user => false,
-                .requested_approval, .approved => true,
+            .registration = switch (account.registration_stage) {
+                .guest_without_password, .guest_with_password => .guest,
+                .named_by_user => .named_by_user,
+                .requested_approval => .requested_approval,
+                .approved => .approved,
                 _ => unreachable,
             },
-            .approved = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password, .named_by_user, .requested_approval => false,
-                .approved => true,
-                _ => unreachable,
-            },
-            .connected = false,
-            .streaming = false,
         });
-    }
-
-    for (sessions.values()) |*session| {
-        var public_info = result.map.getEntry(.{ .id = session.user_id }).?.value_ptr;
-        public_info.connected = true;
-        if (session.claims_to_be_streaming) {
-            public_info.streaming = true;
-        }
     }
 
     result.map.putAssumeCapacityNoClobber(.guest, .{
@@ -573,12 +541,8 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdOrGuestMap(Public
         .name = "Guests",
         // This is the important information:
         .perms = convertPermsissions(guest_perms),
-        // This gest the pseudo user to show up in the permission edit UI:
-        .requested = true,
-        .approved = true,
-        // Unused:
-        .connected = false,
-        .streaming = false,
+        // This gets the pseudo user to show up in the permission edit UI:
+        .registration = .approved,
     });
 
     return result;

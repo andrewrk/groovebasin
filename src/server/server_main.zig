@@ -18,6 +18,7 @@ const SoundIo = @import("soundio.zig").SoundIo;
 const Player = @import("Player.zig");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
+const Id = groovebasin_protocol.Id;
 const web_server = @import("web_server.zig");
 
 const Config = @import("Config.zig");
@@ -153,7 +154,7 @@ pub fn main() anyerror!void {
     unreachable;
 }
 
-pub fn handleClientConnected(client_id: *anyopaque) !void {
+pub fn handleClientConnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
     var changes = db.Changes.init(arena.allocator());
@@ -165,7 +166,7 @@ pub fn handleClientConnected(client_id: *anyopaque) !void {
     try changes.flush();
     return err_maybe;
 }
-pub fn handleClientDisconnected(client_id: *anyopaque) !void {
+pub fn handleClientDisconnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
     var changes = db.Changes.init(arena.allocator());
@@ -193,12 +194,12 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
     };
 }
 
-pub fn encodeAndSend(client_id: *anyopaque, message: groovebasin_protocol.ServerToClientMessage) !void {
+pub fn encodeAndSend(client_id: Id, message: groovebasin_protocol.ServerToClientMessage) !void {
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
     try web_server.sendMessageToClient(client_id, message_bytes);
 }
 
-pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
+pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
     const message = try parseMessage(arena.allocator(), message_bytes);
@@ -212,7 +213,7 @@ pub fn handleRequest(client_id: *anyopaque, message_bytes: []const u8) !void {
     return err_maybe;
 }
 
-fn handleRequestImpl(changes: *db.Changes, client_id: *anyopaque, message: *const groovebasin_protocol.ClientToServerMessage) !void {
+fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groovebasin_protocol.ClientToServerMessage) !void {
     var arena = ArenaAllocator.init(g.gpa); // TODO: deprecate this in favor of using `changes`.
     defer arena.deinit();
 

@@ -27,6 +27,10 @@ function PlayerClient(socket) {
   self.serverTimeOffset = 0;
   self.serverTrackStartDate = null;
 
+  self.sessionsFromServer = undefined;
+  self.sessionsFromServerVersion = null;
+  self.usersFromServer = undefined;
+  self.usersFromServerVersion = null;
   self.queueFromServer = undefined;
   self.queueFromServerVersion = null;
   self.libraryFromServer = undefined;
@@ -39,8 +43,6 @@ function PlayerClient(socket) {
   self.labelsFromServerVersion = null;
   self.eventsFromServer = undefined;
   self.eventsFromServerVersion = null;
-  self.usersFromServer = undefined;
-  self.usersFromServerVersion = null;
   self.importProgressFromServer = undefined;
   self.importProgressFromServerVersion = null;
 
@@ -53,6 +55,22 @@ function PlayerClient(socket) {
   } else {
     self.socket.on('connect', self.resubscribe.bind(self));
   }
+
+  self.socket.on('sessions', function(o) {
+    if (o.reset) self.sessionsFromServer = undefined;
+    self.sessionsFromServer = curlydiff.apply(self.sessionsFromServer, o.delta);
+    self.sessionsFromServerVersion = o.version;
+    self.handleSessionsFromServer();
+    self.emit('users');
+  });
+  self.socket.on('users', function(o) {
+    if (o.reset) self.usersFromServer = undefined;
+    self.usersFromServer = curlydiff.apply(self.usersFromServer, o.delta);
+    self.usersFromServerVersion = o.version;
+    self.sortUsersFromServer();
+    self.emit('users');
+  });
+
   self.socket.on('time', function(o) {
     self.serverTimeOffset = new Date(o) - new Date();
     self.updateTrackStartDate();
@@ -141,14 +159,6 @@ function PlayerClient(socket) {
     self.emit('events');
   });
 
-  self.socket.on('users', function(o) {
-    if (o.reset) self.usersFromServer = undefined;
-    self.usersFromServer = curlydiff.apply(self.usersFromServer, o.delta);
-    self.usersFromServerVersion = o.version;
-    self.sortUsersFromServer();
-    self.emit('users');
-  });
-
   self.socket.on('importProgress', function(o) {
     if (o.reset) self.importProgressFromServer = undefined;
     self.importProgressFromServer = curlydiff.apply(self.importProgressFromServer, o.delta);
@@ -159,6 +169,16 @@ function PlayerClient(socket) {
 }
 
 PlayerClient.prototype.resubscribe = function(){
+  this.sendCommand('subscribe', {
+    name: 'sessions',
+    delta: true,
+    version: this.sessionsFromServerVersion,
+  });
+  this.sendCommand('subscribe', {
+    name: 'users',
+    delta: true,
+    version: this.usersFromServerVersion,
+  });
   this.sendCommand('subscribe', {
     name: 'labels',
     delta: true,
@@ -188,11 +208,6 @@ PlayerClient.prototype.resubscribe = function(){
     version: this.playlistsFromServerVersion,
   });
   this.sendCommand('subscribe', {name: 'anonStreamers'});
-  this.sendCommand('subscribe', {
-    name: 'users',
-    delta: true,
-    version: this.usersFromServerVersion,
-  });
   this.sendCommand('subscribe', {
     name: 'events',
     delta: true,
@@ -256,6 +271,18 @@ PlayerClient.prototype.markAllEventsSeen = function() {
   this.unseenChatCount = 0;
 };
 
+PlayerClient.prototype.handleSessionsFromServer = function() {
+  this.sessionsTable = {};
+  for (var id in this.sessionsFromServer) {
+    var serverSession = this.sessionsFromServer[id];
+    this.sessionsTable[id] = {
+      id: id,
+      userId: serverSession.userId,
+      streaming: serverSession.streaming,
+    };
+  }
+};
+
 PlayerClient.prototype.sortUsersFromServer = function() {
   this.usersList = [];
   this.usersTable = {};
@@ -265,13 +292,42 @@ PlayerClient.prototype.sortUsersFromServer = function() {
       id: id,
       name: serverUser.name,
       perms: serverUser.perms,
-      requested: !!serverUser.requested,
-      approved: !!serverUser.approved,
-      streaming: !!serverUser.streaming,
-      connected: !!serverUser.connected,
+      registered: false, // set below.
+      requested: false, // set below.
+      approved: false, // set below.
+      streaming: false, // set far below.
+      connected: false, // set far below.
     };
+    switch (serverUser.registration) {
+      case "guest":
+        user.registered = false;
+        user.requested = false;
+        user.approved = false;
+        break;
+      case "named_by_user":
+        user.registered = true;
+        user.requested = false;
+        user.approved = false;
+        break;
+      case "requested_approval":
+        user.registered = true;
+        user.requested = true;
+        user.approved = false;
+        break;
+      case "approved":
+        user.registered = true;
+        user.requested = true;
+        user.approved = true;
+        break;
+    }
     this.usersTable[id] = user;
     this.usersList.push(user);
+  }
+  for (var id in this.sessionsTable) {
+    var session = this.sessionsTable[id];
+    var user = this.usersTable[session.userId]
+    user.connected = true;
+    user.streaming = session.streaming;
   }
   this.usersList.sort(compareUserNames);
 };
@@ -846,6 +902,7 @@ PlayerClient.prototype.resetServerState = function(){
   this.currentItem = null;
   this.currentItemId = null;
   this.anonStreamers = 0;
+  this.sessionsTable = {};
   this.usersList = [];
   this.usersTable = {};
   this.eventsList = [];

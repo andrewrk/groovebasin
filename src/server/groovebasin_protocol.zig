@@ -390,7 +390,7 @@ pub const ServerToClientMessage = union(enum) {
     lastFmApiKey: TODO,
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
-    user: SelfUserInfo,
+    sessionId: Id,
 
     // Subscribed Information Change Messages
     subscription: struct {
@@ -479,21 +479,19 @@ pub const QueueItem = struct {
     isRandom: bool,
 };
 
+pub const Session = struct {
+    userId: Id,
+    streaming: bool,
+};
 pub const PublicUserInfo = struct {
     name: []const u8,
     perms: Permissions,
-    requested: bool,
-    approved: bool,
-    connected: bool,
-    streaming: bool,
-};
-pub const SelfUserInfo = struct {
-    id: Id,
-    name: []const u8,
-    perms: Permissions,
-    registered: bool,
-    requested: bool,
-    approved: bool,
+    registration: enum {
+        guest,
+        named_by_user,
+        requested_approval,
+        approved,
+    },
 };
 
 pub const Event = struct {
@@ -524,6 +522,8 @@ pub const CurrentTrack = struct {
 };
 
 pub const Subscription = union(enum) {
+    sessions: IdMap(Session),
+    users: IdOrGuestMap(PublicUserInfo),
     currentTrack: CurrentTrack,
     autoDjOn: TODO,
     autoDjHistorySize: TODO,
@@ -539,7 +539,6 @@ pub const Subscription = union(enum) {
     importProgress: TODO,
     anonStreamers: TODO,
     haveAdminUser: bool,
-    users: IdOrGuestMap(PublicUserInfo),
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.

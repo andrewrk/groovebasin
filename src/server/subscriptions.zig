@@ -14,7 +14,7 @@ const Subscription = @import("groovebasin_protocol.zig").Subscription;
 const Id = @import("groovebasin_protocol.zig").Id;
 
 const ClientSubscriptionData = struct {
-    client_id: *anyopaque,
+    client_id: Id,
     name: Tag(Subscription),
     delta: bool,
     last_version: ?Id,
@@ -29,7 +29,7 @@ pub fn deinit() void {
     client_subscriptions.deinit();
 }
 
-pub fn subscribe(arena: Allocator, client_id: *anyopaque, name: Tag(Subscription), delta: bool, version: ?Id) !void {
+pub fn subscribe(arena: Allocator, client_id: Id, name: Tag(Subscription), delta: bool, version: ?Id) !void {
     if (lookup(client_id, name)) |_| return error.BadRequest; // already subscribed
     const client_data = try client_subscriptions.addOne();
     errdefer {
@@ -44,11 +44,11 @@ pub fn subscribe(arena: Allocator, client_id: *anyopaque, name: Tag(Subscription
     try publishData(arena, client_data);
 }
 
-pub fn handleClientDisconnected(client_id: *anyopaque) void {
+pub fn handleClientDisconnected(client_id: Id) void {
     var i = client_subscriptions.items.len;
     while (i > 0) : (i -= 1) {
         const item = &client_subscriptions.items[i - 1];
-        if (item.client_id == client_id) {
+        if (item.client_id.value == client_id.value) {
             _ = client_subscriptions.swapRemove(i - 1);
         }
     }
@@ -64,9 +64,9 @@ pub fn broadcastChanges(arena: Allocator, name: Tag(Subscription)) error{OutOfMe
     }
 }
 
-fn lookup(client_id: *anyopaque, name: Tag(Subscription)) ?*ClientSubscriptionData {
+fn lookup(client_id: Id, name: Tag(Subscription)) ?*ClientSubscriptionData {
     for (client_subscriptions.items) |*item| {
-        if (item.client_id == client_id and item.name == name) return item;
+        if (item.client_id.value == client_id.value and item.name == name) return item;
     }
     return null;
 }
@@ -74,9 +74,10 @@ fn lookup(client_id: *anyopaque, name: Tag(Subscription)) ?*ClientSubscriptionDa
 fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var version: ?Id = null;
     var sub: Subscription = switch (client_data.name) {
+        .sessions => .{ .sessions = try users.getSerializableSessions(arena, &version) },
+        .users => .{ .users = try users.getSerializableUsers(arena, &version) },
         .haveAdminUser => .{ .haveAdminUser = users.haveAdminUser() },
         .streamEndpoint => .{ .streamEndpoint = "stream.mp3" },
-        .users => .{ .users = try users.getSerializable(arena, &version) },
         .library => .{ .library = try library.getSerializable(arena, &version) },
         .queue => .{ .queue = try queue.getSerializable(arena, &version) },
         .events => .{ .events = try events.getSerializable(arena, &version) },

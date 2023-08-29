@@ -21,7 +21,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 4,
+    dev_version: u16 = 5,
 };
 
 const write_buffer_size = 0x100_000;
@@ -113,7 +113,6 @@ const subscription_bool_array_initial_value = std.enums.directEnumArrayDefault(S
 pub const Changes = struct {
     arena: Allocator,
 
-    clients_to_notify_for_self_user_info: AutoArrayHashMapUnmanaged(*anyopaque, void) = .{},
     subscriptions_to_broadcast: SubscriptionBoolArray = subscription_bool_array_initial_value,
 
     // Changes for subsystems
@@ -128,13 +127,8 @@ pub const Changes = struct {
         };
     }
     pub fn deinit(self: *@This()) void {
-        self.clients_to_notify_for_self_user_info.deinit(self.arena);
         self.user_accounts.deinit();
         self.* = undefined;
-    }
-
-    pub fn sendSelfUserInfo(self: *@This(), client_id: *anyopaque) error{OutOfMemory}!void {
-        _ = try self.clients_to_notify_for_self_user_info.put(self.arena, client_id, {});
     }
 
     pub fn broadcastChanges(self: *@This(), name: SubscriptionTag) void {
@@ -154,9 +148,6 @@ pub const Changes = struct {
     }
 
     fn sendToClients(self: *@This()) error{OutOfMemory}!void {
-        for (self.clients_to_notify_for_self_user_info.keys()) |client_id| {
-            try users.sendSelfUserInfo(client_id);
-        }
         for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
             if (!should_broadcast) continue;
             const name: SubscriptionTag = @enumFromInt(i);

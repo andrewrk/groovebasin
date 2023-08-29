@@ -257,17 +257,12 @@ This message is likely to be updated before the protocol reaches 1.0.0.
  * `username`: `string`
  * `password`: `string`
 
-After logging in, the server sends a [user](#user) message containing the
-user and permissions that the connection is associated with.
-
-See also [logout](#logout)
+TODO: document what this does. It's complicated.
 
 ### logout
 
  * Permission: none
  * Type: none
-
-See also [login](#login)
 
 ### subscribe
 
@@ -608,21 +603,12 @@ This message is a holdover from older times before user accounts were
 implemented and this functionality is likely to be changed before the
 protocol reaches 1.0.0.
 
-### user
+### sessionId
 
- * Type: `{id, name, perms, registered, requested, approved}`
- * `id`: `ID`. User ID of the connection.
- * `name`: `string`. User name of the connection.
- * `perms`: `object`. permissions the connection currently has.
- * `registered`: `boolean`. Whether or not the user registered.
- * `requested`: `boolean`. Whether or not the user requested approval.
- * `approved`: `boolean`. Whether or not the user was approved.
+ * Type: `ID`. The ID if your session.
 
-Example `perms`:
-
-```json
-{"add": true, "control": true}
-```
+Note that this is a public identifier, not a private session token. Use this id
+to find yourself in [sessions](#sessions).
 
 ## Subscribed Information Change Messages
 
@@ -842,18 +828,22 @@ If there is no admin user, the client may send the
 [ensureAdminUser](#ensureadminuser) message to have an admin user generated
 and credentials printed to stdio.
 
+### sessions
+
+ * Type: `{sessionId: {userId, streaming}}`
+ * `sessionId`: `ID`. ID of the session. Compare to [sessionId](#sessionid) to see if this is you.
+ * `userId`: `ID`. Every session has an associated user ID. See [users](#users).
+ * `streaming`: `boolean`. The result of this session calling [setStreaming](#setsetreaming).
+
 ### users
 
- * Type: `{userId: {name, perms, requested, approved, connected, streaming}}`
- * `userId`: `ID`. ID of the user or the guest pseudo ID.
+ * Type: `{userId: {name, perms, registration}}`
+ * `userId`: `ID` or `"(guest)"`. ID of the user or the guest pseudo ID.
  * `name`: `string`. Name of the user.
  * `perms`: `object`. Permissions the user has.
- * `requested`: `boolean`. Whether the user has requested approval.
- * `approved`: `boolean`. Whether or not the user was approved.
- * `connected`: `boolean`. Whether the user is currently connected.
- * `streaming`: `boolean`. Whether the user is connected to the stream.
+ * `registration`: `enum{guest,named_by_user,requested_approval,approved}`.
 
-Before protocol version 1.0.0, this protocol message is likely to change.
+To know who's online and which one is you, subscribe to [sessions](#sessions).
 
 ### streamEndpoint
 
@@ -1174,6 +1164,11 @@ files. Groove Basin supports uploading .zip files.
 * Datetimes changed from string to integer.
 * An event `userId` can be `"(del)"` to indicate a deleted user. (Previous behavior deleted all events originating from users who get deleted.)
 * UUID replaced by ID, which is a quarter the size.
+* Users and sessions separated:
+    * `sessions` subscription added.
+    * `users` subscription no longer contains `connected` or `streaming` properties. (Use `sessions` instead.)
+    * properties `registered`, `requested`, and `approved` replaced by `registration` enum.
+    * `user` server-to-client message replaced by `sessionId`. (Use `sessions` and `users` to reconstruct the old information.)
 
 ### 0.0.1
 

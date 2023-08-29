@@ -9,6 +9,7 @@ const LinearFifo = std.fifo.LinearFifo;
 const Groove = @import("groove.zig").Groove;
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
+const Id = groovebasin_protocol.Id;
 const server_logic = @import("server_main.zig");
 
 const g = @import("global.zig");
@@ -42,11 +43,11 @@ const ToServerMessage = struct {
     refcounter: RefCounter = .{},
     event: union(enum) {
         client_to_server_message: struct {
-            client_id: *anyopaque,
+            client_id: Id,
             message: *RefCountedByteSlice,
         },
-        client_connected: *anyopaque,
-        client_disconnected: *anyopaque,
+        client_connected: Id,
+        client_disconnected: Id,
     },
 
     pub fn ref(self: *@This()) void {
@@ -93,11 +94,24 @@ fn listen(addr: net.Address) !void {
     while (true) {
         const connection = try server.accept();
         const handler = try g.gpa.create(ConnectionHandler);
-        handler.* = .{ .connection = connection };
+        handler.* = .{
+            .connection = connection,
+            .id = Id.random(),
+        };
         handler.ref(); // trace:ConnectionHandler.entrypoint
+        {
+            handlers_mutex.lock();
+            defer handlers_mutex.unlock();
+            try handlers.putNoClobber(g.gpa, handler.id, handler);
+        }
 
         _ = std.Thread.spawn(.{}, ConnectionHandler.entrypoint, .{handler}) catch |err| {
             log.err("handling connection failed: {}", .{err});
+            {
+                handlers_mutex.lock();
+                defer handlers_mutex.unlock();
+                std.debug.assert(handlers.swapRemove(handler.id));
+            }
             handler.unref(); // trace:ConnectionHandler.entrypoint
             continue;
         };
@@ -108,6 +122,7 @@ const WebsocketSendFifo = LinearFifo(?*RefCountedByteSlice, .{ .Static = 16 });
 
 const ConnectionHandler = struct {
     connection: net.StreamServer.Connection,
+    id: Id,
     refcounter: RefCounter = .{},
 
     // only used for websocket handlers
@@ -140,6 +155,11 @@ const ConnectionHandler = struct {
         self.handleConnection() catch |err| {
             log.err("unable to handle connection: {s}", .{@errorName(err)});
         };
+        {
+            handlers_mutex.lock();
+            defer handlers_mutex.unlock();
+            std.debug.assert(handlers.swapRemove(self.id));
+        }
         self.unref(); // trace:ConnectionHandler.entrypoint
     }
 
@@ -258,7 +278,7 @@ const ConnectionHandler = struct {
         // Welcome to the party.
         {
             const delivery = try g.gpa.create(ToServerMessage);
-            delivery.* = .{ .event = .{ .client_connected = @as(*anyopaque, self) } };
+            delivery.* = .{ .event = .{ .client_connected = self.id } };
             delivery.ref(); // trace:to_server_channel
             to_server_channel.put(delivery) catch |err| {
                 log.warn("server overloaded!", .{});
@@ -269,7 +289,7 @@ const ConnectionHandler = struct {
         defer {
             // Goodbye from the party.
             if (g.gpa.create(ToServerMessage)) |delivery| {
-                delivery.* = .{ .event = .{ .client_disconnected = @as(*anyopaque, self) } };
+                delivery.* = .{ .event = .{ .client_disconnected = self.id } };
                 delivery.ref(); // trace:to_server_channel
                 to_server_channel.put(delivery) catch {
                     // TODO: this error should be impossible by design somehow.
@@ -292,7 +312,7 @@ const ConnectionHandler = struct {
 
             const delivery = try g.gpa.create(ToServerMessage);
             delivery.* = .{ .event = .{ .client_to_server_message = .{
-                .client_id = self,
+                .client_id = self.id,
                 .message = request,
             } } };
             delivery.ref(); // trace:to_server_channel
@@ -513,9 +533,17 @@ fn strToIovec(s: []const u8) std.os.iovec_const {
     };
 }
 
+var handlers: std.AutoArrayHashMapUnmanaged(Id, *ConnectionHandler) = .{};
+var handlers_mutex: std.Thread.Mutex = .{};
+
 /// Takes ownership of message_bytes, even when an error is returned.
-pub fn sendMessageToClient(client_id: *anyopaque, message_bytes: []const u8) !void {
-    const handler: *ConnectionHandler = @ptrCast(@alignCast(client_id));
+pub fn sendMessageToClient(client_id: Id, message_bytes: []const u8) !void {
+    const handler = blk: {
+        // TODO: optimize with an RW lock
+        handlers_mutex.lock();
+        defer handlers_mutex.unlock();
+        break :blk handlers.get(client_id).?;
+    };
     const delivery = g.gpa.create(RefCountedByteSlice) catch |err| {
         g.gpa.free(message_bytes);
         return err;

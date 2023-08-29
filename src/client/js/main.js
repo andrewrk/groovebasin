@@ -588,6 +588,7 @@ var MARGIN = 10;
 var AUTO_EXPAND_LIMIT = 30;
 var ICON_COLLAPSED = 'icon-triangle-1-e';
 var ICON_EXPANDED = 'icon-triangle-1-se';
+var mySessionId = null;
 var myUser = {
   perms: {},
 };
@@ -4477,18 +4478,8 @@ function init() {
     updateSettingsAdminUi();
   });
   socket.on('lastFmApiKey', updateLastFmApiKey);
-  socket.on('user', function(data) {
-    myUser = data;
-    authUsernameDisplayDom.textContent = myUser.name;
-    if (!localState.authUsername || !localState.authPassword) {
-      // We didn't have a user account saved. The server assigned us a name.
-      // Generate a password and call dibs on the account.
-      localState.authUsername = myUser.name;
-      localState.authPassword = uuid() + uuid() + uuid();
-      saveLocalState();
-      sendAuth();
-    }
-    updateSettingsAuthUi();
+  socket.on('sessionId', function(data) {
+    mySessionId = data;
   });
   socket.on('token', function(token) {
     document.cookie = "token=" + token + "; path=/";
@@ -4520,6 +4511,21 @@ function init() {
   });
   player = new PlayerClient(socket);
   player.on('users', function() {
+    myUser = player.usersTable[(player.sessionsTable[mySessionId] || {}).userId];
+    if (myUser == null) {
+      // We don't have complete information yet.
+      myUser = {perms:{}};
+      return;
+    }
+    authUsernameDisplayDom.textContent = myUser.name;
+    if (!localState.authUsername || !localState.authPassword) {
+      // We didn't have a user account saved. The server assigned us a name.
+      // Generate a password and call dibs on the account.
+      localState.authUsername = myUser.name;
+      localState.authPassword = uuid() + uuid() + uuid();
+      saveLocalState();
+      sendAuth();
+    }
     updateSettingsAuthUi();
     renderEvents();
     renderOnlineUsers();

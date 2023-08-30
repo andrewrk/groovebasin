@@ -77,6 +77,7 @@ const StringsContext = struct {
         return @truncate(std.hash.Wyhash.hash(0, strings.getString(k)));
     }
     pub fn eql(_: @This(), a: StringPool.Index, b: StringPool.Index, _: usize) bool {
+        if (a == b) return true;
         return std.mem.eql(u8, strings.getString(a), strings.getString(b));
     }
 };
@@ -164,7 +165,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
     //        leaving no trace that it ever existed.
     // Perhaps these should have been different APIs.
 
-    if (std.mem.eql(u8, username, strings.getString(session_account.username))) {
+    if (strings.eql(session_account.username, username)) {
         // If you're trying to login to yourself, it always works.
         // Use this to change your password.
         changePassword(session_account, password);
@@ -226,7 +227,7 @@ fn lookupAccountByUsername(username: []const u8) ?Id {
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
-        if (std.mem.eql(u8, strings.getString(account.username), username)) return user_id;
+        if (strings.eql(account.username, username)) return user_id;
     }
     return null;
 }
@@ -327,8 +328,9 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_account.registration_stage = .approved;
         }
 
-        const old_username = strings.getString(requesting_account.username);
-        if (!std.mem.eql(u8, old_username, new_username) and lookupAccountByUsername(new_username) == null) {
+        if (!strings.eql(requesting_account.username, new_username) and
+            lookupAccountByUsername(new_username) == null)
+        {
             // This is also a feature of the approve workflow.
             requesting_account.username = try strings.putWithoutDeduplication(new_username);
         }
@@ -393,9 +395,7 @@ fn createAccount(
 ) !Id {
     try user_accounts.ensureUnusedCapacity(1);
     try changes.user_accounts.ensureUnusedCapacity(1);
-    try strings.ensureUnusedCapacity(username_str.len);
-
-    const username = strings.putWithoutDeduplicationAssumeCapacity(username_str);
+    const username = try strings.putWithoutDeduplication(username_str);
 
     const user_id = Id.random();
     const gop = user_accounts.getOrPutAssumeCapacity(user_id);

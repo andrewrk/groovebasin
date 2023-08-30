@@ -64,6 +64,13 @@ pub fn ensureUnusedCapacity(self: *@This(), string_len: usize) !void {
     try self.buf.ensureUnusedCapacity(string_len + 1);
 }
 
+pub fn eql(self: @This(), index: Index, slice: []const u8) bool {
+    for (slice, @intFromEnum(index)..) |c, i| {
+        if (c != self.buf.items[i]) return false;
+    }
+    return self.buf.items[slice.len] == 0;
+}
+
 pub fn initPutter(self: *@This()) Putter {
     return Putter.init(self);
 }

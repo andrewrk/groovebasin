@@ -116,7 +116,7 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
 
 pub fn handleClientDisconnected(changes: *db.Changes, client_id: Id) !void {
     std.debug.assert(sessions.swapRemove(client_id));
-    changes.broadcastChanges(.users);
+    changes.broadcastChanges(.sessions);
 }
 
 pub fn getUserId(client_id: Id) Id {
@@ -223,13 +223,6 @@ pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !vo
     account.claims_to_be_streaming = is_streaming;
 }
 
-pub fn haveAdminUser() bool {
-    for (user_accounts.values()) |*user| {
-        if (user.permissions.admin) return true;
-    }
-    return false;
-}
-
 fn lookupAccountByUsername(username: []const u8) ?Id {
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
@@ -249,7 +242,12 @@ fn createGuestAccount(changes: *db.Changes) !Id {
 }
 
 pub fn ensureAdminUser(changes: *db.Changes) !void {
-    if (haveAdminUser()) return;
+    for (user_accounts.values()) |*user| {
+        if (user.permissions.admin) {
+            log.warn("ignoring ensureAdminUser. there's already an admin user.", .{});
+            return;
+        }
+    }
 
     var username_str: ["Admin-123456".len]u8 = "Admin-XXXXXX".*;
     for (username_str[username_str.len - 6 ..]) |*c| {
@@ -280,8 +278,6 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
     log.info("No admin account found. Created one:", .{});
     log.info("Username: {s}", .{username_str[0..]});
     log.info("Password: {s}", .{password_text[0..]});
-
-    changes.broadcastChanges(.haveAdminUser);
 }
 
 pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
@@ -335,13 +331,9 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_account.username = try strings.putWithoutDeduplication(new_username);
         }
     }
-
-    changes.broadcastChanges(.users);
 }
 
 pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
-    const old_have_admin_user = haveAdminUser();
-
     switch (user_id_or_guest_pseudo_user_id) {
         .id => |user_id| {
             if (!user_accounts.contains(user_id)) {
@@ -367,16 +359,9 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
             }
         },
     }
-
-    changes.broadcastChanges(.users);
-    if (old_have_admin_user != haveAdminUser()) {
-        changes.broadcastChanges(.haveAdminUser);
-    }
 }
 
 pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
-    const old_have_admin_user = haveAdminUser();
-
     var replacement_guest_id: ?Id = null;
     for (user_ids) |user_id| {
         if (!user_accounts.contains(user_id)) {
@@ -395,10 +380,6 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
         }
         try events.tombstoneUser(changes, user_id);
         try deleteAccount(changes, user_id);
-    }
-
-    if (old_have_admin_user != haveAdminUser()) {
-        changes.broadcastChanges(.haveAdminUser);
     }
 }
 

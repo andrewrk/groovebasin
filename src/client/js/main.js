@@ -4494,17 +4494,12 @@ function init() {
     renderQueueButtons();
     triggerRenderQueue();
   });
-  socket.on('haveAdminUser', function(data) {
-    haveAdminUser = data;
-    updateHaveAdminUserUi();
-  });
   socket.on('connect', function(){
     sendAuth();
     sendStreamingStatus();
     socket.send('subscribe', {name: 'streamEndpoint'});
     socket.send('subscribe', {name: 'autoDjOn'});
     socket.send('subscribe', {name: 'hardwarePlayback'});
-    socket.send('subscribe', {name: 'haveAdminUser'});
     loadStatus = LoadStatus.GoodToGo;
     render();
     ensureSearchHappensSoon();
@@ -4530,6 +4525,18 @@ function init() {
     renderEvents();
     renderOnlineUsers();
     renderStreamButton();
+
+    var newHaveAdminUser = (function() {
+      for (var id in player.usersTable) {
+        var user = player.usersTable[id];
+        if (user.perms.admin) return true;
+      }
+      return false;
+    })();
+    if (newHaveAdminUser != haveAdminUser) {
+      haveAdminUser = newHaveAdminUser;
+      updateHaveAdminUserUi();
+    }
   });
   player.on('importProgress', renderImportProgress);
   player.on('libraryUpdate', function() {

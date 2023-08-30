@@ -76,7 +76,6 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var sub: Subscription = switch (client_data.name) {
         .sessions => .{ .sessions = try users.getSerializableSessions(arena, &version) },
         .users => .{ .users = try users.getSerializableUsers(arena, &version) },
-        .haveAdminUser => .{ .haveAdminUser = users.haveAdminUser() },
         .streamEndpoint => .{ .streamEndpoint = "stream.mp3" },
         .library => .{ .library = try library.getSerializable(arena, &version) },
         .queue => .{ .queue = try queue.getSerializable(arena, &version) },

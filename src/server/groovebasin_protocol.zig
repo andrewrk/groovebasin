@@ -538,7 +538,6 @@ pub const Subscription = union(enum) {
     playlists: TODO,
     importProgress: TODO,
     anonStreamers: TODO,
-    haveAdminUser: bool,
     streamEndpoint: []const u8,
     protocolMetadata: TODO,
     labels: TODO, // undocumented.

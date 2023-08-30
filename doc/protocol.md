@@ -820,14 +820,6 @@ To display playlist items in the correct order, sort them by `sortKey`.
 To count total streamers including non-anonymous streamers, subscribe to
 [users](#users) and check if `streaming` is `true`.
 
-### haveAdminUser
-
- * Type: `boolean`. `true` if an admin user exists, `false` otherwise.
-
-If there is no admin user, the client may send the
-[ensureAdminUser](#ensureadminuser) message to have an admin user generated
-and credentials printed to stdio.
-
 ### sessions
 
  * Type: `{sessionId: {userId, streaming}}`
@@ -1164,11 +1156,12 @@ files. Groove Basin supports uploading .zip files.
 * Datetimes changed from string to integer.
 * An event `userId` can be `"(del)"` to indicate a deleted user. (Previous behavior deleted all events originating from users who get deleted.)
 * UUID replaced by ID, which is a quarter the size.
-* Users and sessions separated:
+* Subscription changes for `users` and related channels.
     * `sessions` subscription added.
     * `users` subscription no longer contains `connected` or `streaming` properties. (Use `sessions` instead.)
     * properties `registered`, `requested`, and `approved` replaced by `registration` enum.
     * `user` server-to-client message replaced by `sessionId`. (Use `sessions` and `users` to reconstruct the old information.)
+    * `haveAdminUser` removed. (Use `any(user.perms.admin for user in users)` instead.)
 
 ### 0.0.1
 

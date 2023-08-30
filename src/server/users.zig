@@ -190,8 +190,6 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
         changePassword(session_account, password);
         session_account.registration_stage = .named_by_user;
     }
-
-    changes.broadcastChanges(.users);
 }
 
 fn changePassword(account: *UserAccount, new_password: []const u8) void {
@@ -287,7 +285,11 @@ pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
         .named_by_user => {
             account.registration_stage = .requested_approval;
         },
-        else => return error.BadRequest,
+        else => {
+            log.warn("ignoring request for approval from account in wrong registration stage. {}: {}", .{
+                user_id, account.registration_stage,
+            });
+        },
     }
 }
 

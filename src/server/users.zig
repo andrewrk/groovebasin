@@ -62,7 +62,7 @@ const InternalSession = struct {
 // TODO: These are only pub for the db subsystem to access. consider a more constrained inter-module api.
 pub var strings: StringPool = undefined;
 pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
-var sessions: AutoArrayHashMap(Id, InternalSession) = undefined;
+var sessions: db.Database(Id, InternalSession, .sessions) = undefined;
 var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
@@ -92,7 +92,7 @@ const StringsAdaptedContext = struct {
 pub fn init() !void {
     strings = StringPool.init(g.gpa);
     user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
-    sessions = AutoArrayHashMap(Id, InternalSession).init(g.gpa);
+    sessions = db.Database(Id, InternalSession, .sessions).init(g.gpa);
 }
 pub fn deinit() void {
     strings.deinit();
@@ -104,7 +104,7 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
     // Every new connection starts as a guest.
     // If you want to be not a guest, send a login message.
     const user_id = try createGuestAccount(changes);
-    try sessions.putNoClobber(client_id, .{
+    try sessions.putNoClobber(changes, client_id, .{
         .user_id = user_id,
         .claims_to_be_streaming = false,
     });
@@ -115,19 +115,18 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
 }
 
 pub fn handleClientDisconnected(changes: *db.Changes, client_id: Id) !void {
-    std.debug.assert(sessions.swapRemove(client_id));
-    changes.broadcastChanges(.sessions);
+    sessions.remove(changes, client_id);
 }
 
 pub fn getUserId(client_id: Id) Id {
-    return getSession(client_id).user_id;
+    return sessions.get(client_id).user_id;
 }
 pub fn getPermissions(user_id: Id) InternalPermissions {
     return getUserAccount(user_id).permissions;
 }
 
 pub fn logout(changes: *db.Changes, client_id: Id) !void {
-    const session = try getSessionForEditing(changes, client_id);
+    const session = try sessions.getForEditing(changes, client_id);
     session.user_id = try createGuestAccount(changes);
 }
 
@@ -137,6 +136,7 @@ pub fn login(changes: *db.Changes, client_id: Id, username: []const u8, password
     loginImpl(changes, client_id, username, password) catch |err| {
         if (err == error.InvalidLogin) {
             // TODO: send the user an error?
+            log.debug("invalid login for client id: {}", .{client_id});
         } else return err;
     };
 }
@@ -145,7 +145,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
 
-    const session = try getSessionForEditing(changes, client_id);
+    const session = try sessions.getForEditing(changes, client_id);
     const session_account = try getUserAccountForEditing(changes, session.user_id);
 
     // These things can happen here:
@@ -217,7 +217,7 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
 }
 
 pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !void {
-    const account = try getSessionForEditing(changes, client_id);
+    const account = try sessions.getForEditing(changes, client_id);
     account.claims_to_be_streaming = is_streaming;
 }
 
@@ -373,11 +373,10 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
         var it = sessions.iterator();
         while (it.next()) |kv| {
             if (kv.value_ptr.user_id.value == user_id.value) {
-                changes.broadcastChanges(.sessions);
                 if (replacement_guest_id == null) {
                     replacement_guest_id = try createGuestAccount(changes);
                 }
-                kv.value_ptr.user_id = replacement_guest_id.?;
+                it.promoteForEditing(changes, kv).value_ptr.user_id = replacement_guest_id.?;
             }
         }
         try events.tombstoneUser(changes, user_id);
@@ -422,8 +421,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
     var it = sessions.iterator();
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == doomed_user_id.value) {
-            kv.value_ptr.user_id = true_user_id;
-            changes.broadcastChanges(.sessions);
+            it.promoteForEditing(changes, kv).value_ptr.user_id = true_user_id;
         }
     }
     try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
@@ -435,15 +433,6 @@ fn deleteAccount(changes: *db.Changes, user_id: Id) !void {
     try changes.user_accounts.put(user_id, {});
     changes.broadcastChanges(.users);
     std.debug.assert(user_accounts.swapRemove(user_id));
-}
-
-fn getSession(client_id: Id) *const InternalSession {
-    return sessions.getEntry(client_id).?.value_ptr;
-}
-fn getSessionForEditing(changes: *db.Changes, client_id: Id) !*InternalSession {
-    const session = sessions.getEntry(client_id).?.value_ptr;
-    changes.broadcastChanges(.sessions);
-    return session;
 }
 
 fn getUserAccount(user_id: Id) *const UserAccount {
@@ -465,7 +454,7 @@ pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.Id
     out_version.* = Id.random();
 
     var result = protocol.IdMap(protocol.Session){};
-    try result.map.ensureTotalCapacity(arena, sessions.count());
+    try result.map.ensureTotalCapacity(arena, sessions.table.count());
 
     var it = sessions.iterator();
     while (it.next()) |kv| {

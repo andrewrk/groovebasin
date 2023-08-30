@@ -259,3 +259,72 @@ fn KeyOfHashMap(comptime HM: type) type {
 fn ValueOfHashMap(comptime HM: type) type {
     return @typeInfo(@typeInfo(@TypeOf(HM.get)).Fn.return_type.?).Optional.child;
 }
+
+//===== new API v3 for real this time =====
+
+pub fn Database(comptime Key: type, comptime Value: type, comptime name: SubscriptionTag) type {
+    return struct {
+        allocator: Allocator,
+        table: AutoArrayHashMapUnmanaged(Key, Value) = .{},
+        strings: void, // TODO
+
+        pub fn init(allocator: Allocator) @This() {
+            return .{
+                .allocator = allocator,
+                .strings = {}, // TODO
+            };
+        }
+        pub fn deinit(self: *@This()) void {
+            self.table.deinit(self.allocator);
+            //self.strings.deinit();
+            self.* = undefined;
+        }
+
+        pub fn get(self: @This(), key: Key) *const Value {
+            return self.table.getEntry(key).?.value_ptr;
+        }
+        pub fn getForEditing(self: *@This(), changes: *Changes, key: Key) !*Value {
+            changes.broadcastChanges(name);
+            return self.table.getEntry(key).?.value_ptr;
+        }
+        pub fn remove(self: *@This(), changes: *Changes, key: Key) void {
+            changes.broadcastChanges(name);
+            assert(self.table.swapRemove(key));
+        }
+        pub fn putNoClobber(self: *@This(), changes: *Changes, key: Key, value: Value) !void {
+            changes.broadcastChanges(name);
+            try self.table.putNoClobber(self.allocator, key, value);
+        }
+
+        pub fn iterator(self: *@This()) Iterator {
+            return .{
+                .sub_it = self.table.iterator(),
+            };
+        }
+
+        pub const EntryConst = struct {
+            key_ptr: *const Key,
+            value_ptr: *const Value,
+        };
+        pub const Entry = AutoArrayHashMapUnmanaged(Key, Value).Entry;
+        pub const Iterator = struct {
+            sub_it: AutoArrayHashMapUnmanaged(Key, Value).Iterator,
+            current_kv: ?Entry = null,
+
+            pub fn next(self: *@This()) ?EntryConst {
+                self.current_kv = self.sub_it.next();
+                if (self.current_kv) |kv| {
+                    return .{
+                        .key_ptr = kv.key_ptr,
+                        .value_ptr = kv.value_ptr,
+                    };
+                } else return null;
+            }
+            pub fn promoteForEditing(self: @This(), changes: *Changes, kv: EntryConst) Entry {
+                assert(kv.key_ptr == self.current_kv.?.key_ptr);
+                changes.broadcastChanges(name);
+                return self.current_kv.?;
+            }
+        };
+    };
+}

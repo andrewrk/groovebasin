@@ -61,7 +61,10 @@ function PlayerClient(socket) {
     self.sessionsFromServer = curlydiff.apply(self.sessionsFromServer, o.delta);
     self.sessionsFromServerVersion = o.version;
     self.handleSessionsFromServer();
-    self.emit('users');
+    if (self.usersFromServer != null) {
+      self.sortUsersFromServer();
+      self.emit('users');
+    }
   });
   self.socket.on('users', function(o) {
     if (o.reset) self.usersFromServer = undefined;

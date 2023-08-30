@@ -117,6 +117,22 @@ const Event = struct {
     };
 };
 
+const User = struct {
+    name: NullTerminatedString,
+    password_hash: [32]u8,
+    flags: Flags,
+
+    const Flags = packed struct {
+        registered: bool,
+        requested: bool,
+        approved: bool,
+        perm_read: bool,
+        perm_add: bool,
+        perm_control: bool,
+        perm_admin: bool,
+    };
+};
+
 const Track = struct {
     name: NullTerminatedString,
     artist_name: OptionalNullTerminatedString,
@@ -332,6 +348,9 @@ pub fn main() !void {
 
     var playlists_len: usize = 0;
     var playlists_bytesize: usize = 0;
+
+    var users_len: usize = 0;
+    var users_bytesize: usize = 0;
 
     for (json.object.keys(), json.object.values()) |root_key, root_value| {
         if (mem.startsWith(u8, root_key, "Events.")) {
@@ -583,6 +602,8 @@ pub fn main() !void {
                 log.err("unknown key for playlist item '{s}': '{s}'", .{ root_key, k });
             }
         } else if (mem.startsWith(u8, root_key, "Users.")) {
+            users_len += 1;
+            users_bytesize += @sizeOf(User);
             var user_json = try std.json.parseFromSliceLeaky(std.json.Value, arena, root_value.string, .{});
             _ = user_json.object.fetchSwapRemove("id").?.value.string;
             addString(&db, user_json.object.fetchSwapRemove("name").?.value.string);
@@ -614,7 +635,8 @@ pub fn main() !void {
         db.string_bytes.items.len +
         play_queue_bytesize +
         playlist_items_bytesize +
-        playlists_bytesize;
+        playlists_bytesize +
+        users_bytesize;
 
     var bw = std.io.bufferedWriter(std.io.getStdOut().writer());
     const w = bw.writer();
@@ -630,14 +652,14 @@ pub fn main() !void {
         \\   total queue items: {[play_queue_len]}
         \\     total playlists: {[playlists_len]}
         \\total playlist items: {[playlist_items_len]}
-        \\         total users: TODO
+        \\         total users: {[users_len]}
         \\
         \\       labels bytes: {[labels_bytes]}
         \\    label set bytes: {[label_sets_bytes]}
         \\   queue item bytes: {[play_queue_bytes]}
         \\playlist item bytes: {[playlist_items_bytes]}
         \\     playlist bytes: {[playlists_bytes]}
-        \\        users bytes: TODO
+        \\        users bytes: {[users_bytes]}
         \\       events bytes: {[events_bytes]}
         \\      strings bytes: {[strings_bytes]}
         \\       tracks bytes: {[tracks_bytes]}
@@ -664,6 +686,8 @@ pub fn main() !void {
         .playlist_items_bytes = playlist_items_bytesize,
         .playlists_len = playlists_len,
         .playlists_bytes = playlists_bytesize,
+        .users_len = users_len,
+        .users_bytes = users_bytesize,
     });
 
     try bw.flush();

@@ -132,8 +132,7 @@ const Track = struct {
     replay_gain_album_peak: f32,
     replay_gain_track_gain: f32,
     replay_gain_track_peak: f32,
-    /// TODO
-    fingerprint: FingerprintIndex,
+    //fingerprint: FingerprintIndex,
     play_count: u32,
     /// TODO
     labels: LabelIndex,
@@ -494,7 +493,7 @@ pub fn main() !void {
 
     const total_bytesize = events_bytesize +
         tracks_bytesize +
-        fingerprint_bytesize +
+        //fingerprint_bytesize +
         labels_bytesize +
         @sizeOf(Scalars) +
         db.string_bytes.items.len;
@@ -522,7 +521,7 @@ pub fn main() !void {
         \\     events bytes: {[events_bytes]}
         \\    strings bytes: {[strings_bytes]}
         \\     tracks bytes: {[tracks_bytes]}
-        \\fingerprint bytes: {[fingerprint_bytes]}
+        \\fingerprint bytes: {[fingerprint_bytes]} (not included in total)
         \\
         \\      total bytes: {[total_bytes]}
         \\

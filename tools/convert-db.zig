@@ -109,6 +109,12 @@ const Event = struct {
         label_count: u32,
         track_count: u32,
     };
+
+    const LabelCreate = struct {
+        user_id: u32,
+        label_id: u32,
+        text: NullTerminatedString,
+    };
 };
 
 const Track = struct {
@@ -136,6 +142,24 @@ const Track = struct {
     //fingerprint: FingerprintIndex,
     play_count: u32,
     labels: Db.LabelSet,
+};
+
+const PlayQueueItem = struct {
+    id: u32,
+    track_id: u32,
+    sort_key: u64,
+    is_random: bool,
+};
+
+const Playlist = struct {
+    name: NullTerminatedString,
+    mtime: Timestamp,
+};
+
+const PlaylistItem = struct {
+    id: u32,
+    track_id: u32,
+    sort_key: u64,
 };
 
 const FingerprintIndex = enum(u32) {
@@ -300,6 +324,15 @@ pub fn main() !void {
     var tracks_len: usize = 0;
     var tracks_bytesize: usize = 0;
 
+    var play_queue_len: usize = 0;
+    var play_queue_bytesize: usize = 0;
+
+    var playlist_items_len: usize = 0;
+    var playlist_items_bytesize: usize = 0;
+
+    var playlists_len: usize = 0;
+    var playlists_bytesize: usize = 0;
+
     for (json.object.keys(), json.object.values()) |root_key, root_value| {
         if (mem.startsWith(u8, root_key, "Events.")) {
             events_len += 1;
@@ -381,6 +414,11 @@ pub fn main() !void {
                 _ = event_json.object.fetchSwapRemove("userId").?.value.string;
                 _ = event_json.object.fetchSwapRemove("subCount").?.value.integer;
                 _ = event_json.object.fetchSwapRemove("pos").?.value.integer;
+            } else if (mem.eql(u8, event_type_name, "labelCreate")) {
+                events_bytesize += @sizeOf(Event.LabelCreate);
+                _ = event_json.object.fetchSwapRemove("labelId").?.value.string;
+                _ = event_json.object.fetchSwapRemove("userId").?.value.string;
+                addString(&db, event_json.object.fetchSwapRemove("text").?.value.string);
             } else {
                 log.err("unknown event type '{s}'", .{event_type_name});
             }
@@ -491,6 +529,8 @@ pub fn main() !void {
                 log.err("unknown Player key: '{s}'", .{root_key});
             }
         } else if (mem.startsWith(u8, root_key, "Playlist.")) {
+            play_queue_len += 1;
+            play_queue_bytesize += @sizeOf(PlayQueueItem);
             // This is the main play queue. Each of these are queue items.
             var pq_json = try std.json.parseFromSliceLeaky(std.json.Value, arena, root_value.string, .{});
             _ = pq_json.object.fetchSwapRemove("id").?.value.string;
@@ -516,6 +556,8 @@ pub fn main() !void {
             }
         } else if (mem.startsWith(u8, root_key, "StoredPlaylist.")) {
             // These are queue items in a playlist other than the main play queue.
+            playlist_items_len += 1;
+            playlist_items_bytesize += @sizeOf(PlaylistItem);
             // `root_key` looks like this:
             // StoredPlaylist.3t9lhRClIGQZYCmGhO_fQiGfAU1wR5bJ.22TskRwXS4hG-oVhzNCvPRm439Q_SpHr
             // The first id is the playlist id and the second id is redundant with id below.
@@ -529,6 +571,8 @@ pub fn main() !void {
                 log.err("unknown key for play queue item '{s}': '{s}'", .{ root_key, k });
             }
         } else if (mem.startsWith(u8, root_key, "StoredPlaylistMeta.")) {
+            playlists_bytesize += @sizeOf(Playlist);
+            playlists_len += 1;
             // metadata of a playlist
             var pl_json = try std.json.parseFromSliceLeaky(std.json.Value, arena, root_value.string, .{});
             _ = pl_json.object.fetchSwapRemove("id").?.value.string;
@@ -566,7 +610,11 @@ pub fn main() !void {
         //fingerprint_bytesize +
         labels_bytesize +
         @sizeOf(Scalars) +
-        db.string_bytes.items.len;
+        label_sets_bytesize +
+        db.string_bytes.items.len +
+        play_queue_bytesize +
+        playlist_items_bytesize +
+        playlists_bytesize;
 
     var bw = std.io.bufferedWriter(std.io.getStdOut().writer());
     const w = bw.writer();
@@ -574,26 +622,28 @@ pub fn main() !void {
     try w.print(
         \\Stats:
         \\
-        \\     total events: {[events_len]}
-        \\    total strings: {[strings_len]}
-        \\     total tracks: {[tracks_len]}
-        \\     total labels: {[labels_len]}
-        \\ total label sets: {[label_sets_len]}
-        \\total queue items: TODO
-        \\  total playlists: TODO
-        \\      total users: TODO
+        \\        total events: {[events_len]}
+        \\       total strings: {[strings_len]}
+        \\        total tracks: {[tracks_len]}
+        \\        total labels: {[labels_len]}
+        \\    total label sets: {[label_sets_len]}
+        \\   total queue items: {[play_queue_len]}
+        \\     total playlists: {[playlists_len]}
+        \\total playlist items: {[playlist_items_len]}
+        \\         total users: TODO
         \\
-        \\     labels bytes: {[labels_bytes]}
-        \\  label set bytes: {[label_sets_bytes]}
-        \\ queue item bytes: TODO
-        \\   playlist bytes: TODO
-        \\      users bytes: TODO
-        \\     events bytes: {[events_bytes]}
-        \\    strings bytes: {[strings_bytes]}
-        \\     tracks bytes: {[tracks_bytes]}
-        \\fingerprint bytes: {[fingerprint_bytes]} (not included in total)
+        \\       labels bytes: {[labels_bytes]}
+        \\    label set bytes: {[label_sets_bytes]}
+        \\   queue item bytes: {[play_queue_bytes]}
+        \\playlist item bytes: {[playlist_items_bytes]}
+        \\     playlist bytes: {[playlists_bytes]}
+        \\        users bytes: TODO
+        \\       events bytes: {[events_bytes]}
+        \\      strings bytes: {[strings_bytes]}
+        \\       tracks bytes: {[tracks_bytes]}
+        \\  fingerprint bytes: {[fingerprint_bytes]} (not included in total)
         \\
-        \\      total bytes: {[total_bytes]}
+        \\        total bytes: {[total_bytes]}
         \\
     , .{
         .events_len = events_len,
@@ -608,6 +658,12 @@ pub fn main() !void {
         .labels_bytes = labels_bytesize,
         .fingerprint_bytes = fingerprint_bytesize,
         .total_bytes = total_bytesize,
+        .play_queue_len = play_queue_len,
+        .play_queue_bytes = play_queue_bytesize,
+        .playlist_items_len = playlist_items_len,
+        .playlist_items_bytes = playlist_items_bytesize,
+        .playlists_len = playlists_len,
+        .playlists_bytes = playlists_bytesize,
     });
 
     try bw.flush();

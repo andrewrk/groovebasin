@@ -62,7 +62,6 @@ const InternalSession = struct {
 // TODO: These are only pub for the db subsystem to access. consider a more constrained inter-module api.
 pub var strings: StringPool = undefined;
 pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
-var username_to_user_id: std.ArrayHashMapUnmanaged(StringPool.Index, Id, StringsContext, true) = .{};
 var sessions: AutoArrayHashMap(Id, InternalSession) = undefined;
 var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
@@ -96,20 +95,9 @@ pub fn init() !void {
     sessions = AutoArrayHashMap(Id, InternalSession).init(g.gpa);
 }
 pub fn deinit() void {
-    username_to_user_id.deinit(g.gpa);
     strings.deinit();
     user_accounts.deinit();
     sessions.deinit();
-}
-
-pub fn handleLoaded() !void {
-    try username_to_user_id.ensureTotalCapacity(g.gpa, user_accounts.count());
-    var it = user_accounts.iterator();
-    while (it.next()) |kv| {
-        const id = kv.key_ptr.*;
-        const account = kv.value_ptr;
-        _ = username_to_user_id.putAssumeCapacity(account.username, id);
-    }
 }
 
 pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
@@ -183,7 +171,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
         return;
     }
 
-    if (username_to_user_id.getAdapted(username, StringsAdaptedContext{})) |target_user_id| {
+    if (lookupAccountByUsername(username)) |target_user_id| {
         // Login check.
         const target_account = getUserAccount(target_user_id);
         try checkPassword(target_account, password);
@@ -198,7 +186,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
         }
     } else {
         // change username, change password. Sorta like "creating an account".
-        try changeUsername(session.user_id, session_account, username);
+        session_account.username = try strings.putWithoutDeduplication(username);
         changePassword(session_account, password);
         session_account.registration_stage = .named_by_user;
     }
@@ -230,13 +218,6 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
     if (!std.mem.eql(u8, &hash, &account.password_hash.hash)) return error.InvalidLogin;
 }
 
-fn changeUsername(user_id: Id, account: *UserAccount, new_username_str: []const u8) !void {
-    const new_username = try strings.putWithoutDeduplication(new_username_str);
-    std.debug.assert(username_to_user_id.swapRemove(account.username));
-    account.username = new_username;
-    username_to_user_id.putAssumeCapacityNoClobber(account.username, user_id);
-}
-
 pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !void {
     const account = try getSessionForEditing(changes, client_id);
     account.claims_to_be_streaming = is_streaming;
@@ -247,6 +228,16 @@ pub fn haveAdminUser() bool {
         if (user.permissions.admin) return true;
     }
     return false;
+}
+
+fn lookupAccountByUsername(username: []const u8) ?Id {
+    var it = user_accounts.iterator();
+    while (it.next()) |kv| {
+        const user_id = kv.key_ptr.*;
+        const account = kv.value_ptr;
+        if (std.mem.eql(u8, strings.getString(account.username), username)) return user_id;
+    }
+    return null;
 }
 
 fn createGuestAccount(changes: *db.Changes) !Id {
@@ -339,9 +330,9 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
         }
 
         const old_username = strings.getString(requesting_account.username);
-        if (!std.mem.eql(u8, old_username, new_username)) {
+        if (!std.mem.eql(u8, old_username, new_username) and lookupAccountByUsername(new_username) == null) {
             // This is also a feature of the approve workflow.
-            try changeUsername(requesting_user_id, requesting_account, new_username);
+            requesting_account.username = try strings.putWithoutDeduplication(new_username);
         }
     }
 
@@ -420,11 +411,8 @@ fn createAccount(
 ) !Id {
     try user_accounts.ensureUnusedCapacity(1);
     try changes.user_accounts.ensureUnusedCapacity(1);
-    try username_to_user_id.ensureUnusedCapacity(g.gpa, 1);
     try strings.ensureUnusedCapacity(username_str.len);
 
-    const by_username_gop = username_to_user_id.getOrPutAssumeCapacityAdapted(username_str, StringsAdaptedContext{});
-    if (by_username_gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
     const username = strings.putWithoutDeduplicationAssumeCapacity(username_str);
 
     const user_id = Id.random();
@@ -437,8 +425,6 @@ fn createAccount(
         .registration_stage = registration_stage,
         .permissions = permissions,
     };
-    by_username_gop.key_ptr.* = username;
-    by_username_gop.value_ptr.* = user_id;
     changes.user_accounts.putAssumeCapacity(user_id, {});
     changes.broadcastChanges(.users);
 
@@ -465,8 +451,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
 fn deleteAccount(changes: *db.Changes, user_id: Id) !void {
     try changes.user_accounts.put(user_id, {});
     changes.broadcastChanges(.users);
-    const account = user_accounts.fetchSwapRemove(user_id).?.value;
-    std.debug.assert(username_to_user_id.swapRemove(account.username));
+    std.debug.assert(user_accounts.swapRemove(user_id));
 }
 
 fn getSession(client_id: Id) *const InternalSession {

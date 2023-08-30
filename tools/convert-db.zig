@@ -284,10 +284,10 @@ pub fn main() !void {
                 _ = event_json.object.fetchSwapRemove("userId").?.value.string;
             } else if (mem.eql(u8, event_type_name, "streamStop")) {
                 events_bytesize += @sizeOf(Event.StreamStop);
-                _ = event_json.object.fetchSwapRemove("userId").?.value.string;
+                _ = event_json.object.fetchSwapRemove("userId");
             } else if (mem.eql(u8, event_type_name, "streamStart")) {
                 events_bytesize += @sizeOf(Event.StreamStart);
-                _ = event_json.object.fetchSwapRemove("userId").?.value.string;
+                _ = event_json.object.fetchSwapRemove("userId");
             } else if (mem.eql(u8, event_type_name, "play")) {
                 events_bytesize += @sizeOf(Event.Play);
                 _ = event_json.object.fetchSwapRemove("userId").?.value.string;
@@ -399,7 +399,7 @@ pub fn main() !void {
             _ = ldir_json.object.fetchSwapRemove("dirName").?.value.string;
             _ = ldir_json.object.fetchSwapRemove("entries").?.value.object;
             _ = ldir_json.object.fetchSwapRemove("dirEntries").?.value.object;
-            _ = ldir_json.object.fetchSwapRemove("mtime").?.value.string;
+            _ = ldir_json.object.fetchSwapRemove("mtime");
 
             for (ldir_json.object.keys()) |k| {
                 log.err("unknown key for LibraryDir '{s}': '{s}'", .{ root_key, k });

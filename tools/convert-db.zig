@@ -2,6 +2,7 @@ const std = @import("std");
 const log = std.log;
 const mem = std.mem;
 const Allocator = std.mem.Allocator;
+const assert = std.debug.assert;
 
 /// milliseconds since posix epoch
 const Timestamp = enum(u64) { _ };
@@ -134,16 +135,10 @@ const Track = struct {
     replay_gain_track_peak: f32,
     //fingerprint: FingerprintIndex,
     play_count: u32,
-    /// TODO
-    labels: LabelIndex,
+    labels: Db.LabelSet,
 };
 
 const FingerprintIndex = enum(u32) {
-    none = std.math.maxInt(u32),
-    _,
-};
-
-const LabelIndex = enum(u32) {
     none = std.math.maxInt(u32),
     _,
 };
@@ -180,7 +175,45 @@ const Db = struct {
     /// A bunch of flattened arrays, each prefixed with the length.
     fingerprint_integers: std.ArrayListUnmanaged(u32) = .{},
 
+    labels: std.ArrayListUnmanaged(Label) = .{},
+    /// A flat array used for storing sets of labels. Each set is prefixed with the length.
+    /// Each integer is
+    label_refs: std.ArrayListUnmanaged(u32) = .{},
+    /// Maps set of labels to index into `label_refs`.
+    label_sets: std.HashMapUnmanaged(
+        LabelSet,
+        void,
+        LabelSet.HashContext,
+        std.hash_map.default_max_load_percentage,
+    ) = .{},
+
     arena: std.mem.Allocator,
+
+    /// Index into `label_refs`. At this index is a length followed by that many label ids.
+    pub const LabelSet = enum(u32) {
+        none = std.math.maxInt(u32),
+        _,
+
+        const HashContext = struct {
+            db: *Db,
+
+            pub fn hash(self: @This(), x: LabelSet) u64 {
+                const label_refs = self.db.label_refs.items;
+                const len = label_refs[@intFromEnum(x)];
+                const slice = label_refs[@intFromEnum(x) + 1 ..][0..len];
+                return std.hash.Wyhash.hash(0, std.mem.sliceAsBytes(slice));
+            }
+
+            pub fn eql(self: @This(), a: LabelSet, b: LabelSet) bool {
+                const label_refs = self.db.label_refs.items;
+                const len_a = label_refs[@intFromEnum(a)];
+                const len_b = label_refs[@intFromEnum(b)];
+                const slice_a = label_refs[@intFromEnum(a) + 1 ..][0..len_a];
+                const slice_b = label_refs[@intFromEnum(b) + 1 ..][0..len_b];
+                return std.mem.eql(u32, slice_a, slice_b);
+            }
+        };
+    };
 
     fn getOrPutString(
         db: *Db,
@@ -221,6 +254,28 @@ const Db = struct {
             return @enumFromInt(str_index);
         }
     }
+
+    /// Uses the last len integers of db.label_refs as the key.
+    /// Asserts the index before that contains the length.
+    fn getOrPutLabelSet(
+        db: *Db,
+        gpa: Allocator,
+        len: usize,
+    ) Allocator.Error!LabelSet {
+        const label_refs = &db.label_refs;
+        const start_index = label_refs.items.len - len - 1;
+        assert(label_refs.items[start_index] == len);
+        std.mem.sortUnstable(u32, label_refs.items[start_index + 1 ..], {}, std.sort.asc(u32));
+        const key: LabelSet = @enumFromInt(start_index);
+        const gop = try db.label_sets.getOrPutContext(gpa, key, .{ .db = db });
+        if (gop.found_existing) {
+            label_refs.shrinkRetainingCapacity(start_index);
+            return gop.key_ptr.*;
+        } else {
+            gop.key_ptr.* = key;
+            return key;
+        }
+    }
 };
 
 pub fn main() !void {
@@ -233,6 +288,8 @@ pub fn main() !void {
     const bytes = try std.fs.cwd().readFileAlloc(arena, input_json_file_name, 1_000_000_000);
     const json = try std.json.parseFromSliceLeaky(std.json.Value, arena, bytes, .{});
 
+    var label_id_to_index = std.StringHashMap(u32).init(arena);
+
     var db: Db = .{
         .arena = arena,
     };
@@ -242,9 +299,6 @@ pub fn main() !void {
 
     var tracks_len: usize = 0;
     var tracks_bytesize: usize = 0;
-
-    var labels_len: usize = 0;
-    var labels_bytesize: usize = 0;
 
     for (json.object.keys(), json.object.values()) |root_key, root_value| {
         if (mem.startsWith(u8, root_key, "Events.")) {
@@ -335,13 +389,19 @@ pub fn main() !void {
                 log.err("unknown key for event type '{s}': '{s}'", .{ event_type_name, k });
             }
         } else if (mem.startsWith(u8, root_key, "Label.")) {
-            labels_len += 1;
-            labels_bytesize += @sizeOf(Label);
             var label_json = try std.json.parseFromSliceLeaky(std.json.Value, arena, root_value.string, .{});
             // A label's ID is its index in the labels array.
-            _ = label_json.object.fetchSwapRemove("id").?.value.string;
-            addString(&db, label_json.object.fetchSwapRemove("name").?.value.string);
-            _ = label_json.object.fetchSwapRemove("color").?.value.string;
+            const id = label_json.object.fetchSwapRemove("id").?.value.string;
+            const name = db.getOrPutString(arena, label_json.object.fetchSwapRemove("name").?.value.string) catch @panic("OOM");
+            const color = label_json.object.fetchSwapRemove("color").?.value.string;
+
+            _ = color; // TODO
+            try db.labels.append(arena, .{
+                .name = name,
+                .color = undefined,
+            });
+            const label_index: u32 = @intCast(db.labels.items.len - 1);
+            try label_id_to_index.put(id, label_index);
 
             for (label_json.object.keys()) |k| {
                 log.err("unknown key for label '{s}': '{s}'", .{ root_key, k });
@@ -387,8 +447,16 @@ pub fn main() !void {
                 }
             }
             _ = track_json.object.fetchSwapRemove("playCount"); // integer, null, or missing
-            // it's map of label ids
-            _ = track_json.object.fetchSwapRemove("labels").?.value.object;
+            const labels_map = track_json.object.fetchSwapRemove("labels").?.value.object;
+            if (labels_map.keys().len > 0) {
+                try db.label_refs.ensureUnusedCapacity(arena, labels_map.keys().len + 1);
+                db.label_refs.appendAssumeCapacity(@intCast(labels_map.keys().len));
+                for (labels_map.keys()) |label_id| {
+                    const label_index = label_id_to_index.get(label_id).?;
+                    db.label_refs.appendAssumeCapacity(label_index);
+                }
+                _ = db.getOrPutLabelSet(arena, labels_map.keys().len) catch @panic("OOM");
+            }
 
             for (track_json.object.keys()) |k| {
                 log.err("unknown key for track '{s}': '{s}'", .{ root_key, k });
@@ -490,6 +558,8 @@ pub fn main() !void {
     }
 
     const fingerprint_bytesize = db.fingerprint_integers.items.len * @sizeOf(u32);
+    const labels_bytesize = db.labels.items.len * @sizeOf(Label);
+    const label_sets_bytesize = db.label_refs.items.len * @sizeOf(u32);
 
     const total_bytesize = events_bytesize +
         tracks_bytesize +
@@ -508,13 +578,13 @@ pub fn main() !void {
         \\    total strings: {[strings_len]}
         \\     total tracks: {[tracks_len]}
         \\     total labels: {[labels_len]}
-        \\ total label sets: TODO
+        \\ total label sets: {[label_sets_len]}
         \\total queue items: TODO
         \\  total playlists: TODO
         \\      total users: TODO
         \\
         \\     labels bytes: {[labels_bytes]}
-        \\  label set bytes: TODO
+        \\  label set bytes: {[label_sets_bytes]}
         \\ queue item bytes: TODO
         \\   playlist bytes: TODO
         \\      users bytes: TODO
@@ -527,12 +597,14 @@ pub fn main() !void {
         \\
     , .{
         .events_len = events_len,
-        .strings_len = db.string_table.count(),
         .events_bytes = events_bytesize,
+        .strings_len = db.string_table.count(),
         .strings_bytes = db.string_bytes.items.len,
+        .label_sets_len = db.label_sets.count(),
+        .label_sets_bytes = label_sets_bytesize,
         .tracks_len = tracks_len,
         .tracks_bytes = tracks_bytesize,
-        .labels_len = labels_len,
+        .labels_len = db.labels.items.len,
         .labels_bytes = labels_bytesize,
         .fingerprint_bytes = fingerprint_bytesize,
         .total_bytes = total_bytesize,

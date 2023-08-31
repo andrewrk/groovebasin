@@ -122,10 +122,11 @@ pub fn login(changes: *db.Changes, client_id: Id, username: []const u8, password
         } else return err;
     };
 }
-fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password: []u8) !void {
+fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, password: []u8) !void {
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
+    const username = try strings.put(g.gpa, username_str);
 
     const session = try sessions.getForEditing(changes, client_id);
     const session_account = try getUserAccountForEditing(changes, session.user_id);
@@ -146,7 +147,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
     //        leaving no trace that it ever existed.
     // Perhaps these should have been different APIs.
 
-    if (strings.eql(session_account.username, username)) {
+    if (session_account.username == username) {
         // If you're trying to login to yourself, it always works.
         // Use this to change your password.
         changePassword(session_account, password);
@@ -168,7 +169,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
         }
     } else {
         // change username, change password. Sorta like "creating an account".
-        session_account.username = try strings.put(g.gpa, username);
+        session_account.username = username;
         changePassword(session_account, password);
         session_account.registration_stage = .named_by_user;
     }
@@ -203,12 +204,12 @@ pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !vo
     account.claims_to_be_streaming = is_streaming;
 }
 
-fn lookupAccountByUsername(username: []const u8) ?Id {
+fn lookupAccountByUsername(username: StringPool.Index) ?Id {
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
-        if (strings.eql(account.username, username)) return user_id;
+        if (account.username == username) return user_id;
     }
     return null;
 }
@@ -280,7 +281,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
         var requesting_user_id = approval.id;
         const replace_user_id = approval.replaceId orelse requesting_user_id;
         const is_approved = approval.approved;
-        const new_username = approval.name;
+        const new_username_str = approval.name;
 
         if (!user_accounts.contains(requesting_user_id)) {
             log.warn("ignoring bogus requesting user id: {}", .{replace_user_id});
@@ -309,11 +310,17 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_account.registration_stage = .approved;
         }
 
-        if (!strings.eql(requesting_account.username, new_username) and
-            lookupAccountByUsername(new_username) == null)
-        {
+        const old_len = strings.len();
+        const new_username = try strings.put(g.gpa, new_username_str);
+        const is_newly_added = strings.len() > old_len;
+        if (requesting_account.username != new_username) {
             // This is also a feature of the approve workflow.
-            requesting_account.username = try strings.put(g.gpa, new_username);
+            // The admin edited the name.
+            if (is_newly_added) {
+                requesting_account.username = new_username;
+            } else {
+                log.warn("ignoring attempt by admin to rename user to cause a username collision: {s}", .{new_username_str});
+            }
         }
     }
 }

@@ -59,10 +59,8 @@ const InternalSession = struct {
     claims_to_be_streaming: bool = false,
 };
 
-// TODO: These are only pub for the db subsystem to access. consider a more constrained inter-module api.
-pub var strings: StringPool = .{};
-pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var sessions: db.Database(Id, InternalSession, .sessions) = undefined;
+var user_accounts: db.Database(Id, UserAccount, .users) = undefined;
 var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
@@ -73,13 +71,12 @@ var guest_perms: InternalPermissions = .{
 };
 
 pub fn init() !void {
-    user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
     sessions = db.Database(Id, InternalSession, .sessions).init(g.gpa);
+    user_accounts = db.Database(Id, UserAccount, .users).init(g.gpa);
 }
 pub fn deinit() void {
-    strings.deinit(g.gpa);
-    user_accounts.deinit();
     sessions.deinit();
+    user_accounts.deinit();
 }
 
 pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
@@ -104,7 +101,7 @@ pub fn getUserId(client_id: Id) Id {
     return sessions.get(client_id).user_id;
 }
 pub fn getPermissions(user_id: Id) InternalPermissions {
-    return getUserAccount(user_id).permissions;
+    return user_accounts.get(user_id).permissions;
 }
 
 pub fn logout(changes: *db.Changes, client_id: Id) !void {
@@ -126,10 +123,10 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, pass
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
-    const username = try strings.put(g.gpa, username_str);
+    const username = try user_accounts.strings.put(g.gpa, username_str);
 
     const session = try sessions.getForEditing(changes, client_id);
-    const session_account = try getUserAccountForEditing(changes, session.user_id);
+    const session_account = try user_accounts.getForEditing(changes, session.user_id);
 
     // These things can happen here:
     // 1. session username == given username
@@ -156,7 +153,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, pass
 
     if (lookupAccountByUsername(username)) |target_user_id| {
         // Login check.
-        const target_account = getUserAccount(target_user_id);
+        const target_account = user_accounts.get(target_user_id);
         try checkPassword(target_account, password);
         // You're in.
         if (@intFromEnum(session_account.registration_stage) >= @intFromEnum(RegistrationStage.named_by_user)) {
@@ -223,10 +220,14 @@ fn createGuestAccount(changes: *db.Changes) !Id {
 }
 
 pub fn ensureAdminUser(changes: *db.Changes) !void {
-    for (user_accounts.values()) |*user| {
-        if (user.permissions.admin) {
-            log.warn("ignoring ensureAdminUser. there's already an admin user.", .{});
-            return;
+    {
+        var it = user_accounts.iterator();
+        while (it.next()) |kv| {
+            const account = kv.value_ptr;
+            if (account.permissions.admin) {
+                log.warn("ignoring ensureAdminUser. there's already an admin user.", .{});
+                return;
+            }
         }
     }
 
@@ -263,7 +264,7 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
 
 pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
     const user_id = getUserId(client_id);
-    const account = try getUserAccountForEditing(changes, user_id);
+    const account = try user_accounts.getForEditing(changes, user_id);
     switch (account.registration_stage) {
         .named_by_user => {
             account.registration_stage = .requested_approval;
@@ -291,7 +292,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             log.warn("ignoring bogus replace user id: {}", .{replace_user_id});
             continue;
         }
-        var requesting_account = try getUserAccountForEditing(changes, requesting_user_id);
+        var requesting_account = try user_accounts.getForEditing(changes, requesting_user_id);
         if (requesting_account.registration_stage != .requested_approval) {
             log.warn("ignoring approve decision for not-requested user id: {}", .{requesting_user_id});
             continue;
@@ -305,14 +306,14 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
         if (replace_user_id.value != requesting_user_id.value) {
             try mergeAccounts(changes, requesting_user_id, replace_user_id);
             requesting_user_id = replace_user_id;
-            requesting_account = try getUserAccountForEditing(changes, requesting_user_id);
+            requesting_account = try user_accounts.getForEditing(changes, requesting_user_id);
         } else {
             requesting_account.registration_stage = .approved;
         }
 
-        const old_len = strings.len();
-        const new_username = try strings.put(g.gpa, new_username_str);
-        const is_newly_added = strings.len() > old_len;
+        const old_len = user_accounts.strings.len();
+        const new_username = try user_accounts.strings.put(g.gpa, new_username_str);
+        const is_newly_added = user_accounts.strings.len() > old_len;
         if (requesting_account.username != new_username) {
             // This is also a feature of the approve workflow.
             // The admin edited the name.
@@ -332,7 +333,7 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
                 log.warn("ignoring bogus userid: {}", .{user_id});
                 return;
             }
-            const account = try getUserAccountForEditing(changes, user_id);
+            const account = try user_accounts.getForEditing(changes, user_id);
             account.permissions = convertPermsissions(perms);
         },
         .guest => {
@@ -340,14 +341,9 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
             //changes.guest_perms = true;
             var it = user_accounts.iterator();
             while (it.next()) |kv| {
-                const user_id = kv.key_ptr.*;
                 const account = kv.value_ptr;
                 if (account.registration_stage == .approved) continue;
-
-                try changes.user_accounts.put(user_id, {});
-                changes.broadcastChanges(.users);
-
-                account.permissions = guest_perms;
+                it.promoteForEditing(changes, kv).value_ptr.permissions = guest_perms;
             }
         },
     }
@@ -370,7 +366,7 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
             }
         }
         try events.tombstoneUser(changes, user_id);
-        try deleteAccount(changes, user_id);
+        user_accounts.remove(changes, user_id);
     }
 }
 
@@ -381,29 +377,20 @@ fn createAccount(
     registration_stage: RegistrationStage,
     permissions: InternalPermissions,
 ) !Id {
-    try user_accounts.ensureUnusedCapacity(1);
-    try changes.user_accounts.ensureUnusedCapacity(1);
-    const username = try strings.put(g.gpa, username_str);
+    const username = try user_accounts.strings.put(g.gpa, username_str);
 
-    const user_id = Id.random();
-    const gop = user_accounts.getOrPutAssumeCapacity(user_id);
-    if (gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
-    const user = gop.value_ptr;
-    user.* = UserAccount{
+    const user_id = Id.random(); // TODO: use generateIdAndPut() kinda thing.
+    try user_accounts.putNoClobber(changes, user_id, .{
         .username = username,
         .password_hash = password_hash,
         .registration_stage = registration_stage,
         .permissions = permissions,
-    };
-    changes.user_accounts.putAssumeCapacity(user_id, {});
-    changes.broadcastChanges(.users);
+    });
 
-    // publishing users event happens above this call.
     return user_id;
 }
 
 fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !void {
-    try changes.user_accounts.ensureUnusedCapacity(1);
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
@@ -413,24 +400,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
         }
     }
     try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
-    try deleteAccount(changes, Id{ .value = workaround_miscomiplation });
-}
-
-/// all sessions should be migrated off this user id before calling this.
-fn deleteAccount(changes: *db.Changes, user_id: Id) !void {
-    try changes.user_accounts.put(user_id, {});
-    changes.broadcastChanges(.users);
-    std.debug.assert(user_accounts.swapRemove(user_id));
-}
-
-fn getUserAccount(user_id: Id) *const UserAccount {
-    return user_accounts.getEntry(user_id).?.value_ptr;
-}
-fn getUserAccountForEditing(changes: *db.Changes, user_id: Id) !*UserAccount {
-    const account = user_accounts.getEntry(user_id).?.value_ptr;
-    try changes.user_accounts.put(user_id, {});
-    changes.broadcastChanges(.users);
-    return account;
+    user_accounts.remove(changes, Id{ .value = workaround_miscomiplation });
 }
 
 pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.IdMap(protocol.Session) {
@@ -462,14 +432,14 @@ pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(P
     out_version.* = Id.random();
 
     var result = IdOrGuestMap(PublicUserInfo){};
-    try result.map.ensureTotalCapacity(arena, user_accounts.count() + 1);
+    try result.map.ensureTotalCapacity(arena, user_accounts.table.count() + 1);
 
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
         result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
-            .name = strings.get(account.username),
+            .name = user_accounts.strings.get(account.username),
             .perms = convertPermsissions(account.permissions),
             .registration = switch (account.registration_stage) {
                 .guest_without_password, .guest_with_password => .guest,

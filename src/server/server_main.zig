@@ -151,24 +151,24 @@ pub fn main() anyerror!void {
 pub fn handleClientConnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    var changes = db.Changes.init(arena.allocator());
+    var changes = db.Changes{};
 
     // Welcome messages
     try encodeAndSend(client_id, .{ .time = getNow() });
     const err_maybe = users.handleClientConnected(&changes, client_id);
 
-    try changes.flush();
+    try changes.sendToClients(arena.allocator());
     return err_maybe;
 }
 pub fn handleClientDisconnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    var changes = db.Changes.init(arena.allocator());
+    var changes = db.Changes{};
 
     subscriptions.handleClientDisconnected(client_id);
     const err_maybe = users.handleClientDisconnected(&changes, client_id);
 
-    try changes.flush();
+    try changes.sendToClients(arena.allocator());
     return err_maybe;
 }
 
@@ -198,12 +198,11 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
     defer arena.deinit();
     const message = try parseMessage(arena.allocator(), message_bytes);
 
-    var changes = db.Changes.init(arena.allocator());
-    defer changes.deinit();
+    var changes = db.Changes{};
 
     const err_maybe = handleRequestImpl(&changes, client_id, &message);
 
-    try changes.flush();
+    try changes.sendToClients(arena.allocator());
     return err_maybe;
 }
 

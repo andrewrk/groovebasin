@@ -59,8 +59,8 @@ const InternalSession = struct {
     claims_to_be_streaming: bool = false,
 };
 
-var sessions: db.Database(Id, InternalSession, .sessions) = undefined;
-var user_accounts: db.Database(Id, UserAccount, .users) = undefined;
+pub var sessions: db.Database(Id, InternalSession, .sessions) = undefined;
+pub var user_accounts: db.Database(Id, UserAccount, .users) = undefined;
 var guest_perms: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,

@@ -180,7 +180,6 @@ fn readStringPool(reader: anytype, strings: *StringPool) !void {
     const len = try readLenBounded(reader, 1);
     if (len == 0) return error.DataCorruption; // 0-len string pool.
     try reader.readNoEof(try strings.buf.addManyAsSlice(g.gpa, len));
-    if (strings.buf.items[strings.len() - 1] != 0) return error.DataCorruption; // strings aren't null terminated.
     try strings.reindex(g.gpa);
 }
 

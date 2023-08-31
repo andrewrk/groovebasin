@@ -88,15 +88,23 @@ pub fn eql(self: @This(), index: Index, slice: []const u8) bool {
 
 /// Call this after directly modifying `buf`.
 /// This rebuilds the deduplication table.
+/// Returns `error.DataCorruption` if the data in `buf` cannot work.
 pub fn reindex(self: *@This(), allocator: Allocator) !void {
     self.dedup_table.clearRetainingCapacity();
     var start: usize = 0;
     for (self.buf.items, 0..) |c, i| {
         if (c != 0) continue;
-        try self.dedup_table.putNoClobberContext(allocator, @enumFromInt(start), {}, Context{ .pool = self });
+        if (try self.dedup_table.fetchPutContext(
+            allocator,
+            @enumFromInt(start),
+            {},
+            Context{ .pool = self },
+        ) != null) {
+            return error.DataCorruption; // duplicate strings.
+        }
         start = i + 1;
     }
-    std.debug.assert(start == self.buf.items.len);
+    if (start != self.buf.items.len) return error.DataCorruption; // strings aren't null terminated.
 }
 
 const Context = struct {

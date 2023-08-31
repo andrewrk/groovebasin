@@ -60,7 +60,7 @@ const InternalSession = struct {
 };
 
 // TODO: These are only pub for the db subsystem to access. consider a more constrained inter-module api.
-pub var strings: StringPool = undefined;
+pub var strings: StringPool = .{};
 pub var user_accounts: AutoArrayHashMap(Id, UserAccount) = undefined;
 var sessions: db.Database(Id, InternalSession, .sessions) = undefined;
 var guest_perms: InternalPermissions = .{
@@ -72,31 +72,12 @@ var guest_perms: InternalPermissions = .{
     .admin = false,
 };
 
-const StringsContext = struct {
-    pub fn hash(_: @This(), k: StringPool.Index) u32 {
-        return @truncate(std.hash.Wyhash.hash(0, strings.getString(k)));
-    }
-    pub fn eql(_: @This(), a: StringPool.Index, b: StringPool.Index, _: usize) bool {
-        if (a == b) return true;
-        return std.mem.eql(u8, strings.getString(a), strings.getString(b));
-    }
-};
-const StringsAdaptedContext = struct {
-    pub fn hash(_: @This(), k: []const u8) u32 {
-        return @truncate(std.hash.Wyhash.hash(0, k));
-    }
-    pub fn eql(_: @This(), a: []const u8, b: StringPool.Index, _: usize) bool {
-        return std.mem.eql(u8, a, strings.getString(b));
-    }
-};
-
 pub fn init() !void {
-    strings = StringPool.init(g.gpa);
     user_accounts = AutoArrayHashMap(Id, UserAccount).init(g.gpa);
     sessions = db.Database(Id, InternalSession, .sessions).init(g.gpa);
 }
 pub fn deinit() void {
-    strings.deinit();
+    strings.deinit(g.gpa);
     user_accounts.deinit();
     sessions.deinit();
 }
@@ -187,7 +168,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username: []const u8, password
         }
     } else {
         // change username, change password. Sorta like "creating an account".
-        session_account.username = try strings.putWithoutDeduplication(username);
+        session_account.username = try strings.put(g.gpa, username);
         changePassword(session_account, password);
         session_account.registration_stage = .named_by_user;
     }
@@ -332,7 +313,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             lookupAccountByUsername(new_username) == null)
         {
             // This is also a feature of the approve workflow.
-            requesting_account.username = try strings.putWithoutDeduplication(new_username);
+            requesting_account.username = try strings.put(g.gpa, new_username);
         }
     }
 }
@@ -395,7 +376,7 @@ fn createAccount(
 ) !Id {
     try user_accounts.ensureUnusedCapacity(1);
     try changes.user_accounts.ensureUnusedCapacity(1);
-    const username = try strings.putWithoutDeduplication(username_str);
+    const username = try strings.put(g.gpa, username_str);
 
     const user_id = Id.random();
     const gop = user_accounts.getOrPutAssumeCapacity(user_id);
@@ -481,7 +462,7 @@ pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(P
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
         result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
-            .name = strings.getString(account.username),
+            .name = strings.get(account.username),
             .perms = convertPermsissions(account.permissions),
             .registration = switch (account.registration_stage) {
                 .guest_without_password, .guest_with_password => .guest,

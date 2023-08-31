@@ -5,14 +5,16 @@ const json = std.json;
 
 const StringPool = @import("StringPool.zig");
 
-var strings: StringPool = undefined;
+/// TODO ask the client to defragment instead of doing anything with an allocator like this.
+var al_the_allocator: Allocator = undefined;
+var strings: StringPool = .{};
 
-pub fn init(allocator: Allocator) !void {
-    strings = StringPool.init(allocator);
+pub fn init(al: Allocator) !void {
+    al_the_allocator = al;
 }
 
 pub fn deinit() void {
-    strings.deinit();
+    strings.deinit(al_the_allocator);
 }
 
 pub const Value = union(enum) {
@@ -49,7 +51,7 @@ pub const Value = union(enum) {
                 try jw.write(writeFixed(&buf, f.int, f.frac));
             },
             .dynamic => |offset| {
-                try jw.write(strings.getString(offset));
+                try jw.write(strings.get(offset));
             },
         }
     }
@@ -64,7 +66,7 @@ pub const Value = union(enum) {
                 return writer.writeAll(writeFixed(&buf, f.int, f.frac));
             },
             .dynamic => |offset| {
-                return writer.writeAll(strings.getString(offset));
+                return writer.writeAll(strings.get(offset));
             },
         }
     }
@@ -122,7 +124,7 @@ fn dynamicFallback(s: []const u8, magnitude: usize) !Value {
     for (s[magnitude..]) |c| {
         _ = try getCharValue(c);
     }
-    return .{ .dynamic = try strings.putWithoutDeduplication(s) };
+    return .{ .dynamic = try strings.put(al_the_allocator, s) };
 }
 
 fn writeFixed(out_buf: *[8]u8, int_value: u16, frac_value: u16) []const u8 {
@@ -185,17 +187,17 @@ pub fn order(a: Value, b: Value) Order {
         return std.math.order(a_u32, b_u32);
     }
     if (a == .dynamic and b == .dynamic) {
-        const a_str = strings.getString(a.dynamic);
-        const b_str = strings.getString(b.dynamic);
+        const a_str = strings.get(a.dynamic);
+        const b_str = strings.get(b.dynamic);
         return std.mem.order(u8, a_str, b_str);
     }
     if (a == .fixed and b == .dynamic) {
         var buf: [8]u8 = undefined; // "~~122UUU"
-        const b_str = strings.getString(b.dynamic);
+        const b_str = strings.get(b.dynamic);
         return std.mem.order(u8, writeFixed(&buf, a.fixed.int, a.fixed.frac), b_str);
     }
     if (a == .dynamic and b == .fixed) {
-        const a_str = strings.getString(a.dynamic);
+        const a_str = strings.get(a.dynamic);
         var buf: [8]u8 = undefined; // "~~122UUU"
         return std.mem.order(u8, a_str, writeFixed(&buf, b.fixed.int, b.fixed.frac));
     }
@@ -244,7 +246,7 @@ pub fn above(low: Value) error{OutOfMemory}!Value {
             }
         },
         .dynamic => |s| {
-            const low_str = strings.getString(s);
+            const low_str = strings.get(s);
 
             const magnitude = getMagnitude(low_str) catch unreachable;
             const implicit_decimal_point = magnitude + magnitude + 1;
@@ -252,8 +254,8 @@ pub fn above(low: Value) error{OutOfMemory}!Value {
             // Allocate two more bytes of scratch space for bumping up the magnitude. example:
             //  low_str:   "~~~zzzFFF"
             //      buf: "~~~~1000"
-            const buf = try strings.buf.allocator.alloc(u8, implicit_decimal_point + 2);
-            defer strings.buf.allocator.free(buf);
+            const buf = try al_the_allocator.alloc(u8, implicit_decimal_point + 2);
+            defer al_the_allocator.free(buf);
 
             var i: usize = 2 + implicit_decimal_point - 1;
             var carry: u8 = 1;
@@ -378,7 +380,7 @@ fn expectKeeseValue(expected: []const u8, value: Value) !void {
             try testing.expectEqualStrings(expected, got);
         },
         .dynamic => |s| {
-            const got = strings.getString(s);
+            const got = strings.get(s);
             try testing.expectEqualStrings(expected, got);
         },
     }

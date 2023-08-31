@@ -32,26 +32,25 @@ pub const InternalEvent = struct {
 const StringPool = @import("StringPool.zig");
 
 var current_version: Id = undefined;
-var strings: StringPool = undefined;
+var strings: StringPool = .{};
 var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
 
 var deleted_text: StringPool.Index = undefined;
 
 pub fn init() !void {
     current_version = Id.random();
-    strings = StringPool.init(g.gpa);
     events = AutoArrayHashMap(Id, InternalEvent).init(g.gpa);
 
-    deleted_text = try strings.putWithoutDeduplication("<deleted>");
+    deleted_text = try strings.put(g.gpa, "<deleted>");
 }
 
 pub fn deinit() void {
-    strings.deinit();
+    strings.deinit(g.gpa);
     events.deinit();
 }
 
 pub fn chat(arena: Allocator, user_id: Id, text: []const u8, is_slash_me: bool) !void {
-    try strings.ensureUnusedCapacity(text.len);
+    try strings.ensureUnusedCapacity(g.gpa, 1, text.len);
     try events.ensureUnusedCapacity(1);
     const sort_key = if (events.count() == 0)
         keese.starting_value
@@ -68,7 +67,7 @@ pub fn chat(arena: Allocator, user_id: Id, text: []const u8, is_slash_me: bool) 
         .who = .{ .user = user_id },
         .type = .{
             .chat = .{
-                .text = strings.putWithoutDeduplicationAssumeCapacity(text),
+                .text = strings.putAssumeCapacity(text),
                 .is_slash_me = is_slash_me,
             },
         },
@@ -122,7 +121,7 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
                 .sortKey = event.sort_key,
                 .type = .chat,
                 .userId = event.who,
-                .text = strings.getString(data.text),
+                .text = strings.get(data.text),
                 .displayClass = if (data.is_slash_me) .me else null,
             },
         });

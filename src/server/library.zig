@@ -16,8 +16,7 @@ const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
 var current_version: Id = undefined;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
-var strings: StringPool = undefined;
-var library_string_putter: StringPool.Putter = undefined;
+var strings: StringPool = .{};
 var music_directory: []const u8 = undefined;
 
 const Track = struct {
@@ -41,19 +40,16 @@ const Track = struct {
 pub fn init(music_directory_init: []const u8) !void {
     current_version = Id.random();
     tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
-    strings = StringPool.init(g.gpa);
-    library_string_putter = strings.initPutter();
     music_directory = music_directory_init;
 }
 
 pub fn deinit() void {
     tracks.deinit();
-    library_string_putter.deinit();
-    strings.deinit();
+    strings.deinit(g.gpa);
 }
 
 pub fn loadFromDisk() !void {
-    assert(.empty == try library_string_putter.putString(""));
+    assert(.empty == try strings.put(g.gpa, ""));
 
     // TODO: update libgroove to support openat so we can store the music_dir fd
     // only and not do the absolute file concatenation below
@@ -86,7 +82,7 @@ pub fn loadFromDisk() !void {
         }) |tag| {
             log.debug("  {s}={s}", .{ tag.key(), tag.value() });
         }
-        const track = try grooveFileToTrack(&library_string_putter, groove_file, entry.path);
+        const track = try grooveFileToTrack(groove_file, entry.path);
         try generateIdAndPut(&tracks, track);
     }
 }
@@ -113,7 +109,6 @@ fn trim(s: []const u8) []const u8 {
 }
 
 fn grooveFileToTrack(
-    string_pool: *StringPool.Putter,
     groove_file: *Groove.File,
     file_path: []const u8,
 ) !Track {
@@ -124,22 +119,22 @@ fn grooveFileToTrack(
         getMetadata(groove_file, "TPOS") orelse
         "");
     return Track{
-        .file_path = try string_pool.putString(file_path),
+        .file_path = try strings.put(g.gpa, file_path),
 
-        .title = try string_pool.putString(trim(getMetadata(groove_file, "title") orelse
+        .title = try strings.put(g.gpa, trim(getMetadata(groove_file, "title") orelse
             filenameWithoutExt(file_path))),
 
         .artist = if (getMetadata(groove_file, "artist")) |s|
-            (try string_pool.putString(trim(s))).toOptional()
+            (try strings.put(g.gpa, trim(s))).toOptional()
         else
             .none,
 
         .composer = if (getMetadata(groove_file, "composer") orelse
-            getMetadata(groove_file, "TCM")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
+            getMetadata(groove_file, "TCM")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
 
-        .performer = if (getMetadata(groove_file, "performer")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
-        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
-        .album = if (getMetadata(groove_file, "album")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
+        .performer = if (getMetadata(groove_file, "performer")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .album = if (getMetadata(groove_file, "album")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
 
         .compilation = isCompilation(groove_file, "TCP") or
             isCompilation(groove_file, "TCMP") or
@@ -155,7 +150,7 @@ fn grooveFileToTrack(
 
         .duration = groove_file.duration(),
         .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch null) else null,
-        .genre = if (getMetadata(groove_file, "genre")) |s| (try string_pool.putString(trim(s))).toOptional() else .none,
+        .genre = if (getMetadata(groove_file, "genre")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
     };
 }
 
@@ -168,21 +163,21 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack)
     while (it.next()) |kv| {
         const id = kv.key_ptr.*;
         const track = kv.value_ptr.*;
-        result.map.putAssumeCapacityNoClobber(id, trackToSerializedForm(&strings, id, track));
+        result.map.putAssumeCapacityNoClobber(id, trackToSerializedForm(id, track));
     }
     return result;
 }
-fn trackToSerializedForm(string_pool: *StringPool, id: Id, track: Track) LibraryTrack {
+fn trackToSerializedForm(id: Id, track: Track) LibraryTrack {
     return .{
         .key = id,
-        .file = string_pool.getString(track.file_path),
-        .name = string_pool.getString(track.title),
-        .artistName = string_pool.getOptionalString(track.artist) orelse "",
-        .albumArtistName = string_pool.getOptionalString(track.album_artist) orelse "",
-        .albumName = string_pool.getOptionalString(track.album) orelse "",
-        .genre = string_pool.getOptionalString(track.genre) orelse "",
-        .composerName = string_pool.getOptionalString(track.composer) orelse "",
-        .performerName = string_pool.getOptionalString(track.performer) orelse "",
+        .file = strings.get(track.file_path),
+        .name = strings.get(track.title),
+        .artistName = strings.getOptional(track.artist) orelse "",
+        .albumArtistName = strings.getOptional(track.album_artist) orelse "",
+        .albumName = strings.getOptional(track.album) orelse "",
+        .genre = strings.getOptional(track.genre) orelse "",
+        .composerName = strings.getOptional(track.composer) orelse "",
+        .performerName = strings.getOptional(track.performer) orelse "",
         .track = track.track_number orelse 0,
         .trackCount = track.track_count orelse 0,
         .disc = track.disc_number orelse 0,
@@ -253,7 +248,7 @@ pub fn loadGrooveFile(library_key: Id) error{ OutOfMemory, TrackNotFound, LoadFa
     errdefer groove_file.destroy();
 
     const track = tracks.get(library_key) orelse return error.TrackNotFound;
-    const file_path = strings.getString(track.file_path);
+    const file_path = strings.get(track.file_path);
 
     const full_path = try std.fs.path.joinZ(g.gpa, &.{ music_directory, file_path });
     defer g.gpa.free(full_path);

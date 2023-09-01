@@ -7,6 +7,7 @@ const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
 const AutoArrayHashMap = std.AutoArrayHashMap;
 const assert = std.debug.assert;
 const Iovec = std.os.iovec;
+const IovecConst = std.os.iovec_const;
 
 const g = @import("global.zig");
 
@@ -29,22 +30,34 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 6,
+    dev_version: u16 = 7,
 };
 
-const database_index_size: usize = blk: {
-    comptime var size: usize = 0;
+const some_facts = blk: {
+    comptime var database_index_size: usize = 0;
+    comptime var number_of_dynamically_sized_sections: usize = 0;
     inline for (all_databases) |d| {
+        if (!@TypeOf(d.*).should_save_to_disk) continue;
         if (@TypeOf(d.*).has_strings) {
-            size += @sizeOf(u32);
+            database_index_size += @sizeOf(u32); // len
+            number_of_dynamically_sized_sections += 1; // data
         }
-        size += @sizeOf(u32);
+        database_index_size += @sizeOf(u32); // number of items
+        number_of_dynamically_sized_sections += 2; // keys, values
     }
-    break :blk size;
+    break :blk .{
+        .database_index_size = database_index_size,
+        .number_of_dynamically_sized_sections = number_of_dynamically_sized_sections,
+    };
 };
 
-pub fn load(db_path: []const u8) !void {
-    var header_buf: [@sizeOf(FileHeader) + database_index_size]u8 = undefined;
+var db_path: []const u8 = undefined;
+var db_path_tmp: []const u8 = undefined;
+pub fn load(path: []const u8) !void {
+    db_path = path;
+    db_path_tmp = try std.mem.concat(g.gpa, u8, &.{ db_path, ".tmp" });
+
+    var header_buf: [@sizeOf(FileHeader) + some_facts.database_index_size]u8 = undefined;
     const file = std.fs.cwd().openFile(db_path, .{}) catch |err| switch (err) {
         error.FileNotFound => {
             log.warn("no db found. starting from scratch", .{});
@@ -71,9 +84,10 @@ pub fn load(db_path: []const u8) !void {
     }
 
     var header_cursor: usize = @sizeOf(FileHeader);
-    var iovec_array: [database_index_size / @sizeOf(u32) + all_databases.len]Iovec = undefined;
+    var iovec_array: [some_facts.number_of_dynamically_sized_sections]Iovec = undefined;
     var i: usize = 0;
     inline for (all_databases) |d| {
+        if (!@TypeOf(d.*).should_save_to_disk) continue;
         if (@TypeOf(d.*).has_strings) {
             const len = try parseLen(&header_buf, &header_cursor, len_upper_bound);
             assert(d.strings.len() == 0);
@@ -105,9 +119,33 @@ pub fn load(db_path: []const u8) !void {
         }
     }
     assert(i == iovec_array.len);
+
+    try readvNoEof(file, &iovec_array);
+
+    inline for (all_databases) |d| {
+        if (!@TypeOf(d.*).should_save_to_disk) continue;
+        try d.table.reIndex(g.gpa);
+    }
+
+    log.info("loaded db bytes: {}", .{@sizeOf(FileHeader) + some_facts.database_index_size + totalIovecLen(&iovec_array)});
 }
 
-fn parseLen(header_buf: *[@sizeOf(FileHeader) + database_index_size]u8, cursor: *usize, len_upper_bound: usize) !u32 {
+fn readvNoEof(file: std.fs.File, iovecs: []Iovec) !void {
+    var expected_len = totalIovecLen(iovecs);
+    const found_len = try file.readvAll(iovecs);
+    if (found_len < expected_len) return error.EndOfStream;
+    assert(found_len == expected_len);
+}
+
+fn totalIovecLen(iovecs: anytype) usize {
+    var total: usize = 0;
+    for (iovecs) |iovec| {
+        total += iovec.iov_len;
+    }
+    return total;
+}
+
+fn parseLen(header_buf: *[@sizeOf(FileHeader) + some_facts.database_index_size]u8, cursor: *usize, len_upper_bound: usize) !u32 {
     const len = std.mem.bytesToValue(u32, header_buf[cursor.*..][0..@sizeOf(u32)]);
     if (len > len_upper_bound) {
         return error.DataCorruption; // db specifies a len that exceeds the file size.
@@ -116,8 +154,65 @@ fn parseLen(header_buf: *[@sizeOf(FileHeader) + database_index_size]u8, cursor: 
     return @intCast(len);
 }
 
-pub fn save(db_path: []const u8) !void {
-    _ = save; // TODO
+pub fn save() !void {
+    try saveTo(db_path_tmp);
+    try std.fs.cwd().rename(db_path_tmp, db_path);
+}
+fn saveTo(path: []const u8) !void {
+    const file = try std.fs.cwd().createFile(path, .{});
+    defer file.close();
+
+    var header_cursor: usize = 0;
+    var header_buf: [@sizeOf(FileHeader) + some_facts.database_index_size]u8 = undefined;
+    @memcpy(header_buf[header_cursor..][0..@sizeOf(FileHeader)], std.mem.asBytes(&FileHeader{}));
+    header_cursor += @sizeOf(FileHeader);
+
+    var iovec_array: [1 + some_facts.number_of_dynamically_sized_sections]IovecConst = undefined;
+    var i: usize = 0;
+    iovec_array[i] = .{
+        .iov_base = &header_buf,
+        .iov_len = header_buf.len,
+    };
+    i += 1;
+
+    inline for (all_databases) |d| {
+        if (!@TypeOf(d.*).should_save_to_disk) continue;
+        if (@TypeOf(d.*).has_strings) {
+            @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&d.strings.len()));
+            header_cursor += @sizeOf(u32);
+            const slice = d.strings.buf.items;
+            iovec_array[i] = .{
+                .iov_base = slice.ptr,
+                .iov_len = slice.len,
+            };
+            i += 1;
+        }
+
+        @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&@as(u32, @intCast(d.table.count()))));
+        header_cursor += @sizeOf(u32);
+        {
+            const slice = std.mem.sliceAsBytes(d.table.keys());
+            iovec_array[i] = .{
+                .iov_base = slice.ptr,
+                .iov_len = slice.len,
+            };
+            i += 1;
+        }
+        {
+            const slice = std.mem.sliceAsBytes(d.table.values());
+            iovec_array[i] = .{
+                .iov_base = slice.ptr,
+                .iov_len = slice.len,
+            };
+            i += 1;
+        }
+    }
+    assert(i == iovec_array.len);
+    assert(header_cursor == header_buf.len);
+
+    try file.writevAll(&iovec_array);
+
+    log.info("write db bytes: {}", .{totalIovecLen(&iovec_array)});
 }
 
 pub const Changes = struct {
@@ -127,7 +222,11 @@ pub const Changes = struct {
         self.subscriptions_to_broadcast[@intFromEnum(name)] = true;
     }
 
-    pub fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
+    pub fn flush(self: *@This(), arena: Allocator) !void {
+        try self.sendToClients(arena);
+        try save(); // TODO: debounce
+    }
+    fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
         for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
             if (!should_broadcast) continue;
             const name: SubscriptionTag = @enumFromInt(i);
@@ -138,9 +237,15 @@ pub const Changes = struct {
 
 //===== new API v3 for real this time =====
 
-pub fn Database(comptime Key: type, comptime Value: type, comptime name: SubscriptionTag) type {
+pub fn Database(
+    comptime Key: type,
+    comptime Value: type,
+    comptime name: SubscriptionTag,
+    comptime _should_save_to_disk: bool,
+) type {
     return struct {
         pub const has_strings = hasStrings(Value);
+        pub const should_save_to_disk = _should_save_to_disk;
 
         allocator: Allocator,
         table: AutoArrayHashMapUnmanaged(Key, Value) = .{},

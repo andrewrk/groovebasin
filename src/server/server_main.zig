@@ -157,7 +157,7 @@ pub fn handleClientConnected(client_id: Id) !void {
     try encodeAndSend(client_id, .{ .time = getNow() });
     const err_maybe = users.handleClientConnected(&changes, client_id);
 
-    try changes.sendToClients(arena.allocator());
+    try changes.flush(arena.allocator());
     return err_maybe;
 }
 pub fn handleClientDisconnected(client_id: Id) !void {
@@ -168,7 +168,7 @@ pub fn handleClientDisconnected(client_id: Id) !void {
     subscriptions.handleClientDisconnected(client_id);
     const err_maybe = users.handleClientDisconnected(&changes, client_id);
 
-    try changes.sendToClients(arena.allocator());
+    try changes.flush(arena.allocator());
     return err_maybe;
 }
 
@@ -202,7 +202,7 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
 
     const err_maybe = handleRequestImpl(&changes, client_id, &message);
 
-    try changes.sendToClients(arena.allocator());
+    try changes.flush(arena.allocator());
     return err_maybe;
 }
 

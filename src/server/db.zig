@@ -53,6 +53,8 @@ const some_facts = blk: {
 
 var db_path: []const u8 = undefined;
 var db_path_tmp: []const u8 = undefined;
+var persistent_db_is_dirty: bool = false;
+
 pub fn load(path: []const u8) !void {
     db_path = path;
     db_path_tmp = try std.mem.concat(g.gpa, u8, &.{ db_path, ".tmp" });
@@ -155,8 +157,10 @@ fn parseLen(header_buf: *[@sizeOf(FileHeader) + some_facts.database_index_size]u
 }
 
 pub fn save() !void {
+    if (!persistent_db_is_dirty) return;
     try saveTo(db_path_tmp);
     try std.fs.cwd().rename(db_path_tmp, db_path);
+    persistent_db_is_dirty = false;
 }
 fn saveTo(path: []const u8) !void {
     const file = try std.fs.cwd().createFile(path, .{});
@@ -215,6 +219,8 @@ fn saveTo(path: []const u8) !void {
     log.info("write db bytes: {}", .{totalIovecLen(&iovec_array)});
 }
 
+/// new old api.
+/// TODO: we should be able to just ask the dbs directly rather than keeping this separate bookkeeping object.
 pub const Changes = struct {
     subscriptions_to_broadcast: SubscriptionBoolArray = subscription_bool_array_initial_value,
 
@@ -224,7 +230,7 @@ pub const Changes = struct {
 
     pub fn flush(self: *@This(), arena: Allocator) !void {
         try self.sendToClients(arena);
-        try save(); // TODO: debounce
+        try save();
     }
     fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
         for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
@@ -266,15 +272,15 @@ pub fn Database(
             return self.table.getEntry(key).?.value_ptr;
         }
         pub fn getForEditing(self: *@This(), changes: *Changes, key: Key) !*Value {
-            changes.broadcastChanges(name);
+            setDirty(changes);
             return self.table.getEntry(key).?.value_ptr;
         }
         pub fn remove(self: *@This(), changes: *Changes, key: Key) void {
-            changes.broadcastChanges(name);
+            setDirty(changes);
             assert(self.table.swapRemove(key));
         }
         pub fn putNoClobber(self: *@This(), changes: *Changes, key: Key, value: Value) !void {
-            changes.broadcastChanges(name);
+            setDirty(changes);
             try self.table.putNoClobber(self.allocator, key, value);
         }
         pub fn contains(self: @This(), key: Key) bool {
@@ -307,10 +313,17 @@ pub fn Database(
             }
             pub fn promoteForEditing(self: @This(), changes: *Changes, kv: EntryConst) Entry {
                 assert(kv.key_ptr == self.current_kv.?.key_ptr);
-                changes.broadcastChanges(name);
+                setDirty(changes);
                 return self.current_kv.?;
             }
         };
+
+        fn setDirty(changes: *Changes) void {
+            changes.broadcastChanges(name);
+            if (should_save_to_disk) {
+                persistent_db_is_dirty = true;
+            }
+        }
     };
 }
 

@@ -262,7 +262,7 @@ fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groove
 
         .chat => |args| {
             try checkPermission(perms.control);
-            try events.chat(arena.allocator(), user_id, args.text, args.displayClass != null);
+            try events.chat(changes, user_id, args.text, args.displayClass != null);
         },
         .deleteTracks => @panic("TODO"),
         .autoDjOn => @panic("TODO"),

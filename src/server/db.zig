@@ -19,8 +19,11 @@ const SubscriptionBoolArray = [std.enums.directEnumArrayLen(SubscriptionTag, 0)]
 const subscription_bool_array_initial_value = std.enums.directEnumArrayDefault(SubscriptionTag, bool, false, 0, .{});
 
 const all_databases = .{
-    &@import("users.zig").sessions,
     &@import("users.zig").user_accounts,
+    &@import("users.zig").sessions,
+    &@import("library.zig").tracks,
+    //&@import("queue.zig").queue,
+    &@import("events.zig").events,
 };
 
 const FileHeader = extern struct {
@@ -30,7 +33,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 12,
+    dev_version: u16 = 15,
 };
 
 const some_facts = blk: {
@@ -271,6 +274,9 @@ pub fn Database(
         pub fn get(self: @This(), key: Key) *const Value {
             return self.table.getEntry(key).?.value_ptr;
         }
+        pub fn getOrNull(self: @This(), key: Key) ?*const Value {
+            return (self.table.getEntry(key) orelse return null).value_ptr;
+        }
         pub fn getForEditing(self: *@This(), changes: *Changes, key: Key) !*Value {
             setDirty(changes);
             return self.table.getEntry(key).?.value_ptr;
@@ -285,6 +291,22 @@ pub fn Database(
         }
         pub fn contains(self: @This(), key: Key) bool {
             return self.table.contains(key);
+        }
+        /// Generate a random key that does not collide with anything, put the value, and return the key.
+        pub fn putRandom(self: *@This(), changes: *Changes, value: Value) !Key {
+            setDirty(changes);
+            try self.table.ensureUnusedCapacity(self.allocator, 1);
+            for (0..10) |_| {
+                var key = Key.random(); // If you use putRandom(), this needs to be a function.
+                const gop = self.table.getOrPutAssumeCapacity(key);
+                if (!gop.found_existing) {
+                    gop.value_ptr.* = value;
+                    return key;
+                }
+                // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
+                log.warn("Rerolling random id to avoid collisions", .{});
+            }
+            return error.OverfullIdSpace; // tried to generate a random number, but it kept colliding with another one.
         }
 
         pub fn iterator(self: *@This()) Iterator {
@@ -311,10 +333,10 @@ pub fn Database(
                     };
                 } else return null;
             }
-            pub fn promoteForEditing(self: @This(), changes: *Changes, kv: EntryConst) Entry {
+            pub fn promoteForEditing(self: @This(), changes: *Changes, kv: EntryConst) *Value {
                 assert(kv.key_ptr == self.current_kv.?.key_ptr);
                 setDirty(changes);
-                return self.current_kv.?;
+                return self.current_kv.?.value_ptr;
             }
         };
 
@@ -333,7 +355,7 @@ fn checkForCorruption(map: anytype) !void {
             const int_value = if (field.type == StringPool.Index)
                 @intFromEnum(@field(record, field.name))
             else if (field.type == StringPool.OptionalIndex)
-                @intFromEnum(@field(record, field.name))
+                (if (@field(record, field.name) == .none) 0 else @intFromEnum(@field(record, field.name)))
             else
                 continue;
             if (int_value >= g.strings.len()) return error.DataCorruption; // string pool index out of bounds

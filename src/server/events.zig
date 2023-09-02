@@ -32,30 +32,26 @@ pub const InternalEvent = struct {
 const StringPool = @import("StringPool.zig");
 
 var current_version: Id = undefined;
-var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
+const Events = db.Database(Id, InternalEvent, .events, true);
+pub var events: Events = undefined;
 
 pub fn init() !void {
     current_version = Id.random();
-    events = AutoArrayHashMap(Id, InternalEvent).init(g.gpa);
+    events = Events.init(g.gpa);
 }
 
 pub fn deinit() void {
     events.deinit();
 }
 
-pub fn chat(arena: Allocator, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
+pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
     const text = try g.strings.put(g.gpa, text_str);
-    try events.ensureUnusedCapacity(1);
-    const sort_key = if (events.count() == 0)
+    const sort_key = if (events.table.count() == 0)
         keese.starting_value
     else
-        try keese.above(events.values()[events.count() - 1].sort_key);
+        try keese.above(events.table.values()[events.table.count() - 1].sort_key);
 
-    const event_id = Id.random();
-    const gop = events.getOrPutAssumeCapacity(event_id);
-    if (gop.found_existing) @panic("unlikely"); // TODO: use generateIdAndPut() kinda thing.
-    gop.key_ptr.* = event_id;
-    gop.value_ptr.* = InternalEvent{
+    _ = try events.putRandom(changes, .{
         .date = getNow(),
         .sort_key = sort_key,
         .who = .{ .user = user_id },
@@ -65,27 +61,30 @@ pub fn chat(arena: Allocator, user_id: Id, text_str: []const u8, is_slash_me: bo
                 .is_slash_me = is_slash_me,
             },
         },
-    };
+    });
 
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .events);
 }
 
 pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void {
-    for (events.values()) |*event| {
+    var it = events.iterator();
+    while (it.next()) |kv| {
+        const event = kv.value_ptr;
         if (event.who == .user and event.who.user.value == guest_id.value) {
-            event.who = .{ .user = real_id };
+            it.promoteForEditing(changes, kv).who = .{ .user = real_id };
             current_version = Id.random();
         }
     }
-    changes.broadcastChanges(.events);
 }
 
 pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
-    for (events.values()) |*event| {
+    var it = events.iterator();
+    while (it.next()) |kv| {
+        const event = kv.value_ptr;
         if (event.who == .user and event.who.user.value == user_id.value) {
-            event.who = .deleted_user;
-            switch (event.type) {
+            const ev = it.promoteForEditing(changes, kv);
+            ev.who = .deleted_user;
+            switch (ev.type) {
                 .chat => |*data| {
                     data.* = .{
                         .text = .deleted_placeholder,
@@ -98,13 +97,12 @@ pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
             current_version = Id.random();
         }
     }
-    changes.broadcastChanges(.events);
 }
 
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
     out_version.* = current_version;
     var result: IdMap(Event) = .{};
-    try result.map.ensureUnusedCapacity(arena, events.count());
+    try result.map.ensureUnusedCapacity(arena, events.table.count());
 
     var it = events.iterator();
     while (it.next()) |kv| {

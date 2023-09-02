@@ -345,7 +345,7 @@ pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGue
             while (it.next()) |kv| {
                 const account = kv.value_ptr;
                 if (account.registration_stage == .approved) continue;
-                it.promoteForEditing(changes, kv).value_ptr.permissions = guest_perms;
+                it.promoteForEditing(changes, kv).permissions = guest_perms;
             }
         },
     }
@@ -364,7 +364,7 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
                 if (replacement_guest_id == null) {
                     replacement_guest_id = try createGuestAccount(changes);
                 }
-                it.promoteForEditing(changes, kv).value_ptr.user_id = replacement_guest_id.?;
+                it.promoteForEditing(changes, kv).user_id = replacement_guest_id.?;
             }
         }
         try events.tombstoneUser(changes, user_id);
@@ -381,8 +381,7 @@ fn createAccount(
 ) !Id {
     const username = try g.strings.put(g.gpa, username_str);
 
-    const user_id = Id.random(); // TODO: use generateIdAndPut() kinda thing.
-    try user_accounts.putNoClobber(changes, user_id, .{
+    const user_id = try user_accounts.putRandom(changes, .{
         .username = username,
         .password_hash = password_hash,
         .registration_stage = registration_stage,
@@ -398,7 +397,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
     var it = sessions.iterator();
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == doomed_user_id.value) {
-            it.promoteForEditing(changes, kv).value_ptr.user_id = true_user_id;
+            it.promoteForEditing(changes, kv).user_id = true_user_id;
         }
     }
     try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);

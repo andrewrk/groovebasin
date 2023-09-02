@@ -2,7 +2,7 @@ const std = @import("std");
 const assert = std.debug.assert;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
-const AutoArrayHashMap = std.AutoArrayHashMap;
+const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
 const log = std.log;
 
 const Groove = @import("groove.zig").Groove;
@@ -13,12 +13,15 @@ const StringPool = @import("StringPool.zig");
 const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
+const db = @import("db.zig");
 
 var current_version: Id = undefined;
-var tracks: AutoArrayHashMap(Id, Track) = undefined;
+const Tracks = db.Database(Id, Track, .library, true);
+pub var tracks: Tracks = undefined;
 var music_directory: []const u8 = undefined;
 
 const Track = struct {
+    duration: f64,
     file_path: StringPool.Index,
     title: StringPool.Index,
     artist: StringPool.OptionalIndex,
@@ -26,19 +29,18 @@ const Track = struct {
     performer: StringPool.OptionalIndex,
     album_artist: StringPool.OptionalIndex,
     album: StringPool.OptionalIndex,
-    compilation: bool,
+    genre: StringPool.OptionalIndex,
     track_number: i16,
     track_count: i16,
     disc_number: i16,
     disc_count: i16,
-    duration: f64,
     year: i16,
-    genre: StringPool.OptionalIndex,
+    compilation: bool,
 };
 
 pub fn init(music_directory_init: []const u8) !void {
     current_version = Id.random();
-    tracks = AutoArrayHashMap(Id, Track).init(g.gpa);
+    tracks = Tracks.init(g.gpa);
     music_directory = music_directory_init;
 }
 
@@ -47,14 +49,29 @@ pub fn deinit() void {
 }
 
 pub fn loadFromDisk() !void {
-    assert(.empty == try g.strings.put(g.gpa, ""));
+    var arena = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena.deinit();
+
+    var dont_care_about_this = db.Changes{};
+    const changes = &dont_care_about_this;
+
+    var path_to_id = AutoArrayHashMapUnmanaged(StringPool.Index, Id){};
+    {
+        var it = tracks.iterator();
+        while (it.next()) |kv| {
+            const gop = try path_to_id.getOrPut(arena.allocator(), kv.value_ptr.file_path);
+            if (gop.found_existing) return error.DataCorruption; // db contains the same path multiple times.
+            gop.value_ptr.* = kv.key_ptr.*;
+        }
+    }
+    var found_ids = AutoArrayHashMapUnmanaged(Id, void){};
 
     // TODO: update libgroove to support openat so we can store the music_dir fd
     // only and not do the absolute file concatenation below
     var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
     defer music_dir.close();
 
-    var walker = try music_dir.walk(g.gpa);
+    var walker = try music_dir.walk(arena.allocator());
     defer walker.deinit();
 
     while (try walker.next()) |entry| {
@@ -63,25 +80,25 @@ pub fn loadFromDisk() !void {
         const groove_file = try g.groove.file_create();
         defer groove_file.destroy();
 
-        const full_path = try std.fs.path.joinZ(g.gpa, &.{
+        const full_path = try std.fs.path.joinZ(arena.allocator(), &.{
             music_directory, entry.path,
         });
-        defer g.gpa.free(full_path);
+        defer arena.allocator().free(full_path);
 
         log.debug("found: {s}", .{full_path});
 
         try groove_file.open(full_path, full_path);
         defer groove_file.close();
 
-        var it: ?*Groove.Tag = null;
-        while (t: {
-            it = groove_file.metadata_get("", it, 0);
-            break :t it;
-        }) |tag| {
-            log.debug("  {s}={s}", .{ tag.key(), tag.value() });
-        }
         const track = try grooveFileToTrack(groove_file, entry.path);
-        try generateIdAndPut(&tracks, track);
+        if (path_to_id.get(track.file_path)) |id| {
+            const slot = try tracks.getForEditing(changes, id);
+            slot.* = track;
+            try found_ids.putNoClobber(arena.allocator(), id, {});
+        } else {
+            const id = try tracks.putRandom(changes, track);
+            try found_ids.putNoClobber(arena.allocator(), id, {});
+        }
     }
 }
 
@@ -155,7 +172,7 @@ fn grooveFileToTrack(
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack) {
     out_version.* = current_version;
     var result = IdMap(LibraryTrack){};
-    try result.map.ensureTotalCapacity(arena, tracks.count());
+    try result.map.ensureTotalCapacity(arena, tracks.table.count());
 
     var it = tracks.iterator();
     while (it.next()) |kv| {
@@ -233,24 +250,11 @@ test parseTrackTuple {
     try expectEqual(@as(?i16, null), parseTrackTuple("10").denominator);
 }
 
-fn generateIdAndPut(map: anytype, value: anytype) !void {
-    for (0..10) |_| {
-        const gop = try map.getOrPut(Id.random());
-        if (!gop.found_existing) {
-            gop.value_ptr.* = value;
-            return;
-        }
-        // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
-        log.warn("Rerolling random id to avoid collisions", .{});
-    }
-    return error.FailedToGenerateRandomNumberAvoidingCollisions;
-}
-
 pub fn loadGrooveFile(library_key: Id) error{ OutOfMemory, TrackNotFound, LoadFailure }!*Groove.File {
     const groove_file = try g.groove.file_create();
     errdefer groove_file.destroy();
 
-    const track = tracks.get(library_key) orelse return error.TrackNotFound;
+    const track = tracks.getOrNull(library_key) orelse return error.TrackNotFound;
     const file_path = g.strings.get(track.file_path);
 
     const full_path = try std.fs.path.joinZ(g.gpa, &.{ music_directory, file_path });

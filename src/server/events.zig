@@ -32,25 +32,19 @@ pub const InternalEvent = struct {
 const StringPool = @import("StringPool.zig");
 
 var current_version: Id = undefined;
-var strings: StringPool = .{};
 var events: AutoArrayHashMap(Id, InternalEvent) = undefined;
-
-var deleted_text: StringPool.Index = undefined;
 
 pub fn init() !void {
     current_version = Id.random();
     events = AutoArrayHashMap(Id, InternalEvent).init(g.gpa);
-
-    deleted_text = try strings.put(g.gpa, "<deleted>");
 }
 
 pub fn deinit() void {
-    strings.deinit(g.gpa);
     events.deinit();
 }
 
-pub fn chat(arena: Allocator, user_id: Id, text: []const u8, is_slash_me: bool) !void {
-    try strings.ensureUnusedCapacity(g.gpa, 1, text.len);
+pub fn chat(arena: Allocator, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
+    const text = try g.strings.put(g.gpa, text_str);
     try events.ensureUnusedCapacity(1);
     const sort_key = if (events.count() == 0)
         keese.starting_value
@@ -67,7 +61,7 @@ pub fn chat(arena: Allocator, user_id: Id, text: []const u8, is_slash_me: bool) 
         .who = .{ .user = user_id },
         .type = .{
             .chat = .{
-                .text = strings.putAssumeCapacity(text),
+                .text = text,
                 .is_slash_me = is_slash_me,
             },
         },
@@ -94,7 +88,7 @@ pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
             switch (event.type) {
                 .chat => |*data| {
                     data.* = .{
-                        .text = deleted_text,
+                        .text = .deleted_placeholder,
                         // make it italics or something:
                         .is_slash_me = true,
                         // (this is still not unambiguous)
@@ -121,7 +115,7 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
                 .sortKey = event.sort_key,
                 .type = .chat,
                 .userId = event.who,
-                .text = strings.get(data.text),
+                .text = g.strings.get(data.text),
                 .displayClass = if (data.is_slash_me) .me else null,
             },
         });

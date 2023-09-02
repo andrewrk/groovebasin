@@ -16,7 +16,6 @@ const IdMap = @import("groovebasin_protocol.zig").IdMap;
 
 var current_version: Id = undefined;
 var tracks: AutoArrayHashMap(Id, Track) = undefined;
-var strings: StringPool = .{};
 var music_directory: []const u8 = undefined;
 
 const Track = struct {
@@ -45,11 +44,10 @@ pub fn init(music_directory_init: []const u8) !void {
 
 pub fn deinit() void {
     tracks.deinit();
-    strings.deinit(g.gpa);
 }
 
 pub fn loadFromDisk() !void {
-    assert(.empty == try strings.put(g.gpa, ""));
+    assert(.empty == try g.strings.put(g.gpa, ""));
 
     // TODO: update libgroove to support openat so we can store the music_dir fd
     // only and not do the absolute file concatenation below
@@ -119,22 +117,22 @@ fn grooveFileToTrack(
         getMetadata(groove_file, "TPOS") orelse
         "");
     return Track{
-        .file_path = try strings.put(g.gpa, file_path),
+        .file_path = try g.strings.put(g.gpa, file_path),
 
-        .title = try strings.put(g.gpa, trim(getMetadata(groove_file, "title") orelse
+        .title = try g.strings.put(g.gpa, trim(getMetadata(groove_file, "title") orelse
             filenameWithoutExt(file_path))),
 
         .artist = if (getMetadata(groove_file, "artist")) |s|
-            (try strings.put(g.gpa, trim(s))).toOptional()
+            (try g.strings.put(g.gpa, trim(s))).toOptional()
         else
             .none,
 
         .composer = if (getMetadata(groove_file, "composer") orelse
-            getMetadata(groove_file, "TCM")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
+            getMetadata(groove_file, "TCM")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
 
-        .performer = if (getMetadata(groove_file, "performer")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
-        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
-        .album = if (getMetadata(groove_file, "album")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .performer = if (getMetadata(groove_file, "performer")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .album_artist = if (getMetadata(groove_file, "album_artist")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .album = if (getMetadata(groove_file, "album")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
 
         .compilation = isCompilation(groove_file, "TCP") or
             isCompilation(groove_file, "TCMP") or
@@ -150,7 +148,7 @@ fn grooveFileToTrack(
 
         .duration = groove_file.duration(),
         .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch null) else null,
-        .genre = if (getMetadata(groove_file, "genre")) |s| (try strings.put(g.gpa, trim(s))).toOptional() else .none,
+        .genre = if (getMetadata(groove_file, "genre")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
     };
 }
 
@@ -170,14 +168,14 @@ pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack)
 fn trackToSerializedForm(id: Id, track: Track) LibraryTrack {
     return .{
         .key = id,
-        .file = strings.get(track.file_path),
-        .name = strings.get(track.title),
-        .artistName = strings.getOptional(track.artist) orelse "",
-        .albumArtistName = strings.getOptional(track.album_artist) orelse "",
-        .albumName = strings.getOptional(track.album) orelse "",
-        .genre = strings.getOptional(track.genre) orelse "",
-        .composerName = strings.getOptional(track.composer) orelse "",
-        .performerName = strings.getOptional(track.performer) orelse "",
+        .file = g.strings.get(track.file_path),
+        .name = g.strings.get(track.title),
+        .artistName = g.strings.getOptional(track.artist) orelse "",
+        .albumArtistName = g.strings.getOptional(track.album_artist) orelse "",
+        .albumName = g.strings.getOptional(track.album) orelse "",
+        .genre = g.strings.getOptional(track.genre) orelse "",
+        .composerName = g.strings.getOptional(track.composer) orelse "",
+        .performerName = g.strings.getOptional(track.performer) orelse "",
         .track = track.track_number orelse 0,
         .trackCount = track.track_count orelse 0,
         .disc = track.disc_number orelse 0,
@@ -248,7 +246,7 @@ pub fn loadGrooveFile(library_key: Id) error{ OutOfMemory, TrackNotFound, LoadFa
     errdefer groove_file.destroy();
 
     const track = tracks.get(library_key) orelse return error.TrackNotFound;
-    const file_path = strings.get(track.file_path);
+    const file_path = g.strings.get(track.file_path);
 
     const full_path = try std.fs.path.joinZ(g.gpa, &.{ music_directory, file_path });
     defer g.gpa.free(full_path);

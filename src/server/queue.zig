@@ -1,5 +1,5 @@
 const std = @import("std");
-const AutoArrayHashMap = std.AutoArrayHashMap;
+const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
 const Allocator = std.mem.Allocator;
 const log = std.log;
 
@@ -15,7 +15,8 @@ const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
 var current_version: Id = undefined;
-var items: AutoArrayHashMap(Id, Item) = undefined;
+const Items = db.Database(Id, Item, .queue, true);
+pub var items: Items = undefined;
 var seek_request: ?SeekRequest = undefined;
 var current_item: ?struct {
     id: Id,
@@ -36,18 +37,44 @@ const Item = struct {
     sort_key: keese.Value,
     track_key: Id,
     is_random: bool,
-    groove_file: *Groove.File,
 };
+
+var groove_files: AutoArrayHashMapUnmanaged(Id, *Groove.File) = .{};
 
 pub fn init() !void {
     current_version = Id.random();
-    items = AutoArrayHashMap(Id, Item).init(g.gpa);
+    items = Items.init(g.gpa);
     seek_request = null;
     current_item = null;
 }
 
 pub fn deinit() void {
     items.deinit();
+    groove_files.deinit(g.gpa);
+}
+
+/// After `items` has been initialized from disk, populate `groove_files` from `items`.
+pub fn handleLoaded() !void {
+    std.debug.assert(groove_files.count() == 0);
+    var it = items.iterator();
+    while (it.next()) |kv| {
+        const item_id = kv.key_ptr.*;
+        const library_key = kv.value_ptr.track_key;
+        const groove_file = library.loadGrooveFile(library_key) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.TrackNotFound => {
+                log.warn("enqueuing id {} failed: track not found", .{item_id});
+                continue;
+            },
+            error.LoadFailure => {
+                continue;
+            },
+        };
+        errdefer groove_file.destroy();
+
+        try groove_files.putNoClobber(g.gpa, item_id, groove_file);
+    }
+    updateLibGroovePlaylist();
 }
 
 pub fn seek(changes: *db.Changes, user_id: Id, id: Id, pos: f64) !void {
@@ -74,10 +101,10 @@ pub fn play(changes: *db.Changes, user_id: Id) !void {
                 .state = .{ .playing = std.time.milliTimestamp() - paused_time },
             };
         },
-    } else if (items.count() > 0) {
+    } else if (items.table.count() > 0) {
         sort();
         current_item = .{
-            .id = items.keys()[0],
+            .id = items.table.keys()[0],
             .state = .{ .playing = std.time.milliTimestamp() },
         };
     }
@@ -107,80 +134,76 @@ pub fn pause(changes: *db.Changes, user_id: Id) !void {
     changes.broadcastChanges(.currentTrack);
 }
 
-pub fn enqueue(arena: Allocator, new_items: anytype) !void {
-    try items.ensureUnusedCapacity(new_items.map.count());
+pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
+    try items.table.ensureUnusedCapacity(items.allocator, new_items.map.count());
     var it = new_items.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
         const library_key = kv.value_ptr.key;
         const sort_key = kv.value_ptr.sortKey;
-        log.info("enqueuing: {}: {} @{s}", .{ item_id, library_key, sort_key });
-        const gop = items.getOrPutAssumeCapacity(item_id);
-        if (gop.found_existing) {
+        if (items.contains(item_id)) {
             log.warn("ignoring queue item with id collision: {}", .{item_id});
             continue;
         }
-        errdefer _ = items.pop();
+        log.info("enqueuing: {}: {} @{s}", .{ item_id, library_key, sort_key });
 
         const groove_file = library.loadGrooveFile(library_key) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
             error.TrackNotFound => {
                 log.warn("enqueuing id {} failed: track not found", .{item_id});
-                _ = items.pop();
                 continue;
             },
             error.LoadFailure => {
-                _ = items.pop();
                 continue;
             },
         };
+        errdefer groove_file.destroy();
 
-        gop.value_ptr.* = .{
+        try groove_files.putNoClobber(g.gpa, item_id, groove_file);
+        items.putNoClobber(changes, item_id, .{
             .sort_key = sort_key,
             .track_key = library_key,
             .is_random = false,
-            .groove_file = groove_file,
-        };
+        }) catch unreachable; // assume capacity
     }
     current_version = Id.random();
     updateLibGroovePlaylist();
-    try subscriptions.broadcastChanges(arena, .queue);
 }
 
-pub fn move(arena: Allocator, args: anytype) !void {
+pub fn move(changes: *db.Changes, args: anytype) !void {
     var it = args.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
         const sort_key = kv.value_ptr.sortKey;
-        const item = (items.getEntry(item_id) orelse {
+        if (!items.contains(item_id)) {
             log.warn("attempt to move non-existent item: {}", .{item_id});
             continue;
-        }).value_ptr;
+        }
+        const item = try items.getForEditing(changes, item_id);
         log.info("moving: {}: @{} -> @{}", .{ item_id, item.sort_key, sort_key });
         item.sort_key = sort_key;
         // TODO: check for collisions?
     }
     current_version = Id.random();
     updateLibGroovePlaylist();
-    try subscriptions.broadcastChanges(arena, .queue);
 }
 
-pub fn remove(arena: Allocator, args: []Id) !void {
+pub fn remove(changes: *db.Changes, args: []Id) !void {
     for (args) |item_id| {
-        if (items.fetchSwapRemove(item_id)) |kv| {
-            kv.value.groove_file.destroy();
-        } else {
-            log.warn("attempt to remove non-existent item: {}", .{item_id});
+        if (!items.contains(item_id)) {
+            log.warn("ignoring attempt to remove non-existent item: {}", .{item_id});
+            continue;
         }
+        items.remove(changes, item_id);
+        groove_files.fetchSwapRemove(item_id).?.value.destroy();
     }
     current_version = Id.random();
-    try subscriptions.broadcastChanges(arena, .queue);
 }
 
 pub fn getSerializable(arena: std.mem.Allocator, out_version: *?Id) !IdMap(protocol.QueueItem) {
     out_version.* = current_version;
     var result = IdMap(protocol.QueueItem){};
-    try result.map.ensureTotalCapacity(arena, items.count());
+    try result.map.ensureTotalCapacity(arena, items.table.count());
 
     var it = items.iterator();
     while (it.next()) |kv| {
@@ -226,12 +249,12 @@ fn sort() void {
     const SortContext = struct {
         pub fn lessThan(ctx: @This(), a_index: usize, b_index: usize) bool {
             _ = ctx; // we're using global variables
-            const a_sort_key = items.values()[a_index].sort_key;
-            const b_sort_key = items.values()[b_index].sort_key;
+            const a_sort_key = items.table.values()[a_index].sort_key;
+            const b_sort_key = items.table.values()[b_index].sort_key;
             return keese.order(a_sort_key, b_sort_key) == .lt;
         }
     };
-    items.sort(SortContext{});
+    items.table.sort(SortContext{});
 }
 
 fn updateLibGroovePlaylist() void {
@@ -245,11 +268,10 @@ fn updateLibGroovePlaylist() void {
     // Iterate until the current track, deleting libgroove queue items until that point.
     // Once we hit the current track, start synchronizing the groovebasin queue with the
     // libgroove playlist.
-    const ids = items.keys();
-    const queue_items = items.values();
+    const ids = items.table.keys();
     var groove_item = g.player.playlist.head;
     var seen_current_track = false;
-    for (ids, queue_items) |id, item| {
+    for (ids) |id| {
         if (!seen_current_track) {
             if (id.value == cur_item.id.value) {
                 seen_current_track = true;
@@ -260,17 +282,18 @@ fn updateLibGroovePlaylist() void {
             }
         }
 
+        const groove_file = groove_files.get(id).?;
         if (groove_item) |gi| {
-            if (gi.file == item.groove_file) {
+            if (gi.file == groove_file) {
                 // Already synchronized.
                 groove_item = gi.next;
             } else {
                 // File does not match; insert new libgroove queue item before this one.
-                _ = g.player.playlist.insert(item.groove_file, 1.0, 1.0, gi) catch
+                _ = g.player.playlist.insert(groove_file, 1.0, 1.0, gi) catch
                     @panic("TODO handle this OOM");
             }
         } else {
-            _ = g.player.playlist.insert(item.groove_file, 1.0, 1.0, null) catch
+            _ = g.player.playlist.insert(groove_file, 1.0, 1.0, null) catch
                 @panic("TODO handle this OOM");
         }
     }

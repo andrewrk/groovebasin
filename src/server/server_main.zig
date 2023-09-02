@@ -117,6 +117,7 @@ pub fn main() anyerror!void {
     try db.load(config.dbPath);
 
     try library.loadFromDisk();
+    try queue.handleLoaded();
 
     log.info("init static content", .{});
     {
@@ -208,9 +209,6 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
 }
 
 fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groovebasin_protocol.ClientToServerMessage) !void {
-    var arena = ArenaAllocator.init(g.gpa); // TODO: deprecate this in favor of using `changes`.
-    defer arena.deinit();
-
     const user_id = users.getUserId(client_id);
     const perms = users.getPermissions(user_id);
     switch (message.*) {
@@ -244,20 +242,20 @@ fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groove
 
         .subscribe => |args| {
             try checkPermission(perms.read);
-            try subscriptions.subscribe(arena.allocator(), client_id, args.name, args.delta, args.version);
+            try subscriptions.subscribe(client_id, args.name, args.delta, args.version);
         },
 
         .queue => |args| {
             try checkPermission(perms.control);
-            try queue.enqueue(arena.allocator(), args);
+            try queue.enqueue(changes, args);
         },
         .move => |args| {
             try checkPermission(perms.control);
-            try queue.move(arena.allocator(), args);
+            try queue.move(changes, args);
         },
         .remove => |args| {
             try checkPermission(perms.control);
-            try queue.remove(arena.allocator(), args);
+            try queue.remove(changes, args);
         },
 
         .chat => |args| {

@@ -22,7 +22,7 @@ const all_databases = .{
     &@import("users.zig").user_accounts,
     &@import("users.zig").sessions,
     &@import("library.zig").tracks,
-    //&@import("queue.zig").queue,
+    &@import("queue.zig").items,
     &@import("events.zig").events,
 };
 
@@ -33,7 +33,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 15,
+    dev_version: u16 = 17,
 };
 
 const some_facts = blk: {
@@ -289,6 +289,8 @@ pub fn Database(
             setDirty(changes);
             try self.table.putNoClobber(self.allocator, key, value);
         }
+        /// TODO: every use of this function is probably an antipattern that
+        /// really needs a new method to avoid looking up a key multiple times.
         pub fn contains(self: @This(), key: Key) bool {
             return self.table.contains(key);
         }

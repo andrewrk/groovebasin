@@ -29,7 +29,7 @@ pub fn deinit() void {
     client_subscriptions.deinit();
 }
 
-pub fn subscribe(arena: Allocator, client_id: Id, name: Tag(Subscription), delta: bool, version: ?Id) !void {
+pub fn subscribe(client_id: Id, name: Tag(Subscription), delta: bool, version: ?Id) !void {
     if (lookup(client_id, name)) |_| return error.BadRequest; // already subscribed
     const client_data = try client_subscriptions.addOne();
     errdefer {
@@ -41,7 +41,10 @@ pub fn subscribe(arena: Allocator, client_id: Id, name: Tag(Subscription), delta
         .delta = delta,
         .last_version = version,
     };
-    try publishData(arena, client_data);
+
+    var arena = std.heap.ArenaAllocator.init(g.gpa);
+    defer arena.deinit();
+    try publishData(arena.allocator(), client_data);
 }
 
 pub fn handleClientDisconnected(client_id: Id) void {

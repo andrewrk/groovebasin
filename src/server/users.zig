@@ -125,7 +125,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, pass
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
-    const username = try user_accounts.strings.put(g.gpa, username_str);
+    const username = try g.strings.put(g.gpa, username_str);
 
     const session = try sessions.getForEditing(changes, client_id);
     const session_account = try user_accounts.getForEditing(changes, session.user_id);
@@ -313,9 +313,9 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             requesting_account.registration_stage = .approved;
         }
 
-        const old_len = user_accounts.strings.len();
-        const new_username = try user_accounts.strings.put(g.gpa, new_username_str);
-        const is_newly_added = user_accounts.strings.len() > old_len;
+        const old_len = g.strings.len();
+        const new_username = try g.strings.put(g.gpa, new_username_str);
+        const is_newly_added = g.strings.len() > old_len;
         if (requesting_account.username != new_username) {
             // This is also a feature of the approve workflow.
             // The admin edited the name.
@@ -379,7 +379,7 @@ fn createAccount(
     registration_stage: RegistrationStage,
     permissions: InternalPermissions,
 ) !Id {
-    const username = try user_accounts.strings.put(g.gpa, username_str);
+    const username = try g.strings.put(g.gpa, username_str);
 
     const user_id = Id.random(); // TODO: use generateIdAndPut() kinda thing.
     try user_accounts.putNoClobber(changes, user_id, .{
@@ -441,7 +441,7 @@ pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(P
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
         result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
-            .name = user_accounts.strings.get(account.username),
+            .name = g.strings.get(account.username),
             .perms = convertPermsissions(account.permissions),
             .registration = switch (account.registration_stage) {
                 .guest_without_password, .guest_with_password => .guest,

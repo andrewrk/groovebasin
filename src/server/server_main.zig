@@ -99,6 +99,7 @@ pub fn main() anyerror!void {
     // TODO: fix the deinit bug in libgroove
     //defer g.player.deinit();
 
+    try g.strings.ensureConstants(g.gpa);
     try users.init();
     defer users.deinit();
     try subscriptions.init();

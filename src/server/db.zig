@@ -30,18 +30,16 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 7,
+    dev_version: u16 = 11,
 };
 
 const some_facts = blk: {
     comptime var database_index_size: usize = 0;
     comptime var number_of_dynamically_sized_sections: usize = 0;
+    database_index_size += @sizeOf(u32); // strings len
+    number_of_dynamically_sized_sections += 1; // strings data
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
-        if (@TypeOf(d.*).has_strings) {
-            database_index_size += @sizeOf(u32); // len
-            number_of_dynamically_sized_sections += 1; // data
-        }
         database_index_size += @sizeOf(u32); // number of items
         number_of_dynamically_sized_sections += 2; // keys, values
     }
@@ -88,18 +86,18 @@ pub fn load(path: []const u8) !void {
     var header_cursor: usize = @sizeOf(FileHeader);
     var iovec_array: [some_facts.number_of_dynamically_sized_sections]Iovec = undefined;
     var i: usize = 0;
+    {
+        const len = try parseLen(&header_buf, &header_cursor, len_upper_bound);
+        g.strings.clearRetainingCapacity();
+        const slice = try g.strings.buf.addManyAsSlice(g.gpa, len);
+        iovec_array[i] = .{
+            .iov_base = slice.ptr,
+            .iov_len = slice.len,
+        };
+        i += 1;
+    }
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
-        if (@TypeOf(d.*).has_strings) {
-            const len = try parseLen(&header_buf, &header_cursor, len_upper_bound);
-            assert(d.strings.len() == 0);
-            const slice = try d.strings.buf.addManyAsSlice(g.gpa, len);
-            iovec_array[i] = .{
-                .iov_base = slice.ptr,
-                .iov_len = slice.len,
-            };
-            i += 1;
-        }
 
         const len = try parseLen(&header_buf, &header_cursor, len_upper_bound);
         try d.table.entries.resize(g.gpa, len);
@@ -122,8 +120,12 @@ pub fn load(path: []const u8) !void {
     }
     assert(i == iovec_array.len);
 
+    // Big load.
     try readvNoEof(file, &iovec_array);
 
+    // Handle loaded.
+    try g.strings.reIndex(g.gpa);
+    try g.strings.ensureConstants(g.gpa);
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
         try d.table.reIndex(g.gpa);
@@ -178,19 +180,19 @@ fn saveTo(path: []const u8) !void {
         .iov_len = header_buf.len,
     };
     i += 1;
+    {
+        @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&g.strings.len()));
+        header_cursor += @sizeOf(u32);
+        const slice = g.strings.buf.items;
+        iovec_array[i] = .{
+            .iov_base = slice.ptr,
+            .iov_len = slice.len,
+        };
+        i += 1;
+    }
 
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
-        if (@TypeOf(d.*).has_strings) {
-            @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&d.strings.len()));
-            header_cursor += @sizeOf(u32);
-            const slice = d.strings.buf.items;
-            iovec_array[i] = .{
-                .iov_base = slice.ptr,
-                .iov_len = slice.len,
-            };
-            i += 1;
-        }
 
         @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&@as(u32, @intCast(d.table.count()))));
         header_cursor += @sizeOf(u32);
@@ -250,12 +252,10 @@ pub fn Database(
     comptime _should_save_to_disk: bool,
 ) type {
     return struct {
-        pub const has_strings = hasStrings(Value);
         pub const should_save_to_disk = _should_save_to_disk;
 
         allocator: Allocator,
         table: AutoArrayHashMapUnmanaged(Key, Value) = .{},
-        strings: if (has_strings) StringPool else void = if (has_strings) .{} else {},
 
         pub fn init(allocator: Allocator) @This() {
             return .{
@@ -264,7 +264,6 @@ pub fn Database(
         }
         pub fn deinit(self: *@This()) void {
             self.table.deinit(self.allocator);
-            if (has_strings) self.strings.deinit(self.allocator);
             self.* = undefined;
         }
 

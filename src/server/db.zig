@@ -129,6 +129,7 @@ pub fn load(path: []const u8) !void {
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
         try d.table.reIndex(g.gpa);
+        try checkForCorruption(&d.table);
     }
 
     log.info("loaded db bytes: {}", .{@sizeOf(FileHeader) + some_facts.database_index_size + totalIovecLen(&iovec_array)});
@@ -326,10 +327,16 @@ pub fn Database(
     };
 }
 
-fn hasStrings(comptime T: type) bool {
-    for (@typeInfo(T).Struct.fields) |field| {
-        if (field.type == StringPool.Index) return true;
-        if (field.type == StringPool.OptionalIndex) return true;
+fn checkForCorruption(map: anytype) !void {
+    for (map.values()) |record| {
+        inline for (@typeInfo(@TypeOf(record)).Struct.fields) |field| {
+            const int_value = if (field.type == StringPool.Index)
+                @intFromEnum(@field(record, field.name))
+            else if (field.type == StringPool.OptionalIndex)
+                @intFromEnum(@field(record, field.name))
+            else
+                continue;
+            if (int_value >= g.strings.len()) return error.DataCorruption; // string pool index out of bounds
+        }
     }
-    return false;
 }

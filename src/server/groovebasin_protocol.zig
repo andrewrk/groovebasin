@@ -457,15 +457,15 @@ pub const LibraryTrack = struct {
     albumName: []const u8 = "",
     compilation: bool = false,
     /// Which track number this is.
-    track: i16 = 0,
+    track: ?u15 = null,
     /// How many total tracks there are on this album.
-    trackCount: i16 = 0,
+    trackCount: ?u15 = null,
     /// Which disc number this is.
-    disc: i16 = 0,
+    disc: ?u15 = null,
     /// How many total discs there are in this compilation.
-    discCount: i16 = 0,
+    discCount: ?u15 = null,
     /// What year this track was released.
-    year: i16 = 0,
+    year: ?u15 = null,
     genre: []const u8 = "",
     composerName: []const u8 = "",
     performerName: []const u8 = "",
@@ -522,8 +522,8 @@ pub const CurrentTrack = struct {
 };
 
 pub const Subscription = union(enum) {
-    sessions: IdMap(Session),
     users: IdOrGuestMap(PublicUserInfo),
+    sessions: IdMap(Session),
     currentTrack: CurrentTrack,
     autoDjOn: TODO,
     autoDjHistorySize: TODO,

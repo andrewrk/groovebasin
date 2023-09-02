@@ -27,12 +27,12 @@ const Track = struct {
     album_artist: StringPool.OptionalIndex,
     album: StringPool.OptionalIndex,
     compilation: bool,
-    track_number: ?i16,
-    track_count: ?i16,
-    disc_number: ?i16,
-    disc_count: ?i16,
+    track_number: i16,
+    track_count: i16,
+    disc_number: i16,
+    disc_count: i16,
     duration: f64,
-    year: ?i16,
+    year: i16,
     genre: StringPool.OptionalIndex,
 };
 
@@ -147,7 +147,7 @@ fn grooveFileToTrack(
         .disc_count = parsed_disc.denominator,
 
         .duration = groove_file.duration(),
-        .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch null) else null,
+        .year = if (getMetadata(groove_file, "date")) |s| (std.fmt.parseInt(i16, s, 10) catch -1) else -1,
         .genre = if (getMetadata(groove_file, "genre")) |s| (try g.strings.put(g.gpa, trim(s))).toOptional() else .none,
     };
 }
@@ -176,40 +176,45 @@ fn trackToSerializedForm(id: Id, track: Track) LibraryTrack {
         .genre = g.strings.getOptional(track.genre) orelse "",
         .composerName = g.strings.getOptional(track.composer) orelse "",
         .performerName = g.strings.getOptional(track.performer) orelse "",
-        .track = track.track_number orelse 0,
-        .trackCount = track.track_count orelse 0,
-        .disc = track.disc_number orelse 0,
-        .discCount = track.disc_count orelse 0,
+        .track = intOrNull(track.track_number),
+        .trackCount = intOrNull(track.track_count),
+        .disc = intOrNull(track.disc_number),
+        .discCount = intOrNull(track.disc_count),
         .duration = track.duration,
         .compilation = track.compilation,
-        .year = track.year orelse 0,
+        .year = intOrNull(track.year),
     };
 }
 const TrackTuple = struct {
-    numerator: ?i16,
-    denominator: ?i16,
+    numerator: i16,
+    denominator: i16,
 };
+
+fn intOrNull(val: i16) ?u15 {
+    if (val < 0) return null;
+    return @intCast(val);
+}
 
 fn parseTrackTuple(s: []const u8) TrackTuple {
     if (s.len == 0) return .{
-        .numerator = null,
-        .denominator = null,
+        .numerator = -1,
+        .denominator = -1,
     };
 
     if (std.mem.indexOfScalar(u8, s, '/')) |index| {
         const denom_string = s[index + 1 ..];
         return .{
-            .numerator = std.fmt.parseInt(i16, s[0..index], 10) catch null,
+            .numerator = std.fmt.parseInt(i16, s[0..index], 10) catch -1,
             .denominator = if (denom_string.len == 0)
-                null
+                -1
             else
-                std.fmt.parseInt(i16, denom_string, 10) catch null,
+                std.fmt.parseInt(i16, denom_string, 10) catch -1,
         };
     }
 
     return .{
-        .numerator = std.fmt.parseInt(i16, s, 10) catch null,
-        .denominator = null,
+        .numerator = std.fmt.parseInt(i16, s, 10) catch -1,
+        .denominator = -1,
     };
 }
 

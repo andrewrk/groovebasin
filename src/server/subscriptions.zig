@@ -10,8 +10,9 @@ const events = @import("events.zig");
 const encodeAndSend = @import("server_main.zig").encodeAndSend;
 const users = @import("users.zig");
 
-const Subscription = @import("groovebasin_protocol.zig").Subscription;
-const Id = @import("groovebasin_protocol.zig").Id;
+const protocol = @import("groovebasin_protocol.zig");
+const Subscription = protocol.Subscription;
+const Id = protocol.Id;
 
 const ClientSubscriptionData = struct {
     client_id: Id,
@@ -79,11 +80,10 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     var sub: Subscription = switch (client_data.name) {
         .sessions => .{ .sessions = try users.getSerializableSessions(arena, &version) },
         .users => .{ .users = try users.getSerializableUsers(arena, &version) },
-        .streamEndpoint => .{ .streamEndpoint = "stream.mp3" },
         .library => .{ .library = try library.getSerializable(arena, &version) },
         .queue => .{ .queue = try queue.getSerializable(arena, &version) },
         .events => .{ .events = try events.getSerializable(arena, &version) },
-        .currentTrack => .{ .currentTrack = queue.getSerializedCurrentTrack() },
+        .state => .{ .state = getSerializableState(&version) },
         else => return, // TODO: support more subscription streams.
     };
 
@@ -101,4 +101,21 @@ fn publishData(arena: Allocator, client_data: *ClientSubscriptionData) !void {
     } else {
         try encodeAndSend(client_data.client_id, .{ .subscription = .{ .sub = sub } });
     }
+}
+
+fn getSerializableState(out_version: *?Id) protocol.State {
+    out_version.* = Id.random();
+    return .{
+        .currentTrack = queue.getSerializedCurrentTrack(),
+        .autoDj = .{ // TODO
+            .on = false,
+            .historySize = 10,
+            .futureSize = 10,
+        },
+        .repeat = .off, // TODO
+        .volumePercent = 100, // TODO
+        .hardwarePlayback = false, // TODO
+        .streamEndpoint = "stream.mp3",
+        .guestPermissions = users.getSerializableGuestPermissions(),
+    };
 }

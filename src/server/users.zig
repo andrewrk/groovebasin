@@ -14,8 +14,7 @@ const encodeAndSend = @import("server_main.zig").encodeAndSend;
 
 const protocol = @import("groovebasin_protocol.zig");
 const Id = protocol.Id;
-const IdOrGuest = protocol.IdOrGuest;
-const IdOrGuestMap = protocol.IdOrGuestMap;
+const IdMap = protocol.IdMap;
 const Permissions = protocol.Permissions;
 const PublicUserInfo = protocol.PublicUserInfo;
 
@@ -63,7 +62,7 @@ const Sessions = db.Database(Id, InternalSession, .sessions, false);
 pub var sessions: Sessions = undefined;
 const UserAccounts = db.Database(Id, UserAccount, .users, true);
 pub var user_accounts: UserAccounts = undefined;
-var guest_perms: InternalPermissions = .{
+var guest_permissions: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
     .add = false,
@@ -218,7 +217,7 @@ fn createGuestAccount(changes: *db.Changes) !Id {
     for (username_str[username_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
-    return createAccount(changes, &username_str, std.mem.zeroes(PasswordHash), .guest_without_password, guest_perms);
+    return createAccount(changes, &username_str, std.mem.zeroes(PasswordHash), .guest_without_password, guest_permissions);
 }
 
 pub fn ensureAdminUser(changes: *db.Changes) !void {
@@ -328,26 +327,23 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
     }
 }
 
-pub fn updateUser(changes: *db.Changes, user_id_or_guest_pseudo_user_id: IdOrGuest, perms: Permissions) !void {
-    switch (user_id_or_guest_pseudo_user_id) {
-        .id => |user_id| {
-            if (!user_accounts.contains(user_id)) {
-                log.warn("ignoring bogus userid: {}", .{user_id});
-                return;
-            }
-            const account = try user_accounts.getForEditing(changes, user_id);
-            account.permissions = convertPermsissions(perms);
-        },
-        .guest => {
-            guest_perms = convertPermsissions(perms);
-            //changes.guest_perms = true;
-            var it = user_accounts.iterator();
-            while (it.next()) |kv| {
-                const account = kv.value_ptr;
-                if (account.registration_stage == .approved) continue;
-                it.promoteForEditing(changes, kv).permissions = guest_perms;
-            }
-        },
+pub fn updateUser(changes: *db.Changes, user_id: Id, perms: Permissions) !void {
+    if (!user_accounts.contains(user_id)) {
+        log.warn("ignoring bogus userid: {}", .{user_id});
+        return;
+    }
+    const account = try user_accounts.getForEditing(changes, user_id);
+    account.permissions = convertPermsissions(perms);
+}
+
+pub fn updateGuestPermissions(changes: *db.Changes, perms: Permissions) !void {
+    guest_permissions = convertPermsissions(perms);
+    //changes.guest_perms = true;
+    var it = user_accounts.iterator();
+    while (it.next()) |kv| {
+        const account = kv.value_ptr;
+        if (account.registration_stage == .approved) continue;
+        it.promoteForEditing(changes, kv).permissions = guest_permissions;
     }
 }
 
@@ -404,6 +400,9 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
     user_accounts.remove(changes, Id{ .value = workaround_miscomiplation });
 }
 
+pub fn getSerializableGuestPermissions() protocol.Permissions {
+    return convertPermsissions(guest_permissions);
+}
 pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.IdMap(protocol.Session) {
     // This version number never matters. Sessions beginning/ending changes the
     // hash, which means there's no scenario in which a newly connecting client
@@ -428,18 +427,18 @@ pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.Id
     return result;
 }
 
-pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(PublicUserInfo) {
+pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdMap(PublicUserInfo) {
     // TODO: meaningful versioning.
     out_version.* = Id.random();
 
-    var result = IdOrGuestMap(PublicUserInfo){};
-    try result.map.ensureTotalCapacity(arena, user_accounts.table.count() + 1);
+    var result = IdMap(PublicUserInfo){};
+    try result.map.ensureTotalCapacity(arena, user_accounts.table.count());
 
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
         const account = kv.value_ptr;
-        result.map.putAssumeCapacityNoClobber(.{ .id = user_id }, .{
+        result.map.putAssumeCapacityNoClobber(user_id, .{
             .name = g.strings.get(account.username),
             .perms = convertPermsissions(account.permissions),
             .registration = switch (account.registration_stage) {
@@ -451,15 +450,6 @@ pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdOrGuestMap(P
             },
         });
     }
-
-    result.map.putAssumeCapacityNoClobber(.guest, .{
-        // Displayed in the permission edit UI:
-        .name = "Guests",
-        // This is the important information:
-        .perms = convertPermsissions(guest_perms),
-        // This gets the pseudo user to show up in the permission edit UI:
-        .registration = .approved,
-    });
 
     return result;
 }

@@ -4473,10 +4473,6 @@ function init() {
     });
     return;
   }
-  socket.on('hardwarePlayback', function(isOn) {
-    hardwarePlaybackOn = isOn;
-    updateSettingsAdminUi();
-  });
   socket.on('lastFmApiKey', updateLastFmApiKey);
   socket.on('sessionId', function(data) {
     mySessionId = data;
@@ -4484,27 +4480,28 @@ function init() {
   socket.on('token', function(token) {
     document.cookie = "token=" + token + "; path=/";
   });
-  socket.on('streamEndpoint', function(data) {
-    streamEndpoint = data;
-    updateStreamPlayer();
-    updateStreamUrlUi();
-  });
-  socket.on('autoDjOn', function(data) {
-    autoDjOn = data;
-    renderQueueButtons();
-    triggerRenderQueue();
-  });
   socket.on('connect', function(){
     sendAuth();
     sendStreamingStatus();
-    socket.send('subscribe', {name: 'streamEndpoint'});
-    socket.send('subscribe', {name: 'autoDjOn'});
-    socket.send('subscribe', {name: 'hardwarePlayback'});
     loadStatus = LoadStatus.GoodToGo;
     render();
     ensureSearchHappensSoon();
   });
   player = new PlayerClient(socket);
+  player.on('hardwarePlayback', function(isOn) {
+    hardwarePlaybackOn = isOn;
+    updateSettingsAdminUi();
+  });
+  player.on('streamEndpoint', function(data) {
+    streamEndpoint = data;
+    updateStreamPlayer();
+    updateStreamUrlUi();
+  });
+  player.on('autoDj', function(data) {
+    autoDjOn = data.on;
+    renderQueueButtons();
+    triggerRenderQueue();
+  });
   player.on('users', function() {
     myUser = player.usersTable[(player.sessionsTable[mySessionId] || {}).userId];
     if (myUser == null) {
@@ -4565,7 +4562,7 @@ function init() {
     }
     renderEvents();
   });
-  player.on('currentTrack', updateStreamPlayer);
+  player.on('currentTrackUpdate', updateStreamPlayer);
   player.on('anonStreamers', renderStreamButton);
   socket.on('seek', clearStreamBuffer);
   socket.on('disconnect', function(){

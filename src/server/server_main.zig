@@ -232,6 +232,10 @@ fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groove
             try checkPermission(perms.admin);
             try users.updateUser(changes, args.userId, args.perms);
         },
+        .updateGuestPermissions => |args| {
+            try checkPermission(perms.admin);
+            try users.updateGuestPermissions(changes, args);
+        },
         .deleteUsers => |args| {
             try checkPermission(perms.admin);
             try users.deleteUsers(changes, args);

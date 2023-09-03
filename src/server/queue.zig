@@ -86,7 +86,7 @@ pub fn seek(changes: *db.Changes, user_id: Id, id: Id, pos: f64) !void {
         .pos = pos,
     };
     updateLibGroovePlaylist();
-    changes.broadcastChanges(.currentTrack);
+    changes.broadcastChanges(.state);
 }
 
 pub fn play(changes: *db.Changes, user_id: Id) !void {
@@ -112,7 +112,7 @@ pub fn play(changes: *db.Changes, user_id: Id) !void {
     log.debug("groove playlist play", .{});
     updateLibGroovePlaylist();
     g.player.playlist.play();
-    changes.broadcastChanges(.currentTrack);
+    changes.broadcastChanges(.state);
 }
 
 pub fn pause(changes: *db.Changes, user_id: Id) !void {
@@ -131,7 +131,7 @@ pub fn pause(changes: *db.Changes, user_id: Id) !void {
 
     updateLibGroovePlaylist();
     g.player.playlist.pause();
-    changes.broadcastChanges(.currentTrack);
+    changes.broadcastChanges(.state);
 }
 
 pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {

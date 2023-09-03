@@ -99,58 +99,6 @@ pub const Id = struct {
     }
 };
 
-pub const IdOrGuest = union(enum) {
-    id: Id,
-    guest,
-
-    const guest_pseudo_id = "(guest)";
-
-    // JsonMap interface.
-    pub fn parse(s: []const u8) !@This() {
-        if (std.mem.eql(u8, s, guest_pseudo_id)) return .guest;
-        return .{ .id = try Id.parse(s) };
-    }
-    pub fn write(self: @This(), buf: *[8]u8) []const u8 {
-        switch (self) {
-            .id => |id| return id.write(buf),
-            .guest => return guest_pseudo_id,
-        }
-    }
-
-    // JSON interface
-    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-        _ = options;
-        switch (try source.nextAlloc(.alloc_if_needed)) {
-            .string => |s| return parse(s) catch return error.UnexpectedToken,
-            .allocated_string => |s| {
-                defer allocator.free(s);
-                return parse(s) catch return error.UnexpectedToken;
-            },
-            else => return error.UnexpectedToken,
-        }
-    }
-    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
-        _ = allocator;
-        _ = options;
-        switch (source) {
-            .string => |s| return parse(s) catch return error.UnexpectedToken,
-            else => return error.UnexpectedToken,
-        }
-    }
-    pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        var buf: [8]u8 = undefined;
-        try jw.write(self.write(&buf));
-    }
-
-    // std.fmt interface
-    pub fn format(self: @This(), comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        _ = fmt;
-        _ = options;
-        var buf: [8]u8 = undefined;
-        return writer.writeAll(self.write(&buf));
-    }
-};
-
 pub const EventUserId = union(enum) {
     user: Id,
     system,
@@ -179,9 +127,6 @@ pub const EventUserId = union(enum) {
 
 pub fn IdMap(comptime T: type) type {
     return JsonMap(Id, T);
-}
-pub fn IdOrGuestMap(comptime T: type) type {
-    return JsonMap(IdOrGuest, T);
 }
 fn JsonMap(comptime Key: type, comptime T: type) type {
     // Adapted from std.json.ArrayHashMap.
@@ -331,9 +276,10 @@ pub const ClientToServerMessage = union(enum) {
     },
     updateTags: TODO,
     updateUser: struct {
-        userId: IdOrGuest,
+        userId: Id,
         perms: Permissions,
     },
+    updateGuestPermissions: Permissions,
     unsubscribe: TODO,
     move: IdMap(struct {
         sortKey: keese.Value,
@@ -471,6 +417,14 @@ pub const LibraryTrack = struct {
     performerName: []const u8 = "",
     /// The ids of labels that apply to this song. The values are always 1.
     labels: IdMap(AlwaysTheNumber1) = .{},
+    fingerprintScanStatus: ScanStatus = .not_started,
+    loudnessScanStatus: ScanStatus = .not_started,
+};
+
+pub const ScanStatus = enum(u2) {
+    not_started = 0,
+    in_progress = 1,
+    done = 2,
 };
 
 pub const QueueItem = struct {
@@ -521,27 +475,40 @@ pub const CurrentTrack = struct {
     pausedTime: ?f64,
 };
 
-pub const Subscription = union(enum) {
-    users: IdOrGuestMap(PublicUserInfo),
-    sessions: IdMap(Session),
+pub const AutoDjState = struct {
+    on: bool,
+    historySize: u10,
+    futureSize: u10,
+};
+
+pub const RepeatState = enum(u2) {
+    off = 0,
+    all = 1,
+    one = 2,
+};
+
+pub const State = struct {
     currentTrack: CurrentTrack,
-    autoDjOn: TODO,
-    autoDjHistorySize: TODO,
-    autoDjFutureSize: TODO,
-    repeat: TODO,
-    volume: TODO,
+    autoDj: AutoDjState,
+    repeat: RepeatState,
+    volumePercent: u8, // 0%..200%
+    hardwarePlayback: bool,
+    streamEndpoint: []const u8,
+    guestPermissions: Permissions,
+};
+
+pub const Subscription = union(enum) {
+    users: IdMap(PublicUserInfo),
+    sessions: IdMap(Session),
     queue: IdMap(QueueItem),
-    hardwarePlayback: TODO,
     library: IdMap(LibraryTrack),
-    libraryQueue: TODO,
-    scanning: TODO,
     playlists: TODO,
     importProgress: TODO,
     anonStreamers: TODO,
-    streamEndpoint: []const u8,
     protocolMetadata: TODO,
-    labels: TODO, // undocumented.
+    labels: TODO,
     events: IdMap(Event),
+    state: State,
 };
 
 const AlwaysTheNumber1 = struct {

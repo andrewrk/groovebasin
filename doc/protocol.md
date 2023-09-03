@@ -257,7 +257,11 @@ This message is likely to be updated before the protocol reaches 1.0.0.
  * `username`: `string`
  * `password`: `string`
 
-TODO: document what this does. It's complicated.
+TODO: split into different apis to better convey intent:
+
+1. Give username+password for an existing account that I want to log into that I am not logged into yet.
+2. Create an account by specifying a new, unused username and a password.
+3. Change username and/or password for current account.
 
 ### logout
 
@@ -322,8 +326,16 @@ Note this message allows editing tags for multiple songs at once.
 
  * Permission: `admin`
  * Type: `{userId, perms}`
- * `userId`: `ID`. ID of the user to update or the guest pseudo ID.
+ * `userId`: `ID`. ID of the user to update.
  * `perms`: `object`. Permissions to assign to the user.
+
+The `userId` must be for an account whose `registration` is `approved`.
+To change the permissions of another account use `updateGuestPermissions`.
+
+### updateGuestPermissions
+
+ * Permission: `admin`
+ * Type: `object`. Permissions to assign to all non-approved user accounts, current and future.
 
 ### unsubscribe
 
@@ -554,6 +566,8 @@ No arguments. Sent when the current song or current song position changes. If
 the client is streaming, they should clear their buffer and ask for a fresh
 stream.
 
+TODO: remove in favor of `currentTrack` in subscription data.
+
 ### time
 
  * Type: `datetime`. Current datetime according to the server.
@@ -571,6 +585,8 @@ value is constantly changing.
 
 Sent on first connection. HTTP requests may use this token to act on behalf of
 this control connection.
+
+TODO: merge with `sessionId` message.
 
 ### lastFmApiKey
 
@@ -609,6 +625,8 @@ protocol reaches 1.0.0.
 
 Note that this is a public identifier, not a private session token. Use this id
 to find yourself in [sessions](#sessions).
+
+TODO: move `token` into this message.
 
 ## Subscribed Information Change Messages
 
@@ -658,45 +676,28 @@ the library metadata can be large and change often.
 Currently all information is available regardless of permissions. This is
 something that will likely change before the protocol reaches 1.0.0.
 
-### currentTrack
+### state
 
- * Type: `{currentItemId, isPlaying, trackStartDate, pausedTime}`
- * `currentItemId`: `ID` or `null`. The play queue ID currently playing.
- * `isPlaying`: `boolean`. `true` if playing; `false` if paused.
- * `trackStartDate`: `datetime`. datetime representing what time it was on the
-   server when frame 0 of the current song was played.
- * `pausedTime`: `number`. Only relevant when `isPlaying` is `false`. How many
-   seconds into the song the position is.
+All the fixed-size data in one message.
 
-### autoDjOn
-
- * Type: `boolean`. `true` if Auto DJ is on; `false` if Auto DJ is off.
-
-### autoDjHistorySize
-
- * Type: `number`. When Auto DJ is on, this is the number of songs in the play
-   queue before the current song that are not automatically removed.
-
-### autoDjFutureSize
-
- * Type: `number`. When Auto DJ is on, this is the number of songs in the play
-   queue after the current song that are chosen randomly to be played next.
-
-### repeat
-
- * Type: `number`. The current repeat state.
-
-Repeat states:
-
- * Repeat Off: 0
- * Repeat All: 1
- * Repeat One: 2
-
-### volume
-
- * Type: `number`. Range: 0.0 to 2.0. Values above 1.0 indicate that a limiter
-   may be in use, compromising audio quality integrity in order to achieve
-   loudness.
+* `currentTrack`: `object`:
+    * `currentItemId`: `ID` or `null`. The play queue ID currently playing.
+    * `isPlaying`: `boolean`. `true` if playing; `false` if paused.
+    * `trackStartDate`: `datetime`. datetime representing what time it was on the
+      server when frame 0 of the current song was played.
+    * `pausedTime`: `number`. Only relevant when `isPlaying` is `false`. How many
+      seconds into the song the position is.
+* `autoDj`: `object`:
+    * `on`: `boolean`. `true` if Auto DJ is on; `false` if Auto DJ is off.
+    * `historySize`: `number`. When Auto DJ is on, this is the number of songs in the play
+      queue before the current song that are not automatically removed.
+    * `futureSize`: `number`. When Auto DJ is on, this is the number of songs in the play
+      queue after the current song that are chosen randomly to be played next.
+* `repeat`: `enum{off,all,one}`
+* `volumePercent`: `integer`. Range: 0 to 200. Values above 100 indicate that a limiter
+  may be in use, compromising audio quality integrity in order to achieve loudness.
+* `hardwarePlayback`: `boolean`. Whether the server has hardware playback on.
+* `streamEndpoint`: `string`. Example: "stream.mp3". Connect to this to listen to the stream.
 
 ### queue
 
@@ -710,38 +711,9 @@ Repeat states:
 
 To display the play queue, sort the queue items by their `sortKey` string.
 
-### hardwarePlayback
-
- * Type: `boolean`. Whether the server has hardware playback on.
-
 ### library
 
-Type:
-
-```
-{
-  key: {
-    key,
-    name,
-    artistName,
-    albumArtistName,
-    albumName,
-    compilation,
-    track,
-    trackCount,
-    disc,
-    discCount,
-    duration,
-    year,
-    genre,
-    file,
-    composerName,
-    performerName,
-    labels: {labelId: 1},
-  },
-  ...
-}
-```
+Type: `object`:
 
  * `key`: `ID`. ID of the song in the music library.
  * `file`: `string`. Path of the song on disk relative to the music library
@@ -763,32 +735,11 @@ Type:
  * `performerName`: `string`
  * `labels`: `object`. The value is always `1`.
    - `labelId`: `ID`. ID of a label that applies to this song.
+ * `fingerprintScanStatus`: `enum{not_started,in_progress,done}` if omitted, assume `not_started`.
+ * `loudnessScanStatus`: `enum{not_started,in_progress,done}` if omitted, assume `not_started`.
 
 It is strongly recommended to use the delta subscription mode with this
 information.
-
-### libraryQueue
-
-This message is the same as [library](#library), except instead of the set of
-tracks returned being the entire library, it is exactly the set of tracks
-relevant to the play queue. You would subscribe to this if you do not care
-about the library but you do want to know what song is currently playing, for
-example.
-
-It is recommended, but not necessary, to use the delta subscription mode with
-this information.
-
-### scanning
-
- * Type: `{fingerprintDone, loudnessDone}`
- * `fingerprintDone`: `boolean`.
- * `loudnessDone`: `boolean`.
-
-Contains the set of songs currently being scanned for loudness, duration,
-fingerprint, and possibly more.
-
-The way this works will likely be changed before protocol version 1.0.0 is
-reached.
 
 ### playlists
 
@@ -830,17 +781,12 @@ To count total streamers including non-anonymous streamers, subscribe to
 ### users
 
  * Type: `{userId: {name, perms, registration}}`
- * `userId`: `ID` or `"(guest)"`. ID of the user or the guest pseudo ID.
+ * `userId`: `ID` or `"(guest)"`. ID of the user.
  * `name`: `string`. Name of the user.
  * `perms`: `object`. Permissions the user has.
  * `registration`: `enum{guest,named_by_user,requested_approval,approved}`.
 
 To know who's online and which one is you, subscribe to [sessions](#sessions).
-
-### streamEndpoint
-
- * Type: `string`. Example: "stream.mp3". Connect to this to listen to the
-   stream.
 
 ### protocolMetadata
 
@@ -863,7 +809,7 @@ document for the `version` field.
 `information` looks like:
 
 ```
-{"currentTrack": true, "libraryQueue": true, ...}
+{"currentTrack": true, "library": true, ...}
 ```
 
 `httpActions` looks like:
@@ -1162,6 +1108,18 @@ files. Groove Basin supports uploading .zip files.
     * properties `registered`, `requested`, and `approved` replaced by `registration` enum.
     * `user` server-to-client message replaced by `sessionId`. (Use `sessions` and `users` to reconstruct the old information.)
     * `haveAdminUser` removed. (Use `any(user.perms.admin for user in users)` instead.)
+* unimplemented `libraryQueue` subscription removed from the docs.
+* undocumented `labels` subscription added to the docs. TODO: actually add it.
+* `scanning` subscription data moved to `library` items and changed to enums.
+* consolidated multiple fixed-sized subscriptions into the `state` subscription:
+    * `currentTrack` - moved as is.
+    * `autoDjOn`, `autoDjHistorySize`, `autoDjFutureSize` - moved into the `autoDj` object.
+    * `repeat` - converted to an enum of strings instead of integers. `0:off,1:all,2:one`.
+    * `volume` - changed from float in the range 0.0 to 2.0 to an integer in the range 0 to 200
+      and renamed to `volumePercent`.
+    * `hardwarePlayback` - moved as is.
+    * `streamEndpoint` - moved as is.
+* The `"(guest)"` pseudo was moved from the `users` subscription to the `guestPermissions` field of the `state` subscription. Added `updateUser`
 
 ### 0.0.1
 

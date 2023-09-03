@@ -10,9 +10,11 @@ const g = @import("global.zig");
 
 const StringPool = @import("StringPool.zig");
 
-const LibraryTrack = @import("groovebasin_protocol.zig").LibraryTrack;
-const Id = @import("groovebasin_protocol.zig").Id;
-const IdMap = @import("groovebasin_protocol.zig").IdMap;
+const protocol = @import("groovebasin_protocol.zig");
+const LibraryTrack = protocol.LibraryTrack;
+const Id = protocol.Id;
+const IdMap = protocol.IdMap;
+const ScanStatus = protocol.ScanStatus;
 const db = @import("db.zig");
 
 var current_version: Id = undefined;
@@ -35,6 +37,8 @@ const Track = struct {
     disc_number: i16,
     disc_count: i16,
     year: i16,
+    fingerprint_scan_status: ScanStatus = .not_started,
+    loudness_scan_status: ScanStatus = .not_started,
     compilation: bool,
 };
 
@@ -200,6 +204,8 @@ fn trackToSerializedForm(id: Id, track: Track) LibraryTrack {
         .duration = track.duration,
         .compilation = track.compilation,
         .year = intOrNull(track.year),
+        .fingerprintScanStatus = track.fingerprint_scan_status,
+        .loudnessScanStatus = track.loudness_scan_status,
     };
 }
 const TrackTuple = struct {

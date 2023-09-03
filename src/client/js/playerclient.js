@@ -45,6 +45,8 @@ function PlayerClient(socket) {
   self.eventsFromServerVersion = null;
   self.importProgressFromServer = undefined;
   self.importProgressFromServerVersion = null;
+  self.stateFromServer = undefined;
+  self.stateFromServerVersion = null;
 
   self.resetServerState();
   self.socket.on('disconnect', function() {
@@ -80,11 +82,11 @@ function PlayerClient(socket) {
     self.sortEventsFromServer(); // because they rely on serverTimeOffset
     self.emit('statusUpdate');
   });
-  self.socket.on('volume', function(volume) {
+  self.on('volume', function(volume) {
     self.volume = volume;
     self.emit('volumeUpdate');
   });
-  self.socket.on('repeat', function(repeat) {
+  self.on('repeat', function(repeat) {
     self.repeat = repeat;
     self.emit('statusUpdate');
   });
@@ -93,7 +95,7 @@ function PlayerClient(socket) {
     self.emit('anonStreamers');
   });
 
-  self.socket.on('currentTrack', function(o) {
+  self.on('currentTrack', function(o) {
     self.isPlaying = o.isPlaying;
     self.serverTrackStartDate = o.trackStartDate && new Date(o.trackStartDate);
     self.pausedTime = o.pausedTime;
@@ -101,7 +103,7 @@ function PlayerClient(socket) {
     self.updateTrackStartDate();
     self.updateCurrentItem();
     self.emit('statusUpdate');
-    self.emit('currentTrack');
+    self.emit('currentTrackUpdate');
   });
 
   self.socket.on('queue', function(o) {
@@ -128,13 +130,6 @@ function PlayerClient(socket) {
     var lastQuery = self.lastQuery;
     self.lastQuery = null;
     self.search(lastQuery);
-  });
-
-  self.socket.on('scanning', function(o) {
-    if (o.reset) self.scanningFromServer = undefined;
-    self.scanningFromServer = curlydiff.apply(self.scanningFromServer, o.delta);
-    self.scanningFromServerVersion = o.version;
-    self.emit('scanningUpdate');
   });
 
   self.socket.on('playlists', function(o) {
@@ -169,6 +164,20 @@ function PlayerClient(socket) {
     self.sortImportProgressFromServer();
     self.emit('importProgress');
   });
+
+  self.socket.on('state', function(o) {
+    if (o.reset) self.stateFromServer = undefined;
+    self.stateFromServer = curlydiff.apply(self.stateFromServer, o.delta);
+    self.stateFromServerVersion = o.version;
+
+    // Adapt new protocol to the old 0.0.1 handler code.
+    self.emit('currentTrack', self.stateFromServer.currentTrack);
+    self.emit('autoDj', self.stateFromServer.autoDj);
+    self.emit('repeat', ["off", "all", "one"].indexOf(self.stateFromServer.repeat));
+    self.emit('volume', self.stateFromServer.volumePercent / 100);
+    self.emit('hardwarePlayback', self.stateFromServer.hardwarePlayback);
+    self.emit('streamEndpoint', self.stateFromServer.streamEndpoint);
+  });
 }
 
 PlayerClient.prototype.resubscribe = function(){
@@ -198,14 +207,6 @@ PlayerClient.prototype.resubscribe = function(){
     version: this.queueFromServerVersion,
   });
   this.sendCommand('subscribe', {
-    name: 'scanning',
-    delta: true,
-    version: this.scanningFromServerVersion,
-  });
-  this.sendCommand('subscribe', {name: 'volume'});
-  this.sendCommand('subscribe', {name: 'repeat'});
-  this.sendCommand('subscribe', {name: 'currentTrack'});
-  this.sendCommand('subscribe', {
     name: 'playlists',
     delta: true,
     version: this.playlistsFromServerVersion,
@@ -220,6 +221,11 @@ PlayerClient.prototype.resubscribe = function(){
     name: 'importProgress',
     delta: true,
     version: this.importProgressFromServerVersion,
+  });
+  this.sendCommand('subscribe', {
+    name: 'state',
+    delta: true,
+    version: this.stateFromServerVersion,
   });
 };
 
@@ -444,8 +450,7 @@ PlayerClient.prototype.updateQueueIndex = function() {
 };
 
 PlayerClient.prototype.isScanning = function(track) {
-  var scanInfo = this.scanningFromServer && this.scanningFromServer[track.key];
-  return !!scanInfo;
+  return track.fingerprintScanStatus === "in_progress" || track.loudnessScanStatus == "in_progress";
 };
 
 PlayerClient.prototype.search = function(query) {

@@ -446,6 +446,7 @@ PlayerClient.prototype.updateQueueIndex = function() {
   }
   this.refreshPlaylistList(this.queue);
   this.updateCurrentItem();
+  this.maybeDefragmentQueue();
 };
 
 PlayerClient.prototype.isScanning = function(track) {
@@ -1013,6 +1014,45 @@ PlayerClient.prototype.deleteLabels = function(labelIds) {
   this.sendCommand('labelDelete', labelIds);
   // TODO anticipate server response
 };
+
+PlayerClient.prototype.maybeDefragmentQueue = function() {
+  if (!this.shouldDefragment()) return;
+  var items = {};
+  for (var i = 0; i < this.queue.itemList.length; i += 1) {
+    var item = this.queue.itemList[i];
+    var sortKey = i; // nice and simple
+    item.sortKey = sortKey;
+    items[item.id] = sortKey;
+  }
+  this.refreshPlaylistList(this.queue);
+  this.sendCommand('move', items);
+  this.emit('queueUpdate');
+};
+
+PlayerClient.prototype.shouldDefragment = function() {
+  if (this.queue.itemList.length === 0) return false;
+  var previousSortKey = this.queue.itemList[0].sortKey;
+  if (isMagnitudeProblematic(previousSortKey)) return true;
+  for (var i = 1; i < this.queue.itemList.length; i++) {
+    var thisSortKey = this.queue.itemList[i].sortKey;
+    if (isMagnitudeProblematic(thisSortKey)) return true;
+    if (isDistanceProblematic(previousSortKey, thisSortKey)) return true;
+    previousSortKey = thisSortKey;
+  }
+  return false;
+};
+
+// Give ourselves 2**12 bits to work with.
+var comfortableSignificandUtilization = Math.pow(2, 53 - 12);
+function isMagnitudeProblematic(x) {
+  // We want to be able to +1 or -1.
+  return Math.abs(x) >= comfortableSignificandUtilization;
+}
+function isDistanceProblematic(low, high) {
+  var scale = Math.max(Math.abs(low), Math.abs(high));
+  var delta = high - low;
+  return scale / delta >= comfortableSignificandUtilization;
+}
 
 function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
   // an example of shifting 5 items (a,c,f,g,i) "down":

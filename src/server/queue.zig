@@ -14,9 +14,7 @@ const keese = @import("keese.zig");
 const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
-var current_version: Id = undefined;
-const Items = db.Database(Id, Item, .queue, true);
-pub var items: Items = undefined;
+const items = &db.TheDatabase.items;
 var seek_request: ?SeekRequest = undefined;
 var current_item: ?struct {
     id: Id,
@@ -27,29 +25,21 @@ var current_item: ?struct {
         paused: i64,
     },
 } = undefined;
+var groove_files: AutoArrayHashMapUnmanaged(Id, *Groove.File) = .{};
 
 const SeekRequest = struct {
     id: Id,
     pos: f64,
 };
 
-const Item = struct {
-    sort_key: keese.Value,
-    track_key: Id,
-    is_random: bool,
-};
-
-var groove_files: AutoArrayHashMapUnmanaged(Id, *Groove.File) = .{};
+const Item = db.Item;
 
 pub fn init() !void {
-    current_version = Id.random();
-    items = Items.init(g.gpa);
     seek_request = null;
     current_item = null;
 }
 
 pub fn deinit() void {
-    items.deinit();
     groove_files.deinit(g.gpa);
 }
 
@@ -135,7 +125,7 @@ pub fn pause(changes: *db.Changes, user_id: Id) !void {
 }
 
 pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
-    try items.table.ensureUnusedCapacity(items.allocator, new_items.map.count());
+    try items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
     var it = new_items.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
@@ -166,7 +156,6 @@ pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
             .is_random = false,
         }) catch unreachable; // assume capacity
     }
-    current_version = Id.random();
     updateLibGroovePlaylist();
 }
 
@@ -184,7 +173,6 @@ pub fn move(changes: *db.Changes, args: anytype) !void {
         item.sort_key = sort_key;
         // TODO: check for collisions?
     }
-    current_version = Id.random();
     updateLibGroovePlaylist();
 }
 
@@ -197,11 +185,10 @@ pub fn remove(changes: *db.Changes, args: []Id) !void {
         items.remove(changes, item_id);
         groove_files.fetchSwapRemove(item_id).?.value.destroy();
     }
-    current_version = Id.random();
 }
 
 pub fn getSerializable(arena: std.mem.Allocator, out_version: *?Id) !IdMap(protocol.QueueItem) {
-    out_version.* = current_version;
+    out_version.* = Id.random(); // TODO: versioning
     var result = IdMap(protocol.QueueItem){};
     try result.map.ensureTotalCapacity(arena, items.table.count());
 

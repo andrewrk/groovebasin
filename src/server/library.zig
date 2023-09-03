@@ -14,43 +14,16 @@ const protocol = @import("groovebasin_protocol.zig");
 const LibraryTrack = protocol.LibraryTrack;
 const Id = protocol.Id;
 const IdMap = protocol.IdMap;
-const ScanStatus = protocol.ScanStatus;
 const db = @import("db.zig");
+const Track = db.Track;
 
-var current_version: Id = undefined;
-const Tracks = db.Database(Id, Track, .library, true);
-pub var tracks: Tracks = undefined;
+const tracks = &db.TheDatabase.tracks;
 var music_directory: []const u8 = undefined;
 
-const Track = struct {
-    duration: f64,
-    file_path: StringPool.Index,
-    title: StringPool.Index,
-    artist: StringPool.OptionalIndex,
-    composer: StringPool.OptionalIndex,
-    performer: StringPool.OptionalIndex,
-    album_artist: StringPool.OptionalIndex,
-    album: StringPool.OptionalIndex,
-    genre: StringPool.OptionalIndex,
-    track_number: i16,
-    track_count: i16,
-    disc_number: i16,
-    disc_count: i16,
-    year: i16,
-    fingerprint_scan_status: ScanStatus = .not_started,
-    loudness_scan_status: ScanStatus = .not_started,
-    compilation: bool,
-};
-
 pub fn init(music_directory_init: []const u8) !void {
-    current_version = Id.random();
-    tracks = Tracks.init(g.gpa);
     music_directory = music_directory_init;
 }
-
-pub fn deinit() void {
-    tracks.deinit();
-}
+pub fn deinit() void {}
 
 pub fn loadFromDisk() !void {
     var arena = std.heap.ArenaAllocator.init(g.gpa);
@@ -174,7 +147,7 @@ fn grooveFileToTrack(
 }
 
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack) {
-    out_version.* = current_version;
+    out_version.* = Id.random(); // TODO: versioning
     var result = IdMap(LibraryTrack){};
     try result.map.ensureTotalCapacity(arena, tracks.table.count());
 

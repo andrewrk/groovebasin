@@ -6,7 +6,6 @@ const Allocator = std.mem.Allocator;
 const Id = @import("groovebasin_protocol.zig").Id;
 const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const Event = @import("groovebasin_protocol.zig").Event;
-const EventUserId = @import("groovebasin_protocol.zig").EventUserId;
 const Datetime = @import("groovebasin_protocol.zig").Datetime;
 
 const g = @import("global.zig");
@@ -16,33 +15,12 @@ const getNow = @import("server_main.zig").getNow;
 const users = @import("users.zig");
 const db = @import("db.zig");
 
-pub const InternalEvent = struct {
-    date: Datetime,
-    // TODO: we really don't need this. just sort on date.
-    sort_key: keese.Value,
-    who: EventUserId,
-    type: union(enum) {
-        chat: struct {
-            text: StringPool.Index,
-            is_slash_me: bool,
-        },
-    },
-};
-
 const StringPool = @import("StringPool.zig");
 
-var current_version: Id = undefined;
-const Events = db.Database(Id, InternalEvent, .events, true);
-pub var events: Events = undefined;
+const events = &db.TheDatabase.events;
 
-pub fn init() !void {
-    current_version = Id.random();
-    events = Events.init(g.gpa);
-}
-
-pub fn deinit() void {
-    events.deinit();
-}
+pub fn init() !void {}
+pub fn deinit() void {}
 
 pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
     const text = try g.strings.put(g.gpa, text_str);
@@ -62,8 +40,6 @@ pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me
             },
         },
     });
-
-    current_version = Id.random();
 }
 
 pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void {
@@ -72,7 +48,6 @@ pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void
         const event = kv.value_ptr;
         if (event.who == .user and event.who.user.value == guest_id.value) {
             it.promoteForEditing(changes, kv).who = .{ .user = real_id };
-            current_version = Id.random();
         }
     }
 }
@@ -94,13 +69,12 @@ pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
                     };
                 },
             }
-            current_version = Id.random();
         }
     }
 }
 
 pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
-    out_version.* = current_version;
+    out_version.* = Id.random(); // TODO: versioning
     var result: IdMap(Event) = .{};
     try result.map.ensureUnusedCapacity(arena, events.table.count());
 

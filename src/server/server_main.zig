@@ -100,8 +100,8 @@ pub fn main() anyerror!void {
     //defer g.player.deinit();
 
     try g.strings.ensureConstants(g.gpa);
-    try users.init();
-    defer users.deinit();
+    try db.init();
+    defer db.deinit();
     try subscriptions.init();
     defer subscriptions.deinit();
     try keese.init(g.gpa);

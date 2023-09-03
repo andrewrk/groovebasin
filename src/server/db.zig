@@ -13,17 +13,122 @@ const g = @import("global.zig");
 
 const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
+const keese = @import("keese.zig");
 
-const SubscriptionTag = std.meta.Tag(@import("groovebasin_protocol.zig").Subscription);
+const protocol = @import("groovebasin_protocol.zig");
+const Id = protocol.Id;
+const ScanStatus = protocol.ScanStatus;
+const Datetime = protocol.Datetime;
+const EventUserId = protocol.EventUserId;
+
+const SubscriptionTag = std.meta.Tag(protocol.Subscription);
 const SubscriptionBoolArray = [std.enums.directEnumArrayLen(SubscriptionTag, 0)]bool;
 const subscription_bool_array_initial_value = std.enums.directEnumArrayDefault(SubscriptionTag, bool, false, 0, .{});
 
+// ===================
+
+pub const UserAccount = struct {
+    /// Display name and login username.
+    username: StringPool.Index,
+    password_hash: PasswordHash,
+    registration_stage: RegistrationStage,
+    permissions: InternalPermissions,
+};
+
+pub const RegistrationStage = enum(u3) {
+    /// Freshly generated.
+    guest_without_password = 0,
+    /// Clients can (and do) set a random password automatically for guest accounts.
+    guest_with_password = 1,
+    /// If the user ever changes their name, they get here. This is required to advance.
+    named_by_user = 2,
+    /// Makes the user show up in the admin approval view.
+    requested_approval = 3,
+    /// Finally the user can have non-guest permissions.
+    approved = 4,
+};
+pub const InternalPermissions = packed struct {
+    read: bool,
+    add: bool,
+    control: bool,
+    playlist: bool,
+    admin: bool,
+};
+
+/// Uses sha256
+pub const PasswordHash = struct {
+    salt: [16]u8,
+    hash: [32]u8,
+};
+
+pub const InternalSession = struct {
+    user_id: Id,
+    claims_to_be_streaming: bool = false,
+};
+
+pub const Track = struct {
+    duration: f64,
+    file_path: StringPool.Index,
+    title: StringPool.Index,
+    artist: StringPool.OptionalIndex,
+    composer: StringPool.OptionalIndex,
+    performer: StringPool.OptionalIndex,
+    album_artist: StringPool.OptionalIndex,
+    album: StringPool.OptionalIndex,
+    genre: StringPool.OptionalIndex,
+    track_number: i16,
+    track_count: i16,
+    disc_number: i16,
+    disc_count: i16,
+    year: i16,
+    fingerprint_scan_status: ScanStatus = .not_started,
+    loudness_scan_status: ScanStatus = .not_started,
+    compilation: bool,
+};
+
+pub const Item = struct {
+    sort_key: keese.Value,
+    track_key: Id,
+    is_random: bool,
+};
+
+pub const InternalEvent = struct {
+    date: Datetime,
+    // TODO: we really don't need this. just sort on date.
+    sort_key: keese.Value,
+    who: EventUserId,
+    type: union(enum) {
+        chat: struct {
+            text: StringPool.Index,
+            is_slash_me: bool,
+        },
+    },
+};
+
+pub const TheDatabase = struct {
+    // TODO use fields instead of global variables.
+    pub var sessions: Database(Id, InternalSession, .sessions, false) = .{};
+    pub var user_accounts: Database(Id, UserAccount, .users, true) = .{};
+    pub var tracks: Database(Id, Track, .library, true) = .{};
+    pub var items: Database(Id, Item, .queue, true) = .{};
+    pub var events: Database(Id, InternalEvent, .events, true) = .{};
+};
+
+pub fn init() !void {}
+pub fn deinit() void {
+    TheDatabase.sessions.deinit();
+    TheDatabase.user_accounts.deinit();
+    TheDatabase.tracks.deinit();
+    TheDatabase.items.deinit();
+    TheDatabase.events.deinit();
+}
+
 const all_databases = .{
-    &@import("users.zig").user_accounts,
-    &@import("users.zig").sessions,
-    &@import("library.zig").tracks,
-    &@import("queue.zig").items,
-    &@import("events.zig").events,
+    &TheDatabase.user_accounts,
+    &TheDatabase.sessions,
+    &TheDatabase.tracks,
+    &TheDatabase.items,
+    &TheDatabase.events,
 };
 
 const FileHeader = extern struct {
@@ -258,16 +363,10 @@ pub fn Database(
     return struct {
         pub const should_save_to_disk = _should_save_to_disk;
 
-        allocator: Allocator,
         table: AutoArrayHashMapUnmanaged(Key, Value) = .{},
 
-        pub fn init(allocator: Allocator) @This() {
-            return .{
-                .allocator = allocator,
-            };
-        }
         pub fn deinit(self: *@This()) void {
-            self.table.deinit(self.allocator);
+            self.table.deinit(g.gpa);
             self.* = undefined;
         }
 
@@ -287,7 +386,7 @@ pub fn Database(
         }
         pub fn putNoClobber(self: *@This(), changes: *Changes, key: Key, value: Value) !void {
             setDirty(changes);
-            try self.table.putNoClobber(self.allocator, key, value);
+            try self.table.putNoClobber(g.gpa, key, value);
         }
         /// TODO: every use of this function is probably an antipattern that
         /// really needs a new method to avoid looking up a key multiple times.
@@ -297,7 +396,7 @@ pub fn Database(
         /// Generate a random key that does not collide with anything, put the value, and return the key.
         pub fn putRandom(self: *@This(), changes: *Changes, value: Value) !Key {
             setDirty(changes);
-            try self.table.ensureUnusedCapacity(self.allocator, 1);
+            try self.table.ensureUnusedCapacity(g.gpa, 1);
             for (0..10) |_| {
                 var key = Key.random(); // If you use putRandom(), this needs to be a function.
                 const gop = self.table.getOrPutAssumeCapacity(key);

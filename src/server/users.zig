@@ -18,50 +18,14 @@ const IdMap = protocol.IdMap;
 const Permissions = protocol.Permissions;
 const PublicUserInfo = protocol.PublicUserInfo;
 
-const UserAccount = struct {
-    /// Display name and login username.
-    username: StringPool.Index,
-    password_hash: PasswordHash,
-    registration_stage: RegistrationStage,
-    permissions: InternalPermissions,
-};
+const UserAccount = db.UserAccount;
+const RegistrationStage = db.RegistrationStage;
+const InternalPermissions = db.InternalPermissions;
+const PasswordHash = db.PasswordHash;
 
-const RegistrationStage = enum(u3) {
-    /// Freshly generated.
-    guest_without_password = 0,
-    /// Clients can (and do) set a random password automatically for guest accounts.
-    guest_with_password = 1,
-    /// If the user ever changes their name, they get here. This is required to advance.
-    named_by_user = 2,
-    /// Makes the user show up in the admin approval view.
-    requested_approval = 3,
-    /// Finally the user can have non-guest permissions.
-    approved = 4,
-    _,
-};
-const InternalPermissions = packed struct {
-    read: bool,
-    add: bool,
-    control: bool,
-    playlist: bool,
-    admin: bool,
-};
+const sessions = &db.TheDatabase.sessions;
+const user_accounts = &db.TheDatabase.user_accounts;
 
-/// Uses sha256
-const PasswordHash = struct {
-    salt: [16]u8,
-    hash: [32]u8,
-};
-
-const InternalSession = struct {
-    user_id: Id,
-    claims_to_be_streaming: bool = false,
-};
-
-const Sessions = db.Database(Id, InternalSession, .sessions, false);
-pub var sessions: Sessions = undefined;
-const UserAccounts = db.Database(Id, UserAccount, .users, true);
-pub var user_accounts: UserAccounts = undefined;
 var guest_permissions: InternalPermissions = .{
     // Can be changed by admins.
     .read = true,
@@ -70,15 +34,6 @@ var guest_permissions: InternalPermissions = .{
     .playlist = false,
     .admin = false,
 };
-
-pub fn init() !void {
-    sessions = Sessions.init(g.gpa);
-    user_accounts = UserAccounts.init(g.gpa);
-}
-pub fn deinit() void {
-    sessions.deinit();
-    user_accounts.deinit();
-}
 
 pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
     // Every new connection starts as a guest.
@@ -157,13 +112,16 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, pass
         const target_account = user_accounts.get(target_user_id);
         try checkPassword(target_account, password);
         // You're in.
-        if (@intFromEnum(session_account.registration_stage) >= @intFromEnum(RegistrationStage.named_by_user)) {
-            // Switch login.
-            session.user_id = target_user_id;
-        } else {
-            // An actual regular login, which is the most complex case.
-            const guest_user_id = session.user_id;
-            try mergeAccounts(changes, guest_user_id, target_user_id);
+        switch (session_account.registration_stage) {
+            .guest_without_password, .guest_with_password => {
+                // An actual regular login, which is the most complex case.
+                const guest_user_id = session.user_id;
+                try mergeAccounts(changes, guest_user_id, target_user_id);
+            },
+            .named_by_user, .requested_approval, .approved => {
+                // Switch login.
+                session.user_id = target_user_id;
+            },
         }
     } else {
         // change username, change password. Sorta like "creating an account".
@@ -338,7 +296,7 @@ pub fn updateUser(changes: *db.Changes, user_id: Id, perms: Permissions) !void {
 
 pub fn updateGuestPermissions(changes: *db.Changes, perms: Permissions) !void {
     guest_permissions = convertPermsissions(perms);
-    //changes.guest_perms = true;
+    //changes.guest_permissions = true;
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const account = kv.value_ptr;
@@ -446,7 +404,6 @@ pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdMap(PublicUs
                 .named_by_user => .named_by_user,
                 .requested_approval => .requested_approval,
                 .approved => .approved,
-                _ => unreachable,
             },
         });
     }

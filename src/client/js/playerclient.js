@@ -2,7 +2,6 @@ var EventEmitter = require('event_emitter');
 var inherits = require('inherits');
 var randomId = require('randomId');
 var MusicLibraryIndex = require('music-library-index');
-var keese = require('keese');
 var curlydiff = require('curlydiff');
 var shuffle = require('mess');
 
@@ -526,7 +525,7 @@ PlayerClient.prototype.renamePlaylist = function(playlist, newName) {
 
 PlayerClient.prototype.queueTracks = function(playlist, keys, previousKey, nextKey) {
   var items = {}; // we'll send this to the server
-  var sortKeys = keese(previousKey, nextKey, keys.length);
+  var sortKeys = interpolateSortKeys(previousKey, nextKey, keys.length);
   for (var i = 0; i < keys.length; i += 1) {
     var key = keys[i];
     var sortKey = sortKeys[i];
@@ -637,13 +636,11 @@ PlayerClient.prototype.moveIds = function(trackIds, previousKey, nextKey){
   }
   tracks.sort(compareSortKeyAndId);
   var items = {};
-  var sortKeys = keese(previousKey, nextKey, tracks.length);
+  var sortKeys = interpolateSortKeys(previousKey, nextKey, tracks.length);
   for (i = 0; i < tracks.length; i += 1) {
     track = tracks[i];
     var sortKey = sortKeys[i];
-    items[track.id] = {
-      sortKey: sortKey,
-    };
+    items[track.id] = sortKey;
     track.sortKey = sortKey;
     previousKey = sortKey;
   }
@@ -1040,7 +1037,7 @@ function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
   var itemList = playlist.itemList;
   var movedItems = {};
   var reverse = offset === -1;
-  function getKeeseBetween(itemA, itemB) {
+  function getSortKeyBetween(itemA, itemB) {
     if (reverse) {
       var tmp = itemA;
       itemA = itemB;
@@ -1048,7 +1045,7 @@ function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
     }
     var keyA = itemA == null ? null : itemA.sortKey;
     var keyB = itemB == null ? null : itemB.sortKey;
-    return keese(keyA, keyB);
+    return interpolateSortKeys(keyA, keyB);
   }
   if (reverse) {
     // to make this easier, just reverse the item list in place so we can write one iteration routine.
@@ -1064,17 +1061,17 @@ function shiftIdsInPlaylist(self, playlist, trackIdSet, offset) {
       while (true) {
         if (i < 0) {
           // fell off the end (or beginning) of the list
-          track.sortKey = getKeeseBetween(null, itemList[0]);
+          track.sortKey = getSortKeyBetween(null, itemList[0]);
           break;
         }
         if (!(itemList[i].id in trackIdSet)) {
           // this is where it goes (e.g. found "d" is not selected)
-          track.sortKey = getKeeseBetween(itemList[i], itemList[i + 1]);
+          track.sortKey = getSortKeyBetween(itemList[i], itemList[i + 1]);
           break;
         }
         i--;
       }
-      movedItems[track.id] = {sortKey: track.sortKey};
+      movedItems[track.id] = track.sortKey;
       i++;
     }
   }
@@ -1096,7 +1093,7 @@ function shuffleIds(ids, table) {
   for (i = 0; i < ids.length; i += 1) {
     id = ids[i];
     sortKey = sortKeys[i];
-    items[id] = {sortKey: sortKey};
+    items[id] = sortKey;
     table[id].sortKey = sortKey;
   }
   return items;
@@ -1155,5 +1152,53 @@ function compareUserNames(a, b) {
     return 1;
   } else {
     return 0;
+  }
+}
+
+function interpolateSortKeys(low, high, n) {
+  var list = [];
+  if (low == null && high == null) {
+    // Any values will work.
+    if (n == null) {
+      return 0;
+    } else {
+      for (var i = 0; i < n; i++) {
+        list.push(i);
+      }
+      return list;
+    }
+  } else if (high == null) {
+    // Go up.
+    var value = Math.floor(low + 1);
+    if (n == null) {
+      return value;
+    } else {
+      for (var i = 0; i < n; i++) {
+        list.push(value + i);
+      }
+      return list;
+    }
+  } else if (low == null) {
+    // Go down.
+    var value = Math.floor(high - 1);
+    if (n == null) {
+      return value;
+    } else {
+      for (var i = 0; i < n; i++) {
+        list.push(value - n + 1 + i);
+      }
+      return list;
+    }
+  } else {
+    // In between
+    if (n == null) {
+      return (low + high) / 2;
+    } else {
+      var step = (high - low) / (n + 1);
+      for (var i = 0; i < n; i++) {
+        list.push(low + (i + 1) * step);
+      }
+      return list;
+    }
   }
 }

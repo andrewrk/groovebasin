@@ -3,8 +3,6 @@ const Allocator = std.mem.Allocator;
 const json = std.json;
 const Tag = std.meta.Tag;
 
-const keese = @import("keese.zig");
-
 const TODO = struct {
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
         _ = allocator;
@@ -281,14 +279,12 @@ pub const ClientToServerMessage = union(enum) {
     },
     updateGuestPermissions: Permissions,
     unsubscribe: TODO,
-    move: IdMap(struct {
-        sortKey: keese.Value,
-    }),
+    move: IdMap(f64),
     pause: void,
     play: void,
     queue: IdMap(struct {
         key: Id,
-        sortKey: keese.Value,
+        sortKey: f64,
     }),
     seek: struct {
         id: Id,
@@ -429,7 +425,7 @@ pub const ScanStatus = enum(u2) {
 
 pub const QueueItem = struct {
     key: Id,
-    sortKey: keese.Value,
+    sortKey: f64,
     isRandom: bool,
 };
 
@@ -450,10 +446,10 @@ pub const PublicUserInfo = struct {
 
 pub const Event = struct {
     date: Datetime,
+    sortKey: f64,
     type: enum {
         chat,
     },
-    sortKey: ?keese.Value = null,
     userId: EventUserId = .system,
     text: ?[]const u8 = null,
     trackId: ?TODO = null,

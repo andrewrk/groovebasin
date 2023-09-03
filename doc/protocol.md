@@ -100,6 +100,42 @@ to encode the datetime of Groove Basin's first commit in milliseconds since the 
 42 bits gets us to year 2109. IEEE 754 64-bit floats (JavaScript numbers) have 53-bits of
 integer precision, which is enough to last for the next 287k years.)
 
+#### SortKey
+
+The `SortKey` type is a 64-bit floating-point number that describes where items
+are relative to other items. Note that this is not necessarily the index into a
+sorted list of items. Sort keys can be fractional and can skip values. The only
+meaningful information in a sort key is its value relative to other elements in
+the same list.
+
+As the name suggests, clients should sort items based on the `sortKey` property
+to determine the logical order of a list. If clients wish to append items to
+the end of a list, generate new sort keys greater than all the other sort keys
+in the list (e.g. start with the sort key of the last item already in the list
+and increment the value by `1` for each new item.). If clients wish to insert
+items in between existing items, generate sort keys with values between the
+sort keys of the existing items (e.g. use the average between the sort keys for
+the new sort key, or for a list of `n` new items, subdivide the interval
+between the existing sort keys to generate `n` new sort keys.). If clients wish
+to reorder items in a list, it is recommended to modify as few sort keys as
+possible to achieve the reordering.
+
+Clients must not generate sort key collisions. In this event, the server may
+change the sort keys provided or may reject the request.
+
+Because 64 bits is a finite number of bits, it's not always possible to insert
+new items in the desired spot without generating a collision. For example,
+after recursively subdividing the space between the sort keys `1` and `2` 53
+times, a 64-bit float does not have enough precision to specify in-between
+values anymore; theoretically, there is also a limit to how large numbers can
+get as well, but precision between keys is more likely to cause issues than
+overflow. There is no elegant solution to this problem. It is suggested that
+clients determine when precision is running out in some cases, and send a
+[move](#move) command that reorders all the items isomorphically to smooth out
+the sort keys (e.g. sort the list normally, then "move" every item to have a
+sort key equal to its index in the list.). This process can be thought of as a
+sort of "defragment" operation on sort keys.
+
 ### Authentication
 
 Groove Basin has the following permissions:
@@ -346,13 +382,9 @@ See also [subscribe](#subscribe)
 ### move
 
  * Permission: `control`
- * Type: `{itemId: {sortKey}}`
+ * Type: `{itemId: sortKey}`
  * `itemId`: `ID`. ID of the playlist item to move.
- * `sortKey`: `string`. Describes the new position of the playlist item.
-
-Moving play queue items by updating their sort key values. Use the
-[keese](https://github.com/thejoshwolfe/node-keese) algorithm to compute the
-desired sort keys.
+ * `sortKey`: `SortKey`. Describes the new position of the playlist item.
 
 ### pause
 
@@ -370,8 +402,7 @@ desired sort keys.
  * Type: `{itemId: {key, sortKey}}`
  * `itemId`: `ID`. [ID](#id) to identify the new queue item.
  * `key`: `ID`. ID of the song this queue item is for.
- * `sortKey`:`string`. [keese](https://github.com/thejoshwolfe/node-keese)
-   value used to determine the position of the queue item.
+ * `sortKey`: `SortKey`. Value used to determine the position of the queue item.
 
 ### seek
 
@@ -456,8 +487,7 @@ Delete any number of playlists.
  * `items`: `object`
    - `itemId`: `ID`. [ID](#id) to identify the new playlist item.
    - `key`: `ID`. ID of the song this playlist item is associated with.
-   - `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
-     value used to order the playlist item in the playlist.
+   - `sortKey`: `SortKey`. Value used to order the playlist item in the playlist.
 
 ### playlistRemoveItems
 
@@ -469,11 +499,10 @@ Delete any number of playlists.
 ### playlistMoveItems
 
  * Permission: `playlist`
- * Type: `{playlistId: {itemId: {sortKey}}}`
+ * Type: `{playlistId: {itemId: sortKey}}`
  * `playlistId`: `ID`. ID of a playlist to move items in.
  * `itemId`: `ID`. Id of a playlist item to move.
- * `sortKey`: `string`. New [keese](https://github.com/thejoshwolfe/node-keese)
-   value used to order the playlist item in the playlist.
+ * `sortKey`: `SortKey`. Value used to order the playlist item in the playlist.
 
 ### labelCreate
 
@@ -703,8 +732,7 @@ All the fixed-size data in one message.
  * Type: `{id: {key, sortKey, isRandom}}`
  * `id`: `ID`. The play queue item ID.
  * `key`: `ID`. The ID of the song this queue item refers to.
- * `sortKey`: `string`. A [keese](https://github.com/thejoshwolfe/node-keese)
-   string indicating the order of this item in the play queue.
+ * `sortKey`: `SortKey`. Value indicating the order of this item in the play queue.
  * `isRandom`: `boolean`. Indicates whether this queue item was queued by the
    user or randomly, by Auto DJ.
 
@@ -749,8 +777,7 @@ information.
  * `items`: `object`. Set of playlist items.
    * `itemId`: `ID`. ID of the playlist item in the playlist.
    * `key`: `ID`. ID of the song in the music library.
-   * `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
-     string which tells the position of the item in the playlist.
+   * `sortKey`: `SortKey`. Value indicating the position of the item in the playlist.
 
 To display playlist items in the correct order, sort them by `sortKey`.
 
@@ -826,8 +853,7 @@ to properly detect and support them.
  * Type: `{id: {date, type, sortKey, userId, text, trackId, pos, displayClass, playlistId}}`
  * `id`: `ID`. Event ID.
  * `date`: `datetime`. Datetime when the event occurred.
- * `sortKey`: `string`. [keese](https://github.com/thejoshwolfe/node-keese)
-   string specifying the order the events should be displayed in.
+ * `sortKey`: `SortKey`. Value indicating the order the events should be displayed in.
  * `type`: `string`. Depending on the event type there may be more fields.
    See below for details.
  * `userId`: `ID`. `null` for system events, otherwise either the ID of the user who generated the event, or `"(del)"` for a deleted user.
@@ -1119,6 +1145,8 @@ files. Groove Basin supports uploading .zip files.
     * `hardwarePlayback` - moved as is.
     * `streamEndpoint` - moved as is.
 * The `"(guest)"` pseudo was moved from the `users` subscription to the `guestPermissions` field of the `state` subscription. Added `updateUser`
+* Dropped [keese](https://github.com/thejoshwolfe/node-keese) `sortKey` strings in favor of 64-bit floats sort keys.
+    * `move` and `playlistMoveItems` changed to accept `{itemId: sortKey}` instead of `{itemId: {sortKey}}`.
 
 ### 0.0.1
 

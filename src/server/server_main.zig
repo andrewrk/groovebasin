@@ -8,7 +8,6 @@ const g = @import("global.zig");
 const library = @import("library.zig");
 const queue = @import("queue.zig");
 const events = @import("events.zig");
-const keese = @import("keese.zig");
 const subscriptions = @import("subscriptions.zig");
 const users = @import("users.zig");
 const db = @import("db.zig");
@@ -104,8 +103,6 @@ pub fn main() anyerror!void {
     defer db.deinit();
     try subscriptions.init();
     defer subscriptions.deinit();
-    try keese.init(g.gpa);
-    defer keese.deinit();
     try library.init(music_dir_path);
     defer library.deinit();
     try queue.init();

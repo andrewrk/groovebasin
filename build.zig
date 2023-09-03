@@ -58,7 +58,6 @@ pub fn build(b: *Builder) void {
             "src/client/js/event_emitter.js",
             "src/client/js/human-size.js",
             "src/client/js/inherits.js",
-            "src/client/js/keese.js",
             "src/client/js/main.js",
             "src/client/js/mess.js",
             "src/client/js/music-library-index.js",

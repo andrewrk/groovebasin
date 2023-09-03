@@ -9,7 +9,6 @@ const Event = @import("groovebasin_protocol.zig").Event;
 const Datetime = @import("groovebasin_protocol.zig").Datetime;
 
 const g = @import("global.zig");
-const keese = @import("keese.zig");
 const subscriptions = @import("subscriptions.zig");
 const getNow = @import("server_main.zig").getNow;
 const users = @import("users.zig");
@@ -24,10 +23,10 @@ pub fn deinit() void {}
 
 pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
     const text = try g.strings.put(g.gpa, text_str);
-    const sort_key = if (events.table.count() == 0)
-        keese.starting_value
+    const sort_key: f64 = if (events.table.count() == 0)
+        0.0
     else
-        try keese.above(events.table.values()[events.table.count() - 1].sort_key);
+        events.table.values()[events.table.count() - 1].sort_key + 1.0;
 
     _ = try events.putRandom(changes, .{
         .date = getNow(),

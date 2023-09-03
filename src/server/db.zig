@@ -13,7 +13,6 @@ const g = @import("global.zig");
 
 const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
-const keese = @import("keese.zig");
 
 const protocol = @import("groovebasin_protocol.zig");
 const Id = protocol.Id;
@@ -88,7 +87,7 @@ pub const Track = struct {
 };
 
 pub const Item = struct {
-    sort_key: keese.Value,
+    sort_key: f64,
     track_key: Id,
     is_random: bool,
 };
@@ -96,7 +95,7 @@ pub const Item = struct {
 pub const InternalEvent = struct {
     date: Datetime,
     // TODO: we really don't need this. just sort on date.
-    sort_key: keese.Value,
+    sort_key: f64,
     who: EventUserId,
     type: union(enum) {
         chat: struct {
@@ -171,7 +170,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 21,
+    dev_version: u16 = 22,
 };
 
 const some_facts = blk: {

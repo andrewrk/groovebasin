@@ -10,7 +10,6 @@ const Groove = @import("groove.zig").Groove;
 const protocol = @import("groovebasin_protocol.zig");
 const Id = protocol.Id;
 const IdMap = protocol.IdMap;
-const keese = @import("keese.zig");
 const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
@@ -135,7 +134,7 @@ pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
             log.warn("ignoring queue item with id collision: {}", .{item_id});
             continue;
         }
-        log.info("enqueuing: {}: {} @{s}", .{ item_id, library_key, sort_key });
+        log.info("enqueuing: {}: {} @{}", .{ item_id, library_key, sort_key });
 
         const groove_file = library.loadGrooveFile(library_key) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
@@ -163,7 +162,7 @@ pub fn move(changes: *db.Changes, args: anytype) !void {
     var it = args.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
-        const sort_key = kv.value_ptr.sortKey;
+        const sort_key = kv.value_ptr.*;
         if (!items.contains(item_id)) {
             log.warn("attempt to move non-existent item: {}", .{item_id});
             continue;
@@ -238,7 +237,7 @@ fn sort() void {
             _ = ctx; // we're using global variables
             const a_sort_key = items.table.values()[a_index].sort_key;
             const b_sort_key = items.table.values()[b_index].sort_key;
-            return keese.order(a_sort_key, b_sort_key) == .lt;
+            return a_sort_key < b_sort_key;
         }
     };
     items.table.sort(SortContext{});

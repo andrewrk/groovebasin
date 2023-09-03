@@ -3452,7 +3452,7 @@ function updateLastFmSettingsUi() {
 
 function updateSettingsAuthUi() {
   var i, user, newOption;
-  var request = null;
+  var firstRequestingUser = null;
   var selectedUserId = settingsUsersSelect.value;
   while (settingsUsersSelect.options.length) {
     settingsUsersSelect.remove(settingsUsersSelect.options.length - 1);
@@ -3467,30 +3467,32 @@ function updateSettingsAuthUi() {
       selectedUserId = selectedUserId || user.id;
     }
     if (!user.approved && user.requested) {
-      request = request || user;
+      firstRequestingUser = firstRequestingUser || user;
     }
   }
+  newOption = document.createElement('option');
+  newOption.textContent = "Guests";
+  newOption.value = PlayerClient.GUEST_USER_ID;
+  settingsUsersSelect.add(newOption);
+
   settingsUsersSelect.value = selectedUserId;
   updatePermsForSelectedUser();
 
-  if (request) {
+  if (firstRequestingUser) {
     while (requestReplaceSelect.options.length) {
       requestReplaceSelect.remove(requestReplaceSelect.options.length - 1);
     }
     for (i = 0; i < player.usersList.length; i += 1) {
       user = player.usersList[i];
-      if (user.id === PlayerClient.GUEST_USER_ID) {
-        user = request;
-      }
-      if (user.approved || user === request) {
+      if (user.approved || user === firstRequestingUser) {
         newOption = document.createElement('option');
         newOption.textContent = user.name;
         newOption.value = user.id;
         requestReplaceSelect.add(newOption);
       }
     }
-    requestReplaceSelect.value = request.id;
-    requestNameDom.value = request.name;
+    requestReplaceSelect.value = firstRequestingUser.id;
+    requestNameDom.value = firstRequestingUser.name;
   }
 
   authPermReadDom.style.display = havePerm('read') ? "" : "none";
@@ -3503,7 +3505,7 @@ function updateSettingsAuthUi() {
   settingsAuthLogoutDom.style.display = myUser.registered ? "" : "none";
   settingsAuthEditDom.value = myUser.registered ? 'Edit' : 'Register';
   settingsUsersDom.style.display = havePerm('admin') ? "" : "none";
-  settingsRequestsDom.style.display = (havePerm('admin') && !!request) ? "" : "none";
+  settingsRequestsDom.style.display = (havePerm('admin') && !!firstRequestingUser) ? "" : "none";
 
   toggleHardwarePlaybackDom.disabled = !havePerm('admin');
   toggleHardwarePlaybackDom.setAttribute('title', havePerm('admin') ? "" : "Requires admin privilege.");
@@ -3635,17 +3637,17 @@ function showKeyboardShortcuts(ev) {
 }
 
 function handleApproveDeny(approved) {
-  var request = null;
+  var firstRequestingUser = null;
   for (var i = 0; i < player.usersList.length; i += 1) {
     var user = player.usersList[i];
     if (!user.approved && user.requested) {
-      request = user;
+      firstRequestingUser = user;
       break;
     }
   }
-  if (!request) return;
+  if (!firstRequestingUser) return;
   socket.send('approve', [{
-    id: request.id,
+    id: firstRequestingUser.id,
     replaceId: requestReplaceSelect.value,
     approved: approved,
     name: requestNameDom.value,
@@ -3666,30 +3668,42 @@ function updateBtnOn(btn, on) {
 
 function updatePermsForSelectedUser() {
   var selectedUserId = settingsUsersSelect.value;
-  var user = player.usersTable[selectedUserId];
-  if (!user) return;
+  var perms;
+  if (selectedUserId === PlayerClient.GUEST_USER_ID) {
+    perms = player.stateFromServer.guestPermissions;
+  } else {
+    var user = player.usersTable[selectedUserId];
+    if (!user) return;
+    perms = user.perms;
+  }
 
-  updateBtnOn(userPermReadDom, user.perms.read);
-  updateBtnOn(userPermAddDom, user.perms.add);
-  updateBtnOn(userPermControlDom, user.perms.control);
-  updateBtnOn(userPermPlaylistDom, user.perms.playlist);
-  updateBtnOn(userPermAdminDom, user.perms.admin);
+  updateBtnOn(userPermReadDom, perms.read);
+  updateBtnOn(userPermAddDom, perms.add);
+  updateBtnOn(userPermControlDom, perms.control);
+  updateBtnOn(userPermPlaylistDom, perms.playlist);
+  updateBtnOn(userPermAdminDom, perms.admin);
 
   settingsDelUserDom.disabled = (selectedUserId === PlayerClient.GUEST_USER_ID);
 }
 
 function updateSelectedUserPerms(ev) {
   updateBtnOn(ev.target, !isBtnOn(ev.target));
-  socket.send('updateUser', {
-    userId: settingsUsersSelect.value,
-    perms: {
-      read: isBtnOn(userPermReadDom),
-      add: isBtnOn(userPermAddDom),
-      control: isBtnOn(userPermControlDom),
-      playlist: isBtnOn(userPermPlaylistDom),
-      admin: isBtnOn(userPermAdminDom),
-    },
-  });
+  var permsToSend = {
+    read: isBtnOn(userPermReadDom),
+    add: isBtnOn(userPermAddDom),
+    control: isBtnOn(userPermControlDom),
+    playlist: isBtnOn(userPermPlaylistDom),
+    admin: isBtnOn(userPermAdminDom),
+  };
+  var selectedUserId = settingsUsersSelect.value;
+  if (selectedUserId === PlayerClient.GUEST_USER_ID) {
+    socket.send('updateGuestPermissions', permsToSend);
+  } else {
+    socket.send('updateUser', {
+      userId: selectedUserId,
+      perms: permsToSend,
+    });
+  }
 }
 
 function handleUserOrPassKeyDown(ev) {

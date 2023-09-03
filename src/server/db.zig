@@ -20,6 +20,7 @@ const Id = protocol.Id;
 const ScanStatus = protocol.ScanStatus;
 const Datetime = protocol.Datetime;
 const EventUserId = protocol.EventUserId;
+const RepeatState = protocol.RepeatState;
 
 const SubscriptionTag = std.meta.Tag(protocol.Subscription);
 const SubscriptionBoolArray = [std.enums.directEnumArrayLen(SubscriptionTag, 0)]bool;
@@ -105,30 +106,62 @@ pub const InternalEvent = struct {
     },
 };
 
+pub const State = struct {
+    current_track: void = {}, // TODO
+    auto_dj: packed struct {
+        on: bool = false,
+        history_size: u10 = 10,
+        future_size: u10 = 10,
+    } = .{},
+    repeat: RepeatState = .off,
+    volume_percent: u8 = 100, // 0%..200%
+    hardware_playback: bool = false,
+    guest_permissions: InternalPermissions = .{
+        .read = true,
+        .add = false,
+        .control = true,
+        .playlist = false,
+        .admin = false,
+    },
+};
+
 pub const TheDatabase = struct {
-    // TODO use fields instead of global variables.
-    pub var sessions: Database(Id, InternalSession, .sessions, false) = .{};
-    pub var user_accounts: Database(Id, UserAccount, .users, true) = .{};
-    pub var tracks: Database(Id, Track, .library, true) = .{};
-    pub var items: Database(Id, Item, .queue, true) = .{};
-    pub var events: Database(Id, InternalEvent, .events, true) = .{};
+    sessions: Database(Id, InternalSession, .sessions, false) = .{},
+    user_accounts: Database(Id, UserAccount, .users, true) = .{},
+    tracks: Database(Id, Track, .library, true) = .{},
+    items: Database(Id, Item, .queue, true) = .{},
+    events: Database(Id, InternalEvent, .events, true) = .{},
+
+    state: State = .{},
+
+    pub fn deinit(self: *@This()) void {
+        self.sessions.deinit();
+        self.user_accounts.deinit();
+        self.tracks.deinit();
+        self.items.deinit();
+        self.events.deinit();
+    }
+
+    pub fn getState(self: *const @This()) *const State {
+        return &self.state;
+    }
+    pub fn getStateForEditing(self: *@This(), changes: *Changes) *State {
+        changes.broadcastChanges(.state);
+        return &self.state;
+    }
 };
 
 pub fn init() !void {}
 pub fn deinit() void {
-    TheDatabase.sessions.deinit();
-    TheDatabase.user_accounts.deinit();
-    TheDatabase.tracks.deinit();
-    TheDatabase.items.deinit();
-    TheDatabase.events.deinit();
+    g.the_database.deinit();
 }
 
 const all_databases = .{
-    &TheDatabase.user_accounts,
-    &TheDatabase.sessions,
-    &TheDatabase.tracks,
-    &TheDatabase.items,
-    &TheDatabase.events,
+    &g.the_database.user_accounts,
+    &g.the_database.sessions,
+    &g.the_database.tracks,
+    &g.the_database.items,
+    &g.the_database.events,
 };
 
 const FileHeader = extern struct {
@@ -138,21 +171,23 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 19,
+    dev_version: u16 = 21,
 };
 
 const some_facts = blk: {
-    comptime var database_index_size: usize = 0;
+    comptime var fixed_size_header_size: usize = 0;
     comptime var number_of_dynamically_sized_sections: usize = 0;
-    database_index_size += @sizeOf(u32); // strings len
+    fixed_size_header_size += @sizeOf(FileHeader); // header
+    fixed_size_header_size += @sizeOf(State); // fixed-size data
+    fixed_size_header_size += @sizeOf(u32); // strings len
     number_of_dynamically_sized_sections += 1; // strings data
     inline for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
-        database_index_size += @sizeOf(u32); // number of items
+        fixed_size_header_size += @sizeOf(u32); // number of items
         number_of_dynamically_sized_sections += 2; // keys, values
     }
     break :blk .{
-        .database_index_size = database_index_size,
+        .fixed_size_header_size = fixed_size_header_size,
         .number_of_dynamically_sized_sections = number_of_dynamically_sized_sections,
     };
 };
@@ -165,7 +200,7 @@ pub fn load(path: []const u8) !void {
     db_path = path;
     db_path_tmp = try std.mem.concat(g.gpa, u8, &.{ db_path, ".tmp" });
 
-    var header_buf: [@sizeOf(FileHeader) + some_facts.database_index_size]u8 = undefined;
+    var header_buf: [some_facts.fixed_size_header_size]u8 = undefined;
     const file = std.fs.cwd().openFile(db_path, .{}) catch |err| switch (err) {
         error.FileNotFound => {
             log.warn("no db found. starting from scratch", .{});
@@ -192,6 +227,9 @@ pub fn load(path: []const u8) !void {
     }
 
     var header_cursor: usize = @sizeOf(FileHeader);
+    g.the_database.state = std.mem.bytesToValue(State, header_buf[header_cursor..][0..@sizeOf(State)]);
+    header_cursor += @sizeOf(State);
+
     var iovec_array: [some_facts.number_of_dynamically_sized_sections]Iovec = undefined;
     var i: usize = 0;
     {
@@ -240,7 +278,7 @@ pub fn load(path: []const u8) !void {
         try checkForCorruption(&d.table);
     }
 
-    log.info("loaded db bytes: {}", .{@sizeOf(FileHeader) + some_facts.database_index_size + totalIovecLen(&iovec_array)});
+    log.info("loaded db bytes: {}", .{some_facts.fixed_size_header_size + totalIovecLen(&iovec_array)});
 }
 
 fn readvNoEof(file: std.fs.File, iovecs: []Iovec) !void {
@@ -258,7 +296,7 @@ fn totalIovecLen(iovecs: anytype) usize {
     return total;
 }
 
-fn parseLen(header_buf: *[@sizeOf(FileHeader) + some_facts.database_index_size]u8, cursor: *usize, len_upper_bound: usize) !u32 {
+fn parseLen(header_buf: *[some_facts.fixed_size_header_size]u8, cursor: *usize, len_upper_bound: usize) !u32 {
     const len = std.mem.bytesToValue(u32, header_buf[cursor.*..][0..@sizeOf(u32)]);
     if (len > len_upper_bound) {
         return error.DataCorruption; // db specifies a len that exceeds the file size.
@@ -278,9 +316,13 @@ fn saveTo(path: []const u8) !void {
     defer file.close();
 
     var header_cursor: usize = 0;
-    var header_buf: [@sizeOf(FileHeader) + some_facts.database_index_size]u8 = undefined;
+    var header_buf: [some_facts.fixed_size_header_size]u8 = undefined;
+
     @memcpy(header_buf[header_cursor..][0..@sizeOf(FileHeader)], std.mem.asBytes(&FileHeader{}));
     header_cursor += @sizeOf(FileHeader);
+
+    @memcpy(header_buf[header_cursor..][0..@sizeOf(State)], std.mem.asBytes(&g.the_database.state));
+    header_cursor += @sizeOf(State);
 
     var iovec_array: [1 + some_facts.number_of_dynamically_sized_sections]IovecConst = undefined;
     var i: usize = 0;

@@ -113,7 +113,6 @@ Groove Basin has the following permissions:
 By default, guests have only these permissions:
 
  * `read`
- * `add`
  * `control`
 
 In this document, each message that the client can send to the server has a

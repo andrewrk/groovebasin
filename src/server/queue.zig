@@ -14,7 +14,7 @@ const keese = @import("keese.zig");
 const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
-const items = &db.TheDatabase.items;
+const items = &g.the_database.items;
 var seek_request: ?SeekRequest = undefined;
 var current_item: ?struct {
     id: Id,

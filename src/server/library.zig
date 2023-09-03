@@ -17,7 +17,7 @@ const IdMap = protocol.IdMap;
 const db = @import("db.zig");
 const Track = db.Track;
 
-const tracks = &db.TheDatabase.tracks;
+const tracks = &g.the_database.tracks;
 var music_directory: []const u8 = undefined;
 
 pub fn init(music_directory_init: []const u8) !void {

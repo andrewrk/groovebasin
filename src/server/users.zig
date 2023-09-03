@@ -23,17 +23,8 @@ const RegistrationStage = db.RegistrationStage;
 const InternalPermissions = db.InternalPermissions;
 const PasswordHash = db.PasswordHash;
 
-const sessions = &db.TheDatabase.sessions;
-const user_accounts = &db.TheDatabase.user_accounts;
-
-var guest_permissions: InternalPermissions = .{
-    // Can be changed by admins.
-    .read = true,
-    .add = false,
-    .control = true,
-    .playlist = false,
-    .admin = false,
-};
+const sessions = &g.the_database.sessions;
+const user_accounts = &g.the_database.user_accounts;
 
 pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
     // Every new connection starts as a guest.
@@ -175,7 +166,13 @@ fn createGuestAccount(changes: *db.Changes) !Id {
     for (username_str[username_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
-    return createAccount(changes, &username_str, std.mem.zeroes(PasswordHash), .guest_without_password, guest_permissions);
+    return createAccount(
+        changes,
+        &username_str,
+        std.mem.zeroes(PasswordHash),
+        .guest_without_password,
+        g.the_database.getState().guest_permissions,
+    );
 }
 
 pub fn ensureAdminUser(changes: *db.Changes) !void {
@@ -295,13 +292,13 @@ pub fn updateUser(changes: *db.Changes, user_id: Id, perms: Permissions) !void {
 }
 
 pub fn updateGuestPermissions(changes: *db.Changes, perms: Permissions) !void {
-    guest_permissions = convertPermsissions(perms);
-    //changes.guest_permissions = true;
+    const permissions = convertPermsissions(perms);
+    g.the_database.getStateForEditing(changes).guest_permissions = permissions;
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const account = kv.value_ptr;
         if (account.registration_stage == .approved) continue;
-        it.promoteForEditing(changes, kv).permissions = guest_permissions;
+        it.promoteForEditing(changes, kv).permissions = permissions;
     }
 }
 
@@ -359,7 +356,7 @@ fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !vo
 }
 
 pub fn getSerializableGuestPermissions() protocol.Permissions {
-    return convertPermsissions(guest_permissions);
+    return convertPermsissions(g.the_database.getState().guest_permissions);
 }
 pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.IdMap(protocol.Session) {
     // This version number never matters. Sessions beginning/ending changes the

@@ -17,7 +17,7 @@ const db = @import("db.zig");
 
 const StringPool = @import("StringPool.zig");
 
-const events = &db.TheDatabase.events;
+const events = &g.the_database.events;
 
 pub fn init() !void {}
 pub fn deinit() void {}

@@ -66,7 +66,7 @@ pub fn handleLoaded() !void {
     updateLibGroovePlaylist();
 }
 
-pub fn seek(changes: *db.Changes, user_id: Id, id: Id, pos: f64) !void {
+pub fn seek(user_id: Id, id: Id, pos: f64) !void {
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
     _ = user_id;
 
@@ -75,10 +75,9 @@ pub fn seek(changes: *db.Changes, user_id: Id, id: Id, pos: f64) !void {
         .pos = pos,
     };
     updateLibGroovePlaylist();
-    changes.broadcastChanges(.state);
 }
 
-pub fn play(changes: *db.Changes, user_id: Id) !void {
+pub fn play(user_id: Id) !void {
     // TODO: add the play event ("poopsmith3 pressed play")
     _ = user_id;
 
@@ -101,10 +100,9 @@ pub fn play(changes: *db.Changes, user_id: Id) !void {
     log.debug("groove playlist play", .{});
     updateLibGroovePlaylist();
     g.player.playlist.play();
-    changes.broadcastChanges(.state);
 }
 
-pub fn pause(changes: *db.Changes, user_id: Id) !void {
+pub fn pause(user_id: Id) !void {
     // TODO: add the pause event ("poopsmith3 pressed pause")
     _ = user_id;
 
@@ -120,10 +118,9 @@ pub fn pause(changes: *db.Changes, user_id: Id) !void {
 
     updateLibGroovePlaylist();
     g.player.playlist.pause();
-    changes.broadcastChanges(.state);
 }
 
-pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
+pub fn enqueue(new_items: anytype) !void {
     try items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
     var it = new_items.map.iterator();
     while (it.next()) |kv| {
@@ -149,7 +146,7 @@ pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
         errdefer groove_file.destroy();
 
         try groove_files.putNoClobber(g.gpa, item_id, groove_file);
-        items.putNoClobber(changes, item_id, .{
+        items.putNoClobber(item_id, .{
             .sort_key = sort_key,
             .track_key = library_key,
             .is_random = false,
@@ -158,7 +155,7 @@ pub fn enqueue(changes: *db.Changes, new_items: anytype) !void {
     updateLibGroovePlaylist();
 }
 
-pub fn move(changes: *db.Changes, args: anytype) !void {
+pub fn move(args: anytype) !void {
     var it = args.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
@@ -167,7 +164,7 @@ pub fn move(changes: *db.Changes, args: anytype) !void {
             log.warn("attempt to move non-existent item: {}", .{item_id});
             continue;
         }
-        const item = try items.getForEditing(changes, item_id);
+        const item = try items.getForEditing(item_id);
         log.info("moving: {}: @{} -> @{}", .{ item_id, item.sort_key, sort_key });
         item.sort_key = sort_key;
         // TODO: check for collisions?
@@ -175,13 +172,13 @@ pub fn move(changes: *db.Changes, args: anytype) !void {
     updateLibGroovePlaylist();
 }
 
-pub fn remove(changes: *db.Changes, args: []Id) !void {
+pub fn remove(args: []Id) !void {
     for (args) |item_id| {
         if (!items.contains(item_id)) {
             log.warn("ignoring attempt to remove non-existent item: {}", .{item_id});
             continue;
         }
-        items.remove(changes, item_id);
+        try items.remove(item_id);
         groove_files.fetchSwapRemove(item_id).?.value.destroy();
     }
 }

@@ -26,11 +26,11 @@ const PasswordHash = db.PasswordHash;
 const sessions = &g.the_database.sessions;
 const user_accounts = &g.the_database.user_accounts;
 
-pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
+pub fn handleClientConnected(client_id: Id) !void {
     // Every new connection starts as a guest.
     // If you want to be not a guest, send a login message.
-    const user_id = try createGuestAccount(changes);
-    try sessions.putNoClobber(changes, client_id, .{
+    const user_id = try createGuestAccount();
+    try sessions.putNoClobber(client_id, .{
         .user_id = user_id,
         .claims_to_be_streaming = false,
     });
@@ -40,8 +40,8 @@ pub fn handleClientConnected(changes: *db.Changes, client_id: Id) !void {
     });
 }
 
-pub fn handleClientDisconnected(changes: *db.Changes, client_id: Id) !void {
-    sessions.remove(changes, client_id);
+pub fn handleClientDisconnected(client_id: Id) !void {
+    try sessions.remove(client_id);
 }
 
 pub fn getUserId(client_id: Id) Id {
@@ -51,29 +51,29 @@ pub fn getPermissions(user_id: Id) InternalPermissions {
     return user_accounts.get(user_id).permissions;
 }
 
-pub fn logout(changes: *db.Changes, client_id: Id) !void {
-    const session = try sessions.getForEditing(changes, client_id);
-    session.user_id = try createGuestAccount(changes);
+pub fn logout(client_id: Id) !void {
+    const session = try sessions.getForEditing(client_id);
+    session.user_id = try createGuestAccount();
 }
 
-pub fn login(changes: *db.Changes, client_id: Id, username: []const u8, password: []u8) !void {
+pub fn login(client_id: Id, username: []const u8, password: []u8) !void {
     defer std.crypto.utils.secureZero(u8, password);
 
-    loginImpl(changes, client_id, username, password) catch |err| {
+    loginImpl(client_id, username, password) catch |err| {
         if (err == error.InvalidLogin) {
             // TODO: send the user an error?
             log.debug("invalid login for client id: {}", .{client_id});
         } else return err;
     };
 }
-fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, password: []u8) !void {
+fn loginImpl(client_id: Id, username_str: []const u8, password: []u8) !void {
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
     const username = try g.strings.put(g.gpa, username_str);
 
-    const session = try sessions.getForEditing(changes, client_id);
-    const session_account = try user_accounts.getForEditing(changes, session.user_id);
+    const session = try sessions.getForEditing(client_id);
+    const session_account = try user_accounts.getForEditing(session.user_id);
 
     // These things can happen here:
     // 1. session username == given username
@@ -107,7 +107,7 @@ fn loginImpl(changes: *db.Changes, client_id: Id, username_str: []const u8, pass
             .guest_without_password, .guest_with_password => {
                 // An actual regular login, which is the most complex case.
                 const guest_user_id = session.user_id;
-                try mergeAccounts(changes, guest_user_id, target_user_id);
+                try mergeAccounts(guest_user_id, target_user_id);
             },
             .named_by_user, .requested_approval, .approved => {
                 // Switch login.
@@ -146,8 +146,8 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
     if (!std.mem.eql(u8, &hash, &account.password_hash.hash)) return error.InvalidLogin;
 }
 
-pub fn setStreaming(changes: *db.Changes, client_id: Id, is_streaming: bool) !void {
-    const account = try sessions.getForEditing(changes, client_id);
+pub fn setStreaming(client_id: Id, is_streaming: bool) !void {
+    const account = try sessions.getForEditing(client_id);
     account.claims_to_be_streaming = is_streaming;
 }
 
@@ -161,13 +161,12 @@ fn lookupAccountByUsername(username: StringPool.Index) ?Id {
     return null;
 }
 
-fn createGuestAccount(changes: *db.Changes) !Id {
+fn createGuestAccount() !Id {
     var username_str: ["Guest-123456".len]u8 = "Guest-XXXXXX".*;
     for (username_str[username_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
     }
     return createAccount(
-        changes,
         &username_str,
         std.mem.zeroes(PasswordHash),
         .guest_without_password,
@@ -175,7 +174,7 @@ fn createGuestAccount(changes: *db.Changes) !Id {
     );
 }
 
-pub fn ensureAdminUser(changes: *db.Changes) !void {
+pub fn ensureAdminUser() !void {
     {
         var it = user_accounts.iterator();
         while (it.next()) |kv| {
@@ -205,7 +204,7 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
         h.final(&password_hash.hash);
     }
 
-    _ = try createAccount(changes, &username_str, password_hash, .approved, .{
+    _ = try createAccount(&username_str, password_hash, .approved, .{
         .read = true,
         .add = true,
         .control = true,
@@ -218,9 +217,9 @@ pub fn ensureAdminUser(changes: *db.Changes) !void {
     log.info("Password: {s}", .{password_text[0..]});
 }
 
-pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
+pub fn requestApproval(client_id: Id) !void {
     const user_id = getUserId(client_id);
-    const account = try user_accounts.getForEditing(changes, user_id);
+    const account = try user_accounts.getForEditing(user_id);
     switch (account.registration_stage) {
         .named_by_user => {
             account.registration_stage = .requested_approval;
@@ -233,7 +232,7 @@ pub fn requestApproval(changes: *db.Changes, client_id: Id) !void {
     }
 }
 
-pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
+pub fn approve(args: anytype) error{OutOfMemory}!void {
     for (args) |approval| {
         var requesting_user_id = approval.id;
         const replace_user_id = approval.replaceId orelse requesting_user_id;
@@ -248,7 +247,7 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
             log.warn("ignoring bogus replace user id: {}", .{replace_user_id});
             continue;
         }
-        var requesting_account = try user_accounts.getForEditing(changes, requesting_user_id);
+        var requesting_account = try user_accounts.getForEditing(requesting_user_id);
         if (requesting_account.registration_stage != .requested_approval) {
             log.warn("ignoring approve decision for not-requested user id: {}", .{requesting_user_id});
             continue;
@@ -260,9 +259,9 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
         }
 
         if (replace_user_id.value != requesting_user_id.value) {
-            try mergeAccounts(changes, requesting_user_id, replace_user_id);
+            try mergeAccounts(requesting_user_id, replace_user_id);
             requesting_user_id = replace_user_id;
-            requesting_account = try user_accounts.getForEditing(changes, requesting_user_id);
+            requesting_account = try user_accounts.getForEditing(requesting_user_id);
         } else {
             requesting_account.registration_stage = .approved;
         }
@@ -282,27 +281,28 @@ pub fn approve(changes: *db.Changes, args: anytype) error{OutOfMemory}!void {
     }
 }
 
-pub fn updateUser(changes: *db.Changes, user_id: Id, perms: Permissions) !void {
+pub fn updateUser(user_id: Id, perms: Permissions) !void {
     if (!user_accounts.contains(user_id)) {
         log.warn("ignoring bogus userid: {}", .{user_id});
         return;
     }
-    const account = try user_accounts.getForEditing(changes, user_id);
+    const account = try user_accounts.getForEditing(user_id);
     account.permissions = convertPermsissions(perms);
 }
 
-pub fn updateGuestPermissions(changes: *db.Changes, perms: Permissions) !void {
+pub fn updateGuestPermissions(perms: Permissions) !void {
     const permissions = convertPermsissions(perms);
-    g.the_database.getStateForEditing(changes).guest_permissions = permissions;
+    g.the_database.getStateForEditing().guest_permissions = permissions;
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const account = kv.value_ptr;
         if (account.registration_stage == .approved) continue;
-        it.promoteForEditing(changes, kv).permissions = permissions;
+        const account_for_editing = try it.promoteForEditing(kv);
+        account_for_editing.permissions = permissions;
     }
 }
 
-pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
+pub fn deleteUsers(user_ids: []const Id) !void {
     var replacement_guest_id: ?Id = null;
     for (user_ids) |user_id| {
         if (!user_accounts.contains(user_id)) {
@@ -313,18 +313,18 @@ pub fn deleteUsers(changes: *db.Changes, user_ids: []const Id) !void {
         while (it.next()) |kv| {
             if (kv.value_ptr.user_id.value == user_id.value) {
                 if (replacement_guest_id == null) {
-                    replacement_guest_id = try createGuestAccount(changes);
+                    replacement_guest_id = try createGuestAccount();
                 }
-                it.promoteForEditing(changes, kv).user_id = replacement_guest_id.?;
+                const account_for_editing = try it.promoteForEditing(kv);
+                account_for_editing.user_id = replacement_guest_id.?;
             }
         }
-        try events.tombstoneUser(changes, user_id);
-        user_accounts.remove(changes, user_id);
+        try events.tombstoneUser(user_id);
+        try user_accounts.remove(user_id);
     }
 }
 
 fn createAccount(
-    changes: *db.Changes,
     username_str: []const u8,
     password_hash: PasswordHash,
     registration_stage: RegistrationStage,
@@ -332,7 +332,7 @@ fn createAccount(
 ) !Id {
     const username = try g.strings.put(g.gpa, username_str);
 
-    const user_id = try user_accounts.putRandom(changes, .{
+    const user_id = try user_accounts.putRandom(.{
         .username = username,
         .password_hash = password_hash,
         .registration_stage = registration_stage,
@@ -342,17 +342,18 @@ fn createAccount(
     return user_id;
 }
 
-fn mergeAccounts(changes: *db.Changes, doomed_user_id: Id, true_user_id: Id) !void {
+fn mergeAccounts(doomed_user_id: Id, true_user_id: Id) !void {
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
     while (it.next()) |kv| {
         if (kv.value_ptr.user_id.value == doomed_user_id.value) {
-            it.promoteForEditing(changes, kv).user_id = true_user_id;
+            const account_for_editing = try it.promoteForEditing(kv);
+            account_for_editing.user_id = true_user_id;
         }
     }
-    try events.revealTrueIdentity(changes, doomed_user_id, true_user_id);
-    user_accounts.remove(changes, Id{ .value = workaround_miscomiplation });
+    try events.revealTrueIdentity(doomed_user_id, true_user_id);
+    try user_accounts.remove(Id{ .value = workaround_miscomiplation });
 }
 
 pub fn getSerializableGuestPermissions() protocol.Permissions {

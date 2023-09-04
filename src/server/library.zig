@@ -29,9 +29,6 @@ pub fn loadFromDisk() !void {
     var arena = std.heap.ArenaAllocator.init(g.gpa);
     defer arena.deinit();
 
-    var dont_care_about_this = db.Changes{};
-    const changes = &dont_care_about_this;
-
     var path_to_id = AutoArrayHashMapUnmanaged(StringPool.Index, Id){};
     {
         var it = tracks.iterator();
@@ -69,11 +66,11 @@ pub fn loadFromDisk() !void {
 
         const track = try grooveFileToTrack(groove_file, entry.path);
         if (path_to_id.get(track.file_path)) |id| {
-            const slot = try tracks.getForEditing(changes, id);
+            const slot = try tracks.getForEditing(id);
             slot.* = track;
             try found_ids.putNoClobber(arena.allocator(), id, {});
         } else {
-            const id = try tracks.putRandom(changes, track);
+            const id = try tracks.putRandom(track);
             try found_ids.putNoClobber(arena.allocator(), id, {});
         }
     }

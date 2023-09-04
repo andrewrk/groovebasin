@@ -21,14 +21,14 @@ const events = &g.the_database.events;
 pub fn init() !void {}
 pub fn deinit() void {}
 
-pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
+pub fn chat(user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
     const text = try g.strings.put(g.gpa, text_str);
     const sort_key: f64 = if (events.table.count() == 0)
         0.0
     else
         events.table.values()[events.table.count() - 1].sort_key + 1.0;
 
-    _ = try events.putRandom(changes, .{
+    _ = try events.putRandom(.{
         .date = getNow(),
         .sort_key = sort_key,
         .who = .{ .user = user_id },
@@ -41,22 +41,23 @@ pub fn chat(changes: *db.Changes, user_id: Id, text_str: []const u8, is_slash_me
     });
 }
 
-pub fn revealTrueIdentity(changes: *db.Changes, guest_id: Id, real_id: Id) !void {
+pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
     var it = events.iterator();
     while (it.next()) |kv| {
         const event = kv.value_ptr;
         if (event.who == .user and event.who.user.value == guest_id.value) {
-            it.promoteForEditing(changes, kv).who = .{ .user = real_id };
+            const event_for_editing = try it.promoteForEditing(kv);
+            event_for_editing.who = .{ .user = real_id };
         }
     }
 }
 
-pub fn tombstoneUser(changes: *db.Changes, user_id: Id) !void {
+pub fn tombstoneUser(user_id: Id) !void {
     var it = events.iterator();
     while (it.next()) |kv| {
         const event = kv.value_ptr;
         if (event.who == .user and event.who.user.value == user_id.value) {
-            const ev = it.promoteForEditing(changes, kv);
+            const ev = try it.promoteForEditing(kv);
             ev.who = .deleted_user;
             switch (ev.type) {
                 .chat => |*data| {

@@ -132,6 +132,7 @@ pub const TheDatabase = struct {
     events: Database(Id, InternalEvent, .events, true) = .{},
 
     state: State = .{},
+    previous_state: ?State = null,
 
     pub fn deinit(self: *@This()) void {
         self.sessions.deinit();
@@ -144,13 +145,19 @@ pub const TheDatabase = struct {
     pub fn getState(self: *const @This()) *const State {
         return &self.state;
     }
-    pub fn getStateForEditing(self: *@This(), changes: *Changes) *State {
-        changes.broadcastChanges(.state);
+    pub fn getStateForEditing(self: *@This()) *State {
+        if (self.previous_state == null) {
+            self.previous_state = self.state;
+        }
         return &self.state;
     }
 };
 
-pub fn init() !void {}
+pub fn init() !void {
+    inline for (all_databases) |d| {
+        d.version = Id.random(); // TODO: load this from disk.
+    }
+}
 pub fn deinit() void {
     g.the_database.deinit();
 }
@@ -170,7 +177,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 22,
+    dev_version: u16 = 23,
 };
 
 const some_facts = blk: {
@@ -193,7 +200,6 @@ const some_facts = blk: {
 
 var db_path: []const u8 = undefined;
 var db_path_tmp: []const u8 = undefined;
-var persistent_db_is_dirty: bool = false;
 
 pub fn load(path: []const u8) !void {
     db_path = path;
@@ -305,10 +311,8 @@ fn parseLen(header_buf: *[some_facts.fixed_size_header_size]u8, cursor: *usize, 
 }
 
 pub fn save() !void {
-    if (!persistent_db_is_dirty) return;
     try saveTo(db_path_tmp);
     try std.fs.cwd().rename(db_path_tmp, db_path);
-    persistent_db_is_dirty = false;
 }
 fn saveTo(path: []const u8) !void {
     const file = try std.fs.cwd().createFile(path, .{});
@@ -371,28 +375,6 @@ fn saveTo(path: []const u8) !void {
     log.info("write db bytes: {}", .{totalIovecLen(&iovec_array)});
 }
 
-/// new old api.
-/// TODO: we should be able to just ask the dbs directly rather than keeping this separate bookkeeping object.
-pub const Changes = struct {
-    subscriptions_to_broadcast: SubscriptionBoolArray = subscription_bool_array_initial_value,
-
-    pub fn broadcastChanges(self: *@This(), name: SubscriptionTag) void {
-        self.subscriptions_to_broadcast[@intFromEnum(name)] = true;
-    }
-
-    pub fn flush(self: *@This(), arena: Allocator) !void {
-        try self.sendToClients(arena);
-        try save();
-    }
-    fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
-        for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
-            if (!should_broadcast) continue;
-            const name: SubscriptionTag = @enumFromInt(i);
-            try subscriptions.broadcastChanges(arena, name);
-        }
-    }
-};
-
 //===== new API v3 for real this time =====
 
 pub fn Database(
@@ -402,9 +384,17 @@ pub fn Database(
     comptime _should_save_to_disk: bool,
 ) type {
     return struct {
+        const Self = @This();
         pub const should_save_to_disk = _should_save_to_disk;
+        pub const subscription = name;
 
+        version: ?Id = null,
         table: AutoArrayHashMapUnmanaged(Key, Value) = .{},
+
+        last_version: ?Id = null,
+        added_keys: AutoArrayHashMapUnmanaged(Key, void) = .{},
+        removed_keys: AutoArrayHashMapUnmanaged(Key, void) = .{},
+        modified_entries: AutoArrayHashMapUnmanaged(Key, Value) = .{},
 
         pub fn deinit(self: *@This()) void {
             self.table.deinit(g.gpa);
@@ -417,17 +407,19 @@ pub fn Database(
         pub fn getOrNull(self: @This(), key: Key) ?*const Value {
             return (self.table.getEntry(key) orelse return null).value_ptr;
         }
-        pub fn getForEditing(self: *@This(), changes: *Changes, key: Key) !*Value {
-            setDirty(changes);
-            return self.table.getEntry(key).?.value_ptr;
+        pub fn getForEditing(self: *@This(), key: Key) !*Value {
+            const entry = self.table.getEntry(key).?;
+            try self.markModified(entry);
+            return entry.value_ptr;
         }
-        pub fn remove(self: *@This(), changes: *Changes, key: Key) void {
-            setDirty(changes);
+        pub fn remove(self: *@This(), key: Key) !void {
+            try self.removed_keys.putNoClobber(g.gpa, key, {});
             assert(self.table.swapRemove(key));
         }
-        pub fn putNoClobber(self: *@This(), changes: *Changes, key: Key, value: Value) !void {
-            setDirty(changes);
-            try self.table.putNoClobber(g.gpa, key, value);
+        pub fn putNoClobber(self: *@This(), key: Key, value: Value) !void {
+            try self.table.ensureUnusedCapacity(g.gpa, 1);
+            try self.added_keys.putNoClobber(g.gpa, key, {});
+            self.table.putAssumeCapacityNoClobber(key, value);
         }
         /// TODO: every use of this function is probably an antipattern that
         /// really needs a new method to avoid looking up a key multiple times.
@@ -435,24 +427,27 @@ pub fn Database(
             return self.table.contains(key);
         }
         /// Generate a random key that does not collide with anything, put the value, and return the key.
-        pub fn putRandom(self: *@This(), changes: *Changes, value: Value) !Key {
-            setDirty(changes);
+        pub fn putRandom(self: *@This(), value: Value) !Key {
             try self.table.ensureUnusedCapacity(g.gpa, 1);
+            try self.added_keys.ensureUnusedCapacity(g.gpa, 1);
             for (0..10) |_| {
                 var key = Key.random(); // If you use putRandom(), this needs to be a function.
                 const gop = self.table.getOrPutAssumeCapacity(key);
-                if (!gop.found_existing) {
-                    gop.value_ptr.* = value;
-                    return key;
+                if (gop.found_existing) {
+                    // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
+                    log.warn("Rerolling random id to avoid collisions", .{});
+                    continue;
                 }
-                // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .
-                log.warn("Rerolling random id to avoid collisions", .{});
+                gop.value_ptr.* = value;
+                self.added_keys.putAssumeCapacityNoClobber(key, {});
+                return key;
             }
             return error.OverfullIdSpace; // tried to generate a random number, but it kept colliding with another one.
         }
 
         pub fn iterator(self: *@This()) Iterator {
             return .{
+                .database = self,
                 .sub_it = self.table.iterator(),
             };
         }
@@ -463,6 +458,7 @@ pub fn Database(
         };
         pub const Entry = AutoArrayHashMapUnmanaged(Key, Value).Entry;
         pub const Iterator = struct {
+            database: *Self,
             sub_it: AutoArrayHashMapUnmanaged(Key, Value).Iterator,
             current_kv: ?Entry = null,
 
@@ -475,20 +471,89 @@ pub fn Database(
                     };
                 } else return null;
             }
-            pub fn promoteForEditing(self: @This(), changes: *Changes, kv: EntryConst) *Value {
+            pub fn promoteForEditing(self: @This(), kv: EntryConst) !*Value {
                 assert(kv.key_ptr == self.current_kv.?.key_ptr);
-                setDirty(changes);
+                try self.database.markModified(self.current_kv.?);
                 return self.current_kv.?.value_ptr;
             }
         };
 
-        fn setDirty(changes: *Changes) void {
-            changes.broadcastChanges(name);
-            if (should_save_to_disk) {
-                persistent_db_is_dirty = true;
+        fn markModified(self: *@This(), entry: Entry) !void {
+            const gop = try self.modified_entries.getOrPut(g.gpa, entry.key_ptr.*);
+            if (gop.found_existing) return; // already noted.
+            gop.value_ptr.* = entry.value_ptr.*;
+        }
+
+        pub fn reduceChanges(self: *@This()) bool {
+            for (self.removed_keys.keys()) |key| {
+                _ = self.added_keys.swapRemove(key);
+                _ = self.modified_entries.swapRemove(key);
+                assert(!self.table.contains(key));
             }
+            for (self.added_keys.keys()) |key| {
+                _ = self.modified_entries.swapRemove(key);
+            }
+
+            var i: usize = self.modified_entries.count();
+            while (i > 0) : (i -= 1) {
+                const key = self.modified_entries.keys()[i - 1];
+                const original_value = self.modified_entries.values()[i - 1];
+                const modern_value = self.table.get(key).?;
+                if (deepEquals(original_value, modern_value)) {
+                    // Actually, it's unmodified.
+                    self.modified_entries.swapRemoveAt(i - 1);
+                }
+            }
+
+            const is_dirty = self.added_keys.count() | self.removed_keys.count() | self.modified_entries.count() != 0;
+            if (is_dirty) {
+                self.last_version = self.version;
+                self.version = Id.random();
+                log.debug("new version for {s}: {}, last: {}", .{
+                    @tagName(subscription), self.version.?, self.last_version.?,
+                });
+            }
+            return is_dirty;
+        }
+
+        pub fn clearChanges(self: *@This()) void {
+            self.removed_keys.clearRetainingCapacity();
+            self.added_keys.clearRetainingCapacity();
+            self.modified_entries.clearRetainingCapacity();
         }
     };
+}
+
+pub fn flushChanges(arena: Allocator) !void {
+    var anything_to_broadcast = false;
+    var anything_to_save_to_disk = false;
+    inline for (all_databases) |d| {
+        if (d.reduceChanges()) {
+            anything_to_broadcast = true;
+            if (@TypeOf(d.*).should_save_to_disk) {
+                anything_to_save_to_disk = true;
+            }
+        }
+    }
+    // TODO: check state against previous_state.
+
+    if (anything_to_broadcast) {
+        try subscriptions.broadcastAllChanges(arena);
+    }
+    if (anything_to_save_to_disk) {
+        try save();
+    }
+
+    inline for (all_databases) |d| {
+        d.clearChanges();
+    }
+}
+fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
+    for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
+        if (!should_broadcast) continue;
+        const name: SubscriptionTag = @enumFromInt(i);
+        try subscriptions.broadcastChanges(arena, name);
+    }
 }
 
 fn checkForCorruption(map: anytype) !void {
@@ -502,5 +567,39 @@ fn checkForCorruption(map: anytype) !void {
                 continue;
             if (int_value >= g.strings.len()) return error.DataCorruption; // string pool index out of bounds
         }
+    }
+}
+
+fn deepEquals(a: anytype, b: @TypeOf(a)) bool {
+    switch (@typeInfo(@TypeOf(a))) {
+        .Void => return true,
+        .Bool, .Int, .Float, .Enum => return a == b,
+
+        .Array => {
+            for (a, b) |a_item, b_item| {
+                if (!deepEquals(a_item, b_item)) return false;
+            }
+            return true;
+        },
+
+        .Struct => |struct_info| {
+            inline for (struct_info.fields) |field| {
+                if (!deepEquals(@field(a, field.name), @field(b, field.name))) return false;
+            }
+            return true;
+        },
+
+        .Union => |union_info| {
+            const Tag = union_info.tag_type.?;
+            if (@as(Tag, a) != @as(Tag, b)) return false;
+            switch (a) {
+                inline else => |a_value, tag| {
+                    if (!deepEquals(a_value, @field(b, @tagName(tag)))) return false;
+                },
+            }
+            return true;
+        },
+
+        else => @compileError("can't deepEquals for type: " ++ @typeName(@TypeOf(a))),
     }
 }

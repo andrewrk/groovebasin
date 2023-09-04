@@ -150,24 +150,22 @@ pub fn main() anyerror!void {
 pub fn handleClientConnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    var changes = db.Changes{};
 
     // Welcome messages
     try encodeAndSend(client_id, .{ .time = getNow() });
-    const err_maybe = users.handleClientConnected(&changes, client_id);
+    const err_maybe = users.handleClientConnected(client_id);
 
-    try changes.flush(arena.allocator());
+    try db.flushChanges(arena.allocator());
     return err_maybe;
 }
 pub fn handleClientDisconnected(client_id: Id) !void {
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
-    var changes = db.Changes{};
 
     subscriptions.handleClientDisconnected(client_id);
-    const err_maybe = users.handleClientDisconnected(&changes, client_id);
+    const err_maybe = users.handleClientDisconnected(client_id);
 
-    try changes.flush(arena.allocator());
+    try db.flushChanges(arena.allocator());
     return err_maybe;
 }
 
@@ -189,6 +187,10 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
 
 pub fn encodeAndSend(client_id: Id, message: groovebasin_protocol.ServerToClientMessage) !void {
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
+    try sendBytes(client_id, message_bytes);
+}
+/// Takes ownership of message_bytes, even when an error is returned.
+pub fn sendBytes(client_id: Id, message_bytes: []const u8) !void {
     try web_server.sendMessageToClient(client_id, message_bytes);
 }
 
@@ -197,48 +199,46 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
     defer arena.deinit();
     const message = try parseMessage(arena.allocator(), message_bytes);
 
-    var changes = db.Changes{};
+    const err_maybe = handleRequestImpl(client_id, &message);
 
-    const err_maybe = handleRequestImpl(&changes, client_id, &message);
-
-    try changes.flush(arena.allocator());
+    try db.flushChanges(arena.allocator());
     return err_maybe;
 }
 
-fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groovebasin_protocol.ClientToServerMessage) !void {
+fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientToServerMessage) !void {
     const user_id = users.getUserId(client_id);
     const perms = users.getPermissions(user_id);
     switch (message.*) {
         .login => |args| {
-            try users.login(changes, client_id, args.username, args.password);
+            try users.login(client_id, args.username, args.password);
         },
         .logout => {
-            try users.logout(changes, client_id);
+            try users.logout(client_id);
         },
         .ensureAdminUser => {
-            try users.ensureAdminUser(changes);
+            try users.ensureAdminUser();
         },
         .requestApproval => {
-            try users.requestApproval(changes, client_id);
+            try users.requestApproval(client_id);
         },
         .approve => |args| {
             try checkPermission(perms.admin);
-            try users.approve(changes, args);
+            try users.approve(args);
         },
         .updateUser => |args| {
             try checkPermission(perms.admin);
-            try users.updateUser(changes, args.userId, args.perms);
+            try users.updateUser(args.userId, args.perms);
         },
         .updateGuestPermissions => |args| {
             try checkPermission(perms.admin);
-            try users.updateGuestPermissions(changes, args);
+            try users.updateGuestPermissions(args);
         },
         .deleteUsers => |args| {
             try checkPermission(perms.admin);
-            try users.deleteUsers(changes, args);
+            try users.deleteUsers(args);
         },
         .setStreaming => |args| {
-            try users.setStreaming(changes, client_id, args);
+            try users.setStreaming(client_id, args);
         },
 
         .subscribe => |args| {
@@ -248,20 +248,20 @@ fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groove
 
         .queue => |args| {
             try checkPermission(perms.control);
-            try queue.enqueue(changes, args);
+            try queue.enqueue(args);
         },
         .move => |args| {
             try checkPermission(perms.control);
-            try queue.move(changes, args);
+            try queue.move(args);
         },
         .remove => |args| {
             try checkPermission(perms.control);
-            try queue.remove(changes, args);
+            try queue.remove(args);
         },
 
         .chat => |args| {
             try checkPermission(perms.control);
-            try events.chat(changes, user_id, args.text, args.displayClass != null);
+            try events.chat(user_id, args.text, args.displayClass != null);
         },
         .deleteTracks => @panic("TODO"),
         .autoDjOn => @panic("TODO"),
@@ -274,15 +274,15 @@ fn handleRequestImpl(changes: *db.Changes, client_id: Id, message: *const groove
         .unsubscribe => @panic("TODO"),
         .pause => {
             try checkPermission(perms.control);
-            try queue.pause(changes, user_id);
+            try queue.pause(user_id);
         },
         .play => {
             try checkPermission(perms.control);
-            try queue.play(changes, user_id);
+            try queue.play(user_id);
         },
         .seek => |args| {
             try checkPermission(perms.control);
-            try queue.seek(changes, user_id, args.id, args.pos);
+            try queue.seek(user_id, args.id, args.pos);
         },
         .repeat => @panic("TODO"),
         .setVolume => @panic("TODO"),

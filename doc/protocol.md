@@ -1147,6 +1147,7 @@ files. Groove Basin supports uploading .zip files.
 * The `"(guest)"` pseudo was moved from the `users` subscription to the `guestPermissions` field of the `state` subscription. Added `updateUser`
 * Dropped [keese](https://github.com/thejoshwolfe/node-keese) `sortKey` strings in favor of 64-bit floats sort keys.
     * `move` and `playlistMoveItems` changed to accept `{itemId: sortKey}` instead of `{itemId: {sortKey}}`.
+    * Clients are expected to "defragment" sort keys now.
 
 ### 0.0.1
 

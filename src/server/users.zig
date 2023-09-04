@@ -16,8 +16,8 @@ const protocol = @import("groovebasin_protocol.zig");
 const Id = protocol.Id;
 const IdMap = protocol.IdMap;
 const Permissions = protocol.Permissions;
-const PublicUserInfo = protocol.PublicUserInfo;
 
+const InternalSession = db.InternalSession;
 const UserAccount = db.UserAccount;
 const RegistrationStage = db.RegistrationStage;
 const InternalPermissions = db.InternalPermissions;
@@ -356,60 +356,27 @@ fn mergeAccounts(doomed_user_id: Id, true_user_id: Id) !void {
     try user_accounts.remove(Id{ .value = workaround_miscomiplation });
 }
 
-pub fn getSerializableGuestPermissions() protocol.Permissions {
-    return convertPermsissions(g.the_database.getState().guest_permissions);
-}
-pub fn getSerializableSessions(arena: Allocator, out_version: *?Id) !protocol.IdMap(protocol.Session) {
-    // This version number never matters. Sessions beginning/ending changes the
-    // hash, which means there's no scenario in which a newly connecting client
-    // would get a cache hit on their previous version of the sessions. Delta
-    // compression for live connections is still meaningful, so we don't want
-    // this to stay null, but this number never does anything meaningful.
-    out_version.* = Id.random();
-
-    var result = protocol.IdMap(protocol.Session){};
-    try result.map.ensureTotalCapacity(arena, sessions.table.count());
-
-    var it = sessions.iterator();
-    while (it.next()) |kv| {
-        const id = kv.key_ptr.*;
-        const session = kv.value_ptr;
-        result.map.putAssumeCapacityNoClobber(id, .{
-            .userId = session.user_id,
-            .streaming = session.claims_to_be_streaming,
-        });
-    }
-
-    return result;
+pub fn serializableSession(session: InternalSession) protocol.Session {
+    return .{
+        .userId = session.user_id,
+        .streaming = session.claims_to_be_streaming,
+    };
 }
 
-pub fn getSerializableUsers(arena: Allocator, out_version: *?Id) !IdMap(PublicUserInfo) {
-    // TODO: meaningful versioning.
-    out_version.* = Id.random();
-
-    var result = IdMap(PublicUserInfo){};
-    try result.map.ensureTotalCapacity(arena, user_accounts.table.count());
-
-    var it = user_accounts.iterator();
-    while (it.next()) |kv| {
-        const user_id = kv.key_ptr.*;
-        const account = kv.value_ptr;
-        result.map.putAssumeCapacityNoClobber(user_id, .{
-            .name = g.strings.get(account.username),
-            .perms = convertPermsissions(account.permissions),
-            .registration = switch (account.registration_stage) {
-                .guest_without_password, .guest_with_password => .guest,
-                .named_by_user => .named_by_user,
-                .requested_approval => .requested_approval,
-                .approved => .approved,
-            },
-        });
-    }
-
-    return result;
+pub fn serializableUserAccount(account: UserAccount) protocol.PublicUserInfo {
+    return .{
+        .name = g.strings.get(account.username),
+        .perms = convertPermsissions(account.permissions),
+        .registration = switch (account.registration_stage) {
+            .guest_without_password, .guest_with_password => .guest,
+            .named_by_user => .named_by_user,
+            .requested_approval => .requested_approval,
+            .approved => .approved,
+        },
+    };
 }
 
-fn convertPermsissions(other_permissions: anytype) if (@TypeOf(other_permissions) == Permissions) InternalPermissions else Permissions {
+pub fn convertPermsissions(other_permissions: anytype) if (@TypeOf(other_permissions) == Permissions) InternalPermissions else Permissions {
     return .{
         .read = other_permissions.read,
         .add = other_permissions.add,

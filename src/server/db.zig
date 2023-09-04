@@ -132,7 +132,10 @@ pub const TheDatabase = struct {
     events: Database(Id, InternalEvent, .events, true) = .{},
 
     state: State = .{},
-    previous_state: ?State = null,
+
+    state_version: Id = .{ .value = 0 },
+    previous_state_version: Id = .{ .value = 0 },
+    previous_state: State = .{},
 
     pub fn deinit(self: *@This()) void {
         self.sessions.deinit();
@@ -146,9 +149,6 @@ pub const TheDatabase = struct {
         return &self.state;
     }
     pub fn getStateForEditing(self: *@This()) *State {
-        if (self.previous_state == null) {
-            self.previous_state = self.state;
-        }
         return &self.state;
     }
 };
@@ -388,10 +388,10 @@ pub fn Database(
         pub const should_save_to_disk = _should_save_to_disk;
         pub const subscription = name;
 
-        version: ?Id = null,
+        version: Id = .{ .value = 0 },
         table: AutoArrayHashMapUnmanaged(Key, Value) = .{},
 
-        last_version: ?Id = null,
+        last_version: Id = .{ .value = 0 },
         added_keys: AutoArrayHashMapUnmanaged(Key, void) = .{},
         removed_keys: AutoArrayHashMapUnmanaged(Key, void) = .{},
         modified_entries: AutoArrayHashMapUnmanaged(Key, Value) = .{},
@@ -510,7 +510,7 @@ pub fn Database(
                 self.last_version = self.version;
                 self.version = Id.random();
                 log.debug("new version for {s}: {}, last: {}", .{
-                    @tagName(subscription), self.version.?, self.last_version.?,
+                    @tagName(subscription), self.version, self.last_version,
                 });
             }
             return is_dirty;
@@ -524,7 +524,7 @@ pub fn Database(
     };
 }
 
-pub fn flushChanges(arena: Allocator) !void {
+pub fn flushChanges() !void {
     var anything_to_broadcast = false;
     var anything_to_save_to_disk = false;
     inline for (all_databases) |d| {
@@ -535,10 +535,16 @@ pub fn flushChanges(arena: Allocator) !void {
             }
         }
     }
-    // TODO: check state against previous_state.
+    var state_changed = false;
+    if (!deepEquals(g.the_database.previous_state, g.the_database.state)) {
+        anything_to_broadcast = true;
+        anything_to_save_to_disk = true;
+        state_changed = true;
+        g.the_database.state_version = Id.random();
+    }
 
     if (anything_to_broadcast) {
-        try subscriptions.broadcastAllChanges(arena);
+        try subscriptions.broadcastAllChanges();
     }
     if (anything_to_save_to_disk) {
         try save();
@@ -547,12 +553,9 @@ pub fn flushChanges(arena: Allocator) !void {
     inline for (all_databases) |d| {
         d.clearChanges();
     }
-}
-fn sendToClients(self: *@This(), arena: Allocator) error{OutOfMemory}!void {
-    for (self.subscriptions_to_broadcast, 0..) |should_broadcast, i| {
-        if (!should_broadcast) continue;
-        const name: SubscriptionTag = @enumFromInt(i);
-        try subscriptions.broadcastChanges(arena, name);
+    if (state_changed) {
+        g.the_database.previous_state = g.the_database.state;
+        g.the_database.previous_state_version = g.the_database.state_version;
     }
 }
 
@@ -570,6 +573,7 @@ fn checkForCorruption(map: anytype) !void {
     }
 }
 
+/// The purpose of this is to see if flashing this type to disk would cause any change.
 fn deepEquals(a: anytype, b: @TypeOf(a)) bool {
     switch (@typeInfo(@TypeOf(a))) {
         .Void => return true,

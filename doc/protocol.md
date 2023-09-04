@@ -742,7 +742,6 @@ To display the play queue, sort the queue items by their `sortKey` string.
 
 Type: `object`:
 
- * `key`: `ID`. ID of the song in the music library.
  * `file`: `string`. Path of the song on disk relative to the music library
    root.
  * `duration`: `number`. How many seconds long this track is. Once the track
@@ -760,8 +759,6 @@ Type: `object`:
  * `genre`: `string`
  * `composerName`: `string`
  * `performerName`: `string`
- * `labels`: `object`. The value is always `1`.
-   - `labelId`: `ID`. ID of a label that applies to this song.
  * `fingerprintScanStatus`: `enum{not_started,in_progress,done}` if omitted, assume `not_started`.
  * `loudnessScanStatus`: `enum{not_started,in_progress,done}` if omitted, assume `not_started`.
 
@@ -1134,7 +1131,6 @@ files. Groove Basin supports uploading .zip files.
     * `user` server-to-client message replaced by `sessionId`. (Use `sessions` and `users` to reconstruct the old information.)
     * `haveAdminUser` removed. (Use `any(user.perms.admin for user in users)` instead.)
 * unimplemented `libraryQueue` subscription removed from the docs.
-* undocumented `labels` subscription added to the docs. TODO: actually add it.
 * `scanning` subscription data moved to `library` items and changed to enums.
 * consolidated multiple fixed-sized subscriptions into the `state` subscription:
     * `currentTrack` - moved as is.
@@ -1148,6 +1144,11 @@ files. Groove Basin supports uploading .zip files.
 * Dropped [keese](https://github.com/thejoshwolfe/node-keese) `sortKey` strings in favor of 64-bit floats sort keys.
     * `move` and `playlistMoveItems` changed to accept `{itemId: sortKey}` instead of `{itemId: {sortKey}}`.
     * Clients are expected to "defragment" sort keys now.
+* Labels overhauled.
+    * `labels` field removed from `library` subscription items.
+    * formerly undocumented `labels` subscription ... TODO.
+    * TODO: how will it work?
+* Undocumented `key` property removed from `library` subscription items.
 
 ### 0.0.1
 

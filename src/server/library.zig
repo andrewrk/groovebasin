@@ -143,22 +143,8 @@ fn grooveFileToTrack(
     };
 }
 
-pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(LibraryTrack) {
-    out_version.* = Id.random(); // TODO: versioning
-    var result = IdMap(LibraryTrack){};
-    try result.map.ensureTotalCapacity(arena, tracks.table.count());
-
-    var it = tracks.iterator();
-    while (it.next()) |kv| {
-        const id = kv.key_ptr.*;
-        const track = kv.value_ptr.*;
-        result.map.putAssumeCapacityNoClobber(id, trackToSerializedForm(id, track));
-    }
-    return result;
-}
-fn trackToSerializedForm(id: Id, track: Track) LibraryTrack {
+pub fn serializableTrack(track: Track) LibraryTrack {
     return .{
-        .key = id,
         .file = g.strings.get(track.file_path),
         .name = g.strings.get(track.title),
         .artistName = g.strings.getOptional(track.artist) orelse "",

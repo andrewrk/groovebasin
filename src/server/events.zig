@@ -13,6 +13,7 @@ const subscriptions = @import("subscriptions.zig");
 const getNow = @import("server_main.zig").getNow;
 const users = @import("users.zig");
 const db = @import("db.zig");
+const InternalEvent = db.InternalEvent;
 
 const StringPool = @import("StringPool.zig");
 
@@ -73,25 +74,15 @@ pub fn tombstoneUser(user_id: Id) !void {
     }
 }
 
-pub fn getSerializable(arena: Allocator, out_version: *?Id) !IdMap(Event) {
-    out_version.* = Id.random(); // TODO: versioning
-    var result: IdMap(Event) = .{};
-    try result.map.ensureUnusedCapacity(arena, events.table.count());
-
-    var it = events.iterator();
-    while (it.next()) |kv| {
-        const event = kv.value_ptr;
-        result.map.putAssumeCapacityNoClobber(kv.key_ptr.*, switch (event.type) {
-            .chat => |data| .{
-                .date = event.date,
-                .sortKey = event.sort_key,
-                .type = .chat,
-                .userId = event.who,
-                .text = g.strings.get(data.text),
-                .displayClass = if (data.is_slash_me) .me else null,
-            },
-        });
-    }
-
-    return result;
+pub fn serializableEvent(event: InternalEvent) Event {
+    return switch (event.type) {
+        .chat => |data| .{
+            .date = event.date,
+            .sortKey = event.sort_key,
+            .type = .chat,
+            .userId = event.who,
+            .text = g.strings.get(data.text),
+            .displayClass = if (data.is_slash_me) .me else null,
+        },
+    };
 }

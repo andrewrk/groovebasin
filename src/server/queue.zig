@@ -183,21 +183,7 @@ pub fn remove(args: []Id) !void {
     }
 }
 
-pub fn getSerializable(arena: std.mem.Allocator, out_version: *?Id) !IdMap(protocol.QueueItem) {
-    out_version.* = Id.random(); // TODO: versioning
-    var result = IdMap(protocol.QueueItem){};
-    try result.map.ensureTotalCapacity(arena, items.table.count());
-
-    var it = items.iterator();
-    while (it.next()) |kv| {
-        const id = kv.key_ptr.*;
-        const queue_item = kv.value_ptr.*;
-        result.map.putAssumeCapacityNoClobber(id, itemToSerializedForm(queue_item));
-    }
-    return result;
-}
-
-fn itemToSerializedForm(item: Item) protocol.QueueItem {
+pub fn serializableItem(item: Item) protocol.QueueItem {
     return .{
         .sortKey = item.sort_key,
         .key = item.track_key,
@@ -205,7 +191,7 @@ fn itemToSerializedForm(item: Item) protocol.QueueItem {
     };
 }
 
-pub fn getSerializedCurrentTrack() protocol.CurrentTrack {
+pub fn serializableCurrentTrack(_: void) protocol.CurrentTrack {
     const item = current_item orelse return .{
         .currentItemId = null,
         .isPlaying = false,

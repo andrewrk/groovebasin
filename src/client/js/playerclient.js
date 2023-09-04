@@ -121,6 +121,9 @@ function PlayerClient(socket) {
     self.library.clearTracks();
     for (var key in self.libraryFromServer) {
       var track = self.libraryFromServer[key];
+      // patch since protocol 0.0.1
+      track.key = key;
+      track.labels = {};
       self.library.addTrack(track);
     }
     self.library.rebuildTracks();

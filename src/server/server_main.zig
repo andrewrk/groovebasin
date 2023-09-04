@@ -116,6 +116,8 @@ pub fn main() anyerror!void {
     try library.loadFromDisk();
     try queue.handleLoaded();
 
+    try db.flushChanges();
+
     log.info("init static content", .{});
     {
         // TODO: resolve relative to current executable maybe?
@@ -148,24 +150,18 @@ pub fn main() anyerror!void {
 }
 
 pub fn handleClientConnected(client_id: Id) !void {
-    var arena = ArenaAllocator.init(g.gpa);
-    defer arena.deinit();
-
     // Welcome messages
     try encodeAndSend(client_id, .{ .time = getNow() });
     const err_maybe = users.handleClientConnected(client_id);
 
-    try db.flushChanges(arena.allocator());
+    try db.flushChanges();
     return err_maybe;
 }
 pub fn handleClientDisconnected(client_id: Id) !void {
-    var arena = ArenaAllocator.init(g.gpa);
-    defer arena.deinit();
-
     subscriptions.handleClientDisconnected(client_id);
     const err_maybe = users.handleClientDisconnected(client_id);
 
-    try db.flushChanges(arena.allocator());
+    try db.flushChanges();
     return err_maybe;
 }
 
@@ -201,7 +197,7 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
 
     const err_maybe = handleRequestImpl(client_id, &message);
 
-    try db.flushChanges(arena.allocator());
+    try db.flushChanges();
     return err_maybe;
 }
 

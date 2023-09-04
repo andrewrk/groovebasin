@@ -30,12 +30,7 @@ pub const Datetime = struct {
     value: i64,
     /// Set this to test that clients are properly calibrating client-server clock skew.
     const skew_testing_offset = 123_000_000;
-    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-        return .{ .value = skew_testing_offset - try json.innerParse(i64, allocator, source, options) };
-    }
-    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
-        return .{ .value = skew_testing_offset - try json.innerParseFromValue(i64, allocator, source, options) };
-    }
+
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
         return jw.write(skew_testing_offset + self.value);
     }
@@ -64,16 +59,8 @@ pub const Id = struct {
     }
 
     // JSON interface
-    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-        _ = options;
-        switch (try source.nextAlloc(.alloc_if_needed)) {
-            .string => |s| return parse(s) catch return error.UnexpectedToken,
-            .allocated_string => |s| {
-                defer allocator.free(s);
-                return parse(s) catch return error.UnexpectedToken;
-            },
-            else => return error.UnexpectedToken,
-        }
+    pub fn jsonParse(_: Allocator, _: anytype, _: json.ParseOptions) !@This() {
+        @compileError("Expected to use jsonParseFromValue");
     }
     pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
         _ = allocator;
@@ -137,36 +124,8 @@ fn JsonMap(comptime Key: type, comptime T: type) type {
             self.map.deinit(allocator);
         }
 
-        pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-            var map = Map{};
-            errdefer map.deinit(allocator);
-
-            if (.object_begin != try source.next()) return error.UnexpectedToken;
-            while (true) {
-                const token = try source.nextAlloc(allocator, options.allocate.?);
-                switch (token) {
-                    inline .string, .allocated_string => |s| {
-                        const id = Key.parse(s) catch return error.UnexpectedToken;
-                        const gop = try map.getOrPut(allocator, id);
-                        if (gop.found_existing) {
-                            switch (options.duplicate_field_behavior) {
-                                .use_first => {
-                                    // Parse and ignore the redundant value.
-                                    // We don't want to skip the value, because we want type checking.
-                                    _ = try json.innerParse(T, allocator, source, options);
-                                    continue;
-                                },
-                                .@"error" => return error.DuplicateField,
-                                .use_last => {},
-                            }
-                        }
-                        gop.value_ptr.* = try json.innerParse(T, allocator, source, options);
-                    },
-                    .object_end => break,
-                    else => unreachable,
-                }
-            }
-            return .{ .map = map };
+        pub fn jsonParse(_: Allocator, _: anytype, _: json.ParseOptions) !@This() {
+            @compileError("Expected to use jsonParseFromValue");
         }
 
         pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
@@ -181,17 +140,6 @@ fn JsonMap(comptime Key: type, comptime T: type) type {
                 try map.put(allocator, id, try json.innerParseFromValue(T, allocator, kv.value_ptr.*, options));
             }
             return .{ .map = map };
-        }
-
-        pub fn jsonStringify(self: @This(), jws: anytype) !void {
-            try jws.beginObject();
-            var it = self.map.iterator();
-            while (it.next()) |kv| {
-                var buf: [8]u8 = undefined;
-                try jws.objectField(kv.key_ptr.*.write(&buf));
-                try jws.write(kv.value_ptr.*);
-            }
-            try jws.endObject();
         }
     };
 }
@@ -315,12 +263,6 @@ pub const ClientToServerMessage = union(enum) {
     pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
         return nameAndArgsParse(@This(), allocator, source, options);
     }
-    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
-        return nameAndArgsParseFromValue(@This(), allocator, source, options);
-    }
-    pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        return nameAndArgsStringify(self, jw);
-    }
 };
 
 pub const ServerToClientMessage = union(enum) {
@@ -333,60 +275,14 @@ pub const ServerToClientMessage = union(enum) {
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
     sessionId: Id,
+    // Seel also Subscription, which is complicated.
 
-    // Subscribed Information Change Messages
-    subscription: struct {
-        sub: Subscription,
-        // (this is not the JSON structure. see jsonStringify below.)
-        delta_version: ?Id = null,
-    },
-
-    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-        return nameAndArgsParse(@This(), allocator, source, options);
-    }
-    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
-        return nameAndArgsParseFromValue(@This(), allocator, source, options);
-    }
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        switch (self) {
-            .subscription => |data| {
-                const tag_name = @tagName(data.sub);
-
-                try jw.beginObject();
-                try jw.objectField("name");
-                try jw.write(tag_name);
-                try jw.objectField("args");
-
-                // Conditionally use delta format.
-                if (data.delta_version) |v| {
-                    try jw.beginObject();
-                    try jw.objectField("version");
-                    try jw.write(v);
-                    try jw.objectField("reset");
-                    try jw.write(true);
-                    try jw.objectField("delta");
-                }
-
-                inline for (@typeInfo(Subscription).Union.fields) |u_field| {
-                    if (std.mem.eql(u8, u_field.name, tag_name)) {
-                        try jw.write(@field(data.sub, u_field.name));
-                        break;
-                    }
-                } else unreachable;
-
-                if (data.delta_version) |_| {
-                    try jw.endObject();
-                }
-                try jw.endObject();
-            },
-            else => return nameAndArgsStringify(self, jw),
-        }
+        return nameAndArgsStringify(self, jw);
     }
 };
 
 pub const LibraryTrack = struct {
-    /// (undocumented) The id in the library.
-    key: Id,
     /// Path of the song on disk relative to the music library root.
     file: []const u8 = "",
     /// How many seconds long this track is.
@@ -411,8 +307,6 @@ pub const LibraryTrack = struct {
     genre: []const u8 = "",
     composerName: []const u8 = "",
     performerName: []const u8 = "",
-    /// The ids of labels that apply to this song. The values are always 1.
-    labels: IdMap(AlwaysTheNumber1) = .{},
     fingerprintScanStatus: ScanStatus = .not_started,
     loudnessScanStatus: ScanStatus = .not_started,
 };
@@ -452,10 +346,10 @@ pub const Event = struct {
     },
     userId: EventUserId = .system,
     text: ?[]const u8 = null,
-    trackId: ?TODO = null,
-    pos: ?TODO = null,
+    trackId: ?Id = null,
+    pos: ?f64 = null,
     displayClass: ?enum { me } = null,
-    playlistId: ?TODO = null,
+    playlistId: ?Id = null,
 };
 
 pub const CurrentTrack = struct {
@@ -505,24 +399,6 @@ pub const Subscription = union(enum) {
     labels: TODO,
     events: IdMap(Event),
     state: State,
-};
-
-const AlwaysTheNumber1 = struct {
-    pub fn jsonParse(allocator: Allocator, source: anytype, options: json.ParseOptions) !@This() {
-        _ = allocator;
-        _ = options;
-        // When reading this type, we don't care what value is given to us.
-        try source.skipValue();
-    }
-    pub fn jsonParseFromValue(allocator: Allocator, source: json.Value, options: json.ParseOptions) !@This() {
-        _ = allocator;
-        _ = source;
-        _ = options;
-    }
-    pub fn jsonStringify(self: @This(), jw: anytype) !void {
-        _ = self;
-        try jw.write(1);
-    }
 };
 
 pub const Permissions = packed struct {

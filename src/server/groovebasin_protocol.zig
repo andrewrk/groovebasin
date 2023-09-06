@@ -275,7 +275,7 @@ pub const ServerToClientMessage = union(enum) {
     lastFmGetSessionSuccess: TODO,
     lastFmGetSessionError: TODO,
     sessionId: Id,
-    // Seel also Subscription, which is complicated.
+    // See also Subscription, which is complicated.
 
     pub fn jsonStringify(self: @This(), jw: anytype) !void {
         return nameAndArgsStringify(self, jw);

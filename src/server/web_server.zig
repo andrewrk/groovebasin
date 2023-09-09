@@ -152,8 +152,11 @@ const ConnectionHandler = struct {
     }
 
     fn entrypoint(self: *@This()) void {
-        self.handleConnection() catch |err| {
-            log.err("unable to handle connection: {s}", .{@errorName(err)});
+        self.handleConnection() catch |err| switch (err) {
+            error.BrokenPipe => {
+                log.debug("client handling complete. broken pipe", .{});
+            },
+            else => log.err("unable to handle connection: {s}", .{@errorName(err)}),
         };
         {
             handlers_mutex.lock();
@@ -228,19 +231,35 @@ const ConnectionHandler = struct {
         const w = self.connection.stream.writer();
         try w.writeAll(response_header);
 
+        const logging_interval = 5000;
+        var last_logged_time = std.time.milliTimestamp() - 2 * logging_interval;
         while (true) {
+            var do_logging = false;
+            const now = std.time.milliTimestamp();
+            if (now - last_logged_time > logging_interval) {
+                do_logging = true;
+                last_logged_time = now;
+            }
+
             var buffer: ?*Groove.Buffer = null;
 
-            var seconds: f64 = undefined;
-            g.player.playlist.position(null, &seconds);
-
-            log.debug("stream endpoint buffer_get (playlist head: {d})", .{seconds});
+            if (do_logging) {
+                var seconds: f64 = undefined;
+                g.player.playlist.position(null, &seconds);
+                const is_playing = g.player.playlist.playing();
+                log.debug("stream endpoint buffer_get (playlist head: {d}, playing: {})", .{ seconds, is_playing });
+            }
             const status = try g.player.encoder.buffer_get(&buffer, true);
+            if (do_logging) {
+                log.debug("stream endpoint buffer_get returned {s}", .{if (buffer == null) "null" else "non-null"});
+            }
             _ = status;
             if (buffer) |buf| {
                 defer buf.unref();
                 const data = buf.data[0][0..@intCast(buf.size)];
-                log.debug("stream endpoint writing {d} bytes", .{data.len});
+                if (do_logging) {
+                    log.debug("stream endpoint writing {d} bytes", .{data.len});
+                }
                 try w.writeAll(data);
             }
         }

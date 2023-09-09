@@ -231,9 +231,8 @@ const ConnectionHandler = struct {
         while (true) {
             var buffer: ?*Groove.Buffer = null;
 
-            var item: *Groove.Playlist.Item = undefined;
             var seconds: f64 = undefined;
-            g.player.playlist.position(&item, &seconds);
+            g.player.playlist.position(null, &seconds);
 
             log.debug("stream endpoint buffer_get (playlist head: {d})", .{seconds});
             const status = try g.player.encoder.buffer_get(&buffer, true);

@@ -199,7 +199,7 @@ pub const Groove = opaque {
         extern fn groove_playlist_remove(playlist: *Playlist, item: *Item) void;
 
         pub const position = groove_playlist_position;
-        extern fn groove_playlist_position(playlist: *Playlist, item: **Item, seconds: *f64) void;
+        extern fn groove_playlist_position(playlist: *Playlist, item: ?*?*Item, seconds: ?*f64) void;
 
         pub fn playing(playlist: *Playlist) bool {
             return groove_playlist_playing(playlist) != 0;

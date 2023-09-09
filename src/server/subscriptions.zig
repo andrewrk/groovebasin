@@ -360,7 +360,7 @@ fn toSerializable(value: anytype) ToSerializable(@TypeOf(value)) {
 
 fn serializableState(state: db.State) protocol.State {
     return .{
-        .currentTrack = queue.serializableCurrentTrack(state.current_track),
+        .currentTrack = queue.serializableCurrentTrack(state.current_item),
         .autoDj = .{
             .on = state.auto_dj.on,
             .historySize = state.auto_dj.history_size,

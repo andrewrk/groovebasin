@@ -106,7 +106,15 @@ pub const InternalEvent = struct {
 };
 
 pub const State = struct {
-    current_track: void = {}, // TODO
+    current_item: ?struct {
+        id: Id,
+        state: union(enum) {
+            /// track start date in milliseconds relative to now
+            playing: i64,
+            /// seconds into the song where the seek head is paused
+            paused: f64,
+        },
+    } = null,
     auto_dj: packed struct {
         on: bool = false,
         history_size: u10 = 10,
@@ -177,7 +185,7 @@ const FileHeader = extern struct {
     endian_check: u16 = 0x1234,
     /// Bump this during devlopment to signal a breaking change.
     /// This causes existing dbs on old versions to be silently *deleted*.
-    dev_version: u16 = 23,
+    dev_version: u16 = 24,
 };
 
 const some_facts = blk: {
@@ -578,6 +586,17 @@ fn deepEquals(a: anytype, b: @TypeOf(a)) bool {
     switch (@typeInfo(@TypeOf(a))) {
         .Void => return true,
         .Bool, .Int, .Float, .Enum => return a == b,
+
+        .Optional => {
+            return if (a != null and b != null)
+                deepEquals(a.?, b.?)
+            else if (a != null)
+                false
+            else if (b != null)
+                false
+            else
+                true;
+        },
 
         .Array => {
             for (a, b) |a_item, b_item| {

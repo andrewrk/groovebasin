@@ -14,15 +14,7 @@ const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
 const items = &g.the_database.items;
-var current_item: ?struct {
-    id: Id,
-    state: union(enum) {
-        /// track start date in milliseconds relative to now
-        playing: i64,
-        /// seconds into the song where the seek head is paused
-        paused: f64,
-    },
-} = undefined;
+const current_item = &g.the_database.state.current_item;
 
 // This tracks Groove data for each queue item.
 var groove_datas: [2]?struct {
@@ -33,28 +25,26 @@ var groove_datas: [2]?struct {
 
 const Item = db.Item;
 
-pub fn init() !void {
-    current_item = null;
-}
+pub fn init() !void {}
 
 pub fn deinit() void {
     clearGrooveDatas();
 }
 
 pub fn handleLoaded() !void {
-    if (current_item != null and current_item.?.state == .playing) {
+    if (current_item.* != null and current_item.*.?.state == .playing) {
         // Server shutdown while playing. We don't know when the server
         // shutdown, so we have no way to reconstruct where we were in this
         // song. Seek back to the start.
-        current_item.?.state = .{ .paused = 0.0 };
+        current_item.*.?.state = .{ .paused = 0.0 };
     }
 
     sort();
     try tellGrooveAboutTheCurrentItem();
 
-    if (current_item != null) {
+    if (current_item.* != null) {
         // Seek paused
-        g.player.playlist.seek(groove_datas[0].?.playlist_item, current_item.?.state.paused);
+        g.player.playlist.seek(groove_datas[0].?.playlist_item, current_item.*.?.state.paused);
     }
 }
 
@@ -67,15 +57,15 @@ pub fn seek(user_id: Id, id: Id, pos: f64) !void {
         return;
     }
 
-    const is_playing = current_item != null and current_item.?.state == .playing;
+    const is_playing = current_item.* != null and current_item.*.?.state == .playing;
     if (is_playing) {
         const new_start_time = std.time.milliTimestamp() - @as(i64, @intFromFloat(pos * 1000.0));
-        current_item = .{
+        current_item.* = .{
             .id = id,
             .state = .{ .playing = new_start_time },
         };
     } else {
-        current_item = .{
+        current_item.* = .{
             .id = id,
             .state = .{ .paused = pos },
         };
@@ -89,19 +79,19 @@ pub fn seek(user_id: Id, id: Id, pos: f64) !void {
 pub fn play(user_id: Id) !void {
     // TODO: add the play event ("poopsmith3 pressed play")
     _ = user_id;
-    if (current_item == null) {
+    if (current_item.* == null) {
         log.warn("ignoring play without any seek", .{});
         return;
     }
 
-    switch (current_item.?.state) {
+    switch (current_item.*.?.state) {
         .playing => {
             log.warn("ignoring play while already playing", .{});
             return;
         },
         .paused => |pos| {
             const new_start_time = std.time.milliTimestamp() - @as(i64, @intFromFloat(pos * 1000.0));
-            current_item.?.state = .{ .playing = new_start_time };
+            current_item.*.?.state = .{ .playing = new_start_time };
             g.player.playlist.play();
         },
     }
@@ -111,12 +101,12 @@ pub fn pause(user_id: Id) !void {
     // TODO: add the pause event ("poopsmith3 pressed pause")
     _ = user_id;
 
-    if (current_item == null) {
+    if (current_item.* == null) {
         log.warn("ignoring pause without any seek", .{});
         return;
     }
 
-    switch (current_item.?.state) {
+    switch (current_item.*.?.state) {
         .paused => {
             log.warn("ignoring pause while already paused", .{});
             return;
@@ -124,7 +114,7 @@ pub fn pause(user_id: Id) !void {
         .playing => |track_start_date| {
             g.player.playlist.pause();
             const pos = @as(f64, @floatFromInt(std.time.milliTimestamp() - track_start_date)) / 1000.0;
-            current_item.?.state = .{ .paused = pos };
+            current_item.*.?.state = .{ .paused = pos };
         },
     }
 }
@@ -208,7 +198,7 @@ pub fn remove(args: []Id) !void {
         }
 
         // Current item dodges the crater.
-        if (current_item != null and current_item.?.id.value == item_id.value) {
+        if (current_item.* != null and current_item.*.?.id.value == item_id.value) {
             // Find the next item later.
             recover_current_item_after_sort_key = items.get(item_id).sort_key;
         }
@@ -227,7 +217,7 @@ pub fn remove(args: []Id) !void {
             }
         } else {
             // Last item deleted.
-            current_item = null;
+            current_item.* = null;
         }
     }
 
@@ -241,13 +231,13 @@ pub fn remove(args: []Id) !void {
 fn tellGrooveAboutTheCurrentItem() error{OutOfMemory}!void {
     errdefer {
         // Some unhandled error means stop everything.
-        current_item = null;
+        current_item.* = null;
         clearGrooveDatas();
     }
 
     // This only loops on library load error.
-    found_broken_item_loop: while (current_item != null) {
-        const item_id = current_item.?.id;
+    found_broken_item_loop: while (current_item.* != null) {
+        const item_id = current_item.*.?.id;
 
         // Drain wrong items.
         while (groove_datas[0] != null) {
@@ -272,7 +262,7 @@ fn tellGrooveAboutTheCurrentItem() error{OutOfMemory}!void {
                         setCurrentItemId(items.table.keys()[index + 1]);
                     } else {
                         // Last item in the queue is broken. Stop playing.
-                        current_item = null;
+                        current_item.* = null;
                     }
                     // Start over.
                     continue :found_broken_item_loop;
@@ -353,9 +343,9 @@ fn clearGrooveDatas() void {
 }
 
 fn setCurrentItemId(item_id: Id) void {
-    current_item = .{
+    current_item.* = .{
         .id = item_id,
-        .state = if (current_item.?.state == .playing)
+        .state = if (current_item.*.?.state == .playing)
             .{ .playing = std.time.milliTimestamp() }
         else
             .{ .paused = 0.0 },
@@ -370,8 +360,8 @@ pub fn serializableItem(item: Item) protocol.QueueItem {
     };
 }
 
-pub fn serializableCurrentTrack(_: void) protocol.CurrentTrack {
-    const item = current_item orelse return .{
+pub fn serializableCurrentTrack(current_track: anytype) protocol.CurrentTrack {
+    const item = current_track orelse return .{
         .currentItemId = null,
         .isPlaying = false,
         .trackStartDate = null,

@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const log = std.log;
+const log = std.log.scoped(.db);
+const sub_log = std.log.scoped(.sub);
 const ArrayList = std.ArrayList;
 const ArrayListUnmanaged = std.ArrayListUnmanaged;
 const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
@@ -380,7 +381,7 @@ fn saveTo(path: []const u8) !void {
 
     try file.writevAll(&iovec_array);
 
-    log.info("write db bytes: {}", .{totalIovecLen(&iovec_array)});
+    log.debug("wrote db bytes: {}", .{totalIovecLen(&iovec_array)});
 }
 
 //===== new API v3 for real this time =====
@@ -517,7 +518,7 @@ pub fn Database(
             if (is_dirty) {
                 self.last_version = self.version;
                 self.version = Id.random();
-                log.debug("new version for {s}: {}, last: {}", .{
+                sub_log.debug("new version for {s}: {}, last: {}", .{
                     @tagName(subscription), self.version, self.last_version,
                 });
             }

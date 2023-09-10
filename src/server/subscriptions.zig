@@ -2,7 +2,7 @@ const std = @import("std");
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const Tag = std.meta.Tag;
-const log = std.log;
+const log = std.log.scoped(.sub);
 const assert = std.debug.assert;
 
 const g = @import("global.zig");

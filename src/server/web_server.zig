@@ -1,7 +1,8 @@
 const std = @import("std");
 const mem = std.mem;
 const net = std.net;
-const log = std.log;
+const log = std.log.scoped(.net);
+const groove_log = std.log.scoped(.groove);
 const Channel = @import("threadsafe_queue.zig").Channel;
 const channel = @import("threadsafe_queue.zig").channel;
 const RefCounter = @import("RefCounter.zig");
@@ -78,13 +79,13 @@ pub fn spawnListenThread(addr: net.Address) !void {
 
 fn listenThreadEntrypoint(addr: net.Address) void {
     listen(addr) catch |err| {
-        log.err("listen thread failure: {}", .{err});
+        log.err("listen thread failure: {s}", .{@errorName(err)});
         @panic("if the listen thread dies, we all die.");
     };
 }
 
 fn listen(addr: net.Address) !void {
-    log.info("init tcp server", .{});
+    log.debug("init tcp server", .{});
     var server = net.StreamServer.init(.{ .reuse_address = true });
     defer server.deinit();
 
@@ -106,7 +107,7 @@ fn listen(addr: net.Address) !void {
         }
 
         _ = std.Thread.spawn(.{}, ConnectionHandler.entrypoint, .{handler}) catch |err| {
-            log.err("handling connection failed: {}", .{err});
+            log.err("can't spawn connection handler thread: {s}", .{@errorName(err)});
             {
                 handlers_mutex.lock();
                 defer handlers_mutex.unlock();
@@ -153,10 +154,16 @@ const ConnectionHandler = struct {
 
     fn entrypoint(self: *@This()) void {
         self.handleConnection() catch |err| switch (err) {
-            error.BrokenPipe => {
-                log.debug("client handling complete. broken pipe", .{});
+            error.UnsupportedRequest => {
+                log.warn("unsupported HTTP request", .{});
             },
-            else => log.err("unable to handle connection: {s}", .{@errorName(err)}),
+            error.ConnectionResetByPeer, error.ConnectionTimedOut => {
+                log.warn("client socket error: {s}", .{@errorName(err)});
+            },
+            error.BrokenPipe => {
+                log.debug("client handling complete (broken pipe)", .{});
+            },
+            else => log.err("error while handling connection: {s}", .{@errorName(err)}),
         };
         {
             handlers_mutex.lock();
@@ -172,17 +179,17 @@ const ConnectionHandler = struct {
         var buf: [0x4000]u8 = undefined;
         const msg = buf[0..try self.connection.stream.read(&buf)];
         var header_lines = std.mem.split(u8, msg, "\r\n");
-        const first_line = header_lines.next() orelse return error.NotAnHttpRequest;
+        const first_line = header_lines.next() orelse return error.UnsupportedRequest; // not an HTTP request
 
         // eg: "GET /favicon.png HTTP/1.1"
         var it = std.mem.tokenize(u8, first_line, " \t");
-        const method = it.next() orelse return error.NotAnHttpRequest;
-        const path = it.next() orelse return error.NotAnHttpRequest;
-        const http_version = it.next() orelse return error.NotAnHttpRequest;
+        const method = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
+        const path = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
+        const http_version = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
 
         // Only support GET for HTTP/1.1
-        if (!std.mem.eql(u8, method, "GET")) return error.UnsupportedHttpMethod;
-        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return error.UnsupportedHttpVersion;
+        if (!std.mem.eql(u8, method, "GET")) return error.UnsupportedRequest; // unsupported HTTP method
+        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return error.UnsupportedRequest; // unsupported HTTP version
 
         // Find interesting headers.
         var sec_websocket_key: ?[]const u8 = null;
@@ -196,13 +203,13 @@ const ConnectionHandler = struct {
             if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
                 sec_websocket_key = value;
             } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
-                if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedProtocolUpgrade;
+                if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedRequest; // unsupported protocol upgrade
                 should_upgrade_websocket = true;
             }
         }
 
         if (should_upgrade_websocket) {
-            const websocket_key = sec_websocket_key orelse return error.WebsocketUpgradeMissingSecKey;
+            const websocket_key = sec_websocket_key orelse return error.UnsupportedRequest; // websocket upgrade missing Sec-WebSocket-Key
             log.debug("GET websocket: {s}", .{path});
             // This is going to stay open for a long time.
             return self.serveWebsocket(websocket_key);
@@ -247,18 +254,18 @@ const ConnectionHandler = struct {
                 var seconds: f64 = undefined;
                 g.player.playlist.position(null, &seconds);
                 const is_playing = g.player.playlist.playing();
-                log.debug("stream endpoint buffer_get (playlist head: {d}, playing: {})", .{ seconds, is_playing });
+                groove_log.debug("stream endpoint buffer_get (playlist head: {d}, playing: {})", .{ seconds, is_playing });
             }
             const status = try g.player.encoder.buffer_get(&buffer, true);
             if (do_logging) {
-                log.debug("stream endpoint buffer_get returned {s}", .{if (buffer == null) "null" else "non-null"});
+                groove_log.debug("stream endpoint buffer_get returned {s}", .{if (buffer == null) "null" else "non-null"});
             }
             _ = status;
             if (buffer) |buf| {
                 defer buf.unref();
                 const data = buf.data[0][0..@intCast(buf.size)];
                 if (do_logging) {
-                    log.debug("stream endpoint writing {d} bytes", .{data.len});
+                    groove_log.debug("stream endpoint writing {d} bytes", .{data.len});
                 }
                 try w.writeAll(data);
             }
@@ -287,7 +294,7 @@ const ConnectionHandler = struct {
 
         self.ref(); // trace:websocketSendLoop
         _ = std.Thread.spawn(.{}, @This().websocketSendLoop, .{self}) catch |err| {
-            log.err("spawning websocket handler thread failed: {}", .{err});
+            log.err("spawning websocket handler thread failed: {s}", .{@errorName(err)});
             self.unref(); // trace:websocketSendLoop
             return err;
         };
@@ -299,7 +306,7 @@ const ConnectionHandler = struct {
             delivery.* = .{ .event = .{ .client_connected = self.id } };
             delivery.ref(); // trace:to_server_channel
             to_server_channel.put(delivery) catch |err| {
-                log.warn("server overloaded!", .{});
+                log.err("server overloaded!", .{});
                 delivery.unref(); // trace:to_server_channel
                 return err;
             };
@@ -311,12 +318,12 @@ const ConnectionHandler = struct {
                 delivery.ref(); // trace:to_server_channel
                 to_server_channel.put(delivery) catch {
                     // TODO: this error should be impossible by design somehow.
-                    log.warn("server overloaded!", .{});
+                    log.err("server overloaded!", .{});
                     delivery.unref(); // trace:to_server_channel
                 };
             } else |_| {
                 // TODO: this error should be impossible by design somehow.
-                log.warn("server overloaded!", .{});
+                log.err("server overloaded!", .{});
             }
         }
 
@@ -337,7 +344,7 @@ const ConnectionHandler = struct {
 
             // Deliver to server logic thread.
             to_server_channel.put(delivery) catch |err| {
-                log.warn("server overloaded!", .{});
+                log.err("server overloaded!", .{});
                 delivery.unref(); // trace:to_server_channel
                 return err;
             };
@@ -429,7 +436,7 @@ const ConnectionHandler = struct {
             defer delivery.unref(); // trace:websocket_send_queue
 
             self.writeMessageFromSendThread(delivery.payload) catch |err| {
-                log.err("error writing message to websocket: {}", .{err});
+                log.err("error writing message to websocket: {s}", .{@errorName(err)});
                 break;
             };
         }
@@ -574,7 +581,7 @@ pub fn sendMessageToClient(client_id: Id, message_bytes: []const u8) !void {
         return;
     }
     handler.websocket_send_queue.put(delivery) catch |err| {
-        log.warn("websocket client send queue backed up. {}. closing.", .{err});
+        log.err("websocket client send queue backed up. {s}. closing.", .{@errorName(err)});
         handler.close();
         delivery.unref(); // trace:websocket_send_queue
     };
@@ -583,7 +590,7 @@ pub fn sendMessageToClient(client_id: Id, message_bytes: []const u8) !void {
 pub fn mainLoop() noreturn {
     while (true) {
         serverLogicOneIteration() catch |err| {
-            log.warn("Error handling message: {}", .{err});
+            log.err("Error handling message: {s}", .{@errorName(err)});
         };
     }
 }

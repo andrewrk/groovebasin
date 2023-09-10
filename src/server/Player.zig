@@ -7,7 +7,7 @@ const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
 const g = @import("global.zig");
 const fatal = @import("server_main.zig").fatal;
-const log = std.log;
+const log = std.log.scoped(.groove);
 
 pub fn init(bit_rate_k: u32) !Player {
     const playlist = try g.groove.playlist_create();
@@ -34,6 +34,7 @@ pub fn init(bit_rate_k: u32) !Player {
 
     playlist.play();
 
+    log.debug("groove initialization complete", .{});
     return Player{
         .playlist = playlist,
         .encoder = encoder,

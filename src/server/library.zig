@@ -3,7 +3,7 @@ const assert = std.debug.assert;
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
-const log = std.log;
+const log = std.log.scoped(.groove);
 
 const Groove = @import("groove.zig").Groove;
 const g = @import("global.zig");

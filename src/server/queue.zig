@@ -183,7 +183,7 @@ pub fn move(args: anytype) !void {
 
 /// Returns a value strictly f(x) > x by a relatively small amount.
 fn addSomeSmallAmount(x: f64) f64 {
-    const result = x + @max(@fabs(x * 0.00001), 0.00001);
+    const result = x + @max(@abs(x * 0.00001), 0.00001);
     return result;
 }
 

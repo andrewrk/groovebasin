@@ -7,4 +7,15 @@
             .hash = "1220a0d8f003fda4cd9c3029f04e0a315216f60b2e3343f89fc2248ccd5edfe796fb",
         },
     },
+    .paths = .{
+        "CHANGELOG.md",
+        "LICENSE",
+        "README.md",
+        "build.zig",
+        "build.zig.zon",
+        "doc",
+        "public",
+        "src",
+        "tools",
+    },
 }

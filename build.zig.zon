@@ -1,10 +1,10 @@
 .{
     .name = "groovebasin",
-    .version = "0.0.0",
+    .version = "2.0.0-1",
     .dependencies = .{
         .groove = .{
-            .url = "https://github.com/andrewrk/libgroove/archive/cf5a55776e7afc0653ef0fa7d5045d01fa8ad300.tar.gz",
-            .hash = "1220a0d8f003fda4cd9c3029f04e0a315216f60b2e3343f89fc2248ccd5edfe796fb",
+            .url = "https://github.com/andrewrk/libgroove/archive/0cbbddf69a87686cdcbf1a6a32283a95b0a2362d.tar.gz",
+            .hash = "1220ec2cf094a3d06d295ea3077f9dc14b2830b29469fd423b67a2725a5a4965e8fb",
         },
     },
     .paths = .{

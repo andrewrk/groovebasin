@@ -11,6 +11,7 @@ pub fn build(b: *Builder) void {
         "libgroove-optimize",
         "override optimization mode of libgroove and its dependencies",
     );
+    const use_llvm = b.option(bool, "use-llvm", "LLVM backend");
 
     const groove_dep = b.dependency("groove", .{
         .optimize = libgroove_optimize_mode orelse .ReleaseFast,
@@ -28,6 +29,8 @@ pub fn build(b: *Builder) void {
         .root_source_file = .{ .path = "src/server/server_main.zig" },
         .target = target,
         .optimize = optimize,
+        .use_llvm = use_llvm,
+        .use_lld = use_llvm,
     });
     server.linkLibrary(groove_dep.artifact("groove"));
     b.installArtifact(server);
@@ -42,6 +45,8 @@ pub fn build(b: *Builder) void {
         const paste_js_exe = b.addExecutable(.{
             .name = "paste-js",
             .root_source_file = .{ .path = "tools/paste-js.zig" },
+            .use_llvm = use_llvm,
+            .use_lld = use_llvm,
         });
 
         const paste_js_cmd = b.addRunArtifact(paste_js_exe);
@@ -73,6 +78,8 @@ pub fn build(b: *Builder) void {
         const exe = b.addExecutable(.{
             .name = "paste-htmlcss",
             .root_source_file = .{ .path = "tools/paste-htmlcss.zig" },
+            .use_llvm = use_llvm,
+            .use_lld = use_llvm,
         });
 
         const cmd = b.addRunArtifact(exe);

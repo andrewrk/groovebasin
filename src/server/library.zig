@@ -61,7 +61,10 @@ pub fn loadFromDisk() !void {
 
         log.debug("found: {s}", .{full_path});
 
-        try groove_file.open(full_path, full_path);
+        groove_file.open(full_path, full_path) catch |err| {
+            log.err("unable to open '{s}': {s}", .{ full_path, @errorName(err) });
+            continue;
+        };
         defer groove_file.close();
 
         const track = try grooveFileToTrack(groove_file, entry.path);

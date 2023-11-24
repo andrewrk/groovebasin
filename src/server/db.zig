@@ -296,7 +296,7 @@ pub fn load(path: []const u8) !void {
 }
 
 fn readvNoEof(file: std.fs.File, iovecs: []Iovec) !void {
-    var expected_len = totalIovecLen(iovecs);
+    const expected_len = totalIovecLen(iovecs);
     const found_len = try file.readvAll(iovecs);
     if (found_len < expected_len) return error.EndOfStream;
     assert(found_len == expected_len);
@@ -440,7 +440,7 @@ pub fn Database(
             try self.table.ensureUnusedCapacity(g.gpa, 1);
             try self.added_keys.ensureUnusedCapacity(g.gpa, 1);
             for (0..10) |_| {
-                var key = Key.random(); // If you use putRandom(), this needs to be a function.
+                const key = Key.random(); // If you use putRandom(), this needs to be a function.
                 const gop = self.table.getOrPutAssumeCapacity(key);
                 if (gop.found_existing) {
                     // This is a @setCold path. See https://github.com/ziglang/zig/issues/5177 .

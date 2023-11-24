@@ -269,7 +269,7 @@ fn serializeDiff(jw: anytype, from_value: anytype, value: @TypeOf(from_value)) !
 
         // Nested structs.
         .Struct => |struct_info| {
-            if (comptime std.meta.trait.hasFn("jsonStringify")(@TypeOf(value))) {
+            if (comptime std.meta.hasFn(@TypeOf(value), "jsonStringify")) {
                 @compileError("Add this type to the leaf nodes above: " ++ @typeName(@TypeOf(value)));
             }
             try jw.beginObject();

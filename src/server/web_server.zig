@@ -128,7 +128,7 @@ const ConnectionHandler = struct {
 
     // only used for websocket handlers
     websocket_send_queue: Channel(WebsocketSendFifo) = channel(WebsocketSendFifo.init()),
-    is_closing: std.atomic.Atomic(bool) = .{ .value = false },
+    is_closing: std.atomic.Value(bool) = .{ .raw = false },
 
     pub fn ref(self: *@This()) void {
         self.refcounter.ref();
@@ -383,16 +383,16 @@ const ConnectionHandler = struct {
             log.warn("frames from client must be masked: {}", .{short_len_byte});
             return null;
         }
-        var len: u64 = switch (short_len_byte & 0b01111111) {
+        const len: u64 = switch (short_len_byte & 0b01111111) {
             127 => blk: {
                 var len_buffer = [_]u8{0} ** 8;
                 try self.connection.stream.reader().readNoEof(len_buffer[0..]);
-                break :blk std.mem.readIntBig(u64, &len_buffer);
+                break :blk std.mem.readInt(u64, &len_buffer, .big);
             },
             126 => blk: {
                 var len_buffer = [_]u8{0} ** 2;
                 try self.connection.stream.reader().readNoEof(len_buffer[0..]);
-                break :blk std.mem.readIntBig(u16, &len_buffer);
+                break :blk std.mem.readInt(u16, &len_buffer, .big);
             },
             else => |short_len| blk: {
                 break :blk short_len;
@@ -405,8 +405,8 @@ const ConnectionHandler = struct {
 
         // read mask
         var mask_buffer = [_]u8{0} ** 4;
-        try self.connection.stream.reader().readNoEof(mask_buffer[0..]);
-        const mask_native = std.mem.readIntNative(u32, &mask_buffer);
+        try self.connection.stream.reader().readNoEof(&mask_buffer);
+        const mask_native: u32 = @bitCast(mask_buffer);
 
         // read payload
         const allocated_len = std.mem.alignForward(usize, len, 4);
@@ -459,13 +459,13 @@ const ConnectionHandler = struct {
             126...0xffff => blk: {
                 // 16-bit size
                 header_buf[1] = 126;
-                std.mem.writeIntBig(u16, header_buf[2..4], @as(u16, @intCast(message.len)));
+                std.mem.writeInt(u16, header_buf[2..4], @as(u16, @intCast(message.len)), .big);
                 break :blk header_buf[0..4];
             },
             else => blk: {
                 // 64-bit size
                 header_buf[1] = 127;
-                std.mem.writeIntBig(u64, header_buf[2..10], message.len);
+                std.mem.writeInt(u64, header_buf[2..10], message.len, .big);
                 break :blk header_buf[0..10];
             },
         };

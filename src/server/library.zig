@@ -42,7 +42,7 @@ pub fn loadFromDisk() !void {
 
     // TODO: update libgroove to support openat so we can store the music_dir fd
     // only and not do the absolute file concatenation below
-    var music_dir = try std.fs.cwd().openIterableDir(music_directory, .{});
+    var music_dir = try std.fs.cwd().openDir(music_directory, .{ .iterate = true });
     defer music_dir.close();
 
     var walker = try music_dir.walk(arena.allocator());

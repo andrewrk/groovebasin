@@ -42,18 +42,17 @@ pub const Id = struct {
     pub fn random() @This() {
         var buf: [6]u8 = undefined;
         std.crypto.random.bytes(&buf);
-        return .{ .value = std.mem.readIntNative(u48, &buf) };
+        return .{ .value = @bitCast(buf) };
     }
 
     pub fn parse(s: []const u8) !@This() {
         if (s.len != 8) return error.InvalidUuidLen;
         var buf: [6]u8 = undefined;
         try std.base64.url_safe.Decoder.decode(&buf, s);
-        return .{ .value = std.mem.readIntNative(u48, &buf) };
+        return .{ .value = @bitCast(buf) };
     }
     pub fn write(self: @This(), out_buffer: *[8]u8) []const u8 {
-        var native: [6]u8 = undefined;
-        std.mem.writeIntNative(u48, &native, self.value);
+        const native: [6]u8 = @bitCast(self.value);
         std.debug.assert(std.base64.url_safe.Encoder.encode(out_buffer, &native).len == 8);
         return out_buffer;
     }
@@ -146,7 +145,7 @@ fn JsonMap(comptime Key: type, comptime T: type) type {
 
 fn nameAndArgsParse(comptime T: type, allocator: Allocator, source: anytype, options: json.ParseOptions) !T {
     // The fields can appear in any order, and we need to know the value of one before we can parse the other.
-    var dynamic_value = try json.parseFromTokenSourceLeaky(json.Value, allocator, source, options);
+    const dynamic_value = try json.parseFromTokenSourceLeaky(json.Value, allocator, source, options);
     return nameAndArgsParseFromValue(T, allocator, dynamic_value, options);
 }
 fn nameAndArgsParseFromValue(comptime T: type, allocator: Allocator, source: json.Value, options: json.ParseOptions) !T {

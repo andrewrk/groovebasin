@@ -1,6 +1,7 @@
-const Atomic = @import("std").atomic.Atomic;
+const std = @import("std");
+const atomic = std.atomic;
 
-count: Atomic(usize) = .{ .value = 0 },
+count: atomic.Value(usize) = .{ .raw = 0 },
 
 pub fn init(initial_value: usize) @This() {
     return .{ .value = initial_value };

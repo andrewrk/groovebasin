@@ -1,7 +1,6 @@
 const std = @import("std");
-const Builder = std.build.Builder;
 
-pub fn build(b: *Builder) void {
+pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseSafe,
@@ -44,6 +43,7 @@ pub fn build(b: *Builder) void {
     {
         const paste_js_exe = b.addExecutable(.{
             .name = "paste-js",
+            .target = b.host,
             .root_source_file = .{ .path = "tools/paste-js.zig" },
             .use_llvm = use_llvm,
             .use_lld = use_llvm,
@@ -77,6 +77,7 @@ pub fn build(b: *Builder) void {
     {
         const exe = b.addExecutable(.{
             .name = "paste-htmlcss",
+            .target = b.host,
             .root_source_file = .{ .path = "tools/paste-htmlcss.zig" },
             .use_llvm = use_llvm,
             .use_lld = use_llvm,

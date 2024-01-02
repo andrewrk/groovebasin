@@ -190,13 +190,13 @@ const FileHeader = extern struct {
 };
 
 const some_facts = blk: {
-    comptime var fixed_size_header_size: usize = 0;
-    comptime var number_of_dynamically_sized_sections: usize = 0;
+    var fixed_size_header_size: usize = 0;
+    var number_of_dynamically_sized_sections: usize = 0;
     fixed_size_header_size += @sizeOf(FileHeader); // header
     fixed_size_header_size += @sizeOf(State); // fixed-size data
     fixed_size_header_size += @sizeOf(u32); // strings len
     number_of_dynamically_sized_sections += 1; // strings data
-    inline for (all_databases) |d| {
+    for (all_databases) |d| {
         if (!@TypeOf(d.*).should_save_to_disk) continue;
         fixed_size_header_size += @sizeOf(u32); // number of items
         number_of_dynamically_sized_sections += 2; // keys, values

@@ -242,15 +242,15 @@ fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientT
 
         .queue => |args| {
             try checkPermission(perms.control);
-            try Queue.enqueue(args);
+            try g.queue.enqueue(args);
         },
         .move => |args| {
             try checkPermission(perms.control);
-            try Queue.move(args);
+            try g.queue.move(args);
         },
         .remove => |args| {
             try checkPermission(perms.control);
-            try Queue.remove(args);
+            try g.queue.remove(args);
         },
 
         .chat => |args| {
@@ -268,15 +268,15 @@ fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientT
         .unsubscribe => @panic("TODO"),
         .pause => {
             try checkPermission(perms.control);
-            try Queue.pause(user_id);
+            try g.queue.pause(user_id);
         },
         .play => {
             try checkPermission(perms.control);
-            try Queue.play(user_id);
+            try g.queue.play(user_id);
         },
         .seek => |args| {
             try checkPermission(perms.control);
-            try Queue.seek(user_id, args.id, args.pos);
+            try g.queue.seek(user_id, args.id, args.pos);
         },
         .repeat => @panic("TODO"),
         .setVolume => @panic("TODO"),

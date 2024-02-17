@@ -31,7 +31,7 @@ pub fn handleLoaded(q: *Queue) !void {
     }
 
     sort();
-    try lowerToLibGroove(q, &g.player, &g.the_database);
+    try q.lowerToLibGroove(&g.player, &g.the_database);
 
     if (current_item.* != null) {
         // Seek paused
@@ -41,7 +41,7 @@ pub fn handleLoaded(q: *Queue) !void {
     }
 }
 
-pub fn seek(user_id: Id, id: Id, pos: f64) !void {
+pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
     _ = user_id;
 
@@ -64,13 +64,14 @@ pub fn seek(user_id: Id, id: Id, pos: f64) !void {
         };
     }
 
-    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
+    try q.lowerToLibGroove(&g.player, &g.the_database);
 
     @panic("TODO");
     //g.player.playlist.seek(groove_datas[0].?.playlist_item, pos);
 }
 
-pub fn play(user_id: Id) !void {
+pub fn play(q: *Queue, user_id: Id) !void {
+    _ = q;
     // TODO: add the play event ("poopsmith3 pressed play")
     _ = user_id;
     if (current_item.* == null) {
@@ -91,7 +92,8 @@ pub fn play(user_id: Id) !void {
     }
 }
 
-pub fn pause(user_id: Id) !void {
+pub fn pause(q: *Queue, user_id: Id) !void {
+    _ = q;
     // TODO: add the pause event ("poopsmith3 pressed pause")
     _ = user_id;
 
@@ -113,7 +115,7 @@ pub fn pause(user_id: Id) !void {
     }
 }
 
-pub fn enqueue(new_items: anytype) !void {
+pub fn enqueue(q: *Queue, new_items: anytype) !void {
     try items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
     try items.added_keys.ensureUnusedCapacity(g.gpa, new_items.map.count());
 
@@ -136,10 +138,10 @@ pub fn enqueue(new_items: anytype) !void {
     }
 
     sort();
-    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
+    try q.lowerToLibGroove(&g.player, &g.the_database);
 }
 
-pub fn move(args: anytype) !void {
+pub fn move(q: *Queue, args: anytype) !void {
     try items.modified_entries.ensureUnusedCapacity(g.gpa, args.map.count());
     {
         var it = args.map.iterator();
@@ -172,7 +174,7 @@ pub fn move(args: anytype) !void {
         }
     }
 
-    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
+    try q.lowerToLibGroove(&g.player, &g.the_database);
 }
 
 /// Returns a value strictly f(x) > x by a relatively small amount.
@@ -181,7 +183,7 @@ fn addSomeSmallAmount(x: f64) f64 {
     return result;
 }
 
-pub fn remove(args: []Id) !void {
+pub fn remove(q: *Queue, args: []Id) !void {
     try items.removed_keys.ensureUnusedCapacity(g.gpa, args.len);
 
     var recover_current_item_after_sort_key: ?f64 = null;
@@ -215,7 +217,7 @@ pub fn remove(args: []Id) !void {
         }
     }
 
-    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
+    try q.lowerToLibGroove(&g.player, &g.the_database);
 }
 
 /// Ensures the intended current item and following item are loaded into Groove.

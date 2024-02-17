@@ -21,6 +21,7 @@ map: AutoArrayHashMapUnmanaged(*Groove.Playlist.Item, Id) = .{},
 
 pub fn handleLoaded(q: *Queue) !void {
     const db = &g.the_database;
+    const player = &g.player;
 
     if (db.state.current_item != null and db.state.current_item.?.state == .playing) {
         // Server shutdown while playing. We don't know when the server
@@ -30,13 +31,11 @@ pub fn handleLoaded(q: *Queue) !void {
     }
 
     sort();
-    try q.lowerToLibGroove(&g.player, &g.the_database);
+    try q.lowerToLibGroove(player, &g.the_database);
 
-    if (db.state.current_item != null) {
-        // Seek paused
-        @panic("TODO");
-
-        //g.player.playlist.seek(groove_datas[0].?.playlist_item, db.state.current_item.?.state.paused);
+    // Seek and pause.
+    if (player.playlist.head) |head| {
+        player.playlist.seek(head, db.state.current_item.?.state.paused);
     }
 }
 
@@ -44,6 +43,7 @@ pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
     _ = user_id;
     const db = &g.the_database;
+    const player = &g.player;
 
     if (!db.items.contains(id)) {
         log.warn("ignoring seek for bogus queue item: {}", .{id});
@@ -64,10 +64,11 @@ pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
         };
     }
 
-    try q.lowerToLibGroove(&g.player, &g.the_database);
+    try q.lowerToLibGroove(player, &g.the_database);
 
-    @panic("TODO");
-    //g.player.playlist.seek(groove_datas[0].?.playlist_item, pos);
+    if (player.playlist.head) |head| {
+        player.playlist.seek(head, pos);
+    }
 }
 
 pub fn play(q: *Queue, user_id: Id) !void {

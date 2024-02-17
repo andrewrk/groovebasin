@@ -92,6 +92,8 @@ Pull requests, feature requests, and bug reports are welcome!
 
 ### Roadmap
 
+* the web server hangs doesn't serve the request fast
+* close groove files when deleting from queue
 * server hangs sometimes, basic playback
 * disconnecting from the stream crashes the server
 * replaygain

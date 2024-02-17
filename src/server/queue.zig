@@ -119,6 +119,28 @@ pub fn pause(q: *Queue, user_id: Id) !void {
     }
 }
 
+pub fn stop(q: *Queue, user_id: Id) !void {
+    _ = q;
+    // TODO: add the pause event ("poopsmith3 pressed stop")
+    _ = user_id;
+    const db = &g.the_database;
+
+    if (db.state.current_item == null) {
+        log.warn("ignoring stop without any current item", .{});
+        return;
+    }
+
+    switch (db.state.current_item.?.state) {
+        .paused => {
+            // Pressing stop while already paused effectively just seeks to 0.0 seconds.
+        },
+        .playing => {
+            g.player.playlist.pause();
+        },
+    }
+    db.state.current_item.?.state = .{ .paused = 0.0 };
+}
+
 pub fn enqueue(q: *Queue, new_items: anytype) !void {
     const db = &g.the_database;
     try db.items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());

@@ -274,13 +274,16 @@ fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientT
             try checkPermission(perms.control);
             try g.queue.play(user_id);
         },
+        .stop => {
+            try checkPermission(perms.control);
+            try g.queue.stop(user_id);
+        },
         .seek => |args| {
             try checkPermission(perms.control);
             try g.queue.seek(user_id, args.id, args.pos);
         },
         .repeat => @panic("TODO"),
         .setVolume => @panic("TODO"),
-        .stop => @panic("TODO"),
         .playlistCreate => @panic("TODO"),
         .playlistRename => @panic("TODO"),
         .playlistDelete => @panic("TODO"),

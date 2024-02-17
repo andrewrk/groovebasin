@@ -242,7 +242,7 @@ pub const ClientToServerMessage = union(enum) {
     repeat: TODO,
     requestApproval: void,
     setVolume: TODO,
-    stop: TODO,
+    stop: void,
     playlistCreate: TODO,
     playlistRename: TODO,
     playlistDelete: TODO,

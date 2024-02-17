@@ -92,7 +92,22 @@ Pull requests, feature requests, and bug reports are welcome!
 
 ### Roadmap
 
- 1. Rewrite it in Zig!
- 2. Music library organization
- 3. Accoustid Integration
- 4. Finalize GrooveBasin protocol spec
+* server hangs sometimes, basic playback
+* disconnecting from the stream crashes the server
+* replaygain
+* rearranging queue items
+* Give the server access to music library index (what's an album, list of
+  artists, etc)
+* Auto DJ
+* File system rescan button
+* Delete from library
+* Edit tags
+* Playlist support
+* File system watching
+* Uploading files
+* repeat mode
+* Torrent integration
+* Last.fm scrobbling
+* Acoustid Integration
+* Zip file upload and download
+* Finalize GrooveBasin protocol spec

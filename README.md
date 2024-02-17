@@ -95,6 +95,7 @@ Pull requests, feature requests, and bug reports are welcome!
 * the web server hangs doesn't serve the request fast
 * close groove files when deleting from queue
 * server hangs sometimes, basic playback
+* basic playback QA: play/pause/stop/next/prev/seek
 * disconnecting from the stream crashes the server
 * replaygain
 * rearranging queue items

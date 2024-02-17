@@ -241,6 +241,7 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
     // Delete all libgroove playlist items before the currently playing track.
     while (player.playlist.head != current_libgroove_item) {
         const head = player.playlist.head orelse break;
+        head.file.destroy();
         player.playlist.remove(head);
         assert(q.map.swapRemove(head));
     }
@@ -263,6 +264,7 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
                 continue :outer;
             }
             const next = libgroove_item.next;
+            libgroove_item.file.destroy();
             player.playlist.remove(libgroove_item);
             assert(q.map.swapRemove(libgroove_item));
             libgroove_item_it = next;

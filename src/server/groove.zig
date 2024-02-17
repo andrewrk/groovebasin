@@ -195,6 +195,8 @@ pub const Groove = opaque {
         }
         extern fn groove_playlist_insert(playlist: *Playlist, file: *File, gain: f64, peak: f64, next: ?*Item) ?*Item;
 
+        /// This will not call ::groove_file_close on item->file
+        /// Item is destroyed and the address it points to is no longer valid
         pub const remove = groove_playlist_remove;
         extern fn groove_playlist_remove(playlist: *Playlist, item: *Item) void;
 

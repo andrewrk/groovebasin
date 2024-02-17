@@ -6,7 +6,7 @@ const mem = std.mem;
 
 const g = @import("global.zig");
 const library = @import("library.zig");
-const queue = @import("queue.zig");
+const Queue = @import("queue.zig");
 const events = @import("events.zig");
 const subscriptions = @import("subscriptions.zig");
 const users = @import("users.zig");
@@ -79,6 +79,9 @@ pub fn main() anyerror!void {
 
     log.debug("libgroove version: {s}", .{Groove.version()});
 
+    var queue: Queue = .{};
+    g.queue = &queue;
+
     const soundio = try SoundIo.create();
     g.soundio = soundio;
     g.soundio.app_name = "GrooveBasin";
@@ -100,8 +103,6 @@ pub fn main() anyerror!void {
     defer subscriptions.deinit();
     try library.init(music_dir_path);
     defer library.deinit();
-    try queue.init();
-    defer queue.deinit();
     try events.init();
     defer events.deinit();
 
@@ -109,8 +110,10 @@ pub fn main() anyerror!void {
     try db.load(config.dbPath);
 
     try library.loadFromDisk();
+
     try queue.handleLoaded();
 
+    // The DB may have changed due to loadFromDisk.
     try db.flushChanges();
 
     log.info("init static content", .{});
@@ -239,15 +242,15 @@ fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientT
 
         .queue => |args| {
             try checkPermission(perms.control);
-            try queue.enqueue(args);
+            try Queue.enqueue(args);
         },
         .move => |args| {
             try checkPermission(perms.control);
-            try queue.move(args);
+            try Queue.move(args);
         },
         .remove => |args| {
             try checkPermission(perms.control);
-            try queue.remove(args);
+            try Queue.remove(args);
         },
 
         .chat => |args| {
@@ -265,15 +268,15 @@ fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientT
         .unsubscribe => @panic("TODO"),
         .pause => {
             try checkPermission(perms.control);
-            try queue.pause(user_id);
+            try Queue.pause(user_id);
         },
         .play => {
             try checkPermission(perms.control);
-            try queue.play(user_id);
+            try Queue.play(user_id);
         },
         .seek => |args| {
             try checkPermission(perms.control);
-            try queue.seek(user_id, args.id, args.pos);
+            try Queue.seek(user_id, args.id, args.pos);
         },
         .repeat => @panic("TODO"),
         .setVolume => @panic("TODO"),

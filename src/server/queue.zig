@@ -1,11 +1,13 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
 const Allocator = std.mem.Allocator;
 const log = std.log;
 
+const Db = @import("db.zig").TheDatabase;
 const g = @import("global.zig");
-const db = @import("db.zig");
 const Groove = @import("groove.zig").Groove;
+const Player = @import("Player.zig");
 
 const protocol = @import("groovebasin_protocol.zig");
 const Id = protocol.Id;
@@ -16,22 +18,11 @@ const subscriptions = @import("subscriptions.zig");
 const items = &g.the_database.items;
 const current_item = &g.the_database.state.current_item;
 
-// This tracks Groove data for each queue item.
-var groove_datas: [2]?struct {
-    item_id: Id,
-    file: *Groove.File,
-    playlist_item: *Groove.Playlist.Item,
-} = .{ null, null };
+const Queue = @This();
 
-const Item = db.Item;
+map: AutoArrayHashMapUnmanaged(*Groove.Playlist.Item, Id) = .{},
 
-pub fn init() !void {}
-
-pub fn deinit() void {
-    clearGrooveDatas();
-}
-
-pub fn handleLoaded() !void {
+pub fn handleLoaded(q: *Queue) !void {
     if (current_item.* != null and current_item.*.?.state == .playing) {
         // Server shutdown while playing. We don't know when the server
         // shutdown, so we have no way to reconstruct where we were in this
@@ -40,11 +31,13 @@ pub fn handleLoaded() !void {
     }
 
     sort();
-    try tellGrooveAboutTheCurrentItem();
+    try lowerToLibGroove(q, &g.player, &g.the_database);
 
     if (current_item.* != null) {
         // Seek paused
-        g.player.playlist.seek(groove_datas[0].?.playlist_item, current_item.*.?.state.paused);
+        @panic("TODO");
+
+        //g.player.playlist.seek(groove_datas[0].?.playlist_item, current_item.*.?.state.paused);
     }
 }
 
@@ -71,9 +64,10 @@ pub fn seek(user_id: Id, id: Id, pos: f64) !void {
         };
     }
 
-    try tellGrooveAboutTheCurrentItem();
+    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
 
-    g.player.playlist.seek(groove_datas[0].?.playlist_item, pos);
+    @panic("TODO");
+    //g.player.playlist.seek(groove_datas[0].?.playlist_item, pos);
 }
 
 pub fn play(user_id: Id) !void {
@@ -142,7 +136,7 @@ pub fn enqueue(new_items: anytype) !void {
     }
 
     sort();
-    try tellGrooveAboutTheCurrentItem();
+    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
 }
 
 pub fn move(args: anytype) !void {
@@ -178,7 +172,7 @@ pub fn move(args: anytype) !void {
         }
     }
 
-    try tellGrooveAboutTheCurrentItem();
+    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
 }
 
 /// Returns a value strictly f(x) > x by a relatively small amount.
@@ -221,116 +215,70 @@ pub fn remove(args: []Id) !void {
         }
     }
 
-    try tellGrooveAboutTheCurrentItem();
+    try lowerToLibGroove(g.queue, &g.player, &g.the_database);
 }
 
-// Ensures the intended current item and following item are loaded into Groove.
-// If the current item needs to be loaded into Groove, then tells Groove to
-// seek to the beginning of it (activating it). If we're supposed to seek into
-// the middle of the song instead, do that seek after this function returns.
-fn tellGrooveAboutTheCurrentItem() error{OutOfMemory}!void {
-    errdefer {
-        // Some unhandled error means stop everything.
-        current_item.* = null;
-        clearGrooveDatas();
+/// Ensures the intended current item and following item are loaded into Groove.
+/// Assumes the play queue is already sorted.
+fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void {
+    const gpa = g.gpa;
+
+    const current_libgroove_item = c: {
+        var current_libgroove_item: ?*Groove.Playlist.Item = undefined;
+        player.playlist.position(&current_libgroove_item, null);
+        break :c current_libgroove_item;
+    };
+
+    // Delete all libgroove playlist items before the currently playing track.
+    while (player.playlist.head != current_libgroove_item) {
+        const head = player.playlist.head orelse break;
+        player.playlist.remove(head);
+        assert(q.map.swapRemove(head));
     }
 
-    // This only loops on library load error.
-    found_broken_item_loop: while (current_item.* != null) {
-        const item_id = current_item.*.?.id;
+    const current_db_item = db.state.current_item orelse return;
 
-        // Drain wrong items.
-        while (groove_datas[0] != null) {
-            if (groove_datas[0].?.item_id.value == item_id.value) break; // correct
-            // Nope. Skip this item.
-            g.player.playlist.remove(groove_datas[0].?.playlist_item);
-            groove_datas[0].?.file.destroy();
-            // Shift, and then check the second one.
-            groove_datas[0] = groove_datas[1];
-            groove_datas[1] = null;
-        }
-
-        const index = items.table.getIndex(item_id).?;
-        if (groove_datas[0] == null) {
-            // Insert the current song.
-            const groove_file = library.loadGrooveFile(items.get(item_id).track_key) catch |err| switch (err) {
-                error.OutOfMemory => return error.OutOfMemory,
-                error.LoadFailure => {
-                    // Skip broken tracks.
-                    if (index + 1 < items.table.count()) {
-                        // Skip to the next one.
-                        setCurrentItemId(items.table.keys()[index + 1]);
-                    } else {
-                        // Last item in the queue is broken. Stop playing.
-                        current_item.* = null;
-                    }
-                    // Start over.
-                    continue :found_broken_item_loop;
-                },
-                error.TrackNotFound => unreachable,
-            };
-            errdefer groove_file.destroy();
-
-            const playlist_item = try g.player.playlist.insert(groove_file, 1.0, 1.0, null);
-            groove_datas[0] = .{
-                .item_id = item_id,
-                .file = groove_file,
-                .playlist_item = playlist_item,
-            };
-
-            // Groove just had no items in its playlist, so seek to the start
-            // of its playlist. If we want to seek into the middle of this song
-            // instead, that should be done after this function returns.
-            g.player.playlist.seek(playlist_item, 0.0);
-        }
-
-        // And now for round 2!!!
-        var second_index = index + 1;
-        second_found_broken_item_loop: while (second_index < items.table.count()) {
-            const second_item_id = items.table.keys()[second_index];
-            // Drain any wrong item.
-            if (groove_datas[1] != null) {
-                if (groove_datas[1].?.item_id.value == second_item_id.value) break; // correct
-                // Nope. Remove this one.
-                g.player.playlist.remove(groove_datas[1].?.playlist_item);
-                groove_datas[1].?.file.destroy();
-                groove_datas[1] = null;
+    // Keep the current track and subsequent ones that are correct, deleting
+    // the ones that are not.
+    var db_track_index: usize = db.items.table.getIndex(current_db_item.id).?;
+    var libgroove_item_it = current_libgroove_item;
+    const queue_ids = db.items.table.keys();
+    outer: while (db_track_index < queue_ids.len) {
+        const db_id = queue_ids[db_track_index];
+        // Delete from libgroove if non-matching.
+        while (true) {
+            const libgroove_item = libgroove_item_it orelse break :outer;
+            if (db_id.value == q.map.get(libgroove_item).?.value) {
+                db_track_index += 1;
+                libgroove_item_it = libgroove_item.next;
+                continue :outer;
             }
-
-            if (groove_datas[1] == null) {
-                const groove_file = library.loadGrooveFile(items.get(second_item_id).track_key) catch |err| switch (err) {
-                    error.OutOfMemory => return error.OutOfMemory,
-                    error.LoadFailure => {
-                        // Skip broken tracks.
-                        second_index += 1;
-                        // Start over.
-                        continue :second_found_broken_item_loop;
-                    },
-                    error.TrackNotFound => unreachable,
-                };
-                errdefer groove_file.destroy();
-
-                const playlist_item = try g.player.playlist.insert(groove_file, 1.0, 1.0, null);
-                groove_datas[1] = .{
-                    .item_id = second_item_id,
-                    .file = groove_file,
-                    .playlist_item = playlist_item,
-                };
-            }
-            break;
+            const next = libgroove_item.next;
+            player.playlist.remove(libgroove_item);
+            assert(q.map.swapRemove(libgroove_item));
+            libgroove_item_it = next;
         }
+    }
 
-        break;
-    } else {
-        // Playing nothing.
-        clearGrooveDatas();
+    // Add missing items to the play queue.
+    for (queue_ids[db_track_index..], db.items.table.values()[db_track_index..]) |queue_id, queue_item| {
+        const groove_file = library.loadGrooveFile(queue_item.track_key) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.LoadFailure => @panic("TODO"),
+            error.TrackNotFound => unreachable,
+        };
+        errdefer groove_file.destroy();
+
+        // Append playlist item.
+        const libgroove_item = try player.playlist.insert(groove_file, 1.0, 1.0, null);
+        try q.map.put(gpa, libgroove_item, queue_id);
     }
 }
 
 fn clearGrooveDatas() void {
     // Sometimes this function is called during error handlers, so don't rely
     // on the accuracy of our cached data.
-    groove_datas = .{ null, null };
+
     // Cleanup everything from groove's own perspective.
     while (true) {
         var playlist_item: ?*Groove.Playlist.Item = undefined;
@@ -352,7 +300,7 @@ fn setCurrentItemId(item_id: Id) void {
     };
 }
 
-pub fn serializableItem(item: Item) protocol.QueueItem {
+pub fn serializableItem(item: Db.Item) protocol.QueueItem {
     return .{
         .sortKey = item.sort_key,
         .key = item.track_key,

@@ -12,3 +12,4 @@ pub var soundio: *SoundIo = undefined;
 pub var gpa: Allocator = undefined;
 pub var strings: StringPool = .{};
 pub var the_database: TheDatabase = .{};
+pub var queue: *@import("queue.zig") = undefined;

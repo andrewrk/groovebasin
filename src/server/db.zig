@@ -26,6 +26,8 @@ const SubscriptionTag = std.meta.Tag(protocol.Subscription);
 const SubscriptionBoolArray = [std.enums.directEnumArrayLen(SubscriptionTag, 0)]bool;
 const subscription_bool_array_initial_value = std.enums.directEnumArrayDefault(SubscriptionTag, bool, false, 0, .{});
 
+const Db = @This();
+
 // ===================
 
 pub const UserAccount = struct {
@@ -137,7 +139,7 @@ pub const TheDatabase = struct {
     sessions: Database(Id, InternalSession, .sessions, false) = .{},
     user_accounts: Database(Id, UserAccount, .users, true) = .{},
     tracks: Database(Id, Track, .library, true) = .{},
-    items: Database(Id, Item, .queue, true) = .{},
+    items: Database(Id, Db.Item, .queue, true) = .{},
     events: Database(Id, InternalEvent, .events, true) = .{},
 
     state: State = .{},
@@ -145,6 +147,8 @@ pub const TheDatabase = struct {
     state_version: Id = .{ .value = 0 },
     previous_state_version: Id = .{ .value = 0 },
     previous_state: State = .{},
+
+    pub const Item = Db.Item;
 
     pub fn deinit(self: *@This()) void {
         self.sessions.deinit();

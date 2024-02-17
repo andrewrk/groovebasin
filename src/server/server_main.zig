@@ -30,11 +30,6 @@ const usage =
     \\
 ;
 
-pub const std_options = struct {
-    // std.log configuration.
-    //pub const log_level = .info;
-};
-
 pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
     log.err(format, args);
     std.process.exit(1);

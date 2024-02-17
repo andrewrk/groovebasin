@@ -15,50 +15,50 @@ const IdMap = protocol.IdMap;
 const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
 
-const items = &g.the_database.items;
-const current_item = &g.the_database.state.current_item;
-
 const Queue = @This();
 
 map: AutoArrayHashMapUnmanaged(*Groove.Playlist.Item, Id) = .{},
 
 pub fn handleLoaded(q: *Queue) !void {
-    if (current_item.* != null and current_item.*.?.state == .playing) {
+    const db = &g.the_database;
+
+    if (db.state.current_item != null and db.state.current_item.?.state == .playing) {
         // Server shutdown while playing. We don't know when the server
         // shutdown, so we have no way to reconstruct where we were in this
         // song. Seek back to the start.
-        current_item.*.?.state = .{ .paused = 0.0 };
+        db.state.current_item.?.state = .{ .paused = 0.0 };
     }
 
     sort();
     try q.lowerToLibGroove(&g.player, &g.the_database);
 
-    if (current_item.* != null) {
+    if (db.state.current_item != null) {
         // Seek paused
         @panic("TODO");
 
-        //g.player.playlist.seek(groove_datas[0].?.playlist_item, current_item.*.?.state.paused);
+        //g.player.playlist.seek(groove_datas[0].?.playlist_item, db.state.current_item.?.state.paused);
     }
 }
 
 pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
     _ = user_id;
+    const db = &g.the_database;
 
-    if (!items.contains(id)) {
+    if (!db.items.contains(id)) {
         log.warn("ignoring seek for bogus queue item: {}", .{id});
         return;
     }
 
-    const is_playing = current_item.* != null and current_item.*.?.state == .playing;
+    const is_playing = db.state.current_item != null and db.state.current_item.?.state == .playing;
     if (is_playing) {
         const new_start_time = std.time.milliTimestamp() - @as(i64, @intFromFloat(pos * 1000.0));
-        current_item.* = .{
+        db.state.current_item = .{
             .id = id,
             .state = .{ .playing = new_start_time },
         };
     } else {
-        current_item.* = .{
+        db.state.current_item = .{
             .id = id,
             .state = .{ .paused = pos },
         };
@@ -74,19 +74,21 @@ pub fn play(q: *Queue, user_id: Id) !void {
     _ = q;
     // TODO: add the play event ("poopsmith3 pressed play")
     _ = user_id;
-    if (current_item.* == null) {
+    const db = &g.the_database;
+
+    if (db.state.current_item == null) {
         log.warn("ignoring play without any seek", .{});
         return;
     }
 
-    switch (current_item.*.?.state) {
+    switch (db.state.current_item.?.state) {
         .playing => {
             log.warn("ignoring play while already playing", .{});
             return;
         },
         .paused => |pos| {
             const new_start_time = std.time.milliTimestamp() - @as(i64, @intFromFloat(pos * 1000.0));
-            current_item.*.?.state = .{ .playing = new_start_time };
+            db.state.current_item.?.state = .{ .playing = new_start_time };
             g.player.playlist.play();
         },
     }
@@ -96,13 +98,14 @@ pub fn pause(q: *Queue, user_id: Id) !void {
     _ = q;
     // TODO: add the pause event ("poopsmith3 pressed pause")
     _ = user_id;
+    const db = &g.the_database;
 
-    if (current_item.* == null) {
+    if (db.state.current_item == null) {
         log.warn("ignoring pause without any seek", .{});
         return;
     }
 
-    switch (current_item.*.?.state) {
+    switch (db.state.current_item.?.state) {
         .paused => {
             log.warn("ignoring pause while already paused", .{});
             return;
@@ -110,27 +113,28 @@ pub fn pause(q: *Queue, user_id: Id) !void {
         .playing => |track_start_date| {
             g.player.playlist.pause();
             const pos = @as(f64, @floatFromInt(std.time.milliTimestamp() - track_start_date)) / 1000.0;
-            current_item.*.?.state = .{ .paused = pos };
+            db.state.current_item.?.state = .{ .paused = pos };
         },
     }
 }
 
 pub fn enqueue(q: *Queue, new_items: anytype) !void {
-    try items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
-    try items.added_keys.ensureUnusedCapacity(g.gpa, new_items.map.count());
+    const db = &g.the_database;
+    try db.items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
+    try db.items.added_keys.ensureUnusedCapacity(g.gpa, new_items.map.count());
 
     var it = new_items.map.iterator();
     while (it.next()) |kv| {
         const item_id = kv.key_ptr.*;
         const library_key = kv.value_ptr.key;
         const sort_key = kv.value_ptr.sortKey;
-        if (items.contains(item_id)) {
+        if (db.items.contains(item_id)) {
             log.warn("ignoring queue item with id collision: {}", .{item_id});
             continue;
         }
         log.info("enqueuing: {}: {} @{}", .{ item_id, library_key, sort_key });
 
-        items.putNoClobber(item_id, .{
+        db.items.putNoClobber(item_id, .{
             .sort_key = sort_key,
             .track_key = library_key,
             .is_random = false,
@@ -142,17 +146,18 @@ pub fn enqueue(q: *Queue, new_items: anytype) !void {
 }
 
 pub fn move(q: *Queue, args: anytype) !void {
-    try items.modified_entries.ensureUnusedCapacity(g.gpa, args.map.count());
+    const db = &g.the_database;
+    try db.items.modified_entries.ensureUnusedCapacity(g.gpa, args.map.count());
     {
         var it = args.map.iterator();
         while (it.next()) |kv| {
             const item_id = kv.key_ptr.*;
             const sort_key = kv.value_ptr.*;
-            if (!items.contains(item_id)) {
+            if (!db.items.contains(item_id)) {
                 log.warn("attempt to move non-existent item: {}", .{item_id});
                 continue;
             }
-            const item = items.getForEditing(item_id) catch unreachable; // assume capacity
+            const item = db.items.getForEditing(item_id) catch unreachable; // assume capacity
             log.info("moving: {}: @{} -> @{}", .{ item_id, item.sort_key, sort_key });
             item.sort_key = sort_key;
         }
@@ -160,7 +165,7 @@ pub fn move(q: *Queue, args: anytype) !void {
 
     sort();
     // Check for collisions.
-    var it = items.iterator();
+    var it = db.items.iterator();
     var previous_sort_key = -std.math.inf(f64);
     while (it.next()) |kv| {
         const sort_key = kv.value_ptr.sort_key;
@@ -184,28 +189,29 @@ fn addSomeSmallAmount(x: f64) f64 {
 }
 
 pub fn remove(q: *Queue, args: []Id) !void {
-    try items.removed_keys.ensureUnusedCapacity(g.gpa, args.len);
+    const db = &g.the_database;
+    try db.items.removed_keys.ensureUnusedCapacity(g.gpa, args.len);
 
     var recover_current_item_after_sort_key: ?f64 = null;
     for (args) |item_id| {
-        if (!items.contains(item_id)) {
+        if (!db.items.contains(item_id)) {
             log.warn("ignoring attempt to remove non-existent item: {}", .{item_id});
             continue;
         }
 
         // Current item dodges the crater.
-        if (current_item.* != null and current_item.*.?.id.value == item_id.value) {
+        if (db.state.current_item != null and db.state.current_item.?.id.value == item_id.value) {
             // Find the next item later.
-            recover_current_item_after_sort_key = items.get(item_id).sort_key;
+            recover_current_item_after_sort_key = db.items.get(item_id).sort_key;
         }
 
-        items.remove(item_id) catch unreachable; // assume capacity
+        db.items.remove(item_id) catch unreachable; // assume capacity
     }
 
     sort();
     if (recover_current_item_after_sort_key) |sort_key| {
         // TODO: binary search?
-        var it = items.iterator();
+        var it = db.items.iterator();
         while (it.next()) |kv| {
             if (kv.value_ptr.sort_key > sort_key) {
                 setCurrentItemId(kv.key_ptr.*);
@@ -213,7 +219,7 @@ pub fn remove(q: *Queue, args: []Id) !void {
             }
         } else {
             // Last item deleted.
-            current_item.* = null;
+            db.state.current_item = null;
         }
     }
 
@@ -293,9 +299,11 @@ fn clearGrooveDatas() void {
 }
 
 fn setCurrentItemId(item_id: Id) void {
-    current_item.* = .{
+    const db = &g.the_database;
+
+    db.state.current_item = .{
         .id = item_id,
-        .state = if (current_item.*.?.state == .playing)
+        .state = if (db.state.current_item.?.state == .playing)
             .{ .playing = std.time.milliTimestamp() }
         else
             .{ .paused = 0.0 },
@@ -334,13 +342,14 @@ pub fn serializableCurrentTrack(current_track: anytype) protocol.CurrentTrack {
 }
 
 fn sort() void {
+    const db = &g.the_database;
     const SortContext = struct {
+        values: []Db.Item,
         pub fn lessThan(ctx: @This(), a_index: usize, b_index: usize) bool {
-            _ = ctx; // we're using global variables
-            const a_sort_key = items.table.values()[a_index].sort_key;
-            const b_sort_key = items.table.values()[b_index].sort_key;
+            const a_sort_key = ctx.values[a_index].sort_key;
+            const b_sort_key = ctx.values[b_index].sort_key;
             return a_sort_key < b_sort_key;
         }
     };
-    items.table.sort(SortContext{});
+    db.items.table.sort(SortContext{ .values = db.items.table.values() });
 }

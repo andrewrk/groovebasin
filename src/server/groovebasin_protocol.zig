@@ -267,7 +267,7 @@ pub const ClientToServerMessage = union(enum) {
 pub const ServerToClientMessage = union(enum) {
     // Server-to-Client Control Messages
     @"error": TODO,
-    seek: TODO,
+    seek: void,
     time: Datetime,
     token: TODO,
     lastFmApiKey: TODO,

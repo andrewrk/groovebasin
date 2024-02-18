@@ -151,6 +151,13 @@ pub fn setStreaming(client_id: Id, is_streaming: bool) !void {
     account.claims_to_be_streaming = is_streaming;
 }
 
+pub fn broadcastSeekEvent() !void {
+    for (sessions.table.keys(), sessions.table.values()) |client_id, account| {
+        if (!account.claims_to_be_streaming) continue;
+        try encodeAndSend(client_id, .seek);
+    }
+}
+
 fn lookupAccountByUsername(username: StringPool.Index) ?Id {
     var it = user_accounts.iterator();
     while (it.next()) |kv| {

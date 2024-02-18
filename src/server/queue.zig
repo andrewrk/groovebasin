@@ -14,6 +14,7 @@ const Id = protocol.Id;
 const IdMap = protocol.IdMap;
 const library = @import("library.zig");
 const subscriptions = @import("subscriptions.zig");
+const broadcastSeekEvent = @import("users.zig").broadcastSeekEvent;
 
 const Queue = @This();
 
@@ -69,6 +70,7 @@ pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
     if (player.playlist.head) |head| {
         player.playlist.seek(head, pos);
     }
+    try broadcastSeekEvent();
 }
 
 pub fn play(q: *Queue, user_id: Id) !void {

@@ -263,9 +263,10 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
     // Delete all libgroove playlist items before the currently playing track.
     while (player.playlist.head != current_libgroove_item) {
         const head = player.playlist.head orelse break;
-        head.file.destroy();
+        const file = head.file;
         player.playlist.remove(head);
         assert(q.map.swapRemove(head));
+        file.destroy();
     }
 
     const current_db_item = db.state.current_item orelse return;
@@ -286,14 +287,16 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
                 continue :outer;
             }
             const next = libgroove_item.next;
-            libgroove_item.file.destroy();
+            const file = libgroove_item.file;
             player.playlist.remove(libgroove_item);
             assert(q.map.swapRemove(libgroove_item));
+            file.destroy();
             libgroove_item_it = next;
         }
     }
 
     // Add missing items to the play queue.
+    try q.map.ensureUnusedCapacity(gpa, queue_ids.len - db_track_index);
     for (queue_ids[db_track_index..], db.items.table.values()[db_track_index..]) |queue_id, queue_item| {
         const groove_file = library.loadGrooveFile(queue_item.track_key) catch |err| switch (err) {
             error.OutOfMemory => return error.OutOfMemory,
@@ -303,23 +306,9 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
         errdefer groove_file.destroy();
 
         // Append playlist item.
-        const libgroove_item = try player.playlist.insert(groove_file, 1.0, 1.0, null);
-        try q.map.put(gpa, libgroove_item, queue_id);
-    }
-}
-
-fn clearGrooveDatas() void {
-    // Sometimes this function is called during error handlers, so don't rely
-    // on the accuracy of our cached data.
-
-    // Cleanup everything from groove's own perspective.
-    while (true) {
-        var playlist_item: ?*Groove.Playlist.Item = undefined;
-        g.player.playlist.position(&playlist_item, null);
-        if (playlist_item == null) break;
-        const groove_file = playlist_item.?.file;
-        g.player.playlist.remove(playlist_item.?);
-        groove_file.destroy();
+        const TODO_replaygain = 0.3;
+        const libgroove_item = try player.playlist.insert(groove_file, TODO_replaygain, TODO_replaygain, null);
+        q.map.putAssumeCapacityNoClobber(libgroove_item, queue_id);
     }
 }
 

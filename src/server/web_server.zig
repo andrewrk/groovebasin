@@ -174,8 +174,6 @@ const ConnectionHandler = struct {
     }
 
     fn handleConnection(self: *@This()) !void {
-        // TODO: this method of reading headers can read too many bytes.
-        // We should use a buffered reader and put back any content after the headers.
         var buf: [0x4000]u8 = undefined;
         const msg = buf[0..try self.connection.stream.read(&buf)];
         var header_lines = std.mem.split(u8, msg, "\r\n");
@@ -206,6 +204,13 @@ const ConnectionHandler = struct {
                 if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedRequest; // unsupported protocol upgrade
                 should_upgrade_websocket = true;
             }
+        }
+
+        if (header_lines.rest().len != 0) {
+            // The code below was written under the invalid assumption that
+            // only the HTTP headers have been read from the connection.
+            std.debug.print("design flaw: lost bytes: '{s}'\n", .{header_lines.rest()});
+            @panic("TODO: design flaw in web_server.zig");
         }
 
         if (should_upgrade_websocket) {

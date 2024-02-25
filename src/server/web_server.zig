@@ -8,6 +8,7 @@ const channel = @import("threadsafe_queue.zig").channel;
 const RefCounter = @import("RefCounter.zig");
 const LinearFifo = std.fifo.LinearFifo;
 const Groove = @import("groove.zig").Groove;
+const StaticHttpFileServer = @import("StaticHttpFileServer");
 
 const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const Id = groovebasin_protocol.Id;
@@ -73,37 +74,29 @@ const ToServerMessage = struct {
     }
 };
 
-pub fn spawnListenThread(addr: net.Address) !void {
-    _ = try std.Thread.spawn(.{}, listenThreadEntrypoint, .{addr});
-}
+pub fn listen(addr: net.Address, static_http_file_server: *StaticHttpFileServer) !void {
+    const gpa = g.gpa;
 
-fn listenThreadEntrypoint(addr: net.Address) void {
-    listen(addr) catch |err| {
-        log.err("listen thread failure: {s}", .{@errorName(err)});
-        @panic("if the listen thread dies, we all die.");
-    };
-}
-
-fn listen(addr: net.Address) !void {
     log.debug("init tcp server", .{});
-    var server = net.StreamServer.init(.{ .reuse_address = true });
+    var server = try addr.listen(.{
+        .reuse_address = true,
+    });
     defer server.deinit();
-
-    try server.listen(addr);
     log.info("listening at {}", .{server.listen_address});
 
     while (true) {
         const connection = try server.accept();
-        const handler = try g.gpa.create(ConnectionHandler);
+        const handler = try gpa.create(ConnectionHandler);
         handler.* = .{
             .connection = connection,
             .id = Id.random(),
+            .static_http_file_server = static_http_file_server,
         };
         handler.ref(); // trace:ConnectionHandler.entrypoint
         {
             handlers_mutex.lock();
             defer handlers_mutex.unlock();
-            try handlers.putNoClobber(g.gpa, handler.id, handler);
+            try handlers.putNoClobber(gpa, handler.id, handler);
         }
 
         _ = std.Thread.spawn(.{}, ConnectionHandler.entrypoint, .{handler}) catch |err| {
@@ -122,13 +115,15 @@ fn listen(addr: net.Address) !void {
 const WebsocketSendFifo = LinearFifo(?*RefCountedByteSlice, .{ .Static = 16 });
 
 const ConnectionHandler = struct {
-    connection: net.StreamServer.Connection,
+    connection: net.Server.Connection,
     id: Id,
     refcounter: RefCounter = .{},
 
     // only used for websocket handlers
     websocket_send_queue: Channel(WebsocketSendFifo) = channel(WebsocketSendFifo.init()),
     is_closing: std.atomic.Value(bool) = .{ .raw = false },
+
+    static_http_file_server: *StaticHttpFileServer,
 
     pub fn ref(self: *@This()) void {
         self.refcounter.ref();
@@ -174,61 +169,45 @@ const ConnectionHandler = struct {
     }
 
     fn handleConnection(self: *@This()) !void {
-        var buf: [0x4000]u8 = undefined;
-        const msg = buf[0..try self.connection.stream.read(&buf)];
-        var header_lines = std.mem.split(u8, msg, "\r\n");
-        const first_line = header_lines.next() orelse return error.UnsupportedRequest; // not an HTTP request
+        var read_buffer: [0x4000]u8 = undefined;
+        var http_server = std.http.Server.init(self.connection, &read_buffer);
 
-        // eg: "GET /favicon.png HTTP/1.1"
-        var it = std.mem.tokenize(u8, first_line, " \t");
-        const method = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
-        const path = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
-        const http_version = it.next() orelse return error.UnsupportedRequest; // not an HTTP request
-
-        // Only support GET for HTTP/1.1
-        if (!std.mem.eql(u8, method, "GET")) return error.UnsupportedRequest; // unsupported HTTP method
-        if (!std.mem.eql(u8, http_version, "HTTP/1.1")) return error.UnsupportedRequest; // unsupported HTTP version
-
-        // Find interesting headers.
-        var sec_websocket_key: ?[]const u8 = null;
-        var should_upgrade_websocket: bool = false;
-        while (header_lines.next()) |line| {
-            if (line.len == 0) break;
-            var segments = std.mem.split(u8, line, ": ");
-            const key = segments.next().?;
-            const value = segments.rest();
-
-            if (std.ascii.eqlIgnoreCase(key, "Sec-WebSocket-Key")) {
-                sec_websocket_key = value;
-            } else if (std.ascii.eqlIgnoreCase(key, "Upgrade")) {
-                if (!std.mem.eql(u8, value, "websocket")) return error.UnsupportedRequest; // unsupported protocol upgrade
-                should_upgrade_websocket = true;
-            }
+        while (http_server.state == .ready) {
+            var request = try http_server.receiveHead();
+            try self.handleRequest(&request);
         }
+    }
 
-        if (header_lines.rest().len != 0) {
-            // The code below was written under the invalid assumption that
-            // only the HTTP headers have been read from the connection.
-            std.debug.print("design flaw: lost bytes: '{s}'\n", .{header_lines.rest()});
-            @panic("TODO: design flaw in web_server.zig");
-        }
-
-        if (should_upgrade_websocket) {
-            const websocket_key = sec_websocket_key orelse return error.UnsupportedRequest; // websocket upgrade missing Sec-WebSocket-Key
-            log.debug("GET websocket: {s}", .{path});
-            // This is going to stay open for a long time.
-            return self.serveWebsocket(websocket_key);
-        }
-
-        log.debug("GET: {s}", .{path});
-
-        if (mem.eql(u8, path, "/stream.mp3")) {
+    fn handleRequest(self: *@This(), req: *std.http.Server.Request) !void {
+        if (mem.eql(u8, req.head.target, "/stream.mp3")) {
             // This is going to stay open for a long time.
             return self.streamEndpoint();
         }
 
-        // Getting static content
-        return serveStaticFile(&self.connection, path);
+        // Find interesting headers.
+        var sec_websocket_key: ?[]const u8 = null;
+        var should_upgrade_websocket: bool = false;
+        var it = req.iterateHeaders();
+        while (it.next()) |header| {
+            if (std.ascii.eqlIgnoreCase(header.name, "sec-websocket-key")) {
+                sec_websocket_key = header.value;
+            } else if (std.ascii.eqlIgnoreCase(header.name, "upgrade")) {
+                if (!std.mem.eql(u8, header.value, "websocket"))
+                    return error.UnsupportedRequest; // unsupported protocol upgrade
+                should_upgrade_websocket = true;
+            }
+        }
+
+        if (should_upgrade_websocket) {
+            const websocket_key = sec_websocket_key orelse
+                return error.UnsupportedRequest; // websocket upgrade missing Sec-WebSocket-Key
+            log.debug("GET websocket: {s}", .{req.head.target});
+            // This is going to stay open for a long time.
+            return self.serveWebsocket(websocket_key);
+        }
+
+        log.debug("GET static: {s}", .{req.head.target});
+        try self.static_http_file_server.serve(req);
     }
 
     fn streamEndpoint(self: *@This()) !void {
@@ -449,7 +428,7 @@ const ConnectionHandler = struct {
     }
 
     fn writeMessageFromSendThread(self: *@This(), message: []const u8) !void {
-        log.debug("sending: {s}", .{message});
+        //log.debug("sending: {s}", .{message});
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
         // 0b10000000: FIN - this is a complete message.
@@ -482,71 +461,6 @@ const ConnectionHandler = struct {
         try self.connection.stream.writevAll(&iovecs);
     }
 };
-
-const http_response_not_found = "" ++
-    "HTTP/1.1 404 Not Found\r\n" ++
-    "\r\n";
-
-const StaticFile = struct {
-    entire_response: []const u8,
-};
-var static_content_map: std.StringHashMap(StaticFile) = undefined;
-
-/// static_content_dir can be closed after this function returns.
-/// For each path in all_paths, the path must start with '/'.
-/// One of the paths should be exactly "/", which is resolved to "index.html".
-/// Support file extnesions: `.css .js .png`. TODO: remove `.ccs` support.
-pub fn initStaticContent(static_content_dir: std.fs.Dir, all_paths: []const []const u8) !void {
-    static_content_map = std.StringHashMap(StaticFile).init(g.gpa);
-
-    for (all_paths) |path| {
-        try static_content_map.putNoClobber(
-            path,
-            try resolveStaticFile(static_content_dir, path),
-        );
-    }
-}
-
-fn resolveStaticFile(static_content_dir: std.fs.Dir, path: []const u8) !StaticFile {
-    var mime_type: []const u8 = undefined;
-    var relative_path: []const u8 = path[1..];
-    if (std.mem.eql(u8, path, "/")) {
-        mime_type = "text/html";
-        relative_path = "index.html";
-    } else if (std.mem.endsWith(u8, path, ".css")) {
-        mime_type = "text/css";
-    } else if (std.mem.endsWith(u8, path, ".js")) {
-        mime_type = "application/javascript";
-    } else if (std.mem.endsWith(u8, path, ".png")) {
-        mime_type = "image/png";
-    } else unreachable;
-
-    var file = try static_content_dir.openFile(relative_path, .{});
-    defer file.close();
-    const contents = try file.reader().readAllAlloc(g.gpa, 100_000_000);
-    defer g.gpa.free(contents);
-
-    return StaticFile{
-        .entire_response = try std.fmt.allocPrint(g.gpa, "" ++
-            "HTTP/1.1 200 OK\r\n" ++
-            "Content-Type: {s}\r\n" ++
-            "Content-Length: {d}\r\n" ++
-            "\r\n" ++
-            "{s}", .{
-            mime_type,
-            contents.len,
-            contents,
-        }),
-    };
-}
-
-fn serveStaticFile(connection: *net.StreamServer.Connection, path: []const u8) !void {
-    const static_file = static_content_map.get(path) orelse {
-        log.warn("not found: {s}", .{path});
-        return connection.stream.writer().writeAll(http_response_not_found);
-    };
-    try connection.stream.writeAll(static_file.entire_response);
-}
 
 const http_response_header_upgrade = "" ++
     "HTTP/1.1 101 Switching Protocols\r\n" ++

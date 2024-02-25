@@ -94,7 +94,7 @@ Pull requests, feature requests, and bug reports are welcome!
 
 * oh god my ears, please let me turn it down
 * basic playback QA: play/pause/stop/next/prev/seek
-* the web server hangs doesn't serve the request fast
+* the web socket request hangs doesn't serve the request fast
 * replaygain
 * rearranging queue items
 * Give the server access to music library index (what's an album, list of

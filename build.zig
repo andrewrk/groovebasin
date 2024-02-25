@@ -31,6 +31,11 @@ pub fn build(b: *std.Build) void {
         .use_llvm = use_llvm,
         .use_lld = use_llvm,
     });
+    server.root_module.addImport("StaticHttpFileServer", b.dependency("StaticHttpFileServer", .{
+        .optimize = optimize,
+        .target = target,
+    }).module("StaticHttpFileServer"));
+
     server.linkLibrary(groove_dep.artifact("groove"));
     b.installArtifact(server);
 

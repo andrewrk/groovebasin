@@ -11,6 +11,7 @@ const events = @import("events.zig");
 const subscriptions = @import("subscriptions.zig");
 const users = @import("users.zig");
 const db = @import("db.zig");
+const StaticHttpFileServer = @import("StaticHttpFileServer");
 
 const Groove = @import("groove.zig").Groove;
 const SoundIo = @import("soundio.zig").SoundIo;
@@ -35,12 +36,13 @@ pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
     std.process.exit(1);
 }
 
-pub fn main() anyerror!void {
+pub fn main() anyerror!noreturn {
     var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa_instance.deinit();
-    g.gpa = gpa_instance.allocator();
+    const gpa = gpa_instance.allocator();
+    g.gpa = gpa;
 
-    var arena_instance = std.heap.ArenaAllocator.init(g.gpa);
+    var arena_instance = std.heap.ArenaAllocator.init(gpa);
     defer arena_instance.deinit();
     const arena = arena_instance.allocator();
 
@@ -96,7 +98,7 @@ pub fn main() anyerror!void {
     // TODO: fix the deinit bug in libgroove
     //defer g.player.deinit();
 
-    try g.strings.ensureConstants(g.gpa);
+    try g.strings.ensureConstants(gpa);
     try db.init();
     defer db.deinit();
     try subscriptions.init();
@@ -117,34 +119,31 @@ pub fn main() anyerror!void {
     try db.flushChanges();
 
     log.info("init static content", .{});
-    {
-        // TODO: resolve relative to current executable maybe?
-        var static_content_dir = try std.fs.cwd().openDir("zig-out/lib/public", .{});
-        defer static_content_dir.close();
-        try web_server.initStaticContent(static_content_dir, &[_][]const u8{
-            "/",
-            "/app.js",
-            "/favicon.png",
-            "/img/bright-10.png",
-            "/img/ui-bg_diagonals-thick_15_0b3e6f_40x40.png",
-            "/img/ui-bg_dots-medium_30_0b58a2_4x4.png",
-            "/img/ui-bg_dots-small_20_333333_2x2.png",
-            "/img/ui-bg_dots-small_30_a32d00_2x2.png",
-            "/img/ui-bg_dots-small_40_00498f_2x2.png",
-            "/img/ui-bg_flat_0_aaaaaa_40x100.png",
-            "/img/ui-bg_flat_40_292929_40x100.png",
-            "/img/ui-bg_gloss-wave_20_111111_500x100.png",
-            "/img/ui-icons_00498f_256x240.png",
-            "/img/ui-icons_98d2fb_256x240.png",
-            "/img/ui-icons_9ccdfc_256x240.png",
-            "/img/ui-icons_ffffff_256x240.png",
-        });
-    }
+    var static_http_file_server = s: {
+        // TODO: this path needs to be a CLI flag, env var, found relative to the executable,
+        // configured at build time, or some combination of the above.
+        const static_asset_path = "zig-out/lib/public";
 
-    try web_server.spawnListenThread(addr);
+        var dir = std.fs.cwd().openDir(static_asset_path, .{ .iterate = true }) catch |err| {
+            fatal("unable to open static asset directory '{s}': {s}", .{
+                static_asset_path, @errorName(err),
+            });
+        };
+        defer dir.close();
+
+        break :s StaticHttpFileServer.init(.{
+            .allocator = gpa,
+            .root_dir = dir,
+        }) catch |err| fatal("unable to init static asset server: {s}", .{@errorName(err)});
+    };
+    defer static_http_file_server.deinit(gpa);
+
+    const thread = try std.Thread.spawn(.{}, web_server.listen, .{
+        addr, &static_http_file_server,
+    });
+    defer thread.join();
 
     web_server.mainLoop();
-    unreachable;
 }
 
 pub fn handleClientConnected(client_id: Id) !void {
@@ -180,8 +179,13 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
 }
 
 pub fn encodeAndSend(client_id: Id, message: groovebasin_protocol.ServerToClientMessage) !void {
+    var timer = try std.time.Timer.start();
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
     try sendBytes(client_id, message_bytes);
+    log.debug("encodeAndSend {s} took {d}ms", .{
+        @tagName(message),
+        timer.read() / std.time.ns_per_ms,
+    });
 }
 /// Takes ownership of message_bytes, even when an error is returned.
 pub fn sendBytes(client_id: Id, message_bytes: []const u8) !void {

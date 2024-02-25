@@ -181,7 +181,7 @@ const ConnectionHandler = struct {
     fn handleRequest(self: *@This(), req: *std.http.Server.Request) !void {
         if (mem.eql(u8, req.head.target, "/stream.mp3")) {
             // This is going to stay open for a long time.
-            return self.streamEndpoint();
+            return self.streamEndpoint(req);
         }
 
         // Find interesting headers.
@@ -210,17 +210,24 @@ const ConnectionHandler = struct {
         try self.static_http_file_server.serve(req);
     }
 
-    fn streamEndpoint(self: *@This()) !void {
-        const response_header =
-            "HTTP/1.1 200 OK\r\n" ++
-            "Content-Type: audio/mpeg\r\n" ++
-            "Cache-Control: no-cache, no-store, must-revalidate\r\n" ++
-            "Pragma: no-cache\r\n" ++
-            "Expires: 0\r\n" ++
-            "\r\n";
+    fn streamEndpoint(ch: *ConnectionHandler, req: *std.http.Server.Request) !void {
+        _ = ch;
+        const player = &g.player;
 
-        const w = self.connection.stream.writer();
-        try w.writeAll(response_header);
+        var send_buffer: [0x4000]u8 = undefined;
+        var response = req.respondStreaming(.{
+            .send_buffer = &send_buffer,
+            .respond_options = .{
+                .extra_headers = &.{
+                    .{ .name = "content-type", .value = "audio/mpeg" },
+                    .{ .name = "cache-control", .value = "no-cache, no-store, must-revalidate" },
+                    .{ .name = "pragma", .value = "no-cache" },
+                    .{ .name = "expires", .value = "0" },
+                },
+            },
+        });
+
+        const w = response.writer();
 
         const logging_interval = 5000;
         var last_logged_time = std.time.milliTimestamp() - 2 * logging_interval;
@@ -236,11 +243,11 @@ const ConnectionHandler = struct {
 
             if (do_logging) {
                 var seconds: f64 = undefined;
-                g.player.playlist.position(null, &seconds);
-                const is_playing = g.player.playlist.playing();
+                player.playlist.position(null, &seconds);
+                const is_playing = player.playlist.playing();
                 groove_log.debug("stream endpoint buffer_get (playlist head: {d}, playing: {})", .{ seconds, is_playing });
             }
-            const status = try g.player.encoder.buffer_get(&buffer, true);
+            const status = try player.encoder.buffer_get(&buffer, true);
             if (do_logging) {
                 groove_log.debug("stream endpoint buffer_get returned {s}", .{if (buffer == null) "null" else "non-null"});
             }

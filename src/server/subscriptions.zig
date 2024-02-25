@@ -106,13 +106,6 @@ fn publishData(client_data: *ClientSubscriptionData) !void {
 }
 
 fn doTheThing(client_data: *ClientSubscriptionData, database: anytype) !void {
-    var timer = try std.time.Timer.start();
-    defer {
-        log.debug("doTheThing({s}) took {d}ms", .{
-            @typeName(@TypeOf(database)),
-            timer.read() / std.time.ns_per_ms,
-        });
-    }
     var bytes_list = ArrayList(u8).init(g.gpa);
     defer bytes_list.deinit();
     var json_writer = std.json.writeStream(bytes_list.writer(), .{});

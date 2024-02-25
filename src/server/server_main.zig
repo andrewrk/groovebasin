@@ -179,13 +179,8 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
 }
 
 pub fn encodeAndSend(client_id: Id, message: groovebasin_protocol.ServerToClientMessage) !void {
-    var timer = try std.time.Timer.start();
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
     try sendBytes(client_id, message_bytes);
-    log.debug("encodeAndSend {s} took {d}ms", .{
-        @tagName(message),
-        timer.read() / std.time.ns_per_ms,
-    });
 }
 /// Takes ownership of message_bytes, even when an error is returned.
 pub fn sendBytes(client_id: Id, message_bytes: []const u8) !void {

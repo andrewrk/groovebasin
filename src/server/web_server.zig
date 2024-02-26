@@ -1,6 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const net = std.net;
+const assert = std.debug.assert;
 const log = std.log.scoped(.net);
 const groove_log = std.log.scoped(.groove);
 const Channel = @import("threadsafe_queue.zig").Channel;
@@ -104,7 +105,7 @@ pub fn listen(addr: net.Address, static_http_file_server: *StaticHttpFileServer)
             {
                 handlers_mutex.lock();
                 defer handlers_mutex.unlock();
-                std.debug.assert(handlers.swapRemove(handler.id));
+                assert(handlers.swapRemove(handler.id));
             }
             handler.unref(); // trace:ConnectionHandler.entrypoint
             continue;
@@ -163,7 +164,7 @@ const ConnectionHandler = struct {
         {
             handlers_mutex.lock();
             defer handlers_mutex.unlock();
-            std.debug.assert(handlers.swapRemove(self.id));
+            assert(handlers.swapRemove(self.id));
         }
         self.unref(); // trace:ConnectionHandler.entrypoint
     }
@@ -203,7 +204,7 @@ const ConnectionHandler = struct {
                 return error.UnsupportedRequest; // websocket upgrade missing Sec-WebSocket-Key
             log.debug("GET websocket: {s}", .{req.head.target});
             // This is going to stay open for a long time.
-            return self.serveWebsocket(websocket_key);
+            return self.serveWebsocket(req, websocket_key);
         }
 
         log.debug("GET static: {s}", .{req.head.target});
@@ -263,38 +264,54 @@ const ConnectionHandler = struct {
         }
     }
 
-    fn serveWebsocket(self: *@This(), key: []const u8) !void {
-        {
-            // See https://tools.ietf.org/html/rfc6455
-            var sha1 = std.crypto.hash.Sha1.init(.{});
-            sha1.update(key);
-            sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
-            sha1.final(&digest);
-            var base64_digest: [28]u8 = undefined;
-            std.debug.assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+    fn serveWebsocket(
+        ch: *ConnectionHandler,
+        req: *std.http.Server.Request,
+        key: []const u8,
+    ) !void {
+        const gpa = g.gpa;
 
-            var iovecs = [_]std.os.iovec_const{
-                strToIovec(http_response_header_upgrade),
-                strToIovec("Sec-WebSocket-Accept: "),
-                strToIovec(&base64_digest),
-                strToIovec("\r\n" ++ "\r\n"),
-            };
-            try self.connection.stream.writevAll(&iovecs);
-        }
+        var send_buffer: [0x4000]u8 = undefined;
 
-        self.ref(); // trace:websocketSendLoop
-        _ = std.Thread.spawn(.{}, @This().websocketSendLoop, .{self}) catch |err| {
+        // See https://tools.ietf.org/html/rfc6455
+        var sha1 = std.crypto.hash.Sha1.init(.{});
+        sha1.update(key);
+        sha1.update("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+        var digest: [std.crypto.hash.Sha1.digest_length]u8 = undefined;
+        sha1.final(&digest);
+        var base64_digest: [28]u8 = undefined;
+        assert(std.base64.standard.Encoder.encode(&base64_digest, &digest).len == base64_digest.len);
+
+        req.head.content_length = std.math.maxInt(u64);
+        const r = try req.reader();
+
+        var response = req.respondStreaming(.{
+            .send_buffer = &send_buffer,
+            .respond_options = .{
+                .status = .switching_protocols,
+                .extra_headers = &.{
+                    .{ .name = "upgrade", .value = "websocket" },
+                    .{ .name = "connection", .value = "upgrade" },
+                    .{ .name = "sec-websocket-accept", .value = &base64_digest },
+                },
+                .transfer_encoding = .none,
+            },
+        });
+
+        ch.ref(); // trace:websocketSendLoop
+        const send_thread = std.Thread.spawn(.{}, websocketSendLoop, .{
+            ch, &response,
+        }) catch |err| {
             log.err("spawning websocket handler thread failed: {s}", .{@errorName(err)});
-            self.unref(); // trace:websocketSendLoop
+            ch.unref(); // trace:websocketSendLoop
             return err;
         };
-        defer self.close();
+        defer send_thread.join();
 
         // Welcome to the party.
         {
-            const delivery = try g.gpa.create(ToServerMessage);
-            delivery.* = .{ .event = .{ .client_connected = self.id } };
+            const delivery = try gpa.create(ToServerMessage);
+            delivery.* = .{ .event = .{ .client_connected = ch.id } };
             delivery.ref(); // trace:to_server_channel
             to_server_channel.put(delivery) catch |err| {
                 log.err("server overloaded!", .{});
@@ -302,33 +319,19 @@ const ConnectionHandler = struct {
                 return err;
             };
         }
-        defer {
-            // Goodbye from the party.
-            if (g.gpa.create(ToServerMessage)) |delivery| {
-                delivery.* = .{ .event = .{ .client_disconnected = self.id } };
-                delivery.ref(); // trace:to_server_channel
-                to_server_channel.put(delivery) catch {
-                    // TODO: this error should be impossible by design somehow.
-                    log.err("server overloaded!", .{});
-                    delivery.unref(); // trace:to_server_channel
-                };
-            } else |_| {
-                // TODO: this error should be impossible by design somehow.
-                log.err("server overloaded!", .{});
-            }
-        }
+        defer ch.removeClient();
 
         while (true) {
             // Receive message.
-            const request = (try self.readMessage()) orelse break;
+            const request = (try ch.readMessage(r)) orelse break;
             request.ref(); // trace:recv_buffer
             defer request.unref(); // trace:recv_buffer
             // TODO: this logs passwords in clear text:
             log.debug("received: {s}", .{request.payload});
 
-            const delivery = try g.gpa.create(ToServerMessage);
+            const delivery = try gpa.create(ToServerMessage);
             delivery.* = .{ .event = .{ .client_to_server_message = .{
-                .client_id = self.id,
+                .client_id = ch.id,
                 .message = request,
             } } };
             delivery.ref(); // trace:to_server_channel
@@ -342,11 +345,30 @@ const ConnectionHandler = struct {
         }
     }
 
-    fn readMessage(self: *@This()) !?*RefCountedByteSlice {
+    fn removeClient(ch: *ConnectionHandler) void {
+        const gpa = @import("global.zig").gpa;
+        // Goodbye from the party.
+        if (gpa.create(ToServerMessage)) |delivery| {
+            delivery.* = .{ .event = .{ .client_disconnected = ch.id } };
+            delivery.ref(); // trace:to_server_channel
+            to_server_channel.put(delivery) catch {
+                // TODO: this error should be impossible by design somehow.
+                log.err("server overloaded!", .{});
+                delivery.unref(); // trace:to_server_channel
+            };
+        } else |_| {
+            // TODO: this error should be impossible by design somehow.
+            log.err("server overloaded!", .{});
+        }
+    }
+
+    fn readMessage(ch: *ConnectionHandler, reader: std.io.AnyReader) !?*RefCountedByteSlice {
+        _ = ch;
+
         // See https://tools.ietf.org/html/rfc6455
         // read first byte.
         var header = [_]u8{0} ** 2;
-        self.connection.stream.reader().readNoEof(header[0..]) catch |err| switch (err) {
+        reader.readNoEof(header[0..]) catch |err| switch (err) {
             error.EndOfStream => return null,
             else => return err,
         };
@@ -377,12 +399,12 @@ const ConnectionHandler = struct {
         const len: u64 = switch (short_len_byte & 0b01111111) {
             127 => blk: {
                 var len_buffer = [_]u8{0} ** 8;
-                try self.connection.stream.reader().readNoEof(len_buffer[0..]);
+                try reader.readNoEof(len_buffer[0..]);
                 break :blk std.mem.readInt(u64, &len_buffer, .big);
             },
             126 => blk: {
                 var len_buffer = [_]u8{0} ** 2;
-                try self.connection.stream.reader().readNoEof(len_buffer[0..]);
+                try reader.readNoEof(len_buffer[0..]);
                 break :blk std.mem.readInt(u16, &len_buffer, .big);
             },
             else => |short_len| blk: {
@@ -396,14 +418,14 @@ const ConnectionHandler = struct {
 
         // read mask
         var mask_buffer = [_]u8{0} ** 4;
-        try self.connection.stream.reader().readNoEof(&mask_buffer);
+        try reader.readNoEof(&mask_buffer);
         const mask_native: u32 = @bitCast(mask_buffer);
 
         // read payload
         const allocated_len = std.mem.alignForward(usize, len, 4);
         const payload_aligned = try g.gpa.allocWithOptions(u8, allocated_len, 4, null);
         const payload = payload_aligned[0..len];
-        try self.connection.stream.reader().readNoEof(payload);
+        try reader.readNoEof(payload);
 
         // unmask
         // The last item may contain a partial word of unused data.
@@ -420,21 +442,20 @@ const ConnectionHandler = struct {
         return result;
     }
 
-    fn websocketSendLoop(self: *@This()) void {
-        defer self.unref(); // trace:websocketSendLoop
+    fn websocketSendLoop(ch: *ConnectionHandler, response: *std.http.Server.Response) void {
+        defer ch.unref(); // trace:websocketSendLoop
         while (true) {
-            const delivery = self.websocket_send_queue.getBlocking() orelse break;
+            const delivery = ch.websocket_send_queue.getBlocking() orelse break;
             defer delivery.unref(); // trace:websocket_send_queue
 
-            self.writeMessageFromSendThread(delivery.payload) catch |err| {
+            writeMessageFromSendThread(response, delivery.payload) catch |err| {
                 log.err("error writing message to websocket: {s}", .{@errorName(err)});
                 break;
             };
         }
-        self.close();
     }
 
-    fn writeMessageFromSendThread(self: *@This(), message: []const u8) !void {
+    fn writeMessageFromSendThread(response: *std.http.Server.Response, message: []const u8) !void {
         //log.debug("sending: {s}", .{message});
         // See https://tools.ietf.org/html/rfc6455
         var header_buf: [2 + 8]u8 = undefined;
@@ -461,18 +482,12 @@ const ConnectionHandler = struct {
             },
         };
 
-        var iovecs = [_]std.os.iovec_const{
-            strToIovec(header),
-            strToIovec(message),
-        };
-        try self.connection.stream.writevAll(&iovecs);
+        const w = response.writer();
+        try w.writeAll(header);
+        try w.writeAll(message);
+        try response.flush();
     }
 };
-
-const http_response_header_upgrade = "" ++
-    "HTTP/1.1 101 Switching Protocols\r\n" ++
-    "Upgrade: websocket\r\n" ++
-    "Connection: Upgrade\r\n";
 
 /// Defense against clients running us out of memory.
 const max_payload_size = 16 * 1024 * 1024;

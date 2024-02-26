@@ -1,6 +1,7 @@
 .{
     .name = "groovebasin",
     .version = "2.0.0-1",
+    .minimum_zig_version = "0.12.0-dev.3041+1b79a42da",
     .dependencies = .{
         .groove = .{
             .url = "https://github.com/andrewrk/libgroove/archive/5ddefe72729ebd0fe33f8aa6510c21f43e3471b3.tar.gz",

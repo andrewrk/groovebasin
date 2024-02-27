@@ -23,10 +23,10 @@ const json = std.json;
 const log = std.log;
 const Allocator = std.mem.Allocator;
 
-const g = @import("global.zig");
 const fatal = @import("server_main.zig").fatal;
 
 pub fn loadOrInitAndExit(path: []const u8) !json.Parsed(@This()) {
+    const g = @import("global.zig");
     const file = fs.cwd().openFile(path, .{}) catch |err| switch (err) {
         error.FileNotFound => {
             var arena = std.heap.ArenaAllocator.init(g.gpa);

@@ -10,8 +10,6 @@ const assert = std.debug.assert;
 const Iovec = std.os.iovec;
 const IovecConst = std.os.iovec_const;
 
-const g = @import("global.zig");
-
 const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
 
@@ -150,12 +148,18 @@ pub const TheDatabase = struct {
 
     pub const Item = Db.Item;
 
+    pub const Tag = enum {
+        sessions,
+        user_accounts,
+        tracks,
+        items,
+        events,
+    };
+
     pub fn deinit(self: *@This()) void {
-        self.sessions.deinit();
-        self.user_accounts.deinit();
-        self.tracks.deinit();
-        self.items.deinit();
-        self.events.deinit();
+        inline for (@typeInfo(Tag).Enum.fields) |field| {
+            @field(self, field.name).deinit();
+        }
     }
 
     pub fn getState(self: *const @This()) *const State {
@@ -167,21 +171,16 @@ pub const TheDatabase = struct {
 };
 
 pub fn init() !void {
-    inline for (all_databases) |d| {
-        d.version = Id.random(); // TODO: load this from disk.
+    const g = @import("global.zig");
+    const db = &g.the_database;
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        @field(db, field.name).version = Id.random(); // TODO: load this from disk.
     }
 }
 pub fn deinit() void {
+    const g = @import("global.zig");
     g.the_database.deinit();
 }
-
-const all_databases = .{
-    &g.the_database.user_accounts,
-    &g.the_database.sessions,
-    &g.the_database.tracks,
-    &g.the_database.items,
-    &g.the_database.events,
-};
 
 const FileHeader = extern struct {
     /// This confirms that this is in fact a groovebasin db.
@@ -194,13 +193,16 @@ const FileHeader = extern struct {
 };
 
 const some_facts = blk: {
+    const g = @import("global.zig");
+    const db = &g.the_database;
     var fixed_size_header_size: usize = 0;
     var number_of_dynamically_sized_sections: usize = 0;
     fixed_size_header_size += @sizeOf(FileHeader); // header
     fixed_size_header_size += @sizeOf(State); // fixed-size data
     fixed_size_header_size += @sizeOf(u32); // strings len
     number_of_dynamically_sized_sections += 1; // strings data
-    for (all_databases) |d| {
+    for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         if (!@TypeOf(d.*).should_save_to_disk) continue;
         fixed_size_header_size += @sizeOf(u32); // number of items
         number_of_dynamically_sized_sections += 2; // keys, values
@@ -211,15 +213,18 @@ const some_facts = blk: {
     };
 };
 
-var db_path: []const u8 = undefined;
-var db_path_tmp: []const u8 = undefined;
+var @"josh's naughty global variable db_path": []const u8 = undefined;
+var @"josh made anothre naughty global variable db_path_tmp": []const u8 = undefined;
 
 pub fn load(path: []const u8) !void {
-    db_path = path;
-    db_path_tmp = try std.mem.concat(g.gpa, u8, &.{ db_path, ".tmp" });
+    const g = @import("global.zig");
+    const db = &g.the_database;
+
+    @"josh's naughty global variable db_path" = path;
+    @"josh made anothre naughty global variable db_path_tmp" = try std.mem.concat(g.gpa, u8, &.{ @"josh's naughty global variable db_path", ".tmp" });
 
     var header_buf: [some_facts.fixed_size_header_size]u8 = undefined;
-    const file = std.fs.cwd().openFile(db_path, .{}) catch |err| switch (err) {
+    const file = std.fs.cwd().openFile(@"josh's naughty global variable db_path", .{}) catch |err| switch (err) {
         error.FileNotFound => {
             log.warn("no db found. starting from scratch", .{});
             return;
@@ -260,7 +265,8 @@ pub fn load(path: []const u8) !void {
         };
         i += 1;
     }
-    inline for (all_databases) |d| {
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         if (!@TypeOf(d.*).should_save_to_disk) continue;
 
         const len = try parseLen(&header_buf, &header_cursor, len_upper_bound);
@@ -290,7 +296,8 @@ pub fn load(path: []const u8) !void {
     // Handle loaded.
     try g.strings.reIndex(g.gpa);
     try g.strings.ensureConstants(g.gpa);
-    inline for (all_databases) |d| {
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         if (!@TypeOf(d.*).should_save_to_disk) continue;
         try d.table.reIndex(g.gpa);
         try checkForCorruption(&d.table);
@@ -324,10 +331,13 @@ fn parseLen(header_buf: *[some_facts.fixed_size_header_size]u8, cursor: *usize, 
 }
 
 pub fn save() !void {
-    try saveTo(db_path_tmp);
-    try std.fs.cwd().rename(db_path_tmp, db_path);
+    try saveTo(@"josh made anothre naughty global variable db_path_tmp");
+    try std.fs.cwd().rename(@"josh made anothre naughty global variable db_path_tmp", @"josh's naughty global variable db_path");
 }
 fn saveTo(path: []const u8) !void {
+    const g = @import("global.zig");
+    const db = &g.the_database;
+
     const file = try std.fs.cwd().createFile(path, .{});
     defer file.close();
 
@@ -358,7 +368,8 @@ fn saveTo(path: []const u8) !void {
         i += 1;
     }
 
-    inline for (all_databases) |d| {
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         if (!@TypeOf(d.*).should_save_to_disk) continue;
 
         @memcpy(header_buf[header_cursor..][0..@sizeOf(u32)], std.mem.asBytes(&@as(u32, @intCast(d.table.count()))));
@@ -410,6 +421,7 @@ pub fn Database(
         modified_entries: AutoArrayHashMapUnmanaged(Key, Value) = .{},
 
         pub fn deinit(self: *@This()) void {
+            const g = @import("global.zig");
             self.table.deinit(g.gpa);
             self.* = undefined;
         }
@@ -426,10 +438,12 @@ pub fn Database(
             return entry.value_ptr;
         }
         pub fn remove(self: *@This(), key: Key) !void {
+            const g = @import("global.zig");
             try self.removed_keys.putNoClobber(g.gpa, key, {});
             assert(self.table.swapRemove(key));
         }
         pub fn putNoClobber(self: *@This(), key: Key, value: Value) !void {
+            const g = @import("global.zig");
             try self.table.ensureUnusedCapacity(g.gpa, 1);
             try self.added_keys.putNoClobber(g.gpa, key, {});
             self.table.putAssumeCapacityNoClobber(key, value);
@@ -441,6 +455,7 @@ pub fn Database(
         }
         /// Generate a random key that does not collide with anything, put the value, and return the key.
         pub fn putRandom(self: *@This(), value: Value) !Key {
+            const g = @import("global.zig");
             try self.table.ensureUnusedCapacity(g.gpa, 1);
             try self.added_keys.ensureUnusedCapacity(g.gpa, 1);
             for (0..10) |_| {
@@ -492,6 +507,7 @@ pub fn Database(
         };
 
         fn markModified(self: *@This(), entry: Entry) !void {
+            const g = @import("global.zig");
             const gop = try self.modified_entries.getOrPut(g.gpa, entry.key_ptr.*);
             if (gop.found_existing) return; // already noted.
             gop.value_ptr.* = entry.value_ptr.*;
@@ -538,9 +554,13 @@ pub fn Database(
 }
 
 pub fn flushChanges() !void {
+    const g = @import("global.zig");
+    const db = &g.the_database;
+
     var anything_to_broadcast = false;
     var anything_to_save_to_disk = false;
-    inline for (all_databases) |d| {
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         if (d.reduceChanges()) {
             anything_to_broadcast = true;
             if (@TypeOf(d.*).should_save_to_disk) {
@@ -563,7 +583,8 @@ pub fn flushChanges() !void {
         try save();
     }
 
-    inline for (all_databases) |d| {
+    inline for (@typeInfo(TheDatabase.Tag).Enum.fields) |field| {
+        const d = &@field(db, field.name);
         d.clearChanges();
     }
     if (state_changed) {
@@ -573,6 +594,7 @@ pub fn flushChanges() !void {
 }
 
 fn checkForCorruption(map: anytype) !void {
+    const g = @import("global.zig");
     for (map.values()) |record| {
         inline for (@typeInfo(@TypeOf(record)).Struct.fields) |field| {
             const int_value = if (field.type == StringPool.Index)

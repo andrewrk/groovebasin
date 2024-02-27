@@ -4,8 +4,6 @@ const AutoArrayHashMap = std.AutoArrayHashMap;
 const Allocator = std.mem.Allocator;
 const log = std.log;
 
-const g = @import("global.zig");
-
 const StringPool = @import("StringPool.zig");
 const subscriptions = @import("subscriptions.zig");
 const events = @import("events.zig");
@@ -23,10 +21,9 @@ const RegistrationStage = db.RegistrationStage;
 const InternalPermissions = db.InternalPermissions;
 const PasswordHash = db.PasswordHash;
 
-const sessions = &g.the_database.sessions;
-const user_accounts = &g.the_database.user_accounts;
-
 pub fn handleClientConnected(client_id: Id) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     // Every new connection starts as a guest.
     // If you want to be not a guest, send a login message.
     const user_id = try createGuestAccount();
@@ -41,17 +38,26 @@ pub fn handleClientConnected(client_id: Id) !void {
 }
 
 pub fn handleClientDisconnected(client_id: Id) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     try sessions.remove(client_id);
 }
 
 pub fn getUserId(client_id: Id) Id {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     return sessions.get(client_id).user_id;
 }
 pub fn getPermissions(user_id: Id) InternalPermissions {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     return user_accounts.get(user_id).permissions;
 }
 
 pub fn logout(client_id: Id) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     const session = try sessions.getForEditing(client_id);
     session.user_id = try createGuestAccount();
 }
@@ -67,6 +73,10 @@ pub fn login(client_id: Id, username: []const u8, password: []u8) !void {
     };
 }
 fn loginImpl(client_id: Id, username_str: []const u8, password: []u8) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
+    const user_accounts = &g.the_database.user_accounts;
+
     // We always need a password.
     const min_password_len = 1; // lmao
     if (password.len < min_password_len) return error.BadRequest; // password too short
@@ -147,11 +157,15 @@ fn checkPassword(account: *const UserAccount, password: []const u8) error{Invali
 }
 
 pub fn setStreaming(client_id: Id, is_streaming: bool) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     const account = try sessions.getForEditing(client_id);
     account.claims_to_be_streaming = is_streaming;
 }
 
 pub fn broadcastSeekEvent() !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
     for (sessions.table.keys(), sessions.table.values()) |client_id, account| {
         if (!account.claims_to_be_streaming) continue;
         try encodeAndSend(client_id, .seek);
@@ -159,6 +173,9 @@ pub fn broadcastSeekEvent() !void {
 }
 
 fn lookupAccountByUsername(username: StringPool.Index) ?Id {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     var it = user_accounts.iterator();
     while (it.next()) |kv| {
         const user_id = kv.key_ptr.*;
@@ -169,6 +186,8 @@ fn lookupAccountByUsername(username: StringPool.Index) ?Id {
 }
 
 fn createGuestAccount() !Id {
+    const g = @import("global.zig");
+
     var username_str: ["Guest-123456".len]u8 = "Guest-XXXXXX".*;
     for (username_str[username_str.len - 6 ..]) |*c| {
         c.* = std.base64.url_safe_alphabet_chars[std.crypto.random.int(u6)];
@@ -182,6 +201,9 @@ fn createGuestAccount() !Id {
 }
 
 pub fn ensureAdminUser() !void {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     {
         var it = user_accounts.iterator();
         while (it.next()) |kv| {
@@ -225,6 +247,9 @@ pub fn ensureAdminUser() !void {
 }
 
 pub fn requestApproval(client_id: Id) !void {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     const user_id = getUserId(client_id);
     const account = try user_accounts.getForEditing(user_id);
     switch (account.registration_stage) {
@@ -240,6 +265,9 @@ pub fn requestApproval(client_id: Id) !void {
 }
 
 pub fn approve(args: anytype) error{OutOfMemory}!void {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     for (args) |approval| {
         var requesting_user_id = approval.id;
         const replace_user_id = approval.replaceId orelse requesting_user_id;
@@ -289,6 +317,9 @@ pub fn approve(args: anytype) error{OutOfMemory}!void {
 }
 
 pub fn updateUser(user_id: Id, perms: Permissions) !void {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     if (!user_accounts.contains(user_id)) {
         log.warn("ignoring bogus userid: {}", .{user_id});
         return;
@@ -298,6 +329,9 @@ pub fn updateUser(user_id: Id, perms: Permissions) !void {
 }
 
 pub fn updateGuestPermissions(perms: Permissions) !void {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     const permissions = convertPermsissions(perms);
     g.the_database.getStateForEditing().guest_permissions = permissions;
     var it = user_accounts.iterator();
@@ -310,6 +344,10 @@ pub fn updateGuestPermissions(perms: Permissions) !void {
 }
 
 pub fn deleteUsers(user_ids: []const Id) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
+    const user_accounts = &g.the_database.user_accounts;
+
     var replacement_guest_id: ?Id = null;
     for (user_ids) |user_id| {
         if (!user_accounts.contains(user_id)) {
@@ -337,6 +375,9 @@ fn createAccount(
     registration_stage: RegistrationStage,
     permissions: InternalPermissions,
 ) !Id {
+    const g = @import("global.zig");
+    const user_accounts = &g.the_database.user_accounts;
+
     const username = try g.strings.put(g.gpa, username_str);
 
     const user_id = try user_accounts.putRandom(.{
@@ -350,6 +391,10 @@ fn createAccount(
 }
 
 fn mergeAccounts(doomed_user_id: Id, true_user_id: Id) !void {
+    const g = @import("global.zig");
+    const sessions = &g.the_database.sessions;
+    const user_accounts = &g.the_database.user_accounts;
+
     const workaround_miscomiplation = doomed_user_id.value; // FIXME: Test that this is fixed by logging in to an existing account.
     // We're about to delete this user, so make sure all sessions get upgraded.
     var it = sessions.iterator();
@@ -371,6 +416,8 @@ pub fn serializableSession(session: InternalSession) protocol.Session {
 }
 
 pub fn serializableUserAccount(account: UserAccount) protocol.PublicUserInfo {
+    const g = @import("global.zig");
+
     return .{
         .name = g.strings.get(account.username),
         .perms = convertPermsissions(account.permissions),

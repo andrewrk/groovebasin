@@ -1,3 +1,8 @@
+///! Dearest Josh,
+///
+///! Please stop using global variables.
+///
+///! Love, Andy
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Groove = @import("groove.zig").Groove;

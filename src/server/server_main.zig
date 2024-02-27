@@ -4,7 +4,6 @@ const ArenaAllocator = std.heap.ArenaAllocator;
 const log = std.log;
 const mem = std.mem;
 
-const g = @import("global.zig");
 const library = @import("library.zig");
 const Queue = @import("queue.zig");
 const events = @import("events.zig");
@@ -37,6 +36,8 @@ pub fn fatal(comptime format: []const u8, args: anytype) noreturn {
 }
 
 pub fn main() anyerror!noreturn {
+    const g = @import("global.zig");
+
     var gpa_instance: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa_instance.deinit();
     const gpa = gpa_instance.allocator();
@@ -179,6 +180,7 @@ fn parseMessage(allocator: Allocator, message_bytes: []const u8) !groovebasin_pr
 }
 
 pub fn encodeAndSend(client_id: Id, message: groovebasin_protocol.ServerToClientMessage) !void {
+    const g = @import("global.zig");
     const message_bytes = try std.json.stringifyAlloc(g.gpa, message, .{});
     try sendBytes(client_id, message_bytes);
 }
@@ -188,6 +190,7 @@ pub fn sendBytes(client_id: Id, message_bytes: []const u8) !void {
 }
 
 pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
+    const g = @import("global.zig");
     var arena = ArenaAllocator.init(g.gpa);
     defer arena.deinit();
     const message = try parseMessage(arena.allocator(), message_bytes);
@@ -199,6 +202,7 @@ pub fn handleRequest(client_id: Id, message_bytes: []const u8) !void {
 }
 
 fn handleRequestImpl(client_id: Id, message: *const groovebasin_protocol.ClientToServerMessage) !void {
+    const g = @import("global.zig");
     const user_id = users.getUserId(client_id);
     const perms = users.getPermissions(user_id);
     switch (message.*) {

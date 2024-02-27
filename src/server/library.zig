@@ -6,7 +6,6 @@ const AutoArrayHashMapUnmanaged = std.AutoArrayHashMapUnmanaged;
 const log = std.log.scoped(.groove);
 
 const Groove = @import("groove.zig").Groove;
-const g = @import("global.zig");
 
 const StringPool = @import("StringPool.zig");
 
@@ -17,7 +16,6 @@ const IdMap = protocol.IdMap;
 const db = @import("db.zig");
 const Track = db.Track;
 
-const tracks = &g.the_database.tracks;
 var music_directory: []const u8 = undefined;
 
 pub fn init(music_directory_init: []const u8) !void {
@@ -26,6 +24,8 @@ pub fn init(music_directory_init: []const u8) !void {
 pub fn deinit() void {}
 
 pub fn loadFromDisk() !void {
+    const g = @import("global.zig");
+    const tracks = &g.the_database.tracks;
     var arena = std.heap.ArenaAllocator.init(g.gpa);
     defer arena.deinit();
 
@@ -104,6 +104,7 @@ fn grooveFileToTrack(
     groove_file: *Groove.File,
     file_path: []const u8,
 ) !Track {
+    const g = @import("global.zig");
     const parsed_track = parseTrackTuple(getMetadata(groove_file, "track") orelse
         "");
     const parsed_disc = parseTrackTuple(getMetadata(groove_file, "disc") orelse
@@ -147,6 +148,7 @@ fn grooveFileToTrack(
 }
 
 pub fn serializableTrack(track: Track) LibraryTrack {
+    const g = @import("global.zig");
     return .{
         .file = g.strings.get(track.file_path),
         .name = g.strings.get(track.title),
@@ -216,6 +218,9 @@ test parseTrackTuple {
 }
 
 pub fn loadGrooveFile(library_key: Id) error{ OutOfMemory, TrackNotFound, LoadFailure }!*Groove.File {
+    const g = @import("global.zig");
+    const tracks = &g.the_database.tracks;
+
     const groove_file = try g.groove.file_create();
     errdefer groove_file.destroy();
 

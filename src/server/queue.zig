@@ -5,7 +5,6 @@ const Allocator = std.mem.Allocator;
 const log = std.log;
 
 const Db = @import("db.zig").TheDatabase;
-const g = @import("global.zig");
 const Groove = @import("groove.zig").Groove;
 const Player = @import("Player.zig");
 
@@ -21,6 +20,7 @@ const Queue = @This();
 map: AutoArrayHashMapUnmanaged(*Groove.Playlist.Item, Id) = .{},
 
 pub fn handleLoaded(q: *Queue) !void {
+    const g = @import("global.zig");
     const db = &g.the_database;
     const player = &g.player;
 
@@ -41,6 +41,7 @@ pub fn handleLoaded(q: *Queue) !void {
 }
 
 pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
+    const g = @import("global.zig");
     // TODO: add the seek event ("poopsmith3 seeked to a different song")
     _ = user_id;
     const db = &g.the_database;
@@ -74,6 +75,7 @@ pub fn seek(q: *Queue, user_id: Id, id: Id, pos: f64) !void {
 }
 
 pub fn play(q: *Queue, user_id: Id) !void {
+    const g = @import("global.zig");
     _ = q;
     // TODO: add the play event ("poopsmith3 pressed play")
     _ = user_id;
@@ -98,6 +100,7 @@ pub fn play(q: *Queue, user_id: Id) !void {
 }
 
 pub fn pause(q: *Queue, user_id: Id) !void {
+    const g = @import("global.zig");
     _ = q;
     // TODO: add the pause event ("poopsmith3 pressed pause")
     _ = user_id;
@@ -122,6 +125,7 @@ pub fn pause(q: *Queue, user_id: Id) !void {
 }
 
 pub fn stop(q: *Queue, user_id: Id) !void {
+    const g = @import("global.zig");
     _ = q;
     // TODO: add the pause event ("poopsmith3 pressed stop")
     _ = user_id;
@@ -144,6 +148,7 @@ pub fn stop(q: *Queue, user_id: Id) !void {
 }
 
 pub fn enqueue(q: *Queue, new_items: anytype) !void {
+    const g = @import("global.zig");
     const db = &g.the_database;
     try db.items.table.ensureUnusedCapacity(g.gpa, new_items.map.count());
     try db.items.added_keys.ensureUnusedCapacity(g.gpa, new_items.map.count());
@@ -171,6 +176,7 @@ pub fn enqueue(q: *Queue, new_items: anytype) !void {
 }
 
 pub fn move(q: *Queue, args: anytype) !void {
+    const g = @import("global.zig");
     const db = &g.the_database;
     try db.items.modified_entries.ensureUnusedCapacity(g.gpa, args.map.count());
     {
@@ -214,6 +220,7 @@ fn addSomeSmallAmount(x: f64) f64 {
 }
 
 pub fn remove(q: *Queue, args: []Id) !void {
+    const g = @import("global.zig");
     const db = &g.the_database;
     try db.items.removed_keys.ensureUnusedCapacity(g.gpa, args.len);
 
@@ -254,6 +261,7 @@ pub fn remove(q: *Queue, args: []Id) !void {
 /// Ensures the intended current item and following item are loaded into Groove.
 /// Assumes the play queue is already sorted.
 fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void {
+    const g = @import("global.zig");
     const gpa = g.gpa;
 
     const current_libgroove_item = c: {
@@ -315,6 +323,7 @@ fn lowerToLibGroove(q: *Queue, player: *Player, db: *Db) error{OutOfMemory}!void
 }
 
 fn setCurrentItemId(item_id: Id) void {
+    const g = @import("global.zig");
     const db = &g.the_database;
 
     db.state.current_item = .{
@@ -358,6 +367,7 @@ pub fn serializableCurrentTrack(current_track: anytype) protocol.CurrentTrack {
 }
 
 fn sort() void {
+    const g = @import("global.zig");
     const db = &g.the_database;
     const SortContext = struct {
         values: []Db.Item,

@@ -15,8 +15,6 @@ const groovebasin_protocol = @import("groovebasin_protocol.zig");
 const Id = groovebasin_protocol.Id;
 const server_logic = @import("server_main.zig");
 
-const g = @import("global.zig");
-
 // threads:
 //  1. main thread (server logic)
 //  2. listen thread
@@ -63,6 +61,8 @@ const ToServerMessage = struct {
         }
     }
     pub fn unref(self: *@This()) void {
+        const g = @import("global.zig");
+
         if (self.refcounter.unref()) {
             switch (self.event) {
                 .client_to_server_message => |m| {
@@ -76,6 +76,8 @@ const ToServerMessage = struct {
 };
 
 pub fn listen(addr: net.Address, static_http_file_server: *StaticHttpFileServer) !void {
+    const g = @import("global.zig");
+
     const gpa = g.gpa;
 
     log.debug("init tcp server", .{});
@@ -130,6 +132,8 @@ const ConnectionHandler = struct {
         self.refcounter.ref();
     }
     pub fn unref(self: *@This()) void {
+        const g = @import("global.zig");
+
         if (self.refcounter.unref()) {
             log.debug("destroying connection handler", .{});
             self.close();
@@ -212,6 +216,8 @@ const ConnectionHandler = struct {
     }
 
     fn streamEndpoint(ch: *ConnectionHandler, req: *std.http.Server.Request) !void {
+        const g = @import("global.zig");
+
         _ = ch;
         const player = &g.player;
 
@@ -269,6 +275,8 @@ const ConnectionHandler = struct {
         req: *std.http.Server.Request,
         key: []const u8,
     ) !void {
+        const g = @import("global.zig");
+
         const gpa = g.gpa;
 
         var send_buffer: [0x4000]u8 = undefined;
@@ -363,6 +371,8 @@ const ConnectionHandler = struct {
     }
 
     fn readMessage(ch: *ConnectionHandler, reader: std.io.AnyReader) !?*RefCountedByteSlice {
+        const g = @import("global.zig");
+
         _ = ch;
 
         // See https://tools.ietf.org/html/rfc6455
@@ -504,6 +514,8 @@ var handlers_mutex: std.Thread.Mutex = .{};
 
 /// Takes ownership of message_bytes, even when an error is returned.
 pub fn sendMessageToClient(client_id: Id, message_bytes: []const u8) !void {
+    const g = @import("global.zig");
+
     const handler = blk: {
         // TODO: optimize with an RW lock
         handlers_mutex.lock();
@@ -564,6 +576,8 @@ const RefCountedByteSlice = struct {
         self.refcounter.ref();
     }
     pub fn unref(self: *@This()) void {
+        const g = @import("global.zig");
+
         if (self.refcounter.unref()) {
             if (self.is_align_4) {
                 const allocated_payload: []align(4) const u8 = @alignCast(self.payload.ptr[0..std.mem.alignForward(usize, self.payload.len, 4)]);

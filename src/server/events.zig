@@ -8,7 +8,6 @@ const IdMap = @import("groovebasin_protocol.zig").IdMap;
 const Event = @import("groovebasin_protocol.zig").Event;
 const Datetime = @import("groovebasin_protocol.zig").Datetime;
 
-const g = @import("global.zig");
 const subscriptions = @import("subscriptions.zig");
 const getNow = @import("server_main.zig").getNow;
 const users = @import("users.zig");
@@ -17,12 +16,13 @@ const InternalEvent = db.InternalEvent;
 
 const StringPool = @import("StringPool.zig");
 
-const events = &g.the_database.events;
-
 pub fn init() !void {}
 pub fn deinit() void {}
 
 pub fn chat(user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
+    const g = @import("global.zig");
+    const events = &g.the_database.events;
+
     const text = try g.strings.put(g.gpa, text_str);
     const sort_key: f64 = if (events.table.count() == 0)
         0.0
@@ -43,6 +43,8 @@ pub fn chat(user_id: Id, text_str: []const u8, is_slash_me: bool) !void {
 }
 
 pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
+    const g = @import("global.zig");
+    const events = &g.the_database.events;
     var it = events.iterator();
     while (it.next()) |kv| {
         const event = kv.value_ptr;
@@ -54,6 +56,8 @@ pub fn revealTrueIdentity(guest_id: Id, real_id: Id) !void {
 }
 
 pub fn tombstoneUser(user_id: Id) !void {
+    const g = @import("global.zig");
+    const events = &g.the_database.events;
     var it = events.iterator();
     while (it.next()) |kv| {
         const event = kv.value_ptr;
@@ -75,6 +79,7 @@ pub fn tombstoneUser(user_id: Id) !void {
 }
 
 pub fn serializableEvent(event: InternalEvent) Event {
+    const g = @import("global.zig");
     return switch (event.type) {
         .chat => |data| .{
             .date = event.date,

@@ -5,7 +5,6 @@ const Tag = std.meta.Tag;
 const log = std.log.scoped(.sub);
 const assert = std.debug.assert;
 
-const g = @import("global.zig");
 const sendBytes = @import("server_main.zig").sendBytes;
 
 const db = @import("db.zig");
@@ -29,6 +28,7 @@ const ClientSubscriptionData = struct {
 var client_subscriptions: ArrayList(ClientSubscriptionData) = undefined;
 
 pub fn init() !void {
+    const g = @import("global.zig");
     client_subscriptions = ArrayList(ClientSubscriptionData).init(g.gpa);
 }
 pub fn deinit() void {
@@ -86,6 +86,7 @@ fn lookup(client_id: Id, name: Tag(Subscription)) ?*ClientSubscriptionData {
 }
 
 fn publishData(client_data: *ClientSubscriptionData) !void {
+    const g = @import("global.zig");
     switch (client_data.name) {
         .sessions => try doTheThing(client_data, &g.the_database.sessions),
         .users => try doTheThing(client_data, &g.the_database.user_accounts),
@@ -106,6 +107,7 @@ fn publishData(client_data: *ClientSubscriptionData) !void {
 }
 
 fn doTheThing(client_data: *ClientSubscriptionData, database: anytype) !void {
+    const g = @import("global.zig");
     var bytes_list = ArrayList(u8).init(g.gpa);
     defer bytes_list.deinit();
     var json_writer = std.json.writeStream(bytes_list.writer(), .{});
@@ -159,6 +161,7 @@ fn doTheThing(client_data: *ClientSubscriptionData, database: anytype) !void {
 }
 
 fn doTheStateThing(client_data: *ClientSubscriptionData) !void {
+    const g = @import("global.zig");
     var bytes_list = ArrayList(u8).init(g.gpa);
     defer bytes_list.deinit();
     var json_writer = std.json.writeStream(bytes_list.writer(), .{});

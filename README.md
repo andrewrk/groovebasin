@@ -9,8 +9,6 @@ or smart phone. Further, you can stream your music library remotely.
 Groove Basin works with your personal music library; not an external music
 service. Groove Basin will never support DRM content.
 
-Try out the [live demo](http://demo.groovebasin.com/).
-
 ## Feature Highlights
 
 * The web client feels like a desktop app, not a web app. It predicts what the
@@ -48,31 +46,22 @@ Try out the [live demo](http://demo.groovebasin.com/).
 * File system monitoring. Add songs anywhere inside your music directory and
   they instantly appear in your library.
 
-## Install
+## Installation on Ubuntu
 
-### Pre-Built Packages
+For Ubuntu 17.04 Zesty:
 
-#### Ubuntu
+1. `sudo apt-get install nodejs libgrooveloudness-dev libgroovefingerprinter-dev libgrooveplayer-dev libgroove-dev`
+2. Clone this repo and cd to it.
+3. `npm run build`
+4. `npm start`
 
-```
-sudo apt-add-repository ppa:andrewrk/libgroove
-sudo apt-get update
-sudo apt-get install groovebasin
-groovebasin
-```
+For Ubuntu 18.04 Bionic:
 
-### From Source
-
-1. Install one of these:
-   * [Node.js](http://nodejs.org) v0.10.36 or v0.12.x
-   * [io.js](https://iojs.org) v1.x.x
-   * On Debian and Ubuntu, `sudo apt-get install nodejs-dev nodejs-legacy npm`
-2. Install [libgroove](https://github.com/andrewrk/libgroove).
-   libgroove is available in many package managers. See the libgroove README
-   for more details.
-3. Clone the source and cd to it.
-4. `npm run build`
-5. `npm start`
+* Install node-groove and its dependencies from source by following these instructions:
+  https://github.com/andrewrk/node-groove/blob/2.x/README.md#ubuntu-1804
+* Edit `pckage.json`, and change the `"groove"` dependency to point to the directory where node-groove is installed.
+  (The path is instead of a version number.)
+* Resume step 2 above.
 
 ## Configuration
 

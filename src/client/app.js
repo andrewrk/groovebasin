@@ -1610,13 +1610,14 @@ function renderQueue() {
     middleDom.children[2].textContent = track.albumName || "";
 
     var trackLabels = getTrackLabels(track);
-    for (var label_i = 0; label_i < trackLabels.length; label_i += 1) {
+    for (var label_i = trackLabels.length - 1; label_i >= 0; label_i -= 1) {
       var label = trackLabels[label_i];
       var labelBoxDom = document.createElement('span');
+      var targetDom = middleDom.children[0];
       labelBoxDom.classList.add("label-box");
       labelBoxDom.style.backgroundColor = label.color;
       labelBoxDom.setAttribute('title', label.name);
-      middleDom.children[0].appendChild(labelBoxDom);
+      targetDom.insertBefore(labelBoxDom, targetDom.firstChild);
     }
   }
 
@@ -1681,11 +1682,6 @@ function updateQueueDuration() {
   }
 }
 
-function removeSelectedAndCursorClasses(domItem) {
-  domItem.classList.remove('selected');
-  domItem.classList.remove('cursor');
-}
-
 function removeCurrentOldAndRandomClasses(domItem) {
   domItem.classList.remove('current');
   domItem.classList.remove('old');
@@ -1731,9 +1727,14 @@ function refreshSelection() {
     updateQueueDuration();
     return;
   }
-  Array.prototype.forEach.call(queueItemsDom.getElementsByClassName('pl-item'), removeSelectedAndCursorClasses);
-  Array.prototype.forEach.call(libraryArtistsDom.getElementsByClassName('clickable'), removeSelectedAndCursorClasses);
-  Array.prototype.forEach.call(playlistsListDom.getElementsByClassName('clickable'), removeSelectedAndCursorClasses);
+  [queueItemsDom, libraryArtistsDom, playlistsListDom].forEach(function(domElement) {
+    ['selected', 'cursor'].forEach(function(className) {
+      var elementList = domElement.getElementsByClassName(className);
+      for (var i = elementList.length - 1; i >= 0; i--) {
+        elementList[i].classList.remove(className);
+      }
+    });
+  });
 
   if (selection.cursorType == null) {
     updateQueueDuration();
